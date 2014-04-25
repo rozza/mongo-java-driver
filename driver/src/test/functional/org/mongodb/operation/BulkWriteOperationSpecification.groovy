@@ -34,6 +34,7 @@ import org.mongodb.protocol.AcknowledgedBulkWriteResult
 
 import static org.junit.Assume.assumeTrue
 import static org.mongodb.Fixture.getBinding
+import static org.mongodb.Fixture.serverVersionAtLeast
 import static org.mongodb.WriteConcern.ACKNOWLEDGED
 import static org.mongodb.WriteConcern.UNACKNOWLEDGED
 import static org.mongodb.operation.WriteRequest.Type.REMOVE
@@ -158,7 +159,7 @@ class BulkWriteOperationSpecification extends FunctionalSpecification {
         def result = op.execute(getBinding())
 
         then:
-        result == new AcknowledgedBulkWriteResult(UPDATE, 1, 1, [])
+        result == new AcknowledgedBulkWriteResult(UPDATE, 1, expectedModifiedCount(1), [])
         getCollectionHelper().count(new Document('y', 1)) == 1
 
         where:
@@ -177,7 +178,7 @@ class BulkWriteOperationSpecification extends FunctionalSpecification {
         def result = op.execute(getBinding())
 
         then:
-        result == new AcknowledgedBulkWriteResult(UPDATE, 2, 2, [])
+        result == new AcknowledgedBulkWriteResult(UPDATE, 2, expectedModifiedCount(2), [])
         getCollectionHelper().count(new Document('y', 1)) == 2
 
         where:
@@ -196,7 +197,7 @@ class BulkWriteOperationSpecification extends FunctionalSpecification {
         def result = op.execute(getBinding())
 
         then:
-        result == new AcknowledgedBulkWriteResult(UPDATE, 0, [new BulkWriteUpsert(0, id)])
+        result == new AcknowledgedBulkWriteResult(UPDATE, 0, expectedModifiedCount(0), [new BulkWriteUpsert(0, id)])
         getCollectionHelper().find().first() == new Document('_id', query.get('_id')).append('x', 2)
 
         where:
@@ -216,7 +217,7 @@ class BulkWriteOperationSpecification extends FunctionalSpecification {
         def result = op.execute(getBinding())
 
         then:
-        result == new AcknowledgedBulkWriteResult(UPDATE, 0, [new BulkWriteUpsert(0, id)])
+        result == new AcknowledgedBulkWriteResult(UPDATE, 0, expectedModifiedCount(0), [new BulkWriteUpsert(0, id)])
         getCollectionHelper().find().first() == new Document('_id', query.get('_id')).append('x', 2)
 
         where:
@@ -235,7 +236,7 @@ class BulkWriteOperationSpecification extends FunctionalSpecification {
         def result = op.execute(getBinding())
 
         then:
-        result == new AcknowledgedBulkWriteResult(UPDATE, 1, 1, [])
+        result == new AcknowledgedBulkWriteResult(UPDATE, 1, expectedModifiedCount(1), [])
         getCollectionHelper().count(new Document('y', 1)) == 1
 
         where:
@@ -254,7 +255,7 @@ class BulkWriteOperationSpecification extends FunctionalSpecification {
         def result = op.execute(getBinding())
 
         then:
-        result == new AcknowledgedBulkWriteResult(UPDATE, 2, 2, [])
+        result == new AcknowledgedBulkWriteResult(UPDATE, 2, expectedModifiedCount(2), [])
         getCollectionHelper().count(new Document('y', 1)) == 2
 
         where:
@@ -292,7 +293,7 @@ class BulkWriteOperationSpecification extends FunctionalSpecification {
         def result = op.execute(getBinding())
 
         then:
-        result == new AcknowledgedBulkWriteResult(UPDATE, 0, [new BulkWriteUpsert(0, id)])
+        result == new AcknowledgedBulkWriteResult(UPDATE, 0, expectedModifiedCount(0), [new BulkWriteUpsert(0, id)])
         getCollectionHelper().find().first() == new Document('_id', id).append('x', 2)
 
         where:
@@ -312,7 +313,7 @@ class BulkWriteOperationSpecification extends FunctionalSpecification {
         def result = op.execute(getBinding())
 
         then:
-        result == new AcknowledgedBulkWriteResult(UPDATE, 1, 1, [])
+        result == new AcknowledgedBulkWriteResult(UPDATE, 1, expectedModifiedCount(1), [])
         getCollectionHelper().count(new Document('x', false)) == 1
 
         where:
@@ -333,7 +334,7 @@ class BulkWriteOperationSpecification extends FunctionalSpecification {
         def result = op.execute(getBinding())
 
         then:
-        result == new AcknowledgedBulkWriteResult(UPDATE, 1, 1, [])
+        result == new AcknowledgedBulkWriteResult(UPDATE, 1, expectedModifiedCount(1), [])
         getCollectionHelper().count() == 1
     }
 
@@ -352,7 +353,7 @@ class BulkWriteOperationSpecification extends FunctionalSpecification {
         def result = op.execute(getBinding())
 
         then:
-        result == new AcknowledgedBulkWriteResult(UPDATE, 2, 2, [])
+        result == new AcknowledgedBulkWriteResult(UPDATE, 2, expectedModifiedCount(2), [])
         getCollectionHelper().count() == 2
     }
 
@@ -554,5 +555,9 @@ class BulkWriteOperationSpecification extends FunctionalSpecification {
          new Document('_id', 4),
          new Document('_id', 5),
          new Document('_id', 6)]
+    }
+
+    private static Integer expectedModifiedCount(final int expectedCountForServersThatSupportIt) {
+        (serverVersionAtLeast([2, 6, 0])) ? expectedCountForServersThatSupportIt : null
     }
 }
