@@ -72,7 +72,7 @@ class AggregateExplainOperationSpecification extends FunctionalSpecification {
         result.getResponse().containsKey('stages')
         Document stage = (Document) result.getResponse().get('stages').first()
         stage.'$cursor'.'query' == [job: 'plumber'] as Document
-        
+
         where:
         aggregateOptions << [
                 AggregationOptions.builder().outputMode(AggregationOptions.OutputMode.INLINE).build(),

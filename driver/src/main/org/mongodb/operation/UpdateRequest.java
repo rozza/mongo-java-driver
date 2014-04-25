@@ -18,14 +18,17 @@ package org.mongodb.operation;
 
 import org.mongodb.Document;
 
+import static org.mongodb.assertions.Assertions.isValidUpdateOperation;
+import static org.mongodb.assertions.Assertions.notNull;
+
 public class UpdateRequest extends BaseUpdateRequest {
     private final Document updateOperations;
     private boolean isMulti = false;
 
     public UpdateRequest(final Document filter, final Document updateOperations) {
         super(filter);
-
-        this.updateOperations = updateOperations;
+        this.updateOperations = notNull("updateOperations", updateOperations);
+        isValidUpdateOperation("updateOperations", updateOperations);
     }
 
     public Document getUpdateOperations() {
