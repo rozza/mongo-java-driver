@@ -20,8 +20,13 @@ import org.mongodb.AggregationOptions;
 import org.mongodb.CommandResult;
 import org.mongodb.Decoder;
 import org.mongodb.Document;
+import org.mongodb.Function;
+import org.mongodb.MongoAsyncCursor;
 import org.mongodb.MongoCursor;
+import org.mongodb.MongoFuture;
 import org.mongodb.MongoNamespace;
+import org.mongodb.binding.AsyncConnectionSource;
+import org.mongodb.binding.AsyncReadBinding;
 import org.mongodb.binding.ConnectionSource;
 import org.mongodb.binding.ReadBinding;
 import org.mongodb.codecs.DocumentCodec;
@@ -32,7 +37,9 @@ import java.util.List;
 
 import static org.mongodb.operation.AggregateHelper.asCommandDocument;
 import static org.mongodb.operation.CommandOperationHelper.executeWrappedCommandProtocol;
+import static org.mongodb.operation.CommandOperationHelper.executeWrappedCommandProtocolAsync;
 import static org.mongodb.operation.OperationHelper.CallableWithConnectionAndSource;
+import static org.mongodb.operation.OperationHelper.AsyncCallableWithConnectionAndSource;
 import static org.mongodb.operation.OperationHelper.withConnection;
 
 /**
@@ -41,7 +48,7 @@ import static org.mongodb.operation.OperationHelper.withConnection;
  * @param <T> the type to deserialize the results to
  * @since 3.0
  */
-public class AggregateOperation<T> implements ReadOperation<MongoCursor<T>> {
+public class AggregateOperation<T> implements AsyncReadOperation<MongoAsyncCursor<T>>, ReadOperation<MongoCursor<T>> {
     private final MongoNamespace namespace;
     private final List<Document> pipeline;
     private final Decoder<T> decoder;
@@ -61,16 +68,23 @@ public class AggregateOperation<T> implements ReadOperation<MongoCursor<T>> {
         return withConnection(binding, new CallableWithConnectionAndSource<MongoCursor<T>>() {
             @Override
             public MongoCursor<T> call(final ConnectionSource source, final Connection connection) {
-                CommandResult result = executeWrappedCommandProtocol(namespace, asCommandDocument(namespace, pipeline, options),
-                                                                     new DocumentCodec(),
-                                                                     new CommandResultWithPayloadDecoder<T>(decoder, "result"),
-                                                                     connection, binding.getReadPreference());
-                if (options.getOutputMode() == AggregationOptions.OutputMode.INLINE) {
-                    return new InlineMongoCursor<T>(result.getAddress(), (List<T>) result.getResponse().get("result"));
-                } else {
-                    int batchSize = options.getBatchSize() == null ? 0 : options.getBatchSize();
-                    return new MongoQueryCursor<T>(namespace, createQueryResult(result), 0, batchSize, decoder, source);
-                }
+                return executeWrappedCommandProtocol(namespace, asCommandDocument(namespace, pipeline, options), new DocumentCodec(),
+                                                     new CommandResultWithPayloadDecoder<T>(decoder, "result"), connection,
+                                                     binding.getReadPreference(), transformer(source));
+            }
+        });
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public MongoFuture<MongoAsyncCursor<T>> executeAsync(final AsyncReadBinding binding) {
+        return withConnection(binding, new AsyncCallableWithConnectionAndSource<MongoAsyncCursor<T>>() {
+
+            @Override
+            public MongoFuture<MongoAsyncCursor<T>> call(final AsyncConnectionSource source, final Connection connection) {
+                return executeWrappedCommandProtocolAsync(namespace, asCommandDocument(namespace, pipeline, options),
+                                                          new DocumentCodec(), new CommandResultWithPayloadDecoder<T>(decoder, "result"),
+                                                          binding, asyncTransformer(source));
             }
         });
     }
@@ -89,4 +103,36 @@ public class AggregateOperation<T> implements ReadOperation<MongoCursor<T>> {
         }
         return new QueryResult<T>(results, cursorId, result.getAddress(), 0);
     }
+
+    @SuppressWarnings("unchecked")
+    private Function<CommandResult, MongoCursor<T>> transformer(final ConnectionSource source) {
+        return new Function<CommandResult, MongoCursor<T>>() {
+            @Override
+            public MongoCursor<T> apply(final CommandResult result) {
+                if (options.getOutputMode() == AggregationOptions.OutputMode.INLINE) {
+                    return new InlineMongoCursor<T>(result.getAddress(), (List<T>) result.getResponse().get("result"));
+                } else {
+                    int batchSize = options.getBatchSize() == null ? 0 : options.getBatchSize();
+                    return new MongoQueryCursor<T>(namespace, createQueryResult(result), 0, batchSize, decoder, source);
+                }
+            }
+        };
+    }
+
+    private Function<CommandResult, MongoAsyncCursor<T>> asyncTransformer(final AsyncConnectionSource source) {
+        return new Function<CommandResult, MongoAsyncCursor<T>>() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public MongoAsyncCursor<T> apply(final CommandResult result) {
+               if (options.getOutputMode() == AggregationOptions.OutputMode.INLINE) {
+                    return new InlineMongoAsyncCursor<T>((List<T>) result.getResponse().get("result"));
+                } else {
+                    int batchSize = options.getBatchSize() == null ? 0 : options.getBatchSize();
+                    return new MongoAsyncQueryCursor<T>(namespace, createQueryResult(result), 0, batchSize, decoder, source);
+                }
+
+            }
+        };
+    }
+
 }
