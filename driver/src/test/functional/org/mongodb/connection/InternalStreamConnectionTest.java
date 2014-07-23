@@ -41,6 +41,7 @@ import org.mongodb.protocol.message.RequestMessage;
 
 import java.util.Collections;
 import java.util.EnumSet;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
 
 import static org.junit.Assert.assertEquals;
@@ -83,7 +84,7 @@ public class InternalStreamConnectionTest {
             public void onResult(final Void result, final MongoException e) {
                 latch.countDown();
             }
-        });
+        }, false);
         latch.await();
 
         // then
@@ -93,31 +94,116 @@ public class InternalStreamConnectionTest {
     @Test
     public void shouldFireMessageReceiveEventAsync() throws InterruptedException {
         // given
-        TestConnectionListener listener = new TestConnectionListener();
-        InternalStreamConnection connection = new InternalStreamConnection(CLUSTER_ID, stream, Collections.<MongoCredential>emptyList(),
-                                                                           listener);
-        OutputBuffer buffer = new ByteBufferOutputBuffer(connection);
-        RequestMessage message = new CommandMessage(new MongoNamespace("admin", COMMAND_COLLECTION_NAME).getFullName(),
-                                                    new BsonDocument("ismaster", new BsonInt32(1)),
-                                                    EnumSet.noneOf(QueryFlag.class),
-                                                    MessageSettings.builder().build());
+        final TestConnectionListener listener = new TestConnectionListener();
+        final InternalStreamConnection connection = new InternalStreamConnection(CLUSTER_ID, stream,
+                                                                                 Collections.<MongoCredential>emptyList(), listener);
+        final OutputBuffer buffer = new ByteBufferOutputBuffer(connection);
+        final RequestMessage message = createIsMasterMessage();
         message.encode(buffer);
 
         // when
         listener.reset();
-        connection.sendMessage(buffer.getByteBuffers(), message.getId());
         final CountDownLatch latch = new CountDownLatch(1);
-        connection.receiveMessageAsync(new SingleResultCallback<ResponseBuffers>() {
+        connection.sendMessageAsync(buffer.getByteBuffers(), message.getId(), new SingleResultCallback<Void>() {
             @Override
-            public void onResult(final ResponseBuffers result, final MongoException e) {
-                latch.countDown();
+            public void onResult(final Void result, final MongoException e) {
+                connection.receiveMessageAsync(message.getId(), new SingleResultCallback<ResponseBuffers>() {
+                    @Override
+                    public void onResult(final ResponseBuffers result, final MongoException e) {
+                        latch.countDown();
+                    }
+                });
             }
-        });
+        }, true);
         latch.await();
 
         // then
         assertEquals(1, listener.messageReceivedCount());
     }
+
+    @Test
+    public void shouldBeAbleToPipeline() throws InterruptedException {
+        // Simulated: Send(1), Send(2), Send(3), Rcv(3), Rcv(1)
+
+        // given
+        final ConcurrentLinkedQueue<Integer> receivedIds = new ConcurrentLinkedQueue<Integer>();
+        final TestConnectionListener listener = new TestConnectionListener();
+        final InternalStreamConnection connection = new InternalStreamConnection(CLUSTER_ID, stream,
+                                                                                 Collections.<MongoCredential>emptyList(), listener);
+        final OutputBuffer buffer1 = new ByteBufferOutputBuffer(connection);
+        final RequestMessage message1 = createIsMasterMessage();
+        message1.encode(buffer1);
+
+        final OutputBuffer buffer2 = new ByteBufferOutputBuffer(connection);
+        final RequestMessage message2 = new KillCursorsMessage(new KillCursor(new ServerCursor(1, getPrimary())));
+        message2.encode(buffer2);
+
+        final OutputBuffer buffer3 = new ByteBufferOutputBuffer(connection);
+        final RequestMessage message3 = createIsMasterMessage();
+        message3.encode(buffer3);
+
+        final CountDownLatch message3Requested = new CountDownLatch(1);
+
+        // when
+        listener.reset();
+        final CountDownLatch latch = new CountDownLatch(3);
+
+        // Send(1) Waits for Rcv(3) to be called before it asks to Rcv(1)
+        connection.sendMessageAsync(buffer1.getByteBuffers(), message1.getId(), new SingleResultCallback<Void>() {
+            @Override
+            public void onResult(final Void result, final MongoException e) {
+                try {
+                    message3Requested.await();
+                } catch (InterruptedException e1) {
+                    // Pass
+                }
+                receivedIds.add(message1.getId());
+                connection.receiveMessageAsync(message1.getId(), new SingleResultCallback<ResponseBuffers>() {
+                    @Override
+                    public void onResult(final ResponseBuffers result, final MongoException e) {
+                        latch.countDown();
+                    }
+                });
+            }
+        }, true);
+
+        // Send(2) - Unacknowledged message
+        connection.sendMessageAsync(buffer2.getByteBuffers(), message2.getId(), new SingleResultCallback<Void>() {
+            @Override
+            public void onResult(final Void result, final MongoException e) {
+                latch.countDown();
+            }
+        }, false);
+
+        // Send(3) -> Rcv(3)
+        connection.sendMessageAsync(buffer3.getByteBuffers(), message3.getId(), new SingleResultCallback<Void>() {
+            @Override
+            public void onResult(final Void result, final MongoException e) {
+                receivedIds.add(message3.getId());
+                connection.receiveMessageAsync(message3.getId(), new SingleResultCallback<ResponseBuffers>() {
+                    @Override
+                    public void onResult(final ResponseBuffers result, final MongoException e) {
+                        latch.countDown();
+                    }
+                });
+                message3Requested.countDown();
+            }
+        }, true);
+        latch.await();
+
+        // then
+        assertEquals(2, listener.messageReceivedCount());
+        assertEquals(new Integer(message3.getId()), receivedIds.poll());
+        assertEquals(new Integer(message1.getId()), receivedIds.poll());
+    }
+
+    private CommandMessage createIsMasterMessage() {
+        return new CommandMessage(new MongoNamespace("admin", COMMAND_COLLECTION_NAME).getFullName(),
+                           new BsonDocument("ismaster", new BsonInt32(1)),
+                           EnumSet.noneOf(QueryFlag.class),
+                           MessageSettings.builder().build());
+    }
+
 
     private static final class TestConnectionListener implements ConnectionListener {
         private int messagesSentCount;

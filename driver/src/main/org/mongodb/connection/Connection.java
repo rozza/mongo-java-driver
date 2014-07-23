@@ -67,8 +67,10 @@ public interface Connection extends BufferProvider, ReferenceCounted {
      * @param byteBuffers   the list of byte buffers to send
      * @param lastRequestId the request id of the last message in byteBuffers
      * @param callback      the callback to invoke on completion
+     * @param acknowledged if the message is acknowledged or not
      */
-    void sendMessageAsync(List<ByteBuf> byteBuffers, final int lastRequestId, SingleResultCallback<Void> callback);
+    void sendMessageAsync(List<ByteBuf> byteBuffers, final int lastRequestId, SingleResultCallback<Void> callback,
+                          final boolean acknowledged);
 
     /**
      * Asynchronously receive a response to a sent message from the server.

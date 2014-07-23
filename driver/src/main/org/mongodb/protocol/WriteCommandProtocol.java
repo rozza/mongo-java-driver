@@ -187,7 +187,8 @@ public abstract class WriteCommandProtocol implements Protocol<BulkWriteResult> 
                                                                           messageId,
                                                                           connection.getServerAddress());
         connection.sendMessageAsync(buffer.getByteBuffers(), messageId,
-                                    new SendMessageCallback<CommandResult>(connection, buffer, messageId, future, receiveCallback));
+                                    new SendMessageCallback<CommandResult>(connection, buffer, messageId, future, receiveCallback),
+                                    true);
 
         return future;
     }

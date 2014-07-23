@@ -89,7 +89,7 @@ public class QueryProtocol<T> implements Protocol<QueryResult<T>> {
         connection.sendMessageAsync(buffer.getByteBuffers(),
                                     message.getId(),
                                     new SendMessageCallback<QueryResult<T>>(connection, buffer, message.getId(), retVal,
-                                                                            receiveCallback)
+                                                                            receiveCallback), true
                                    );
         return retVal;
     }

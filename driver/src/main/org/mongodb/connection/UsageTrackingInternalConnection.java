@@ -76,17 +76,17 @@ class UsageTrackingInternalConnection implements InternalConnection {
     }
 
     @Override
-    public void sendMessageAsync(final List<ByteBuf> byteBuffers, final int lastRequestId, final SingleResultCallback<Void> callback) {
-        isTrue("open", !isClosed());
+    public void sendMessageAsync(final List<ByteBuf> byteBuffers, final int lastRequestId, final SingleResultCallback<Void> callback,
+                                 final boolean acknowledged) {
         lastUsedAt = System.currentTimeMillis();  // TODO: Set lastUsedAt when callback fires
-        wrapped.sendMessageAsync(byteBuffers, lastRequestId, callback);
+        wrapped.sendMessageAsync(byteBuffers, lastRequestId, callback, acknowledged);
     }
 
     @Override
-    public void receiveMessageAsync(final SingleResultCallback<ResponseBuffers> callback) {
+    public void receiveMessageAsync(final int responseTo, final SingleResultCallback<ResponseBuffers> callback) {
         isTrue("open", !isClosed());
         lastUsedAt = System.currentTimeMillis();    // TODO: Set lastUsedAt when callback fires
-        wrapped.receiveMessageAsync(callback);
+        wrapped.receiveMessageAsync(responseTo, callback);
     }
 
     @Override

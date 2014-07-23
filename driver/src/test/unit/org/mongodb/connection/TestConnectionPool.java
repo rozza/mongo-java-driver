@@ -43,12 +43,13 @@ public class TestConnectionPool implements ConnectionPool {
 
             @Override
             public void sendMessageAsync(final List<ByteBuf> byteBuffers, final int lastRequestId,
-                                         final SingleResultCallback<Void> callback) {
+                                         final SingleResultCallback<Void> callback,
+                                         final boolean acknowledged) {
                 throw new UnsupportedOperationException("Not implemented yet!");
             }
 
             @Override
-            public void receiveMessageAsync(final SingleResultCallback<ResponseBuffers> callback) {
+            public void receiveMessageAsync(final int responseTo, final SingleResultCallback<ResponseBuffers> callback) {
                 throw new UnsupportedOperationException("Not implemented yet!");
             }
 

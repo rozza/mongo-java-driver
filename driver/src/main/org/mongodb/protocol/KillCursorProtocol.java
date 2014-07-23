@@ -68,7 +68,7 @@ public class KillCursorProtocol implements Protocol<Void> {
                 buffer.close();
                 retVal.init(result, e);
             }
-        });
+        }, false);
         return retVal;
     }
 

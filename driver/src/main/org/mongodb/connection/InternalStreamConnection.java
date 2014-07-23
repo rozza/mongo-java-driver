@@ -37,6 +37,10 @@ import java.net.SocketTimeoutException;
 import java.nio.channels.ClosedByInterruptException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ConcurrentSkipListSet;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.mongodb.assertions.Assertions.isTrue;
@@ -46,11 +50,11 @@ import static org.mongodb.connection.ReplyHeader.REPLY_HEADER_LENGTH;
 class InternalStreamConnection implements InternalConnection {
 
     private final AtomicInteger incrementingId = new AtomicInteger();
-
     private final String clusterId;
     private final Stream stream;
     private final ConnectionListener eventPublisher;
     private final List<MongoCredential> credentialList;
+    private final Pipeline pipeline = new Pipeline();
     private volatile boolean isClosed;
     private String id;
 
@@ -127,8 +131,12 @@ class InternalStreamConnection implements InternalConnection {
     }
 
     @Override
-    public void sendMessageAsync(final List<ByteBuf> byteBuffers, final int lastRequestId, final SingleResultCallback<Void> callback) {
+    public void sendMessageAsync(final List<ByteBuf> byteBuffers, final int lastRequestId, final SingleResultCallback<Void> callback,
+                                 final boolean acknowledged) {
         isTrue("open", !isClosed());
+        if (acknowledged) {
+            pipeline.sendMessageCalled(lastRequestId);
+        }
         stream.writeAsync(byteBuffers, new AsyncCompletionHandler<Void>() {
             @Override
             public void completed(final Void t) {
@@ -152,8 +160,8 @@ class InternalStreamConnection implements InternalConnection {
     }
 
     @Override
-    public void receiveMessageAsync(final SingleResultCallback<ResponseBuffers> callback) {
-        fillAndFlipBuffer(REPLY_HEADER_LENGTH, new ResponseHeaderCallback(System.nanoTime(), callback));
+    public void receiveMessageAsync(final int responseTo, final SingleResultCallback<ResponseBuffers> callback) {
+        pipeline.receiveMessageCalled(responseTo, callback);
     }
 
     private void fillAndFlipBuffer(final int numBytes, final SingleResultCallback<ByteBuf> callback) {
@@ -249,12 +257,12 @@ class InternalStreamConnection implements InternalConnection {
     }
 
     private class ResponseHeaderCallback implements SingleResultCallback<ByteBuf> {
-        private final SingleResultCallback<ResponseBuffers> callback;
         private final long start;
+        private final SingleResultCallback<ResponseBuffers> callback;
 
         public ResponseHeaderCallback(final long start, final SingleResultCallback<ResponseBuffers> callback) {
-            this.callback = callback;
             this.start = start;
+            this.callback = callback;
         }
 
         @Override
@@ -312,6 +320,74 @@ class InternalStreamConnection implements InternalConnection {
             messageSize += cur.remaining();
         }
         return messageSize;
+    }
+
+    private class Pipeline {
+        private ConcurrentSkipListSet<Integer> pendingMessageIds = new ConcurrentSkipListSet<Integer>();
+        private final ConcurrentMap<Integer, SingleResultCallback<ResponseBuffers>> pendingMessages =
+            new ConcurrentHashMap<Integer, SingleResultCallback<ResponseBuffers>>();
+        private final ConcurrentMap<Integer, ReceivedResult> receivedResponses = new ConcurrentHashMap<Integer, ReceivedResult>();
+        private AtomicBoolean reading = new AtomicBoolean(false);
+
+        private synchronized void sendMessageCalled(final int messageId) {
+            pendingMessageIds.add(messageId);
+        }
+
+        private synchronized void receiveMessageCalled(final int messageId, final SingleResultCallback<ResponseBuffers> callback) {
+            if (!pendingMessageIds.contains(messageId)) {
+                pendingMessageIds.add(messageId);
+            }
+            pendingMessages.put(messageId, callback);
+            processPendingResults();
+            processPendingReads();
+        }
+
+        private synchronized void addResult(final int messageId, final ReceivedResult result) {
+            receivedResponses.put(messageId, result);
+            reading.set(false);
+            processPendingResults();
+            processPendingReads();
+        }
+
+        private synchronized void processPendingResults() {
+            while (pendingMessageIds.size() > 0 && receivedResponses.containsKey(pendingMessageIds.first())) {
+                int responseId = pendingMessageIds.pollFirst();
+                ReceivedResult receivedResult = receivedResponses.remove(responseId);
+                pendingMessages.remove(responseId).onResult(receivedResult.getResult(), receivedResult.getError());
+            }
+        }
+
+        private synchronized void processPendingReads() {
+            if (!reading.get() && pendingMessageIds.size() > 0 && pendingMessages.containsKey(pendingMessageIds.first())) {
+                reading.set(true);
+                final int messageId = pendingMessageIds.first();
+                fillAndFlipBuffer(REPLY_HEADER_LENGTH,
+                                  new ResponseHeaderCallback(System.nanoTime(), new SingleResultCallback<ResponseBuffers>() {
+                                      @Override
+                                      public void onResult(final ResponseBuffers result, final MongoException e) {
+                                          addResult(messageId, new ReceivedResult(result, e));
+                                      }
+                                  }));
+            }
+        }
+    }
+
+    private static class ReceivedResult {
+        private final ResponseBuffers result;
+        private final MongoException error;
+
+        public ReceivedResult(final ResponseBuffers result, final MongoException error) {
+            this.result = result;
+            this.error = error;
+        }
+
+        public ResponseBuffers getResult() {
+            return result;
+        }
+
+        public MongoException getError() {
+            return error;
+        }
     }
 
 }

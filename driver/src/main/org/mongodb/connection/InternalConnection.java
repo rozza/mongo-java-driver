@@ -63,15 +63,18 @@ interface InternalConnection extends BufferProvider {
      * @param byteBuffers   the list of byte buffers to send
      * @param lastRequestId the request id of the last message in byteBuffers
      * @param callback      the callback to invoke on completion
+     * @param acknowledged if the message is acknowledged or not
      */
-    void sendMessageAsync(List<ByteBuf> byteBuffers, final int lastRequestId, SingleResultCallback<Void> callback);
+    void sendMessageAsync(List<ByteBuf> byteBuffers, final int lastRequestId, SingleResultCallback<Void> callback,
+                          final boolean acknowledged);
 
     /**
      * Asynchronously receive a response to a sent message from the server.
      *
+     * @param responseTo the request id that this message is a response to
      * @param callback the callback to invoke on completion
      */
-    void receiveMessageAsync(SingleResultCallback<ResponseBuffers> callback);
+    void receiveMessageAsync(final int responseTo, SingleResultCallback<ResponseBuffers> callback);
 
     /**
      * Closes the connection.

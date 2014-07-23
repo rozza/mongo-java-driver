@@ -62,11 +62,12 @@ class TestInternalConnectionFactory implements InternalConnectionFactory {
         }
 
         @Override
-        public void sendMessageAsync(final List<ByteBuf> byteBuffers, final int lastRequestId, final SingleResultCallback<Void> callback) {
+        public void sendMessageAsync(final List<ByteBuf> byteBuffers, final int lastRequestId, final SingleResultCallback<Void> callback,
+                                     final boolean acknowledged) {
         }
 
         @Override
-        public void receiveMessageAsync(final SingleResultCallback<ResponseBuffers> callback) {
+        public void receiveMessageAsync(final int responseTo, final SingleResultCallback<ResponseBuffers> callback) {
         }
 
         @Override
