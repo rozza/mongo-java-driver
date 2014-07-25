@@ -62,6 +62,16 @@ class MongoDatabaseImpl implements MongoDatabase {
     }
 
     @Override
+    public void requestStart() {
+        client.pinBinding();
+    }
+
+    @Override
+    public void requestDone() {
+        client.unpinBinding();
+    }
+
+    @Override
     public MongoFuture<CommandResult> executeCommand(final Document commandDocument) {
         return client.execute(new CommandWriteOperation(name, new BsonDocumentWrapper<Document>(commandDocument,
                                                                                                 options.getDocumentCodec())

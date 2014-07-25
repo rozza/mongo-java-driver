@@ -70,6 +70,18 @@ public interface MongoDatabase {
     <T> MongoCollection<T> getCollection(String name, Codec<T> codec, MongoCollectionOptions options);
 
     /**
+     * Starts a new "consistent request". Following this call and until requestDone() is called, all db operations should use the same
+     * underlying connection to the primary node. This is useful to ensure that operations happen in a certain order with predictable
+     * results.
+     */
+    void requestStart();
+
+    /**
+     * Ends the current "consistent request"
+     */
+    void requestDone();
+
+    /**
      * Asynchronously execute the command described by the given document.
      *
      * @param commandDocument the document describing the command to execute.

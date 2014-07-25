@@ -24,6 +24,7 @@ import org.mongodb.ReadPreference;
 import org.mongodb.binding.AsyncClusterBinding;
 import org.mongodb.binding.AsyncReadBinding;
 import org.mongodb.binding.AsyncReadWriteBinding;
+import org.mongodb.binding.AsyncSingleConnectionBinding;
 import org.mongodb.binding.AsyncWriteBinding;
 import org.mongodb.connection.Cluster;
 import org.mongodb.connection.SingleResultCallback;
@@ -41,6 +42,7 @@ class MongoClientImpl implements MongoClient {
     private final Cluster cluster;
     private final MongoClientOptions options;
     private final ExecutorService executorService = Executors.newCachedThreadPool();
+    private final ThreadLocal<BindingHolder> pinnedBinding = new ThreadLocal<BindingHolder>();
 
     MongoClientImpl(final MongoClientOptions options, final Cluster cluster) {
         this.options = options;
@@ -103,14 +105,61 @@ class MongoClientImpl implements MongoClient {
     }
 
     private AsyncWriteBinding getWriteBinding() {
-        return getReadWriteBinding(ReadPreference.primary());
+        if (pinnedBinding.get() != null) {
+            AsyncWriteBinding binding = pinnedBinding.get().binding;
+            binding.retain(); // the caller will release
+            return binding;
+        } else {
+            return getReadWriteBinding(ReadPreference.primary());
+        }
     }
     private AsyncReadBinding getReadBinding(final ReadPreference readPreference) {
-        return getReadWriteBinding(readPreference);
+        if (pinnedBinding.get() != null) {
+            AsyncReadBinding binding = pinnedBinding.get().binding;
+            binding.retain(); // the caller will release
+            return binding;
+        } else {
+            return getReadWriteBinding(readPreference);
+        }
     }
 
     private AsyncReadWriteBinding getReadWriteBinding(final ReadPreference readPreference) {
         notNull("readPreference", readPreference);
         return new AsyncClusterBinding(cluster, readPreference, options.getMaxWaitTime(), TimeUnit.MILLISECONDS);
     }
+
+    void pinBinding() {
+        BindingHolder currentlyBound = pinnedBinding.get();
+        if (currentlyBound == null) {
+            pinnedBinding.set(new BindingHolder(getSingleConnectionBinding()));
+        } else {
+            currentlyBound.nestedBindings++;
+        }
+    }
+
+    void unpinBinding() {
+        BindingHolder currentlyBound = pinnedBinding.get();
+        if (currentlyBound != null) {
+            if (currentlyBound.nestedBindings > 0) {
+                currentlyBound.nestedBindings--;
+            } else {
+                pinnedBinding.remove();
+                currentlyBound.binding.release();
+            }
+        }
+    }
+
+    AsyncSingleConnectionBinding getSingleConnectionBinding() {
+        return new AsyncSingleConnectionBinding(cluster, options.getMaxWaitTime(), TimeUnit.MILLISECONDS);
+    }
+
+    private static final class BindingHolder {
+        private final AsyncSingleConnectionBinding binding;
+        private int nestedBindings;
+
+        private BindingHolder(final AsyncSingleConnectionBinding binding) {
+            this.binding = binding;
+        }
+    }
+
 }
