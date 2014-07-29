@@ -109,8 +109,7 @@ public class CommandProtocol implements Protocol<CommandResult> {
                                                                           connection.getServerAddress());
         connection.sendMessageAsync(buffer.getByteBuffers(),
                                     message.getId(),
-                                    new SendMessageCallback<CommandResult>(connection, buffer, message.getId(), retVal, receiveCallback),
-                                    true);
+                                    new SendMessageCallback<CommandResult>(connection, buffer, message.getId(), retVal, receiveCallback));
         return retVal;
     }
 

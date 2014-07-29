@@ -53,7 +53,7 @@ final class CommandHelper {
     }
 
     private static CommandResult receiveMessage(final InternalConnection internalConnection, final CommandMessage message) {
-        ResponseBuffers responseBuffers = internalConnection.receiveMessage();
+        ResponseBuffers responseBuffers = internalConnection.receiveMessage(message.getId());
         if (responseBuffers == null) {
             throw new MongoInternalException(format("Response buffers received from %s should not be null", internalConnection));
         }

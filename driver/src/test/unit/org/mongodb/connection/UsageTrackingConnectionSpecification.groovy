@@ -14,10 +14,6 @@
  * limitations under the License.
  */
 
-
-
-
-
 package org.mongodb.connection
 
 import spock.lang.Specification
@@ -65,7 +61,7 @@ class UsageTrackingConnectionSpecification extends Specification {
         def connection = new UsageTrackingInternalConnection(new TestInternalConnectionFactory().create(new ServerAddress()), 0);
 
         when:
-        connection.receiveMessage()
+        connection.receiveMessage(1)
 
         then:
         connection.lastUsedAt <= System.currentTimeMillis()

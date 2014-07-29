@@ -84,7 +84,7 @@ public class InternalStreamConnectionTest {
             public void onResult(final Void result, final MongoException e) {
                 latch.countDown();
             }
-        }, false);
+        });
         latch.await();
 
         // then
@@ -114,7 +114,7 @@ public class InternalStreamConnectionTest {
                     }
                 });
             }
-        }, true);
+        });
         latch.await();
 
         // then
@@ -165,7 +165,7 @@ public class InternalStreamConnectionTest {
                     }
                 });
             }
-        }, true);
+        });
 
         // Send(2) - Unacknowledged message
         connection.sendMessageAsync(buffer2.getByteBuffers(), message2.getId(), new SingleResultCallback<Void>() {
@@ -173,7 +173,7 @@ public class InternalStreamConnectionTest {
             public void onResult(final Void result, final MongoException e) {
                 latch.countDown();
             }
-        }, false);
+        });
 
         // Send(3) -> Rcv(3)
         connection.sendMessageAsync(buffer3.getByteBuffers(), message3.getId(), new SingleResultCallback<Void>() {
@@ -188,7 +188,7 @@ public class InternalStreamConnectionTest {
                 });
                 message3Requested.countDown();
             }
-        }, true);
+        });
         latch.await();
 
         // then

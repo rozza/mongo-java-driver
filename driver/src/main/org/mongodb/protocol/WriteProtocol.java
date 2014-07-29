@@ -78,11 +78,11 @@ public abstract class WriteProtocol implements Protocol<WriteResult> {
                                                                                                      getNamespace(), nextMessage,
                                                                                                      ordered, writeConcern,
                                                                                                      getLastErrorMessage.getId(),
-                                                                                                     connection)), true);
+                                                                                                     connection)));
         } else {
             connection.sendMessageAsync(buffer.getByteBuffers(), requestMessage.getId(),
                                         new UnacknowledgedWriteResultCallback(retVal, getNamespace(), nextMessage, ordered, buffer,
-                                                                              connection), false);
+                                                                              connection));
         }
         return retVal;
     }

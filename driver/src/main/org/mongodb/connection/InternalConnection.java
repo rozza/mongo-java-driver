@@ -53,9 +53,10 @@ interface InternalConnection extends BufferProvider {
     /**
      * Receive a response to a sent message from the server.
      *
+     * @param responseTo the request id that this message is a response to
      * @return the response
      */
-    ResponseBuffers receiveMessage();
+    ResponseBuffers receiveMessage(final int responseTo);
 
     /**
      * Asynchronously send a message to the server. The connection may not make any attempt to validate the integrity of the message.
@@ -63,10 +64,8 @@ interface InternalConnection extends BufferProvider {
      * @param byteBuffers   the list of byte buffers to send
      * @param lastRequestId the request id of the last message in byteBuffers
      * @param callback      the callback to invoke on completion
-     * @param acknowledged if the message is acknowledged or not
      */
-    void sendMessageAsync(List<ByteBuf> byteBuffers, final int lastRequestId, SingleResultCallback<Void> callback,
-                          final boolean acknowledged);
+    void sendMessageAsync(List<ByteBuf> byteBuffers, final int lastRequestId, SingleResultCallback<Void> callback);
 
     /**
      * Asynchronously receive a response to a sent message from the server.
