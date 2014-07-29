@@ -73,25 +73,16 @@ public abstract class WriteProtocol implements Protocol<WriteResult> {
             );
             encodeMessageToBuffer(getLastErrorMessage, buffer);
             connection.sendMessageAsync(buffer.getByteBuffers(), getLastErrorMessage.getId(),
-                                        new SendMessageCallback<WriteResult>(connection,
-                                                                             buffer,
-                                                                             getLastErrorMessage.getId(),
-                                                                             retVal,
-                                                                             new WriteResultCallback(retVal,
-                                                                                                     new BsonDocumentCodec(),
-                                                                                                     getNamespace(),
-                                                                                                     nextMessage,
-                                                                                                     ordered,
-                                                                                                     writeConcern,
+                                        new SendMessageCallback<WriteResult>(connection, buffer, getLastErrorMessage.getId(), retVal,
+                                                                             new WriteResultCallback(retVal, new BsonDocumentCodec(),
+                                                                                                     getNamespace(), nextMessage,
+                                                                                                     ordered, writeConcern,
                                                                                                      getLastErrorMessage.getId(),
-                                                                                                     connection)
-                                        )
-                                       );
+                                                                                                     connection)));
         } else {
             connection.sendMessageAsync(buffer.getByteBuffers(), requestMessage.getId(),
                                         new UnacknowledgedWriteResultCallback(retVal, getNamespace(), nextMessage, ordered, buffer,
-                                                                              connection)
-                                       );
+                                                                              connection));
         }
         return retVal;
     }

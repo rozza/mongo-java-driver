@@ -92,7 +92,7 @@ class InternalStreamConnectionSpecification extends Specification {
 
         when:
         connection.sendMessage(buffer.getByteBuffers(), message.getId())
-        connection.receiveMessage()
+        connection.receiveMessage(message.getId())
 
         then:
         1 * listener.messageReceived(_)

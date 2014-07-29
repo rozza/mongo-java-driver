@@ -247,10 +247,10 @@ class DefaultConnectionPool implements ConnectionPool {
         }
 
         @Override
-        public ResponseBuffers receiveMessage() {
+        public ResponseBuffers receiveMessage(final int responseTo) {
             isTrue("open", wrapped != null);
             try {
-                return wrapped.receiveMessage();
+                return wrapped.receiveMessage(responseTo);
             } catch (MongoException e) {
                 incrementGenerationOnSocketException(this, e);
                 throw e;
@@ -260,13 +260,13 @@ class DefaultConnectionPool implements ConnectionPool {
         @Override
         public void sendMessageAsync(final List<ByteBuf> byteBuffers, final int lastRequestId, final SingleResultCallback<Void> callback) {
             isTrue("open", wrapped != null);
-            wrapped.sendMessageAsync(byteBuffers, lastRequestId, callback);      // TODO: handle async exceptions
+            wrapped.sendMessageAsync(byteBuffers, lastRequestId, callback);  // TODO: handle async exceptions
         }
 
         @Override
-        public void receiveMessageAsync(final SingleResultCallback<ResponseBuffers> callback) {
+        public void receiveMessageAsync(final int responseTo, final SingleResultCallback<ResponseBuffers> callback) {
             isTrue("open", wrapped != null);
-            wrapped.receiveMessageAsync(callback);                // TODO: handle async exceptions
+            wrapped.receiveMessageAsync(responseTo, callback);                // TODO: handle async exceptions
         }
 
         @Override
