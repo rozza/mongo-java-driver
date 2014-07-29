@@ -15,14 +15,11 @@
  */
 
 package org.mongodb.async
-
 import org.mongodb.Document
 import org.mongodb.MongoException
 import org.mongodb.MongoFuture
 import org.mongodb.WriteResult
 import org.mongodb.connection.SingleResultCallback
-
-import java.util.concurrent.ConcurrentLinkedQueue
 
 class DatabaseRequestSpecification extends FunctionalSpecification {
 
@@ -54,19 +51,16 @@ class DatabaseRequestSpecification extends FunctionalSpecification {
         notThrown Exception
     }
 
-    def 'should block only on the last get'() {
-
-        given:
-        Queue<Integer> steps = new ConcurrentLinkedQueue<Integer>()
-
+    def 'should use the same connection'() {
         when:
-
+        ArrayList<Document> expectedDocs = []
         database.requestStart()
         1000.times {
-            collection.insert(new Document('_id', it)).register(new SingleResultCallback<WriteResult>() {
+            Document doc = new Document('_id', it)
+            expectedDocs.add(doc)
+            collection.insert(doc).register(new SingleResultCallback<WriteResult>() {
                 @Override
                 void onResult(final WriteResult result, final MongoException e) {
-                    steps.add(it)
                 }
             })
         }
@@ -74,13 +68,12 @@ class DatabaseRequestSpecification extends FunctionalSpecification {
         countFuture.register(new SingleResultCallback<Long>() {
             @Override
             void onResult(final Long result, final MongoException e) {
-                steps.add(1000)
             }
         })
         database.requestDone()
 
         then:
         countFuture.get() == 1000
-        steps.collect() == 0..1000
+        collection.find(new Document()).into([]).get() == expectedDocs
     }
 }

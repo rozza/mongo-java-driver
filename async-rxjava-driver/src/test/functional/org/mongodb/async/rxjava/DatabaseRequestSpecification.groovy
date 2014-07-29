@@ -15,12 +15,11 @@
  */
 
 package org.mongodb.async.rxjava
-
 import org.mongodb.Document
-import org.mongodb.WriteResult
-import rx.functions.Action1
 
-import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.CountDownLatch
+
+import static org.mongodb.async.rxjava.Fixture.getAsList
 
 class DatabaseRequestSpecification extends FunctionalSpecification {
 
@@ -53,34 +52,27 @@ class DatabaseRequestSpecification extends FunctionalSpecification {
     }
 
 
-    def 'should block only on the last operation'() {
-
+    def 'should use the same connection'() {
         given:
-        Queue<Integer> steps = new ConcurrentLinkedQueue<Integer>()
+        CountDownLatch latch = new CountDownLatch(1000);
 
         when:
-
+        ArrayList<Document> expectedDocs = []
+        ArrayList<rx.Observable> inserts = []
         database.requestStart()
         1000.times {
-            collection.insert(new Document('_id', it)).subscribe(new Action1<WriteResult>() {
-                @Override
-                void call(final WriteResult result) {
-                    steps.add(it)
-                }
-            })
+            Document doc = new Document('_id', it)
+            expectedDocs.add(doc)
+            inserts.add(collection.insert(doc))
         }
 
+        rx.Observable.merge(inserts).toBlockingObservable().last()
+
         rx.Observable<Long> countFuture = collection.find(new Document()).count()
-        countFuture.subscribe(new Action1<Long>() {
-            @Override
-            void call(final Long result) {
-                steps.add(1000)
-            }
-        })
         database.requestDone()
 
         then:
         countFuture.toBlockingObservable().first() == 1000
-        steps.collect() == 0..1000
+        getAsList(collection.find(new Document()).forEach()) == expectedDocs
     }
 }
