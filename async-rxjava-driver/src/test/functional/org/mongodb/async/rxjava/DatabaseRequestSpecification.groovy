@@ -17,8 +17,6 @@
 package org.mongodb.async.rxjava
 import org.mongodb.Document
 
-import java.util.concurrent.CountDownLatch
-
 import static org.mongodb.async.rxjava.Fixture.getAsList
 
 class DatabaseRequestSpecification extends FunctionalSpecification {
@@ -54,11 +52,10 @@ class DatabaseRequestSpecification extends FunctionalSpecification {
 
     def 'should use the same connection'() {
         given:
-        CountDownLatch latch = new CountDownLatch(1000);
+        List<Document> expectedDocs = []
+        List<rx.Observable> inserts = []
 
         when:
-        ArrayList<Document> expectedDocs = []
-        ArrayList<rx.Observable> inserts = []
         database.requestStart()
         1000.times {
             Document doc = new Document('_id', it)

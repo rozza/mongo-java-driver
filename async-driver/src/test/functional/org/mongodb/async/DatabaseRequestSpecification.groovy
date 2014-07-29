@@ -52,8 +52,10 @@ class DatabaseRequestSpecification extends FunctionalSpecification {
     }
 
     def 'should use the same connection'() {
+        given:
+        List<Document> expectedDocs = []
+
         when:
-        ArrayList<Document> expectedDocs = []
         database.requestStart()
         1000.times {
             Document doc = new Document('_id', it)

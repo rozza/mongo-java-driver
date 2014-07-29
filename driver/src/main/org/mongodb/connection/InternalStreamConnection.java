@@ -26,8 +26,6 @@ import org.mongodb.MongoCredential;
 import org.mongodb.MongoException;
 import org.mongodb.MongoInternalException;
 import org.mongodb.MongoInterruptedException;
-import org.mongodb.diagnostics.Loggers;
-import org.mongodb.diagnostics.logging.Logger;
 import org.mongodb.event.ConnectionEvent;
 import org.mongodb.event.ConnectionListener;
 import org.mongodb.event.ConnectionMessageReceivedEvent;
@@ -44,10 +42,9 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static java.lang.String.format;
 import static org.mongodb.assertions.Assertions.isTrue;
 import static org.mongodb.assertions.Assertions.notNull;
 import static org.mongodb.connection.ReplyHeader.REPLY_HEADER_LENGTH;
@@ -124,7 +121,7 @@ class InternalStreamConnection implements InternalConnection {
     @Override
     public void receiveMessageAsync(final int responseTo, final SingleResultCallback<ResponseBuffers> callback) {
         isTrue("open", !isClosed());
-        pipeline.receiveMessage(responseTo, callback);
+        pipeline.receiveMessageAsync(responseTo, callback);
     }
 
     private void fillAndFlipBuffer(final int numBytes, final SingleResultCallback<ByteBuf> callback) {
@@ -285,62 +282,60 @@ class InternalStreamConnection implements InternalConnection {
         return messageSize;
     }
 
-    private static final Logger LOGGER = Loggers.getLogger("pipeline");
     private class Pipeline {
-        private final ConcurrentLinkedQueue<SendMessage> writeQueue = new ConcurrentLinkedQueue<SendMessage>();
+        private final ConcurrentLinkedQueue<SendMessageAsync> writeQueue = new ConcurrentLinkedQueue<SendMessageAsync>();
         private final ConcurrentHashMap<Integer, SingleResultCallback<ResponseBuffers>> readQueue =
             new ConcurrentHashMap<Integer, SingleResultCallback<ResponseBuffers>>();
         private final ConcurrentMap<Integer, Response> messages = new ConcurrentHashMap<Integer, Response>();
 
-        private final AtomicBoolean writing = new AtomicBoolean(false);
-        private final AtomicBoolean reading = new AtomicBoolean(false);
+        private final Semaphore writing = new Semaphore(1);
+        private final Semaphore reading = new Semaphore(1);
 
         private synchronized void sendMessage(final List<ByteBuf> byteBuffers, final int messageId) {
 
-            waitForWritingLockAndLock();
             try {
+                if (!writing.tryAcquire()) {
+                    writing.acquire();
+                }
                 stream.write(byteBuffers);
                 eventPublisher.messagesSent(new ConnectionMessagesSentEvent(clusterId, stream.getAddress(), getId(), messageId,
                                                                             getTotalRemaining(byteBuffers)));
             } catch (IOException e) {
                 close();
                 throw new MongoSocketWriteException("Exception sending message", getServerAddress(), e);
+            } catch (InterruptedException e) {
+                close();
+                throw new MongoInternalException("Unexpected interrupted exception", e);
             } finally {
-                releaseWritingLock();
+                writing.release();
             }
         }
 
-        private synchronized void sendMessageAsync(final List<ByteBuf> byteBuffers, final int messageId,
-                                      final SingleResultCallback<Void> callback) {
-            LOGGER.trace(format("Send: %s", messageId));
-            writeQueue.add(new SendMessageAsync(byteBuffers, messageId, callback));
-            processPending();
-        }
-
         private synchronized Response receiveMessage(final int messageId) {
-            LOGGER.trace(format("Rcvd (Sync): %s", messageId));
-
             Response response;
             response = checkMessages(messageId);
             if (response != null) {
                 return response;
             }
 
-            waitForReadingLockAndLock();
-
-            response = checkMessages(messageId);
-            if (response != null) {
-                return response;
-            }
-
             try {
+                if (!reading.tryAcquire()) {
+                    reading.acquire();
+                }
+
+                response = checkMessages(messageId);
+                if (response != null) {
+                    return response;
+                }
+
                 ResponseBuffers responseBuffers = readResponseBuffers(System.nanoTime());
                 eventPublisher.messageReceived(new ConnectionMessageReceivedEvent(clusterId,
                                                                                   stream.getAddress(),
                                                                                   getId(),
                                                                                   responseBuffers.getReplyHeader().getResponseTo(),
                                                                                   responseBuffers.getReplyHeader().getMessageLength()));
-                return new Response(responseBuffers, null);
+
+                messages.put(responseBuffers.getReplyHeader().getResponseTo(), new Response(responseBuffers, null));
             } catch (IOException e) {
                 close();
                 return new Response(null, translateReadException(e));
@@ -350,13 +345,29 @@ class InternalStreamConnection implements InternalConnection {
             } catch (RuntimeException e) {
                 close();
                 return new Response(null, new MongoInternalException("Unexpected runtime exception", e));
+            } catch (InterruptedException e) {
+                close();
+                return new Response(null, new MongoInternalException("Unexpected runtime exception", e));
             } finally {
-                releaseReadingLock();
+                reading.release();
             }
+
+            response = checkMessages(messageId);
+            if (response != null) {
+                return response;
+            } else {
+                return receiveMessage(messageId);
+            }
+
         }
 
-        private synchronized void receiveMessage(final int messageId, final SingleResultCallback<ResponseBuffers> callback) {
-            LOGGER.trace(format("Rcvd: %s", messageId));
+        private synchronized void sendMessageAsync(final List<ByteBuf> byteBuffers, final int messageId,
+                                                   final SingleResultCallback<Void> callback) {
+            writeQueue.add(new SendMessageAsync(byteBuffers, messageId, callback));
+            processPending();
+        }
+
+        private synchronized void receiveMessageAsync(final int messageId, final SingleResultCallback<ResponseBuffers> callback) {
             readQueue.put(messageId, callback);
             processPending();
         }
@@ -369,50 +380,6 @@ class InternalStreamConnection implements InternalConnection {
             }
         }
 
-        private synchronized void releaseReadingLock() {
-            synchronized (reading) {
-                reading.notifyAll();
-            }
-            reading.set(false);
-        }
-
-        private synchronized void waitForReadingLockAndLock() {
-                while (reading.get()) {
-                    try {
-                        synchronized (reading) {
-                            reading.wait();
-                        }
-                    } catch (InterruptedException e) {
-                        close();
-                        throw new MongoInternalException("Unexpected interrupted exception", e);
-                    }
-                }
-
-            reading.set(true);
-        }
-
-        private synchronized void releaseWritingLock() {
-            synchronized (writing) {
-                writing.notifyAll();
-            }
-            writing.set(false);
-        }
-
-        private synchronized void waitForWritingLockAndLock() {
-            while (writing.get()) {
-                try {
-                    synchronized (writing) {
-                        writing.wait();
-                    }
-                } catch (InterruptedException e) {
-                    close();
-                    throw new MongoInternalException("Unexpected interrupted exception", e);
-                }
-            }
-
-            writing.set(true);
-        }
-
         private synchronized void processPending() {
             processPendingResults();
             processPendingReads();
@@ -420,14 +387,12 @@ class InternalStreamConnection implements InternalConnection {
         }
 
         private synchronized void processPendingReads() {
-            if (!reading.get() && !readQueue.isEmpty()) {
-                reading.set(true);
+            if (!readQueue.isEmpty() && reading.tryAcquire()) {
                 fillAndFlipBuffer(REPLY_HEADER_LENGTH,
                                   new ResponseHeaderCallback(System.nanoTime(), new SingleResultCallback<ResponseBuffers>() {
                                       @Override
                                       public void onResult(final ResponseBuffers result, final MongoException e) {
-                                          releaseReadingLock();
-                                          LOGGER.trace(format("Read: %s", result.getReplyHeader()));
+                                          reading.release();
                                           messages.put(result.getReplyHeader().getResponseTo(), new Response(result, e));
                                           processPending();
                                       }
@@ -436,14 +401,12 @@ class InternalStreamConnection implements InternalConnection {
         }
 
         private synchronized void processPendingWrites() {
-            if (!writing.get() && !writeQueue.isEmpty()) {
-                writing.set(true);
-                final SendMessageAsync message = (SendMessageAsync) writeQueue.poll();
-                LOGGER.trace(format("Writing: %s", message.getMessageId()));
+            if (!writeQueue.isEmpty() && writing.tryAcquire()) {
+                final SendMessageAsync message = writeQueue.poll();
                 stream.writeAsync(message.getByteBuffers(), new AsyncCompletionHandler<Void>() {
                     @Override
                     public void completed(final Void t) {
-                        releaseWritingLock();
+                        writing.release();
                         eventPublisher.messagesSent(new ConnectionMessagesSentEvent(clusterId, stream.getAddress(), getId(),
                                                                                     message.getMessageId(),
                                                                                     getTotalRemaining(message.getByteBuffers())));
@@ -453,7 +416,7 @@ class InternalStreamConnection implements InternalConnection {
 
                     @Override
                     public void failed(final Throwable t) {
-                        releaseWritingLock();
+                        writing.release();
                         if (t instanceof MongoException) {
                             message.getCallback().onResult(null, (MongoException) t);
                         } else if (t instanceof IOException) {
@@ -473,27 +436,25 @@ class InternalStreamConnection implements InternalConnection {
             while (it.hasNext()) {
                 Map.Entry<Integer, Response> pairs = it.next();
                 final int messageId = pairs.getKey();
-                LOGGER.trace(format("Processing: %s", messageId));
                 if (readQueue.containsKey(messageId)) {
                     final Response response = pairs.getValue();
                     readQueue.remove(messageId).onResult(response.getResult(), response.getError());
                     it.remove();
-                } else {
-                    LOGGER.trace(format("Processing - Empty for: %s", messageId));
-                    LOGGER.trace(format("Processing - Queue: %s", readQueue));
                 }
             }
         }
     }
 
 
-    private static class SendMessage {
+    private static class SendMessageAsync {
         private final List<ByteBuf> byteBuffers;
         private final int messageId;
+        private final SingleResultCallback<Void> callback;
 
-        SendMessage(final List<ByteBuf> byteBuffers, final int messageId) {
+        SendMessageAsync(final List<ByteBuf> byteBuffers, final int messageId, final SingleResultCallback<Void> callback) {
             this.byteBuffers = byteBuffers;
             this.messageId = messageId;
+            this.callback = callback;
         }
 
         public List<ByteBuf> getByteBuffers() {
@@ -502,15 +463,6 @@ class InternalStreamConnection implements InternalConnection {
 
         public int getMessageId() {
             return messageId;
-        }
-    }
-
-    private static class SendMessageAsync extends SendMessage {
-        private final SingleResultCallback<Void> callback;
-
-        SendMessageAsync(final List<ByteBuf> byteBuffers, final int messageId, final SingleResultCallback<Void> callback) {
-            super(byteBuffers, messageId);
-            this.callback = callback;
         }
 
         public SingleResultCallback<Void> getCallback() {
