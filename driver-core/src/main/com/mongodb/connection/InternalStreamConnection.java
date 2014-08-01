@@ -38,7 +38,13 @@ import java.io.InterruptedIOException;
 import java.net.SocketTimeoutException;
 import java.nio.channels.ClosedByInterruptException;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.mongodb.assertions.Assertions.isTrue;
@@ -53,6 +59,12 @@ class InternalStreamConnection implements InternalConnection {
     private final Stream stream;
     private final ConnectionListener eventPublisher;
     private final List<MongoCredential> credentialList;
+    private final ConcurrentLinkedQueue<SendMessageAsync> writeQueue = new ConcurrentLinkedQueue<SendMessageAsync>();
+    private final ConcurrentHashMap<Integer, SingleResultCallback<ResponseBuffers>> readQueue =
+        new ConcurrentHashMap<Integer, SingleResultCallback<ResponseBuffers>>();
+    private final ConcurrentMap<Integer, Response> messages = new ConcurrentHashMap<Integer, Response>();
+    private final Semaphore writing = new Semaphore(1);
+    private final Semaphore reading = new Semaphore(1);
     private volatile boolean isClosed;
     private String id;
 
@@ -96,65 +108,72 @@ class InternalStreamConnection implements InternalConnection {
     public void sendMessage(final List<ByteBuf> byteBuffers, final int lastRequestId) {
         isTrue("open", !isClosed());
         try {
+            writing.acquire();
             stream.write(byteBuffers);
             eventPublisher.messagesSent(new ConnectionMessagesSentEvent(clusterId, stream.getAddress(), getId(), lastRequestId,
                                                                         getTotalRemaining(byteBuffers)));
         } catch (IOException e) {
             close();
             throw new MongoSocketWriteException("Exception sending message", getServerAddress(), e);
+        } catch (InterruptedException e) {
+            close();
+            throw new MongoInternalException("Thread interrupted exception", e);
+        } finally {
+            writing.release();
         }
     }
 
     @Override
-    public ResponseBuffers receiveMessage() {
+    public ResponseBuffers receiveMessage(final int responseTo) {
         isTrue("open", !isClosed());
-        try {
-            ResponseBuffers responseBuffers = receiveResponseBuffers();
-            eventPublisher.messageReceived(new ConnectionMessageReceivedEvent(clusterId,
-                                                                              stream.getAddress(),
-                                                                              getId(),
-                                                                              responseBuffers.getReplyHeader().getResponseTo(),
-                                                                              responseBuffers.getReplyHeader().getMessageLength()));
-            return responseBuffers;
-        } catch (IOException e) {
-            close();
-            throw translateReadException(e);
-        } catch (MongoException e) {
-            close();
-            throw e;
-        } catch (RuntimeException e) {
-            close();
-            throw new MongoInternalException("Unexpected runtime exception", e);
+        while (!messages.containsKey(responseTo)) {
+            try {
+                reading.acquire();
+                if (messages.containsKey(responseTo)) {
+                    break;
+                }
+                ResponseBuffers responseBuffers = receiveResponseBuffers();
+                eventPublisher.messageReceived(new ConnectionMessageReceivedEvent(clusterId,
+                                                                                  stream.getAddress(),
+                                                                                  getId(),
+                                                                                  responseBuffers.getReplyHeader().getResponseTo(),
+                                                                                  responseBuffers.getReplyHeader().getMessageLength()));
+
+                messages.put(responseBuffers.getReplyHeader().getResponseTo(), new Response(responseBuffers, null));
+            } catch (IOException e) {
+                close();
+                messages.put(responseTo, new Response(null, translateReadException(e)));
+            } catch (MongoException e) {
+                close();
+                messages.put(responseTo, new Response(null, e));
+            } catch (RuntimeException e) {
+                close();
+                messages.put(responseTo, new Response(null, new MongoInternalException("Unexpected runtime exception", e)));
+            } catch (InterruptedException e) {
+                close();
+                messages.put(responseTo, new Response(null, new MongoInternalException("Interrupted exception", e)));
+            } finally {
+                reading.release();
+            }
         }
+        final Response response = messages.remove(responseTo);
+        if (response.hasError()) {
+            throw response.getError();
+        }
+        return response.getResult();
     }
 
     @Override
     public void sendMessageAsync(final List<ByteBuf> byteBuffers, final int lastRequestId, final SingleResultCallback<Void> callback) {
         isTrue("open", !isClosed());
-        stream.writeAsync(byteBuffers, new AsyncCompletionHandler<Void>() {
-            @Override
-            public void completed(final Void t) {
-                eventPublisher.messagesSent(new ConnectionMessagesSentEvent(clusterId, stream.getAddress(), getId(), lastRequestId,
-                                                                            getTotalRemaining(byteBuffers)));
-                callback.onResult(null, null);
-            }
-
-            @Override
-            public void failed(final Throwable t) {
-                if (t instanceof MongoException) {
-                    callback.onResult(null, (MongoException) t);
-                } else if (t instanceof IOException) {
-                    callback.onResult(null, new MongoSocketWriteException("Exception writing to stream", getServerAddress(), t));
-                } else {
-                    callback.onResult(null, new MongoInternalException("Unexpected exception", t));
-                }
-            }
-        });
+        writeQueue.add(new SendMessageAsync(byteBuffers, lastRequestId, callback));
+        processPendingWrites();
     }
 
     @Override
-    public void receiveMessageAsync(final SingleResultCallback<ResponseBuffers> callback) {
-        fillAndFlipBuffer(REPLY_HEADER_LENGTH, new ResponseHeaderCallback(callback));
+    public void receiveMessageAsync(final int responseTo, final SingleResultCallback<ResponseBuffers> callback) {
+        readQueue.put(responseTo, callback);
+        processPendingReads();
     }
 
     private void fillAndFlipBuffer(final int numBytes, final SingleResultCallback<ByteBuf> callback) {
@@ -310,4 +329,116 @@ class InternalStreamConnection implements InternalConnection {
         return messageSize;
     }
 
+    private void processPendingReads() {
+        processPendingResults();
+        if (!readQueue.isEmpty() && reading.tryAcquire()) {
+            if (readQueue.isEmpty()) {
+                return;
+            }
+            fillAndFlipBuffer(REPLY_HEADER_LENGTH,
+                              new ResponseHeaderCallback(new SingleResultCallback<ResponseBuffers>() {
+                                  @Override
+                                  public void onResult(final ResponseBuffers result, final MongoException e) {
+                                      reading.release();
+                                      messages.put(result.getReplyHeader().getResponseTo(), new Response(result, e));
+                                      processPendingReads();
+                                  }
+                              }));
+        }
+    }
+
+    private void processPendingWrites() {
+        if (!writeQueue.isEmpty() && writing.tryAcquire()) {
+            final SendMessageAsync message = writeQueue.poll();
+            if (message == null) {
+                return;
+            }
+            stream.writeAsync(message.getByteBuffers(), new AsyncCompletionHandler<Void>() {
+                @Override
+                public void completed(final Void t) {
+                    writing.release();
+                    eventPublisher.messagesSent(new ConnectionMessagesSentEvent(clusterId, stream.getAddress(), getId(),
+                                                                                message.getMessageId(),
+                                                                                getTotalRemaining(message.getByteBuffers())));
+                    message.getCallback().onResult(null, null);
+                    processPendingWrites();
+                }
+
+                @Override
+                public void failed(final Throwable t) {
+                    writing.release();
+                    if (t instanceof MongoException) {
+                        message.getCallback().onResult(null, (MongoException) t);
+                    } else if (t instanceof IOException) {
+                        message.getCallback().onResult(null, new MongoSocketWriteException("Exception writing to stream",
+                                                                                           getServerAddress(), (IOException) t));
+                    } else {
+                        message.getCallback().onResult(null, new MongoInternalException("Unexpected exception", t));
+                    }
+                    processPendingWrites();
+                }
+            });
+        }
+    }
+
+    private void processPendingResults() {
+        Iterator<Map.Entry<Integer, Response>> it = messages.entrySet().iterator();
+        while (it.hasNext()) {
+            Map.Entry<Integer, Response> pairs = it.next();
+            final int messageId = pairs.getKey();
+            final SingleResultCallback<ResponseBuffers> callback = readQueue.remove(messageId);
+            if (callback != null) {
+                callback.onResult(pairs.getValue().getResult(), pairs.getValue().getError());
+                it.remove();
+            }
+        }
+    }
+
+
+    private static class SendMessageAsync {
+        private final List<ByteBuf> byteBuffers;
+        private final int messageId;
+        private final SingleResultCallback<Void> callback;
+
+        SendMessageAsync(final List<ByteBuf> byteBuffers, final int messageId, final SingleResultCallback<Void> callback) {
+            this.byteBuffers = byteBuffers;
+            this.messageId = messageId;
+            this.callback = callback;
+        }
+
+        public List<ByteBuf> getByteBuffers() {
+            return byteBuffers;
+        }
+
+        public int getMessageId() {
+            return messageId;
+        }
+
+        public SingleResultCallback<Void> getCallback() {
+            return callback;
+        }
+    }
+
+
+    private static class Response {
+        private final ResponseBuffers result;
+        private final MongoException error;
+
+        public Response(final ResponseBuffers result, final MongoException error) {
+            this.result = result;
+            this.error = error;
+        }
+
+        public ResponseBuffers getResult() {
+            return result;
+        }
+
+        public MongoException getError() {
+            return error;
+        }
+
+        public boolean hasError() {
+            return error != null;
+        }
+    }
 }
