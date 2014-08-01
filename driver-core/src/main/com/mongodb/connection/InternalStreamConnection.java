@@ -331,8 +331,9 @@ class InternalStreamConnection implements InternalConnection {
 
     private void processPendingReads() {
         processPendingResults();
-        if (!readQueue.isEmpty() && reading.tryAcquire()) {
+        if (reading.tryAcquire()) {
             if (readQueue.isEmpty()) {
+                reading.release();
                 return;
             }
             fillAndFlipBuffer(REPLY_HEADER_LENGTH,
@@ -348,11 +349,12 @@ class InternalStreamConnection implements InternalConnection {
     }
 
     private void processPendingWrites() {
-        if (!writeQueue.isEmpty() && writing.tryAcquire()) {
-            final SendMessageAsync message = writeQueue.poll();
-            if (message == null) {
+        if (writing.tryAcquire()) {
+            if (writeQueue.isEmpty()) {
+                writing.release();
                 return;
             }
+            final SendMessageAsync message = writeQueue.poll();
             stream.writeAsync(message.getByteBuffers(), new AsyncCompletionHandler<Void>() {
                 @Override
                 public void completed(final Void t) {
@@ -371,7 +373,7 @@ class InternalStreamConnection implements InternalConnection {
                         message.getCallback().onResult(null, (MongoException) t);
                     } else if (t instanceof IOException) {
                         message.getCallback().onResult(null, new MongoSocketWriteException("Exception writing to stream",
-                                                                                           getServerAddress(), (IOException) t));
+                                                                                           getServerAddress(), t));
                     } else {
                         message.getCallback().onResult(null, new MongoInternalException("Unexpected exception", t));
                     }

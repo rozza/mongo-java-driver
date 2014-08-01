@@ -15,7 +15,6 @@
  */
 
 package com.mongodb.connection
-
 import category.Async
 import category.Slow
 import com.mongodb.MongoException
@@ -40,6 +39,7 @@ import org.bson.io.OutputBuffer
 import org.junit.experimental.categories.Category
 import org.mongodb.Document
 import spock.lang.Specification
+import spock.util.concurrent.AsyncConditions
 
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -55,6 +55,7 @@ import static com.mongodb.ClusterFixture.getSSLSettings
 
 class InternalStreamConnectionSpecification extends Specification {
     private static final String CLUSTER_ID = '1'
+    def listener = Mock(ConnectionListener)
     def streamFactory = new SocketStreamFactory(SocketSettings.builder().build(), getSSLSettings())
     def stream = streamFactory.create(getPrimary())
 
@@ -63,9 +64,6 @@ class InternalStreamConnectionSpecification extends Specification {
     }
 
     def 'should fire connection opened event'() {
-        given:
-        def listener = Mock(ConnectionListener)
-
         when:
         new InternalStreamConnection(CLUSTER_ID, stream, [], listener)
 
@@ -75,7 +73,6 @@ class InternalStreamConnectionSpecification extends Specification {
 
     def 'should fire connection closed event'() {
         given:
-        def listener = Mock(ConnectionListener)
         def connection = new InternalStreamConnection(CLUSTER_ID, stream, [], listener)
 
         when:
@@ -87,7 +84,6 @@ class InternalStreamConnectionSpecification extends Specification {
 
     def 'should fire messages sent event'() {
         given:
-        def listener = Mock(ConnectionListener)
         def connection = new InternalStreamConnection(CLUSTER_ID, stream, [], listener)
         def buffer = new ByteBufferOutputBuffer(connection);
         def message = new KillCursorsMessage(new KillCursor(new ServerCursor(1, getPrimary())));
@@ -103,7 +99,6 @@ class InternalStreamConnectionSpecification extends Specification {
     @Category(Async)
     def 'should fire message sent event async'() {
         def latch = new CountDownLatch(1);
-        def listener = Mock(ConnectionListener)
         def stream = getAsyncStreamFactory().create(getPrimary())
         def connection = new InternalStreamConnection(CLUSTER_ID, stream, [], listener)
         def buffer = new ByteBufferOutputBuffer(connection)
@@ -128,7 +123,6 @@ class InternalStreamConnectionSpecification extends Specification {
 
     def 'should fire message received event'() {
         given:
-        def listener = Mock(ConnectionListener)
         def connection = new InternalStreamConnection(CLUSTER_ID, stream, [], listener)
         def buffer = new ByteBufferOutputBuffer(connection)
         def message = new CommandMessage(new MongoNamespace('admin', COMMAND_COLLECTION_NAME).fullName,
@@ -147,7 +141,6 @@ class InternalStreamConnectionSpecification extends Specification {
     @Category(Async)
     def 'should fire message received event async'() {
         def latch = new CountDownLatch(1);
-        def listener = Mock(ConnectionListener)
         def stream = getAsyncStreamFactory().create(getPrimary())
         def connection = new InternalStreamConnection(CLUSTER_ID, stream, [], listener)
         def buffer = new ByteBufferOutputBuffer(connection)
@@ -177,7 +170,6 @@ class InternalStreamConnectionSpecification extends Specification {
     def 'should handle out of order messages on the stream'() {
         // Connect then: Send(1), Send(2), Send(3), Receive(3), Receive(2), Receive(1)
         given:
-        def listener = Mock(ConnectionListener)
         def helper = new StreamHelper()
         def stream = Stub(Stream)
         stream.getBuffer(_) >> { args -> helper.getBuffer(args.get(0)) }
@@ -205,7 +197,6 @@ class InternalStreamConnectionSpecification extends Specification {
     def 'should handle out of order messages on the stream async'() {
         // Connect then: SendAsync(1), SendAsync(2), SendAsync(3), ReceiveAsync(3), ReceiveAsync(2), ReceiveAsync(1)
         given:
-        def listener = Mock(ConnectionListener)
         def helper = new StreamHelper()
         def stream = Stub(Stream)
         stream.getBuffer(_) >> { args -> helper.getBuffer(args.get(0)) }
@@ -306,11 +297,10 @@ class InternalStreamConnectionSpecification extends Specification {
     }
 
     @Category(Slow)
-    def 'should the connection pipeling should be threadsafe'() {
+    def 'the connection pipelining should be thread safe'() {
         given:
         int threads = 10
         ExecutorService pool = Executors.newFixedThreadPool(threads)
-        def listener = Mock(ConnectionListener)
         def helper = new StreamHelper()
         def stream = Stub(Stream)
         stream.getBuffer(_) >> { args -> helper.getBuffer(args.get(0)) }
@@ -322,9 +312,13 @@ class InternalStreamConnectionSpecification extends Specification {
 
         then:
         (1..100000).each { n ->
+            def conds = new AsyncConditions()
             def (buffers, messageId) = helper.isMaster()
+
             pool.submit( { connection.sendMessage(buffers, messageId) } as Runnable )
-            pool.submit( { connection.receiveMessage(messageId).replyHeader.responseTo == messageId } as Runnable )
+            pool.submit( { conds.evaluate { assert connection.receiveMessage(messageId).replyHeader.responseTo == messageId } } as Runnable )
+
+            conds.await()
         }
 
         cleanup:
@@ -332,11 +326,10 @@ class InternalStreamConnectionSpecification extends Specification {
     }
 
     @Category(Slow)
-    def 'should the connection pipeling should be threadsafe async'() {
+    def 'the connection pipelining should be thread safe async'() {
         given:
         int threads = 10
         ExecutorService pool = Executors.newFixedThreadPool(threads)
-        def listener = Mock(ConnectionListener)
         def helper = new StreamHelper()
         def stream = Stub(Stream)
         stream.getBuffer(_) >> { args -> helper.getBuffer(args.get(0)) }
