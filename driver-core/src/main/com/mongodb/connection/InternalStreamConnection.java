@@ -32,7 +32,7 @@ class InternalStreamConnection implements InternalConnection {
     private final Stream stream;
     private final ConnectionListener connectionListener;
     private final StreamPipeline streamPipeline;
-    private final ConnectionAuthHandler connectionAuthHandler;
+    private final ConnectionInitializer connectionInitializer;
     private volatile boolean isClosed;
 
     InternalStreamConnection(final String clusterId, final Stream stream, final List<MongoCredential> credentialList,
@@ -40,9 +40,9 @@ class InternalStreamConnection implements InternalConnection {
         this.clusterId = notNull("clusterId", clusterId);
         this.stream = notNull("stream", stream);
         this.connectionListener = notNull("connectionListener", connectionListener);
-        this.connectionAuthHandler = new ConnectionAuthHandler(clusterId, stream, credentialList, connectionListener, this);
+        this.connectionInitializer = new ConnectionInitializer(clusterId, stream, credentialList, connectionListener, this);
         this.streamPipeline = new StreamPipeline(clusterId, stream, connectionListener, this);
-        connectionAuthHandler.authenticate();
+        connectionInitializer.initialize();
     }
 
     @Override
@@ -63,7 +63,7 @@ class InternalStreamConnection implements InternalConnection {
 
     @Override
     public String getId() {
-        return connectionAuthHandler.getId();
+        return connectionInitializer.getId();
     }
 
     @Override

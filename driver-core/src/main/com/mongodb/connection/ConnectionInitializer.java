@@ -29,7 +29,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.mongodb.assertions.Assertions.notNull;
 
-class ConnectionAuthHandler {
+class ConnectionInitializer {
     private final AtomicInteger incrementingId = new AtomicInteger();
     private final String clusterId;
     private final Stream stream;
@@ -38,9 +38,9 @@ class ConnectionAuthHandler {
     private final InternalConnection connection;
 
     private String id;
-    private AtomicBoolean authenticated;
+    private AtomicBoolean initialized;
 
-    ConnectionAuthHandler(final String clusterId, final Stream stream, final List<MongoCredential> credentialList,
+    ConnectionInitializer(final String clusterId, final Stream stream, final List<MongoCredential> credentialList,
                           final ConnectionListener connectionListener, final InternalConnection connection) {
         this.clusterId = notNull("clusterId", clusterId);
         this.stream = notNull("stream", stream);
@@ -48,28 +48,21 @@ class ConnectionAuthHandler {
         this.connection = notNull("connection", connection);
         notNull("credentialList", credentialList);
         this.credentialList = new ArrayList<MongoCredential>(credentialList);
-        authenticated = new AtomicBoolean(false);
-    }
-
-    public void close() {
-        connection.close();
-    }
-
-    public boolean isClosed() {
-        return connection.isClosed();
+        initialized = new AtomicBoolean(false);
     }
 
     public String getId() {
         return id;
     }
 
-    public boolean authenticateCalled() {
-        return authenticated.get();
+    public boolean initialized() {
+        return initialized.get();
     }
 
-    public void authenticate() {
-        if (!authenticateCalled()) {
-            authenticated.set(true);
+    public void initialize() {
+        // TODO - Asynchronize
+        if (!initialized()) {
+            initialized.set(true);
             initializeConnectionId();
             authenticateAll();
 
@@ -79,14 +72,6 @@ class ConnectionAuthHandler {
             }
             connectionListener.connectionOpened(new ConnectionEvent(clusterId, stream.getAddress(), getId()));
         }
-    }
-
-    public void authenticate(final SingleResultCallback<Void> authenticatedFuture) {
-        // TODO - Asynchronize
-        if (!authenticateCalled()) {
-            authenticate();
-        }
-        authenticatedFuture.onResult(null, null);
     }
 
     private void initializeConnectionId() {
