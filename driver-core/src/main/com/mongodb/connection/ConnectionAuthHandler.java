@@ -29,7 +29,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.mongodb.assertions.Assertions.notNull;
 
-public class ConnectionAuthHandler {
+class ConnectionAuthHandler {
     private final AtomicInteger incrementingId = new AtomicInteger();
     private final String clusterId;
     private final Stream stream;
