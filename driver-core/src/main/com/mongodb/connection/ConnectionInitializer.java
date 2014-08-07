@@ -30,7 +30,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static com.mongodb.assertions.Assertions.notNull;
 
 class ConnectionInitializer {
-    private final AtomicInteger incrementingId = new AtomicInteger();
+    private static final AtomicInteger incrementingId = new AtomicInteger();
     private final String clusterId;
     private final Stream stream;
     private final ConnectionListener connectionListener;

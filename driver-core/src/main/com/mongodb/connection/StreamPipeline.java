@@ -24,6 +24,8 @@ import com.mongodb.MongoSocketReadException;
 import com.mongodb.MongoSocketReadTimeoutException;
 import com.mongodb.MongoSocketWriteException;
 import com.mongodb.ServerAddress;
+import com.mongodb.diagnostics.Loggers;
+import com.mongodb.diagnostics.logging.Logger;
 import com.mongodb.event.ConnectionListener;
 import com.mongodb.event.ConnectionMessageReceivedEvent;
 import com.mongodb.event.ConnectionMessagesSentEvent;
@@ -60,6 +62,8 @@ class StreamPipeline {
     private final Semaphore writing = new Semaphore(1);
     private final Semaphore reading = new Semaphore(1);
 
+    static final Logger LOGGER = Loggers.getLogger("StreamPipeline");
+
     StreamPipeline(final String clusterId, final Stream stream, final ConnectionListener connectionListener,
                    final InternalStreamConnection internalStreamConnection) {
         this.clusterId = notNull("clusterId", clusterId);
@@ -87,11 +91,15 @@ class StreamPipeline {
             try {
                 writing.acquire();
                 stream.write(byteBuffers);
-                connectionListener.messagesSent(new ConnectionMessagesSentEvent(clusterId,
-                                                                                stream.getAddress(),
-                                                                                internalStreamConnection.getId(),
-                                                                                lastRequestId,
-                                                                                getTotalRemaining(byteBuffers)));
+                try {
+                    connectionListener.messagesSent(new ConnectionMessagesSentEvent(clusterId,
+                                                                                    stream.getAddress(),
+                                                                                    internalStreamConnection.getId(),
+                                                                                    lastRequestId,
+                                                                                    getTotalRemaining(byteBuffers)));
+                } catch (Throwable t) {
+                    LOGGER.warn("Exception when trying to signal messagesSent to the connectionListener", t);
+                }
             } catch (Exception e) {
                 close();
                 throw translateWriteException(e);
@@ -112,13 +120,17 @@ class StreamPipeline {
                         break;
                     }
                     ResponseBuffers responseBuffers = receiveResponseBuffers();
-                    connectionListener.messageReceived(new ConnectionMessageReceivedEvent(clusterId,
-                                                                                          stream.getAddress(),
-                                                                                          internalStreamConnection.getId(),
-                                                                                          responseBuffers.getReplyHeader().getResponseTo(),
-                                                                                          responseBuffers.getReplyHeader()
-                                                                                                         .getMessageLength()));
-
+                    try {
+                        connectionListener.messageReceived(new ConnectionMessageReceivedEvent(clusterId,
+                                                                                              stream.getAddress(),
+                                                                                              internalStreamConnection.getId(),
+                                                                                              responseBuffers.getReplyHeader()
+                                                                                                             .getResponseTo(),
+                                                                                              responseBuffers.getReplyHeader()
+                                                                                                             .getMessageLength()));
+                    } catch (Throwable t) {
+                        LOGGER.warn("Exception when trying to signal messageReceived to the connectionListener", t);
+                    }
                     messages.put(responseBuffers.getReplyHeader().getResponseTo(), new Response(responseBuffers, null));
                 } catch (Exception e) {
                     close();
@@ -244,12 +256,21 @@ class StreamPipeline {
         }
 
         private void onSuccess(final ResponseBuffers responseBuffers) {
-            connectionListener.messageReceived(new ConnectionMessageReceivedEvent(clusterId,
-                                                                                  stream.getAddress(),
-                                                                                  internalStreamConnection.getId(),
-                                                                                  responseBuffers.getReplyHeader().getResponseTo(),
-                                                                                  responseBuffers.getReplyHeader().getMessageLength()));
-            callback.onResult(responseBuffers, null);
+            try {
+                connectionListener.messageReceived(new ConnectionMessageReceivedEvent(clusterId,
+                                                                                      stream.getAddress(),
+                                                                                      internalStreamConnection.getId(),
+                                                                                      responseBuffers.getReplyHeader().getResponseTo(),
+                                                                                      responseBuffers.getReplyHeader().getMessageLength()));
+            } catch (Throwable t) {
+                LOGGER.warn("Exception when trying to signal messageReceived to the connectionListener", t);
+            }
+
+            try {
+                callback.onResult(responseBuffers, null);
+            } catch (Throwable t) {
+                LOGGER.warn("Exception calling callback", t);
+            }
         }
 
         private class ResponseBodyCallback implements SingleResultCallback<ByteBuf> {
@@ -262,7 +283,11 @@ class StreamPipeline {
             @Override
             public void onResult(final ByteBuf result, final MongoException e) {
                 if (e != null) {
-                    callback.onResult(new ResponseBuffers(replyHeader, result), e);
+                    try {
+                        callback.onResult(new ResponseBuffers(replyHeader, result), e);
+                    } catch (Throwable t) {
+                        LOGGER.warn("Exception calling callback", t);
+                    }
                 } else {
                     onSuccess(new ResponseBuffers(replyHeader, result));
                 }
@@ -294,7 +319,11 @@ class StreamPipeline {
                         Map.Entry<Integer, SingleResultCallback<ResponseBuffers>> pairs = it.next();
                         final SingleResultCallback<ResponseBuffers> callback = pairs.getValue();
                         it.remove();
-                        callback.onResult(null, new MongoSocketClosedException("Cannot read from a closed stream", getServerAddress()));
+                        try {
+                            callback.onResult(null, new MongoSocketClosedException("Cannot read from a closed stream", getServerAddress()));
+                        } catch (Throwable t) {
+                            LOGGER.warn("Exception calling callback", t);
+                        }
                     }
                 } finally {
                     reading.release();
@@ -328,8 +357,12 @@ class StreamPipeline {
                 try {
                     while (!writeQueue.isEmpty()) {
                         final SendMessageAsync message = writeQueue.poll();
-                        message.callback.onResult(null, new MongoSocketClosedException("Cannot write to a closed stream",
-                                                                                       getServerAddress()));
+                        try {
+                            message.callback.onResult(null, new MongoSocketClosedException("Cannot write to a closed stream",
+                                                                                           getServerAddress()));
+                        } catch (Throwable t) {
+                            LOGGER.warn("Exception calling callback", t);
+                        }
                     }
                 } finally {
                     writing.release();
@@ -339,14 +372,21 @@ class StreamPipeline {
                 final SendMessageAsync message = writeQueue.poll();
                 stream.writeAsync(message.getByteBuffers(), new AsyncCompletionHandler<Void>() {
                     @Override
-                    public void completed(final Void t) {
+                    public void completed(final Void v) {
                         writing.release();
-                        connectionListener.messagesSent(new ConnectionMessagesSentEvent(clusterId, stream.getAddress(),
-                                                                                        internalStreamConnection.getId(),
-                                                                                        message.getMessageId(),
-                                                                                        getTotalRemaining(message
-                                                                                                              .getByteBuffers())));
-                        message.getCallback().onResult(null, null);
+                        try {
+                            connectionListener.messagesSent(new ConnectionMessagesSentEvent(clusterId, stream.getAddress(),
+                                                                                            internalStreamConnection.getId(),
+                                                                                            message.getMessageId(),
+                                                                                            getTotalRemaining(message.getByteBuffers())));
+                        } catch (Throwable t) {
+                            LOGGER.warn("Exception when trying to signal messagesSent to the connectionListener", t);
+                        }
+                        try {
+                            message.getCallback().onResult(null, null);
+                        } catch (Throwable t) {
+                            LOGGER.warn("Exception calling callback", t);
+                        }
                         processPendingWrites();
                     }
 
@@ -354,7 +394,11 @@ class StreamPipeline {
                     public void failed(final Throwable t) {
                         writing.release();
                         close();
-                        message.getCallback().onResult(null, translateWriteException(t));
+                        try {
+                            message.getCallback().onResult(null, translateWriteException(t));
+                        } catch (Throwable e) {
+                            LOGGER.warn("Exception calling callback", e);
+                        }
                         processPendingWrites();
                     }
                 });
@@ -370,9 +414,17 @@ class StreamPipeline {
             final SingleResultCallback<ResponseBuffers> callback = readQueue.remove(messageId);
             if (callback != null) {
                 if (pairs.getValue().getError() != null) {
-                    callback.onResult(null, pairs.getValue().getError());
+                    try {
+                        callback.onResult(null, pairs.getValue().getError());
+                    } catch (Throwable t) {
+                        LOGGER.warn("Exception calling callback", t);
+                    }
                 } else {
-                    callback.onResult(pairs.getValue().getResult(), null);
+                    try {
+                        callback.onResult(pairs.getValue().getResult(), null);
+                    } catch (Throwable t) {
+                        LOGGER.warn("Exception calling callback", t);
+                    }
                 }
                 it.remove();
             }
@@ -387,7 +439,11 @@ class StreamPipeline {
             Map.Entry<Integer, SingleResultCallback<ResponseBuffers>> pairs = it.next();
             final SingleResultCallback<ResponseBuffers> callback = pairs.getValue();
             it.remove();
-            callback.onResult(null, e);
+            try {
+                callback.onResult(null, e);
+            } catch (Throwable t) {
+                LOGGER.warn("Exception calling callback", t);
+            }
         }
     }
 
