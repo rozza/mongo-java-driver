@@ -620,7 +620,7 @@ class InternalStreamConnectionSpecification extends Specification {
             pool.submit( { connection.sendMessageAsync(buffers, messageId, sndCallbck) } as Runnable )
             pool.submit( { connection.receiveMessageAsync(messageId, rcvdCallbck) } as Runnable )
 
-            fResponseBuffers.get().replyHeader.responseTo == messageId
+            assert fResponseBuffers.get().replyHeader.responseTo == messageId
         }
 
         cleanup:
