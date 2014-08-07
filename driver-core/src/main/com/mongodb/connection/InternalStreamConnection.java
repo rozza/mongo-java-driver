@@ -16,8 +16,10 @@
 
 package com.mongodb.connection;
 
-import com.mongodb.MongoCredential;
+import com.mongodb.MongoException;
 import com.mongodb.ServerAddress;
+import com.mongodb.diagnostics.Loggers;
+import com.mongodb.diagnostics.logging.Logger;
 import com.mongodb.event.ConnectionEvent;
 import com.mongodb.event.ConnectionListener;
 import org.bson.ByteBuf;
@@ -33,16 +35,20 @@ class InternalStreamConnection implements InternalConnection {
     private final ConnectionListener connectionListener;
     private final StreamPipeline streamPipeline;
     private final ConnectionInitializer connectionInitializer;
+    private volatile boolean initializeCalled;
     private volatile boolean isClosed;
 
-    InternalStreamConnection(final String clusterId, final Stream stream, final List<MongoCredential> credentialList,
+    static final Logger LOGGER = Loggers.getLogger("InternalStreamConnection");
+
+    InternalStreamConnection(final String clusterId, final Stream stream, final ConnectionInitializer connectionInitializer,
                              final ConnectionListener connectionListener) {
         this.clusterId = notNull("clusterId", clusterId);
         this.stream = notNull("stream", stream);
         this.connectionListener = notNull("connectionListener", connectionListener);
-        this.connectionInitializer = new ConnectionInitializer(clusterId, stream, credentialList, connectionListener, this);
+        this.connectionInitializer = connectionInitializer;
         this.streamPipeline = new StreamPipeline(clusterId, stream, connectionListener, this);
-        connectionInitializer.initialize();
+        isClosed = false;
+        initializeCalled = false;
     }
 
     @Override
@@ -57,6 +63,7 @@ class InternalStreamConnection implements InternalConnection {
         return isClosed;
     }
 
+    @Override
     public ServerAddress getServerAddress() {
         return stream.getAddress();
     }
@@ -72,6 +79,11 @@ class InternalStreamConnection implements InternalConnection {
     }
 
     public void sendMessage(final List<ByteBuf> byteBuffers, final int lastRequestId) {
+        if (!initializeCalled) {
+            connectionInitializer.initialize();
+            streamPipeline.initialized();
+            initializeCalled = true;
+        }
         streamPipeline.sendMessage(byteBuffers, lastRequestId);
     }
 
@@ -82,6 +94,20 @@ class InternalStreamConnection implements InternalConnection {
 
     @Override
     public void sendMessageAsync(final List<ByteBuf> byteBuffers, final int lastRequestId, final SingleResultCallback<Void> callback) {
+        if (!initializeCalled) {
+            connectionInitializer.initialize(new SingleResultCallback<Void>() {
+                @Override
+                public void onResult(final Void result, final MongoException e) {
+                    streamPipeline.initialized();
+                    try {
+                        connectionListener.connectionOpened(new ConnectionEvent(clusterId, stream.getAddress(), getId()));
+                    } catch (Throwable t) {
+                        LOGGER.warn("Exception when trying to signal messagesSent to the connectionListener", t);
+                    }
+                }
+            });
+            initializeCalled = true;
+        }
         streamPipeline.sendMessageAsync(byteBuffers, lastRequestId, callback);
     }
 
@@ -89,5 +115,4 @@ class InternalStreamConnection implements InternalConnection {
     public void receiveMessageAsync(final int responseTo, final SingleResultCallback<ResponseBuffers> callback) {
         streamPipeline.receiveMessageAsync(responseTo, callback);
     }
-
 }

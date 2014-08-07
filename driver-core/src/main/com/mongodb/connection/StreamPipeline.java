@@ -26,6 +26,7 @@ import com.mongodb.MongoSocketWriteException;
 import com.mongodb.ServerAddress;
 import com.mongodb.diagnostics.Loggers;
 import com.mongodb.diagnostics.logging.Logger;
+import com.mongodb.event.ConnectionEvent;
 import com.mongodb.event.ConnectionListener;
 import com.mongodb.event.ConnectionMessageReceivedEvent;
 import com.mongodb.event.ConnectionMessagesSentEvent;
@@ -52,7 +53,8 @@ class StreamPipeline {
     private final String clusterId;
     private final Stream stream;
     private final ConnectionListener connectionListener;
-    private final InternalStreamConnection internalStreamConnection;
+    private final InternalConnection internalConnection;
+    private volatile boolean initialized;
 
     private final LinkedList<SendMessageAsync> writeQueue = new LinkedList<SendMessageAsync>();
     private final ConcurrentHashMap<Integer, SingleResultCallback<ResponseBuffers>> readQueue =
@@ -65,26 +67,46 @@ class StreamPipeline {
     static final Logger LOGGER = Loggers.getLogger("StreamPipeline");
 
     StreamPipeline(final String clusterId, final Stream stream, final ConnectionListener connectionListener,
-                   final InternalStreamConnection internalStreamConnection) {
+                   final InternalConnection internalConnection) {
+        this(clusterId, stream, connectionListener, internalConnection, false);
+    }
+
+    StreamPipeline(final String clusterId, final Stream stream, final ConnectionListener connectionListener,
+                   final InternalConnection internalConnection, final boolean initialized) {
         this.clusterId = notNull("clusterId", clusterId);
         this.stream = notNull("stream", stream);
         this.connectionListener = notNull("connectionListener", connectionListener);
-        this.internalStreamConnection = notNull("internalStreamConnection", internalStreamConnection);
+        this.internalConnection = notNull("internalConnection", internalConnection);
+        this.initialized = initialized;
     }
 
-    public void close() {
-        internalStreamConnection.close();
+    public boolean isInitialized() {
+        return initialized;
     }
 
-    public boolean isClosed() {
-        return internalStreamConnection.isClosed();
+    public void initialized() {
+        initialized = true;
+        try {
+            connectionListener.connectionOpened(new ConnectionEvent(clusterId, stream.getAddress(), internalConnection.getId()));
+        } catch (Throwable t) {
+            LOGGER.warn("Exception when trying to signal messagesSent to the connectionListener", t);
+        }
+        processPendingWrites();
+    }
+    
+    void close() {
+        internalConnection.close();
     }
 
-    public ServerAddress getServerAddress() {
+    boolean isClosed() {
+        return internalConnection.isClosed();
+    }
+
+    ServerAddress getServerAddress() {
         return stream.getAddress();
     }
 
-    public void sendMessage(final List<ByteBuf> byteBuffers, final int lastRequestId) {
+    void sendMessage(final List<ByteBuf> byteBuffers, final int lastRequestId) {
         if (isClosed()) {
             throw new MongoSocketClosedException("Cannot write to a closed stream", getServerAddress());
         } else {
@@ -94,7 +116,7 @@ class StreamPipeline {
                 try {
                     connectionListener.messagesSent(new ConnectionMessagesSentEvent(clusterId,
                                                                                     stream.getAddress(),
-                                                                                    internalStreamConnection.getId(),
+                                                                                    internalConnection.getId(),
                                                                                     lastRequestId,
                                                                                     getTotalRemaining(byteBuffers)));
                 } catch (Throwable t) {
@@ -109,7 +131,7 @@ class StreamPipeline {
         }
     }
 
-    public ResponseBuffers receiveMessage(final int responseTo) {
+    ResponseBuffers receiveMessage(final int responseTo) {
         if (isClosed()) {
             throw new MongoSocketClosedException("Cannot read from a closed stream", getServerAddress());
         } else {
@@ -123,7 +145,7 @@ class StreamPipeline {
                     try {
                         connectionListener.messageReceived(new ConnectionMessageReceivedEvent(clusterId,
                                                                                               stream.getAddress(),
-                                                                                              internalStreamConnection.getId(),
+                                                                                              internalConnection.getId(),
                                                                                               responseBuffers.getReplyHeader()
                                                                                                              .getResponseTo(),
                                                                                               responseBuffers.getReplyHeader()
@@ -147,12 +169,12 @@ class StreamPipeline {
         }
     }
 
-    public void sendMessageAsync(final List<ByteBuf> byteBuffers, final int lastRequestId, final SingleResultCallback<Void> callback) {
+    void sendMessageAsync(final List<ByteBuf> byteBuffers, final int lastRequestId, final SingleResultCallback<Void> callback) {
         writeQueue.add(new SendMessageAsync(byteBuffers, lastRequestId, callback));
         processPendingWrites();
     }
 
-    public void receiveMessageAsync(final int responseTo, final SingleResultCallback<ResponseBuffers> callback) {
+    void receiveMessageAsync(final int responseTo, final SingleResultCallback<ResponseBuffers> callback) {
         readQueue.put(responseTo, callback);
         processPendingReads();
     }
@@ -259,7 +281,7 @@ class StreamPipeline {
             try {
                 connectionListener.messageReceived(new ConnectionMessageReceivedEvent(clusterId,
                                                                                       stream.getAddress(),
-                                                                                      internalStreamConnection.getId(),
+                                                                                      internalConnection.getId(),
                                                                                       responseBuffers.getReplyHeader().getResponseTo(),
                                                                                       responseBuffers.getReplyHeader().getMessageLength()));
             } catch (Throwable t) {
@@ -348,7 +370,7 @@ class StreamPipeline {
     }
 
     private void processPendingWrites() {
-        if (writing.tryAcquire()) {
+        if (isInitialized() && writing.tryAcquire()) {
             if (writeQueue.isEmpty()) {
                 writing.release();
                 return;
@@ -376,7 +398,7 @@ class StreamPipeline {
                         writing.release();
                         try {
                             connectionListener.messagesSent(new ConnectionMessagesSentEvent(clusterId, stream.getAddress(),
-                                                                                            internalStreamConnection.getId(),
+                                                                                            internalConnection.getId(),
                                                                                             message.getMessageId(),
                                                                                             getTotalRemaining(message.getByteBuffers())));
                         } catch (Throwable t) {
