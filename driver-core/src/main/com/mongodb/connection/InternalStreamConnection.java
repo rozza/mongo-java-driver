@@ -55,7 +55,11 @@ class InternalStreamConnection implements InternalConnection {
     public void close() {
         isClosed = true;
         stream.close();
-        connectionListener.connectionClosed(new ConnectionEvent(clusterId, stream.getAddress(), getId()));
+        try {
+            connectionListener.connectionClosed(new ConnectionEvent(clusterId, stream.getAddress(), getId()));
+        } catch (Throwable t) {
+            LOGGER.warn("Exception when trying to signal connectionClosed to the connectionListener", t);
+        }
     }
 
     @Override
