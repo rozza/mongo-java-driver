@@ -84,9 +84,14 @@ class InternalStreamConnection implements InternalConnection {
 
     public void sendMessage(final List<ByteBuf> byteBuffers, final int lastRequestId) {
         if (!initializeCalled) {
-            connectionInitializer.initialize();
-            streamPipeline.initialized();
-            initializeCalled = true;
+            try {
+                connectionInitializer.initialize();
+                streamPipeline.initialized(true);
+                initializeCalled = true;
+            } catch (Exception e) {
+                LOGGER.warn("Exception when trying to initialize the connection", e);
+                streamPipeline.initialized(false);
+            }
         }
         streamPipeline.sendMessage(byteBuffers, lastRequestId);
     }
@@ -102,11 +107,15 @@ class InternalStreamConnection implements InternalConnection {
             connectionInitializer.initialize(new SingleResultCallback<Void>() {
                 @Override
                 public void onResult(final Void result, final MongoException e) {
-                    streamPipeline.initialized();
-                    try {
-                        connectionListener.connectionOpened(new ConnectionEvent(clusterId, stream.getAddress(), getId()));
-                    } catch (Throwable t) {
-                        LOGGER.warn("Exception when trying to signal messagesSent to the connectionListener", t);
+                    if (e != null) {
+                        streamPipeline.initialized(false);
+                    } else {
+                        streamPipeline.initialized(true);
+                        try {
+                            connectionListener.connectionOpened(new ConnectionEvent(clusterId, stream.getAddress(), getId()));
+                        } catch (Throwable t) {
+                            LOGGER.warn("Exception when trying to signal messagesSent to the connectionListener", t);
+                        }
                     }
                 }
             });

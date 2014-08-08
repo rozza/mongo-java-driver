@@ -18,6 +18,7 @@ package com.mongodb.connection
 import category.Async
 import category.Slow
 import com.mongodb.MongoException
+import com.mongodb.MongoInternalException
 import com.mongodb.MongoNamespace
 import com.mongodb.MongoSocketClosedException
 import com.mongodb.MongoSocketReadException
@@ -275,6 +276,70 @@ class InternalStreamConnectionSpecification extends Specification {
         fRespBuffers1.get().replyHeader.responseTo == messageId1
         responseBuffers2.replyHeader.responseTo == messageId2
         fRespBuffers3.get().replyHeader.responseTo == messageId3
+    }
+
+    def 'failed initialization should close the connection and fail'() {
+        given:
+        connectionInitializer.initialize() >> { throw new MongoInternalException('Something went wrong') }
+
+        def connection = new InternalStreamConnection(CLUSTER_ID, stream, connectionInitializer, listener)
+        def (buffers1, messageId1) = helper.isMaster()
+        def (buffers2, messageId2) = helper.isMaster()
+
+        when:
+        connection.sendMessage(buffers1, messageId1)
+
+        then:
+        connection.isClosed()
+        thrown MongoSocketClosedException
+
+        when:
+        connection.sendMessage(buffers2, messageId2)
+
+        then:
+        thrown MongoSocketClosedException
+    }
+
+    def 'failed initialization should close the connection and fail asynchronously'() {
+        given:
+        stream.writeAsync(_, _) >>  { List<ByteBuf> buffers, AsyncCompletionHandler<Void> callback ->
+            callback.completed(null)
+        }
+        stream.readAsync(36, _) >> { int numBytes, AsyncCompletionHandler<ByteBuf> handler ->
+            handler.completed(helper.header())
+        }
+        stream.readAsync(74, _) >> { int numBytes, AsyncCompletionHandler<ByteBuf> handler ->
+            handler.completed(helper.body())
+        }
+
+        def connection = new InternalStreamConnection(CLUSTER_ID, stream, connectionInitializer, listener)
+        connectionInitializer.initialize(_) >> { SingleResultCallback<Void> callback ->
+            callback.onResult(null, new MongoInternalException('Something went wrong'));
+        }
+        def sndLatch = new CountDownLatch(2)
+        def rcvdLatch = new CountDownLatch(2)
+        def (buffers1, messageId1, sndCallbck1, rcvdCallbck1, fSndResult1, fRespBuffers1) = helper.isMasterAsync(sndLatch, rcvdLatch)
+        def (buffers2, messageId2, sndCallbck2, rcvdCallbck2, fSndResult2, fRespBuffers2) = helper.isMasterAsync(sndLatch, rcvdLatch)
+
+        when:
+        connection.sendMessageAsync(buffers1, messageId1, sndCallbck1)
+        connection.sendMessageAsync(buffers2, messageId2, sndCallbck2)
+        sndLatch.await()
+
+        then:
+        connection.isClosed()
+
+        when:
+        fSndResult1.get()
+
+        then:
+        thrown MongoSocketClosedException
+
+        when:
+        fSndResult2.get()
+
+        then:
+        thrown MongoSocketClosedException
     }
 
     def 'failed writes should close the connection and fail'() {

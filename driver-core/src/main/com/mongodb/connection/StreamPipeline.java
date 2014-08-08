@@ -84,12 +84,16 @@ class StreamPipeline {
         return initialized;
     }
 
-    public void initialized() {
+    public void initialized(final boolean initializedSucceed) {
         initialized = true;
-        try {
-            connectionListener.connectionOpened(new ConnectionEvent(clusterId, stream.getAddress(), internalConnection.getId()));
-        } catch (Throwable t) {
-            LOGGER.warn("Exception when trying to signal messagesSent to the connectionListener", t);
+        if (initializedSucceed) {
+            try {
+                connectionListener.connectionOpened(new ConnectionEvent(clusterId, stream.getAddress(), internalConnection.getId()));
+            } catch (Throwable t) {
+                LOGGER.warn("Exception when trying to signal messagesSent to the connectionListener", t);
+            }
+        } else {
+            close();
         }
         processPendingWrites();
     }

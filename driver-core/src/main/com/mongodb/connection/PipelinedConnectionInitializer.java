@@ -18,6 +18,8 @@ package com.mongodb.connection;
 
 import com.mongodb.MongoCredential;
 import com.mongodb.MongoException;
+import com.mongodb.MongoInternalException;
+import com.mongodb.MongoSecurityException;
 import com.mongodb.ServerAddress;
 import com.mongodb.diagnostics.Loggers;
 import com.mongodb.diagnostics.logging.Logger;
@@ -127,7 +129,7 @@ class PipelinedConnectionInitializer implements ConnectionInitializer, InternalC
         initializationFuture.onResult(null, null);
     }
 
-    private void initializeConnectionId() {
+    private void initializeConnectionId() throws MongoInternalException {
         BsonDocument response = CommandHelper.executeCommandWithoutCheckingForFailure("admin",
                                                                                       new BsonDocument("getlasterror", new BsonInt32(1)),
                                                                                       this);
@@ -136,13 +138,13 @@ class PipelinedConnectionInitializer implements ConnectionInitializer, InternalC
                        : "*" + INCREMENTING_ID.incrementAndGet() + "*");
     }
 
-    private void authenticateAll() {
+    private void authenticateAll() throws MongoSecurityException, IllegalArgumentException {
         for (final MongoCredential cur : credentialList) {
             createAuthenticator(cur).authenticate();
         }
     }
 
-    private Authenticator createAuthenticator(final MongoCredential credential) {
+    private Authenticator createAuthenticator(final MongoCredential credential) throws MongoSecurityException, IllegalArgumentException {
         switch (credential.getAuthenticationMechanism()) {
             case MONGODB_CR:
                 return new NativeAuthenticator(credential, this);
