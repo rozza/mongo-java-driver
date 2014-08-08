@@ -326,7 +326,7 @@ class StreamPipeline {
     }
 
     private void processPendingReads() {
-        if (reading.tryAcquire()) {
+        if (isInitialized() && reading.tryAcquire()) {
             processPendingResults();
 
             if (readQueue.isEmpty()) {
