@@ -39,7 +39,7 @@ import static org.hamcrest.CoreMatchers.hasItem;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.isA;
 import static org.hamcrest.CoreMatchers.not;
-import static org.hamcrest.Matchers.greaterThan;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -163,12 +163,13 @@ public class MapReduceTest extends DatabaseTestCase {
     }
 
     @Test
-    public void testDropOutputCollection() {
+    public void testOutputCollection() {
         String anotherCollectionName = "anotherCollection" + System.nanoTime();
         MapReduceOutput output = collection.mapReduce(DEFAULT_MAP,
                                                       DEFAULT_REDUCE,
                                                       anotherCollectionName, null);
 
+        assertEquals(database.getCollection(anotherCollectionName).getFullName(), output.getOutputCollection().getFullName());
         assertTrue(database.collectionExists(anotherCollectionName));
 
         output.drop();
@@ -324,7 +325,7 @@ public class MapReduceTest extends DatabaseTestCase {
         MapReduceOutput output = collection.mapReduce(command);
 
         //then
-        assertThat(output.getDuration(), is(greaterThan(0)));
+        assertThat(output.getDuration(), is(greaterThanOrEqualTo(0)));
         assertThat(output.getEmitCount(), is(6));
         assertThat(output.getInputCount(), is(3));
         assertThat(output.getOutputCount(), is(4));

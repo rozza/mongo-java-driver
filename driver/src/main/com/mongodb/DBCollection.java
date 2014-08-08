@@ -909,7 +909,6 @@ public class DBCollection {
             throw new IllegalArgumentException("skip is too large: " + skip);
         }
 
-        // TODO: investigate case of int to long for skip
         Find find = new Find(wrapAllowNull(query)).limit((int) limit).skip((int) skip).maxTime(maxTime, maxTimeUnit);
 
         return execute(new CountOperation(getNamespace(), find), readPreference);
@@ -1011,7 +1010,6 @@ public class DBCollection {
      * @mongodb.driver.manual reference/command/group/ Group Command
      */
     public DBObject group(final GroupCommand cmd, final ReadPreference readPreference) {
-        //TODO: test read preference
         MongoCursor<DBObject> cursor = execute(new GroupOperation<DBObject>(getNamespace(), cmd.toNew(getDefaultDBObjectCodec()),
                                                                             getDefaultDBObjectCodec()),
                                                readPreference);

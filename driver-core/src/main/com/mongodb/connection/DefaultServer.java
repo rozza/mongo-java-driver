@@ -161,7 +161,7 @@ class DefaultServer implements ClusterableServer {
         @Override
         public ServerDescription getServerDescription() {
             isTrue("open", getCount() > 0);
-            return getDescription();  // TODO: get a new one for each connection, so that it's immutable
+            return getDescription();
         }
 
         @Override
@@ -195,13 +195,13 @@ class DefaultServer implements ClusterableServer {
         @Override
         public void sendMessageAsync(final List<ByteBuf> byteBuffers, final int lastRequestId, final SingleResultCallback<Void> callback) {
             isTrue("open", getCount() > 0);
-            wrapped.sendMessageAsync(byteBuffers, lastRequestId, callback); // TODO: handle asynchronous exceptions
+            wrapped.sendMessageAsync(byteBuffers, lastRequestId, callback);
         }
 
         @Override
         public void receiveMessageAsync(final int responseTo, final SingleResultCallback<ResponseBuffers> callback) {
             isTrue("open", getCount() > 0);
-            wrapped.receiveMessageAsync(responseTo, callback);  // TODO: handle asynchronous exceptions and incorrect responseTo
+            wrapped.receiveMessageAsync(responseTo, callback);
         }
 
         @Override
