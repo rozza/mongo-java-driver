@@ -109,6 +109,8 @@ class StreamPipeline {
     void sendMessage(final List<ByteBuf> byteBuffers, final int lastRequestId) {
         if (isClosed()) {
             throw new MongoSocketClosedException("Cannot write to a closed stream", getServerAddress());
+        } else if (!isInitialized()) {
+            throw new MongoException("Connection not initialized");
         } else {
             try {
                 writing.acquire();
@@ -326,7 +328,7 @@ class StreamPipeline {
     }
 
     private void processPendingReads() {
-        if (isInitialized() && reading.tryAcquire()) {
+        if (reading.tryAcquire()) {
             processPendingResults();
 
             if (readQueue.isEmpty()) {
