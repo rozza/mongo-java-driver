@@ -25,6 +25,7 @@ import com.mongodb.event.ConnectionListener;
 import org.bson.ByteBuf;
 
 import java.util.List;
+import java.util.concurrent.Semaphore;
 
 import static com.mongodb.assertions.Assertions.notNull;
 
@@ -35,6 +36,7 @@ class InternalStreamConnection implements InternalConnection {
     private final ConnectionListener connectionListener;
     private final StreamPipeline streamPipeline;
     private final ConnectionInitializer connectionInitializer;
+    private final Semaphore initializing = new Semaphore(1);
     private volatile boolean initializeCalled;
     private volatile boolean isClosed;
 
@@ -85,12 +87,16 @@ class InternalStreamConnection implements InternalConnection {
     public void sendMessage(final List<ByteBuf> byteBuffers, final int lastRequestId) {
         if (!initializeCalled) {
             try {
-                connectionInitializer.initialize();
-                streamPipeline.initialized(true);
-                initializeCalled = true;
+                if (initializing.tryAcquire() && !initializeCalled) {
+                    connectionInitializer.initialize();
+                    streamPipeline.initialized(true);
+                }
             } catch (Exception e) {
                 LOGGER.warn("Exception when trying to initialize the connection", e);
                 streamPipeline.initialized(false);
+            } finally {
+                initializeCalled = true;
+                initializing.release();
             }
         }
         streamPipeline.sendMessage(byteBuffers, lastRequestId);
@@ -104,22 +110,31 @@ class InternalStreamConnection implements InternalConnection {
     @Override
     public void sendMessageAsync(final List<ByteBuf> byteBuffers, final int lastRequestId, final SingleResultCallback<Void> callback) {
         if (!initializeCalled) {
-            connectionInitializer.initialize(new SingleResultCallback<Void>() {
-                @Override
-                public void onResult(final Void result, final MongoException e) {
-                    if (e != null) {
-                        streamPipeline.initialized(false);
-                    } else {
-                        streamPipeline.initialized(true);
-                        try {
-                            connectionListener.connectionOpened(new ConnectionEvent(clusterId, stream.getAddress(), getId()));
-                        } catch (Throwable t) {
-                            LOGGER.warn("Exception when trying to signal messagesSent to the connectionListener", t);
+            try {
+                if (initializing.tryAcquire() && !initializeCalled) {
+                    connectionInitializer.initialize(new SingleResultCallback<Void>() {
+                        @Override
+                        public void onResult(final Void result, final MongoException e) {
+                            if (e != null) {
+                                streamPipeline.initialized(false);
+                            } else {
+                                streamPipeline.initialized(true);
+                                try {
+                                    connectionListener.connectionOpened(new ConnectionEvent(clusterId, stream.getAddress(), getId()));
+                                } catch (Throwable t) {
+                                    LOGGER.warn("Exception when trying to signal connectionOpened to the connectionListener", t);
+                                }
+                            }
                         }
-                    }
+                    });
                 }
-            });
-            initializeCalled = true;
+            } catch (Exception e) {
+                LOGGER.warn("Exception when trying to initialize the connection", e);
+                streamPipeline.initialized(false);
+            } finally {
+                initializeCalled = true;
+                initializing.release();
+            }
         }
         streamPipeline.sendMessageAsync(byteBuffers, lastRequestId, callback);
     }
