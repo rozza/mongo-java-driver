@@ -90,7 +90,7 @@ class StreamPipeline {
             try {
                 connectionListener.connectionOpened(new ConnectionEvent(clusterId, stream.getAddress(), internalConnection.getId()));
             } catch (Throwable t) {
-                LOGGER.warn("Exception when trying to signal messagesSent to the connectionListener", t);
+                LOGGER.warn("Exception when trying to signal connectionOpened to the connectionListener", t);
             }
         } else {
             close();

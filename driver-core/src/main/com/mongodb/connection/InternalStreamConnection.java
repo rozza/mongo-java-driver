@@ -119,11 +119,6 @@ class InternalStreamConnection implements InternalConnection {
                                 streamPipeline.initialized(false);
                             } else {
                                 streamPipeline.initialized(true);
-                                try {
-                                    connectionListener.connectionOpened(new ConnectionEvent(clusterId, stream.getAddress(), getId()));
-                                } catch (Throwable t) {
-                                    LOGGER.warn("Exception when trying to signal connectionOpened to the connectionListener", t);
-                                }
                             }
                         }
                     });
