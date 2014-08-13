@@ -48,7 +48,6 @@ public class MapReduceCommand {
     private Map<String, Object> scope;
     private Boolean jsMode = false;
     private Boolean verbose;
-    private DBObject extraOptions;
 
     /**
      * Represents the command for a map reduce operation Runs the command in REPLACE output type to a named collection
@@ -326,22 +325,7 @@ public class MapReduceCommand {
             cmd.put("jsMode", jsMode);
         }
 
-        if (extraOptions != null) {
-            cmd.putAll(extraOptions);
-        }
-
         return cmd;
-    }
-
-    public void addExtraOption(final String name, final Object value) {
-        if (extraOptions == null) {
-            extraOptions = new BasicDBObject();
-        }
-        extraOptions.put(name, value);
-    }
-
-    public DBObject getExtraOptions() {
-        return extraOptions;
     }
 
     /**
