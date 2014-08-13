@@ -46,6 +46,7 @@ public class MapReduceCommand {
     private int limit;
     private long maxTimeMS;
     private Map<String, Object> scope;
+    private Boolean jsMode = false;
     private Boolean verbose;
     private DBObject extraOptions;
 
@@ -245,6 +246,24 @@ public class MapReduceCommand {
     }
 
     /**
+     * Gets the (optional) JavaScript mode
+     *
+     * @return The JavaScript mode
+     */
+    public Boolean getJsMode(){
+        return jsMode;
+    }
+
+    /**
+     * Sets the (optional) JavaScript Mode
+     *
+     * @param jsMode Specifies whether to convert intermediate data into BSON format between the execution of the map and reduce functions
+     */
+    public void setJsMode(final boolean jsMode){
+        this.jsMode = jsMode;
+    }
+
+    /**
      * Sets the (optional) database name where the output collection should reside
      *
      * @param outputDB the name of the database to send the Map Reduce output to
@@ -301,6 +320,10 @@ public class MapReduceCommand {
 
         if (scope != null) {
             cmd.put("scope", scope);
+        }
+
+        if (jsMode) {
+            cmd.put("jsMode", jsMode);
         }
 
         if (extraOptions != null) {
