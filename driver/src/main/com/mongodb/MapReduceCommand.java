@@ -332,6 +332,10 @@ public class MapReduceCommand {
             cmd.put("jsMode", jsMode);
         }
 
+        if (maxTimeMS != 0) {
+            cmd.put("maxTimeMS", maxTimeMS);
+        }
+
         return cmd;
     }
 
@@ -414,6 +418,10 @@ public class MapReduceCommand {
 
         if (sort != null) {
             mapReduce.sort(new BsonDocumentWrapper<DBObject>(sort, codec));
+        }
+
+        if (jsMode) {
+            mapReduce.jsMode();
         }
 
         mapReduce.limit(limit);
