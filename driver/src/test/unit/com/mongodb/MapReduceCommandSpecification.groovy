@@ -49,7 +49,7 @@ class MapReduceCommandSpecification extends FunctionalSpecification {
         field               | value                     | expected
         'finalize'          | cmd.getFinalize()         | null
         'input'             | cmd.getInput()            | getClass().getName()
-        'jsMode'            | cmd.getJsMode()           | false
+        'jsMode'            | cmd.getJsMode()           | null
         'limit'             | cmd.getLimit()            | 0
         'map'               | cmd.getMap()              | 'map'
         'maxTime'           | cmd.getMaxTime(SECONDS)   | 0
@@ -125,6 +125,31 @@ class MapReduceCommandSpecification extends FunctionalSpecification {
 
         then:
         cmd.getMapReduce(collection.getDefaultDBObjectCodec()) == expected
+    }
+
+
+    def 'should produce the expected DBobject when changed'() throws Exception {
+        given:
+        cmd.with {
+            setFinalize('final')
+            setJsMode(true)
+            setLimit(100)
+            setMaxTime(1, SECONDS)
+            setOutputDB('outDB')
+            setReadPreference(primary())
+            setScope(scope())
+            setSort(sort())
+            setVerbose(false)
+        }
+
+        when:
+        def expected = [mapreduce: getClass().getName(), map: 'map', reduce: 'reduce', verbose: false,
+                        out: [reduce: 'test', db: 'outDB'] as BasicDBObject, query: [:] as BasicDBObject,
+                        finalize: 'final', sort: sort(), limit: 100, scope: scope(), jsMode: true,
+                        maxTimeMS: 1000] as BasicDBObject
+
+        then:
+        cmd.toDBObject() == expected
     }
 
 }

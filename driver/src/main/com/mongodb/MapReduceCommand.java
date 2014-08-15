@@ -46,7 +46,7 @@ public class MapReduceCommand {
     private int limit;
     private long maxTimeMS;
     private Map<String, Object> scope;
-    private Boolean jsMode = false;
+    private Boolean jsMode;
     private Boolean verbose;
 
     /**
@@ -258,7 +258,7 @@ public class MapReduceCommand {
      *
      * @param jsMode Specifies whether to convert intermediate data into BSON format between the execution of the map and reduce functions
      */
-    public void setJsMode(final boolean jsMode){
+    public void setJsMode(final Boolean jsMode){
         this.jsMode = jsMode;
     }
 
@@ -284,7 +284,10 @@ public class MapReduceCommand {
         cmd.put("mapreduce", mapReduce);
         cmd.put("map", map);
         cmd.put("reduce", reduce);
-        cmd.put("verbose", verbose);
+
+        if (verbose != null) {
+            cmd.put("verbose", verbose);
+        }
 
         BasicDBObject out = new BasicDBObject();
         switch (outputType) {
@@ -328,7 +331,7 @@ public class MapReduceCommand {
             cmd.put("scope", scope);
         }
 
-        if (jsMode) {
+        if (jsMode != null) {
             cmd.put("jsMode", jsMode);
         }
 
@@ -420,7 +423,7 @@ public class MapReduceCommand {
             mapReduce.sort(new BsonDocumentWrapper<DBObject>(sort, codec));
         }
 
-        if (jsMode) {
+        if (jsMode != null) {
             mapReduce.jsMode();
         }
 
