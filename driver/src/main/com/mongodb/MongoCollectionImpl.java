@@ -44,11 +44,13 @@ import com.mongodb.client.model.InsertManyOptions;
 import com.mongodb.client.model.InsertOneModel;
 import com.mongodb.client.model.ReplaceOneModel;
 import com.mongodb.client.model.ReplaceOneOptions;
+import com.mongodb.client.model.ParallelCollectionScanModel;
 import com.mongodb.client.model.UpdateManyModel;
 import com.mongodb.client.model.UpdateManyOptions;
 import com.mongodb.client.model.UpdateOneModel;
 import com.mongodb.client.model.UpdateOneOptions;
 import com.mongodb.client.model.WriteModel;
+import com.mongodb.client.model.ParallelCollectionScanOptions;
 import com.mongodb.client.result.DeleteResult;
 import com.mongodb.client.result.UpdateResult;
 import com.mongodb.codecs.CollectibleCodec;
@@ -65,6 +67,7 @@ import com.mongodb.operation.InsertOperation;
 import com.mongodb.operation.InsertRequest;
 import com.mongodb.operation.MixedBulkWriteOperation;
 import com.mongodb.operation.OperationExecutor;
+import com.mongodb.operation.ParallelCollectionScanOperation;
 import com.mongodb.operation.ReadOperation;
 import com.mongodb.operation.RemoveOperation;
 import com.mongodb.operation.RemoveRequest;
@@ -452,6 +455,45 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
     }
 
     @Override
+    public List<MongoIterable<T>> parallelCollectionScan(final int numCursors) {
+        return parallelCollectionScan(new ParallelCollectionScanModel(numCursors), getCodec());
+    }
+
+    @Override
+    public List<MongoIterable<T>> parallelCollectionScan(final int numCursors,
+                                                         final ParallelCollectionScanOptions parallelCollectionScanOptions) {
+        return parallelCollectionScan(new ParallelCollectionScanModel(numCursors, parallelCollectionScanOptions), getCodec());
+    }
+
+    @Override
+    public <C> List<MongoIterable<C>> parallelCollectionScan(final int numCursors, final Class<C> clazz) {
+        return parallelCollectionScan(new ParallelCollectionScanModel(numCursors), getCodec(clazz));
+    }
+
+    @Override
+    public <C> List<MongoIterable<C>> parallelCollectionScan(final int numCursors,
+                                                             final ParallelCollectionScanOptions parallelCollectionScanOptions,
+                                                             final Class<C> clazz) {
+        return parallelCollectionScan(new ParallelCollectionScanModel(numCursors, parallelCollectionScanOptions), getCodec(clazz));
+    }
+
+    private <C> List<MongoIterable<C>> parallelCollectionScan(final ParallelCollectionScanModel parallelCollectionScanModel,
+                                                              final Decoder<C> decoder) {
+        List<MongoCursor<C>> cursors = operationExecutor.execute(new ParallelCollectionScanOperation<C>(namespace,
+                                                                                                        parallelCollectionScanModel
+                                                                                                            .getNumCursors(),
+                                                                                                        decoder)
+                                                                     .batchSize(parallelCollectionScanModel.getOptions().getBatchSize()),
+                                                                 options.getReadPreference());
+
+        List<MongoIterable<C>> parallelScanList = new ArrayList<MongoIterable<C>>(cursors.size());
+        for (MongoCursor<C> cursor : cursors) {
+            parallelScanList.add(new MongoCursorIterable<C>(cursor));
+        }
+        return parallelScanList;
+    }
+
+    @Override
     public Document explain(final ExplainableModel explainableModel, final ExplainVerbosity verbosity) {
         if (explainableModel instanceof AggregateModel) {
             return explainAggregate((AggregateModel) explainableModel, verbosity);
@@ -491,6 +533,10 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
     }
 
     private Codec<T> getCodec() {
+        return getCodec(clazz);
+    }
+
+    private <C> Codec<C> getCodec(final Class<C> clazz) {
         return options.getCodecRegistry().get(clazz);
     }
 
@@ -611,7 +657,54 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
             } finally {
                 cursor.close();
             }
+        }
 
+        @Override
+        public <A extends Collection<? super D>> A into(final A target) {
+            forEach(new Block<D>() {
+                @Override
+                public void apply(final D document) {
+                    target.add(document);
+                }
+            });
+            return target;
+        }
+    }
+
+    private final class MongoCursorIterable<D> implements MongoIterable<D> {
+        private final MongoCursor<D> cursor;
+
+        private MongoCursorIterable(final MongoCursor<D> cursor) {
+            this.cursor = cursor;
+        }
+
+        @Override
+        public MongoCursor<D> iterator() {
+            return cursor;
+        }
+
+        @Override
+        public D first() {
+            if (!cursor.hasNext()) {
+                return null;
+            }
+            return cursor.next();
+        }
+
+        @Override
+        public <U> MongoIterable<U> map(final Function<D, U> mapper) {
+            return new MappingIterable<D, U>(this, mapper);
+        }
+
+        @Override
+        public void forEach(final Block<? super D> block) {
+            try {
+                while (cursor.hasNext()) {
+                    block.apply(cursor.next());
+                }
+            } finally {
+                cursor.close();
+            }
         }
 
         @Override
