@@ -215,12 +215,12 @@ public interface MongoCollection<T> {
      *
      * @param mapFunction A JavaScript function that associates or "maps" a value with a key and emits the key and value pair.
      * @param reduceFunction A JavaScript function that "reduces" to a single object all the values associated with a particular key.
-     * @param clazz the class to decode each resulting document into.
      * @param options The specific options for the map-reduce command.
+     * @param clazz the class to decode each resulting document into.
      * @return an iterable containing the result of the map-reduce operation
      * @mongodb.driver.manual reference/command/mapReduce/ map-reduce
      */
-    <C> MongoIterable<C> mapReduce(String mapFunction, String reduceFunction, Class<C> clazz, MapReduceOptions options);
+    <C> MongoIterable<C> mapReduce(String mapFunction, String reduceFunction, MapReduceOptions options, Class<C> clazz);
 
     /**
      * Executes a mix of inserts, updates, replaces, and deletes.

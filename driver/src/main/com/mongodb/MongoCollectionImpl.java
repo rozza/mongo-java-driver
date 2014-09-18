@@ -247,8 +247,8 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
     }
 
     @Override
-    public <C> MongoIterable<C> mapReduce(final String mapFunction, final String reduceFunction, final Class<C> clazz,
-                                          final MapReduceOptions options) {
+    public <C> MongoIterable<C> mapReduce(final String mapFunction, final String reduceFunction, final MapReduceOptions options,
+                                          final Class<C> clazz) {
         return mapReduce(new MapReduceModel(mapFunction, reduceFunction, options), clazz);
     }
 
