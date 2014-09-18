@@ -17,6 +17,7 @@
 package com.mongodb.client;
 
 import com.mongodb.ExplainVerbosity;
+import com.mongodb.MongoCursor;
 import com.mongodb.MongoNamespace;
 import com.mongodb.annotations.ThreadSafe;
 import com.mongodb.client.model.AggregateOptions;
@@ -412,7 +413,7 @@ public interface MongoCollection<T> {
      * @return a list of MongoIterable, whose size may be less than the number requested
      * @mongodb.server.release 2.6
      */
-    List<MongoIterable<T>> parallelCollectionScan(int numCursors);
+    List<MongoCursor<T>> parallelCollectionScan(int numCursors);
 
     /**
      * Create multiple parallel cursors for reading all the documents from a collection, thereby increasing throughput.
@@ -422,7 +423,7 @@ public interface MongoCollection<T> {
      * @return a list of MongoIterable, whose size may be less than the number requested
      * @mongodb.server.release 2.6
      */
-    List<MongoIterable<T>> parallelCollectionScan(int numCursors, ParallelCollectionScanOptions parallelCollectionScanOptions);
+    List<MongoCursor<T>> parallelCollectionScan(int numCursors, ParallelCollectionScanOptions parallelCollectionScanOptions);
 
     /**
      * Create multiple parallel cursors for reading all the documents from a collection, thereby increasing throughput.
@@ -432,7 +433,7 @@ public interface MongoCollection<T> {
      * @return a list of MongoIterable, whose size may be less than the number requested
      * @mongodb.server.release 2.6
      */
-    <C> List<MongoIterable<C>> parallelCollectionScan(int numCursors, Class<C> clazz);
+    <C> List<MongoCursor<C>> parallelCollectionScan(int numCursors, Class<C> clazz);
 
     /**
      * Create multiple parallel cursors for reading all the documents from a collection, thereby increasing throughput.
@@ -443,7 +444,7 @@ public interface MongoCollection<T> {
      * @return a list of MongoIterable, whose size may be less than the number requested
      * @mongodb.server.release 2.6
      */
-    <C> List<MongoIterable<C>> parallelCollectionScan(int numCursors, ParallelCollectionScanOptions parallelCollectionScanOptions,
+    <C> List<MongoCursor<C>> parallelCollectionScan(int numCursors, ParallelCollectionScanOptions parallelCollectionScanOptions,
                                                       Class<C> clazz);
 
     /**
