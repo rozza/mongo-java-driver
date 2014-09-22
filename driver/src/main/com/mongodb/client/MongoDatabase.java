@@ -18,7 +18,11 @@ package com.mongodb.client;
 
 import com.mongodb.ReadPreference;
 import com.mongodb.annotations.ThreadSafe;
+import com.mongodb.client.model.CreateCollectionOptions;
+import com.mongodb.client.model.RenameCollectionOptions;
 import org.mongodb.Document;
+
+import java.util.List;
 
 /**
  * Additions to this interface will not be considered to break binary compatibility.
@@ -41,5 +45,59 @@ public interface MongoDatabase {
 
     <T> MongoCollection<T> getCollection(String collectionName, Class<T> clazz, MongoCollectionOptions options);
 
-    DatabaseAdministration tools();
+
+    /**
+     * Drops this database.
+     *
+     * @mongodb.driver.manual reference/commands/dropDatabase/#dbcmd.dropDatabase Drop database
+     */
+    void dropDatabase();
+
+    /**
+     * Gets the names of all the collections in this database.
+     *
+     * @return a set of the names of all the collections in this database
+     */
+    List<String> getCollectionNames();
+
+    /**
+     * Create a new collection with the given name.
+     *
+     * @param collectionName the name for the new collection to create
+     * @mongodb.driver.manual reference/commands/create Create Command
+     */
+    void createCollection(String collectionName);
+
+    /**
+     * Create a new collection with the selected options
+     *
+     * @param collectionName          the name for the new collection to create
+     * @param createCollectionOptions various options for creating the collection
+     * @mongodb.driver.manual reference/commands/create Create Command
+     */
+    void createCollection(String collectionName, CreateCollectionOptions createCollectionOptions);
+
+    /**
+     * Rename the collection with oldCollectionName to the newCollectionName.
+     *
+     * @param oldCollectionName the collection to rename
+     * @param newCollectionName the name the collection will be renamed to
+     * @throws com.mongodb.MongoServerException if you provide a newCollectionName that is the name of an existing collection, or if the
+     *                                          oldCollectionName is the name of a collection that doesn't exist
+     * @mongodb.driver.manual reference/commands/renameCollection Rename collection
+     */
+    void renameCollection(String oldCollectionName, String newCollectionName);
+
+    /**
+     * Rename the collection with oldCollectionName to the newCollectionName.
+     *
+     * @param oldCollectionName       the collection to rename
+     * @param newCollectionName       the name the collection will be renamed to
+     * @param renameCollectionOptions the options for renaming a collection
+     * @throws com.mongodb.MongoServerException if you provide a newCollectionName that is the name of an existing collection and dropTarget
+     *                                          is false, or if the oldCollectionName is the name of a collection that doesn't exist
+     * @mongodb.driver.manual reference/commands/renameCollection Rename collection
+     */
+    void renameCollection(String oldCollectionName, String newCollectionName, RenameCollectionOptions renameCollectionOptions);
+
 }

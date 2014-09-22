@@ -20,11 +20,11 @@ import com.mongodb.ReadPreference;
 import com.mongodb.async.MongoFuture;
 
 /**
- * An interface describing the execution of a read or a write operation.
+ * An interface describing the execution of an async read or a write operation.
  *
  * @since 3.0
  */
-public interface OperationExecutor {
+public interface AsyncOperationExecutor {
     /**
      * Execute the read operation with the given read preference.
      *
@@ -33,7 +33,7 @@ public interface OperationExecutor {
      * @param <T> the operations result type.
      * @return the result of executing the operation.
      */
-    <T> T execute(ReadOperation<T> operation, ReadPreference readPreference);
+    <T> MongoFuture<T> execute(AsyncReadOperation<T> operation, ReadPreference readPreference);
 
     /**
      * Execute the write operation.
@@ -42,5 +42,5 @@ public interface OperationExecutor {
      * @param <T> the operations result type.
      * @return the result of executing the operation.
      */
-    <T> T execute(WriteOperation<T> operation);
+    <T> MongoFuture<T> execute(AsyncWriteOperation<T> operation);
 }

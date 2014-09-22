@@ -933,7 +933,7 @@ public class DBCollection {
      * @throws MongoException if target is the name of an existing collection and {@code dropTarget=false}.
      */
     public DBCollection rename(final String newName, final boolean dropTarget) {
-        execute(new RenameCollectionOperation(getNamespace().getDatabaseName(), getName(), newName, dropTarget));
+        execute(new RenameCollectionOperation(getNamespace().getDatabaseName(), getName(), newName).dropTarget(dropTarget));
         return getDB().getCollection(newName);
     }
 
