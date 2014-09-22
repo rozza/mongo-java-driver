@@ -98,14 +98,14 @@ public class CollectionAcceptanceTest extends DatabaseTestCase {
     @Test
     public void shouldDropExistingCollection() {
         String collectionName = "shouldDropExistingCollection";
-        database.tools().createCollection(collectionName);
+        database.createCollection(collectionName);
         MongoCollection<Document> newCollection = database.getCollection(collectionName);
 
-        assertThat(database.tools().getCollectionNames().contains(collectionName), is(true));
+        assertThat(database.getCollectionNames().contains(collectionName), is(true));
 
         newCollection.tools().drop();
 
-        assertThat(database.tools().getCollectionNames().contains(collectionName), is(false));
+        assertThat(database.getCollectionNames().contains(collectionName), is(false));
     }
 
     @Test
