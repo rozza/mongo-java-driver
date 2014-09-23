@@ -16,8 +16,6 @@
 
 package com.mongodb.client.model;
 
-import static com.mongodb.assertions.Assertions.notNull;
-
 /**
  * Options for creating a collection
  *
@@ -30,27 +28,6 @@ public class CreateCollectionOptions {
     private boolean capped;
     private long sizeInBytes;
     private Boolean usePowerOf2Sizes;
-
-    /**
-     * Construct a new instance.
-     *
-     * @param capped whether the collection is capped
-     * @param sizeInBytes the maximum size of the collection in bytes.  Only applies to capped collections.
-     * @param autoIndex whether the _id field of the collection is indexed.  Only applies to capped collections
-     * @param maxDocuments the maximum number of documents in the collection.  Only applies to capped collections
-     * @param usePowerOf2Sizes use the usePowerOf2Sizes allocation strategy for this collection.
-     *
-     * @mongodb.driver.manual manual/reference/command/collMod/#usePowerOf2Sizes usePowerOf2Sizes
-     * @mongodb.server.release 2.6
-     */
-    public void CreateCollectionOptions1(final boolean capped, final long sizeInBytes, final boolean autoIndex,
-                                   final long maxDocuments, final Boolean usePowerOf2Sizes) {
-        this.capped = capped;
-        this.sizeInBytes = sizeInBytes;
-        this.autoIndex = autoIndex;
-        this.maxDocuments = maxDocuments;
-        this.usePowerOf2Sizes = usePowerOf2Sizes;
-    }
 
     /**
      * Gets if auto-index is enabled

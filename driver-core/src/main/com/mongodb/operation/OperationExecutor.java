@@ -17,7 +17,6 @@
 package com.mongodb.operation;
 
 import com.mongodb.ReadPreference;
-import com.mongodb.async.MongoFuture;
 
 /**
  * An interface describing the execution of a read or a write operation.

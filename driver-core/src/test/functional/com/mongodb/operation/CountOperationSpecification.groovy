@@ -22,6 +22,7 @@ import com.mongodb.MongoException
 import com.mongodb.MongoExecutionTimeoutException
 import com.mongodb.OperationFunctionalSpecification
 import com.mongodb.codecs.DocumentCodec
+import org.bson.BsonBoolean
 import org.bson.BsonDocument
 import org.bson.BsonInt32
 import org.bson.BsonString
@@ -35,7 +36,6 @@ import static com.mongodb.ClusterFixture.getAsyncBinding
 import static com.mongodb.ClusterFixture.getBinding
 import static com.mongodb.ClusterFixture.isSharded
 import static com.mongodb.ClusterFixture.serverVersionAtLeast
-import static com.mongodb.operation.OrderBy.ASC
 import static java.util.Arrays.asList
 import static java.util.concurrent.TimeUnit.SECONDS
 
@@ -140,7 +140,7 @@ class CountOperationSpecification extends OperationFunctionalSpecification {
 
     def 'should use hint with the count'() {
         given:
-        def index = Index.builder().addKey('x', ASC).sparse().build()
+        def index = new BsonDocument('key', new BsonDocument('x', new BsonInt32(1))).append('sparse', BsonBoolean.TRUE)
         def createIndexesOperation = new CreateIndexesOperation(getNamespace(), [index])
         def countOperation = new CountOperation(getNamespace())
                 .hint(new BsonString('x_1'))
@@ -155,7 +155,7 @@ class CountOperationSpecification extends OperationFunctionalSpecification {
     @Category(Async)
     def 'should use hint with the count asynchronously'() {
         given:
-        def index = Index.builder().addKey('x', ASC).sparse().build()
+        def index = new BsonDocument('key', new BsonDocument('x', new BsonInt32(1))).append('sparse', BsonBoolean.TRUE)
         def createIndexesOperation = new CreateIndexesOperation(getNamespace(), [index])
         def countOperation = new CountOperation(getNamespace())
                 .hint(new BsonString('x_1'))

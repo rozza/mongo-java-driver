@@ -16,7 +16,6 @@
 
 package com.mongodb;
 
-import com.mongodb.client.CollectionAdministration;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCollectionOptions;
 import com.mongodb.client.MongoIterable;
@@ -26,6 +25,8 @@ import com.mongodb.client.model.BulkWriteModel;
 import com.mongodb.client.model.BulkWriteOptions;
 import com.mongodb.client.model.CountModel;
 import com.mongodb.client.model.CountOptions;
+import com.mongodb.client.model.CreateIndexModel;
+import com.mongodb.client.model.CreateIndexOptions;
 import com.mongodb.client.model.DeleteManyModel;
 import com.mongodb.client.model.DeleteOneModel;
 import com.mongodb.client.model.DistinctModel;
@@ -44,15 +45,15 @@ import com.mongodb.client.model.InsertManyOptions;
 import com.mongodb.client.model.InsertOneModel;
 import com.mongodb.client.model.MapReduceModel;
 import com.mongodb.client.model.MapReduceOptions;
+import com.mongodb.client.model.ParallelCollectionScanModel;
+import com.mongodb.client.model.ParallelCollectionScanOptions;
 import com.mongodb.client.model.ReplaceOneModel;
 import com.mongodb.client.model.ReplaceOneOptions;
-import com.mongodb.client.model.ParallelCollectionScanModel;
 import com.mongodb.client.model.UpdateManyModel;
 import com.mongodb.client.model.UpdateManyOptions;
 import com.mongodb.client.model.UpdateOneModel;
 import com.mongodb.client.model.UpdateOneOptions;
 import com.mongodb.client.model.WriteModel;
-import com.mongodb.client.model.ParallelCollectionScanOptions;
 import com.mongodb.client.result.DeleteResult;
 import com.mongodb.client.result.UpdateResult;
 import com.mongodb.codecs.CollectibleCodec;
@@ -60,13 +61,17 @@ import com.mongodb.codecs.DocumentCodec;
 import com.mongodb.operation.AggregateOperation;
 import com.mongodb.operation.AggregateToCollectionOperation;
 import com.mongodb.operation.CountOperation;
+import com.mongodb.operation.CreateIndexesOperation;
 import com.mongodb.operation.DeleteOperation;
 import com.mongodb.operation.DeleteRequest;
 import com.mongodb.operation.DistinctOperation;
+import com.mongodb.operation.DropCollectionOperation;
+import com.mongodb.operation.DropIndexOperation;
 import com.mongodb.operation.FindAndDeleteOperation;
 import com.mongodb.operation.FindAndReplaceOperation;
 import com.mongodb.operation.FindAndUpdateOperation;
 import com.mongodb.operation.FindOperation;
+import com.mongodb.operation.GetIndexesOperation;
 import com.mongodb.operation.InsertOperation;
 import com.mongodb.operation.InsertRequest;
 import com.mongodb.operation.MapReduceToCollectionOperation;
@@ -79,9 +84,11 @@ import com.mongodb.operation.UpdateOperation;
 import com.mongodb.operation.UpdateRequest;
 import com.mongodb.operation.WriteRequest;
 import org.bson.BsonArray;
+import org.bson.BsonBoolean;
 import org.bson.BsonDocument;
 import org.bson.BsonDocumentReader;
 import org.bson.BsonDocumentWrapper;
+import org.bson.BsonInt32;
 import org.bson.BsonJavaScript;
 import org.bson.BsonString;
 import org.bson.BsonValue;
@@ -106,15 +113,15 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
     private final MongoNamespace namespace;
     private final MongoCollectionOptions options;
     private final Class<T> clazz;
-    private final OperationExecutor operationExecutor;
+    private final OperationExecutor executor;
 
     MongoCollectionImpl(final MongoNamespace namespace, final Class<T> clazz,
-                        final MongoCollectionOptions options, final OperationExecutor operationExecutor) {
+                        final MongoCollectionOptions options, final OperationExecutor executor) {
 
         this.namespace = namespace;
         this.clazz = clazz;
         this.options = options;
-        this.operationExecutor = operationExecutor;
+        this.executor = executor;
     }
 
     @Override
@@ -134,11 +141,11 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
 
     @Override
     public long count(final CountOptions options) {
-        return operationExecutor.execute(createCountOperation(new CountModel(options)), this.options.getReadPreference());
+        return executor.execute(createCountOperation(new CountModel(options)), this.options.getReadPreference());
     }
 
     private long count(final CountModel model) {
-        return operationExecutor.execute(createCountOperation(model), options.getReadPreference());
+        return executor.execute(createCountOperation(model), options.getReadPreference());
     }
 
     @Override
@@ -155,7 +162,7 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
         DistinctOperation operation = new DistinctOperation(namespace, model.getFieldName())
                                           .criteria(asBson(model.getOptions().getCriteria()))
                                           .maxTime(model.getOptions().getMaxTime(MILLISECONDS), MILLISECONDS);
-        BsonArray distinctArray = operationExecutor.execute(operation, options.getReadPreference());
+        BsonArray distinctArray = executor.execute(operation, options.getReadPreference());
         List<Object> distinctList = new ArrayList<Object>();
         for (BsonValue value : distinctArray) {
             BsonDocument bsonDocument = new BsonDocument("value", value);
@@ -221,7 +228,7 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
             AggregateToCollectionOperation operation = new AggregateToCollectionOperation(namespace, aggregateList)
                                                            .maxTime(model.getOptions().getMaxTime(MILLISECONDS), MILLISECONDS)
                                                            .allowDiskUse(model.getOptions().getAllowDiskUse());
-            operationExecutor.execute(operation);
+            executor.execute(operation);
             return new OperationIterable<C>(new FindOperation<C>(new MongoNamespace(namespace.getDatabaseName(),
                                                                                     outCollection.asString().getValue()),
                                                                  getCodec(clazz)),
@@ -262,10 +269,10 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
         if (mapReduceOptions.isInline()) {
             MapReduceWithInlineResultsOperation<C> operation =
                 createMapReduceWithInlineResultsOperation(mapReduceModel, getCodec(clazz));
-            return new MapReduceResultsIterable<C>(operation, options.getReadPreference(), operationExecutor);
+            return new MapReduceResultsIterable<C>(operation, options.getReadPreference(), executor);
         } else {
             MapReduceToCollectionOperation operation = createMapReduceToCollectionOperation(mapReduceModel);
-            operationExecutor.execute(operation);
+            executor.execute(operation);
 
             String databaseName = mapReduceOptions.getDatabaseName() != null ? mapReduceOptions.getDatabaseName()
                                                                              : namespace.getDatabaseName();
@@ -326,8 +333,8 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
             requests.add(writeRequest);
         }
 
-        return operationExecutor.execute(new MixedBulkWriteOperation(namespace, requests, model.getOptions().isOrdered(),
-                                                                     options.getWriteConcern()));
+        return executor.execute(new MixedBulkWriteOperation(namespace, requests, model.getOptions().isOrdered(),
+                                                            options.getWriteConcern()));
     }
 
     @Override
@@ -337,7 +344,7 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
         }
         List<InsertRequest> requests = new ArrayList<InsertRequest>();
         requests.add(new InsertRequest(asBson(document)));
-        operationExecutor.execute(new InsertOperation(namespace, true, options.getWriteConcern(), requests));
+        executor.execute(new InsertOperation(namespace, true, options.getWriteConcern(), requests));
     }
 
     @Override
@@ -358,22 +365,22 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
             }
             requests.add(new InsertRequest(asBson(document)));
         }
-        operationExecutor.execute(new InsertOperation(namespace, model.getOptions().isOrdered(), options.getWriteConcern(), requests));
+        executor.execute(new InsertOperation(namespace, model.getOptions().isOrdered(), options.getWriteConcern(), requests));
     }
 
     @Override
     public DeleteResult deleteOne(final Object criteria) {
-        WriteResult writeResult = operationExecutor.execute(new DeleteOperation(namespace, true, options.getWriteConcern(),
-                                                                                asList(new DeleteRequest(asBson(criteria))
-                                                                                           .multi(false))));
+        WriteResult writeResult = executor.execute(new DeleteOperation(namespace, true, options.getWriteConcern(),
+                                                                       asList(new DeleteRequest(asBson(criteria))
+                                                                                  .multi(false))));
         return new DeleteResult(writeResult.getCount());
     }
 
     @Override
     public DeleteResult deleteMany(final Object criteria) {
-        WriteResult writeResult = operationExecutor.execute(new DeleteOperation(namespace, true, options.getWriteConcern(),
-                                                                                asList(new DeleteRequest(asBson(criteria))
-                                                                                           .multi(true))));
+        WriteResult writeResult = executor.execute(new DeleteOperation(namespace, true, options.getWriteConcern(),
+                                                                       asList(new DeleteRequest(asBson(criteria))
+                                                                                  .multi(true))));
         return new DeleteResult(writeResult.getCount());
     }
 
@@ -391,7 +398,7 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
         List<UpdateRequest> requests = new ArrayList<UpdateRequest>();
         requests.add(new UpdateRequest(asBson(model.getCriteria()), asBson(model.getReplacement()), WriteRequest.Type.REPLACE)
                          .upsert(model.getOptions().isUpsert()));
-        WriteResult writeResult = operationExecutor.execute(new UpdateOperation(namespace, true, options.getWriteConcern(), requests));
+        WriteResult writeResult = executor.execute(new UpdateOperation(namespace, true, options.getWriteConcern(), requests));
         return createUpdateResult(writeResult);
     }
 
@@ -407,7 +414,7 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
 
     @Override
     public UpdateResult updateOne(final UpdateOneModel<T> model) {
-        WriteResult writeResult = operationExecutor
+        WriteResult writeResult = executor
                                       .execute(new UpdateOperation(namespace, true, options.getWriteConcern(),
                                                                    asList(new UpdateRequest(asBson(model.getCriteria()),
                                                                                             asBson(model.getUpdate()),
@@ -428,7 +435,7 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
     }
 
     private UpdateResult updateMany(final UpdateManyModel<T> model) {
-        WriteResult writeResult = operationExecutor
+        WriteResult writeResult = executor
                                       .execute(new UpdateOperation(namespace, true, options.getWriteConcern(),
                                                                    asList(new UpdateRequest(asBson(model.getCriteria()),
                                                                                             asBson(model.getUpdate()),
@@ -458,7 +465,7 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
                                                   .criteria(asBson(model.getCriteria()))
                                                   .projection(asBson(model.getOptions().getProjection()))
                                                   .sort(asBson(model.getOptions().getSort()));
-        return operationExecutor.execute(operation);
+        return executor.execute(operation);
     }
 
     @Override
@@ -478,7 +485,7 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
                                                   .sort(asBson(model.getOptions().getSort()))
                                                   .returnUpdated(model.getOptions().getReturnUpdated())
                                                   .upsert(model.getOptions().isUpsert());
-        return operationExecutor.execute(operation);
+        return executor.execute(operation);
     }
 
     private T findOneAndReplace(final FindOneAndReplaceModel<T> model) {
@@ -488,7 +495,7 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
                                                    .sort(asBson(model.getOptions().getSort()))
                                                    .returnReplaced(model.getOptions().getReturnReplaced())
                                                    .upsert(model.getOptions().isUpsert());
-        return operationExecutor.execute(operation);
+        return executor.execute(operation);
     }
 
     @Override
@@ -508,7 +515,7 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
 
     @Override
     public List<MongoCursor<T>> parallelCollectionScan(final int numCursors,
-                                                         final ParallelCollectionScanOptions parallelCollectionScanOptions) {
+                                                       final ParallelCollectionScanOptions parallelCollectionScanOptions) {
         return parallelCollectionScan(new ParallelCollectionScanModel(numCursors, parallelCollectionScanOptions), getCodec());
     }
 
@@ -519,17 +526,15 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
 
     @Override
     public <C> List<MongoCursor<C>> parallelCollectionScan(final int numCursors,
-                                                             final ParallelCollectionScanOptions parallelCollectionScanOptions,
-                                                             final Class<C> clazz) {
+                                                           final ParallelCollectionScanOptions parallelCollectionScanOptions,
+                                                           final Class<C> clazz) {
         return parallelCollectionScan(new ParallelCollectionScanModel(numCursors, parallelCollectionScanOptions), getCodec(clazz));
     }
 
     private <C> List<MongoCursor<C>> parallelCollectionScan(final ParallelCollectionScanModel parallelCollectionScanModel,
-                                                              final Decoder<C> decoder) {
-        return operationExecutor.execute(new ParallelCollectionScanOperation<C>(namespace, parallelCollectionScanModel.getNumCursors(),
-                                                                                decoder)
-                                             .batchSize(parallelCollectionScanModel.getOptions().getBatchSize()),
-                                         options.getReadPreference());
+                                                            final Decoder<C> decoder) {
+        return executor.execute(new ParallelCollectionScanOperation<C>(namespace, parallelCollectionScanModel.getNumCursors(), decoder)
+                                    .batchSize(parallelCollectionScanModel.getOptions().getBatchSize()), options.getReadPreference());
     }
 
     @Override
@@ -548,21 +553,90 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
     }
 
     @Override
-    public CollectionAdministration tools() {
-        return new CollectionAdministrationImpl(getNamespace(), operationExecutor);
+    public void dropCollection() {
+        executor.execute(new DropCollectionOperation(namespace));
+    }
+
+    @Override
+    public void createIndex(final Object key) {
+        createIndexes(asList(new CreateIndexModel(key, new CreateIndexOptions())));
+    }
+
+    @Override
+    public void createIndex(final Object key, final CreateIndexOptions createIndexOptions) {
+        createIndexes(asList(new CreateIndexModel(key, createIndexOptions)));
+    }
+
+    @Override
+    public void createIndexes(final List<CreateIndexModel> indexModels) {
+        List<BsonDocument> indexes = new ArrayList<BsonDocument>();
+        for (CreateIndexModel index : indexModels) {
+            indexes.add(createIndexModelToBsonDocument(index));
+        }
+        executor.execute(new CreateIndexesOperation(namespace, indexes));
+    }
+
+    private BsonDocument createIndexModelToBsonDocument(final CreateIndexModel index) {
+        CreateIndexOptions options = index.getOptions();
+        BsonDocument indexDetails = new BsonDocument();
+        if (options.getName() != null) {
+            indexDetails.append("name", new BsonString(options.getName()));
+        }
+        indexDetails.append("key", asBson(index.getKeys()));
+        if (options.isUnique()) {
+            indexDetails.append("unique", BsonBoolean.TRUE);
+        }
+        if (options.isSparse()) {
+            indexDetails.append("sparse", BsonBoolean.TRUE);
+        }
+        if (options.isDropDups()) {
+            indexDetails.append("dropDups", BsonBoolean.TRUE);
+        }
+        if (options.isBackground()) {
+            indexDetails.append("background", BsonBoolean.TRUE);
+        }
+        if (options.getExpireAfterSeconds() != null) {
+            indexDetails.append("expireAfterSeconds", new BsonInt32(options.getExpireAfterSeconds()));
+        }
+        Object extraIndexOptions = options.getExtraIndexOptions();
+        if (extraIndexOptions != null) {
+            indexDetails.putAll(asBson(extraIndexOptions));
+        }
+        indexDetails.put("ns", new BsonString(namespace.getFullName()));
+        return indexDetails;
+    }
+
+    @Override
+    public List<Document> getIndexes() {
+        return getIndexes(Document.class);
+    }
+
+    @Override
+    public <C> List<C> getIndexes(final Class<C> clazz) {
+        return executor.execute(new GetIndexesOperation<C>(namespace, getCodec(clazz)), options.getReadPreference());
+    }
+
+    @Override
+    public void dropIndex(final String indexName) {
+        executor.execute(new DropIndexOperation(namespace, indexName));
+    }
+
+    @Override
+    public void dropIndexes() {
+        dropIndex("*");
     }
 
     private Document explainCount(final CountModel countModel, final ExplainVerbosity verbosity) {
         CountOperation countOperation = createCountOperation(countModel);
-        BsonDocument bsonDocument = operationExecutor.execute(countOperation.asExplainableOperation(verbosity),
-                                                              options.getReadPreference());
+        BsonDocument bsonDocument = executor.execute(countOperation.asExplainableOperation(verbosity),
+                                                     options.getReadPreference());
         return new DocumentCodec().decode(new BsonDocumentReader(bsonDocument), DecoderContext.builder().build());
     }
 
     private Document explainFind(final FindModel findModel, final ExplainVerbosity verbosity) {
         FindOperation<BsonDocument> findOperation = createQueryOperation(findModel, new BsonDocumentCodec());
-        BsonDocument bsonDocument = operationExecutor.execute(findOperation.asExplainableOperation(verbosity),
-                                                              options.getReadPreference());
+        BsonDocument bsonDocument = executor.execute(findOperation.asExplainableOperation(verbosity),
+                                                     options.getReadPreference());
         return new DocumentCodec().decode(new BsonDocumentReader(bsonDocument), DecoderContext.builder().build());
     }
 
@@ -570,7 +644,7 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
         AggregateOperation<BsonDocument> operation = createAggregateOperation(aggregateModel,
                                                                               createBsonDocumentList(aggregateModel.getPipeline()),
                                                                               new BsonDocumentCodec());
-        BsonDocument bsonDocument = operationExecutor.execute(operation.asExplainableOperation(verbosity), options.getReadPreference());
+        BsonDocument bsonDocument = executor.execute(operation.asExplainableOperation(verbosity), options.getReadPreference());
         return new DocumentCodec().decode(new BsonDocumentReader(bsonDocument), DecoderContext.builder().build());
     }
 
@@ -579,10 +653,10 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
         if (mapReduceModel.getOptions().isInline()) {
             MapReduceWithInlineResultsOperation<BsonDocument> operation =
                 createMapReduceWithInlineResultsOperation(mapReduceModel, new BsonDocumentCodec());
-            bsonDocument = operationExecutor.execute(operation.asExplainableOperation(verbosity), options.getReadPreference());
+            bsonDocument = executor.execute(operation.asExplainableOperation(verbosity), options.getReadPreference());
         } else {
             MapReduceToCollectionOperation operation = createMapReduceToCollectionOperation(mapReduceModel);
-            bsonDocument = operationExecutor.execute(operation.asExplainableOperation(verbosity), options.getReadPreference());
+            bsonDocument = executor.execute(operation.asExplainableOperation(verbosity), options.getReadPreference());
         }
         return new DocumentCodec().decode(new BsonDocumentReader(bsonDocument), DecoderContext.builder().build());
     }
@@ -741,7 +815,7 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
 
         @Override
         public MongoCursor<D> iterator() {
-            return operationExecutor.execute(operation, readPreference);
+            return executor.execute(operation, readPreference);
         }
 
         @Override

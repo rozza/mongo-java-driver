@@ -62,7 +62,7 @@ public class DatabaseAcceptanceTest extends DatabaseTestCase {
         Boolean isCapped = database.executeCommand(collStatsCommand, ReadPreference.primary()).getBoolean("capped");
         assertThat(isCapped, is(true));
 
-        assertThat("Should have the default index on _id", collection.tools().getIndexes().size(), is(1));
+        assertThat("Should have the default index on _id", collection.getIndexes().size(), is(1));
     }
 
     @Test
@@ -80,7 +80,7 @@ public class DatabaseAcceptanceTest extends DatabaseTestCase {
         Boolean isCapped = database.executeCommand(collStatsCommand, ReadPreference.primary()).getBoolean("capped");
         assertThat(isCapped, is(true));
 
-        assertThat("Should NOT have the default index on _id", collection.tools().getIndexes().size(), is(0));
+        assertThat("Should NOT have the default index on _id", collection.getIndexes().size(), is(0));
     }
 
     @Test

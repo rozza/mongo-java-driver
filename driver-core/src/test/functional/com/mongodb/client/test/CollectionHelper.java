@@ -28,7 +28,6 @@ import com.mongodb.operation.CreateIndexesOperation;
 import com.mongodb.operation.DropCollectionOperation;
 import com.mongodb.operation.DropDatabaseOperation;
 import com.mongodb.operation.FindOperation;
-import com.mongodb.operation.Index;
 import com.mongodb.operation.InsertOperation;
 import com.mongodb.operation.InsertRequest;
 import org.bson.BsonDocument;
@@ -149,7 +148,7 @@ public final class CollectionHelper<T> {
         return new BsonDocumentWrapper<Document>(document, new DocumentCodec());
     }
 
-    public void createIndexes(final List<Index> indexes) {
+    public void createIndexes(final List<BsonDocument> indexes) {
         new CreateIndexesOperation(namespace, indexes).execute(getBinding());
     }
 }

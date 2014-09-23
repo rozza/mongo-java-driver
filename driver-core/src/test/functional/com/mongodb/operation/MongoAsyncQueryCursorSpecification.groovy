@@ -190,7 +190,7 @@ class MongoAsyncQueryCursorSpecification extends OperationFunctionalSpecificatio
         setup:
         AsyncConnectionSource source = getAsyncBinding().getReadConnectionSource().get()
         Connection connection = source.getConnection().get()
-        getCollectionHelper().create(getCollectionName(), new CreateCollectionOptions(true, 1000))
+        getCollectionHelper().create(getCollectionName(), new CreateCollectionOptions().capped(true).sizeInBytes(1000))
         def timestamp = new BsonTimestamp(5, 0)
         getCollectionHelper().insertDocuments(new DocumentCodec(), [_id: 1, ts: timestamp] as Document)
 

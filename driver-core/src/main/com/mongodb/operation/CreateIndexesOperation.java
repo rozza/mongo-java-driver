@@ -31,6 +31,7 @@ import org.bson.BsonArray;
 import org.bson.BsonDocument;
 import org.bson.BsonInt32;
 import org.bson.BsonString;
+import org.bson.BsonValue;
 import org.mongodb.WriteResult;
 
 import java.util.List;
@@ -38,7 +39,6 @@ import java.util.List;
 import static com.mongodb.assertions.Assertions.notNull;
 import static com.mongodb.operation.CommandOperationHelper.executeWrappedCommandProtocol;
 import static com.mongodb.operation.CommandOperationHelper.executeWrappedCommandProtocolAsync;
-import static com.mongodb.operation.DocumentHelper.putIfTrue;
 import static com.mongodb.operation.OperationHelper.AsyncCallableWithConnection;
 import static com.mongodb.operation.OperationHelper.CallableWithConnection;
 import static com.mongodb.operation.OperationHelper.DUPLICATE_KEY_ERROR_CODES;
@@ -53,7 +53,7 @@ import static java.util.Arrays.asList;
  */
 public class CreateIndexesOperation implements AsyncWriteOperation<Void>, WriteOperation<Void> {
     private final MongoNamespace namespace;
-    private final List<Index> indexes;
+    private final List<BsonDocument> indexes;
     private final MongoNamespace systemIndexes;
 
     /**
@@ -62,7 +62,7 @@ public class CreateIndexesOperation implements AsyncWriteOperation<Void>, WriteO
      * @param namespace the database and collection namespace for the operation.
      * @param indexes the indexes to create.
      */
-    public CreateIndexesOperation(final MongoNamespace namespace, final List<Index> indexes) {
+    public CreateIndexesOperation(final MongoNamespace namespace, final List<BsonDocument> indexes) {
         this.namespace = notNull("namespace", namespace);
         this.indexes = notNull("indexes", indexes);
         this.systemIndexes = new MongoNamespace(namespace.getDatabaseName(), "system.indexes");
@@ -80,7 +80,7 @@ public class CreateIndexesOperation implements AsyncWriteOperation<Void>, WriteO
                         throw checkForDuplicateKeyError(e);
                     }
                 } else {
-                    for (Index index : indexes) {
+                    for (BsonDocument index : indexes) {
                         asInsertProtocol(index).execute(connection);
                     }
                 }
@@ -111,9 +111,9 @@ public class CreateIndexesOperation implements AsyncWriteOperation<Void>, WriteO
         });
     }
 
-    private void executeInsertProtocolAsync(final List<Index> indexesRemaining, final Connection connection,
+    private void executeInsertProtocolAsync(final List<BsonDocument> indexesRemaining, final Connection connection,
                                             final SingleResultFuture<Void> future) {
-        Index index = indexesRemaining.remove(0);
+        BsonDocument index = indexesRemaining.remove(0);
         asInsertProtocol(index).executeAsync(connection)
                                .register(new SingleResultCallback<WriteResult>() {
                                    @Override
@@ -133,34 +133,22 @@ public class CreateIndexesOperation implements AsyncWriteOperation<Void>, WriteO
     private BsonDocument getCommand() {
         BsonDocument command = new BsonDocument("createIndexes", new BsonString(namespace.getCollectionName()));
         BsonArray array = new BsonArray();
-        for (Index index : indexes) {
-            array.add(toDocument(index));
+        for (BsonDocument index : indexes) {
+            if (!index.containsKey("key")) {
+                throw new IllegalStateException("The index document does not contain an key");
+            }
+            if (!index.containsKey("name")) {
+                index.put("name", generateIndexName(index));
+            }
+            array.add(index);
         }
         command.put("indexes", array);
-
         return command;
     }
 
     @SuppressWarnings("unchecked")
-    private InsertProtocol asInsertProtocol(final Index index) {
-        return new InsertProtocol(systemIndexes, true, WriteConcern.ACKNOWLEDGED, asList(new InsertRequest(toDocument(index))));
-    }
-
-    private BsonDocument toDocument(final Index index) {
-        BsonDocument indexDetails = new BsonDocument();
-        indexDetails.append("name", new BsonString(index.getName()));
-        indexDetails.append("key", index.getKeys());
-        putIfTrue(indexDetails, "unique", index.isUnique());
-        putIfTrue(indexDetails, "sparse", index.isSparse());
-        putIfTrue(indexDetails, "dropDups", index.isDropDups());
-        putIfTrue(indexDetails, "background", index.isBackground());
-        if (index.getExpireAfterSeconds() != -1) {
-            indexDetails.append("expireAfterSeconds", new BsonInt32(index.getExpireAfterSeconds()));
-        }
-        indexDetails.putAll(index.getExtra());
-        indexDetails.put("ns", new BsonString(namespace.getFullName()));
-
-        return indexDetails;
+    private InsertProtocol asInsertProtocol(final BsonDocument index) {
+        return new InsertProtocol(systemIndexes, true, WriteConcern.ACKNOWLEDGED, asList(new InsertRequest(index)));
     }
 
     private MongoException translateException(final MongoException e) {
@@ -173,5 +161,27 @@ public class CreateIndexesOperation implements AsyncWriteOperation<Void>, WriteO
         } else {
             return e;
         }
+    }
+
+    /**
+     * Convenience method to generate an index name from the set of fields it is over.
+     *
+     * @return a string representation of this index's fields
+     */
+    private BsonString generateIndexName(final BsonDocument index) {
+        StringBuilder indexName = new StringBuilder();
+        for (final String keyNames : index.getDocument("key").keySet()) {
+            if (indexName.length() != 0) {
+                indexName.append('_');
+            }
+            indexName.append(keyNames).append('_');
+            BsonValue ascOrDescValue = index.getDocument("key").get(keyNames);
+            if (ascOrDescValue instanceof BsonInt32) {
+                indexName.append(((BsonInt32) ascOrDescValue).getValue());
+            } else if (ascOrDescValue instanceof BsonString) {
+                indexName.append(((BsonString) ascOrDescValue).getValue().replace(' ', '_'));
+            }
+        }
+        return new BsonString(indexName.toString());
     }
 }
