@@ -16,80 +16,79 @@
 
 package com.mongodb.async.rx.client
 
-import com.mongodb.operation.Index
+import com.mongodb.client.model.CreateIndexModel
+import org.mongodb.Document
 
-import static Fixture.get
-import static Fixture.getAsList
-import static Fixture.getMongoClient
-import static com.mongodb.operation.OrderBy.ASC
+import static com.mongodb.async.rx.client.Fixture.get
+import static com.mongodb.async.rx.client.Fixture.getAsList
 
 class CollectionAdministrationSpecification extends FunctionalSpecification {
 
     def idIndex = ['_id': 1]
-    def field1Index = ['field': 1]
-    def index1 = Index.builder().addKey('field', ASC).build()
-    def index2 = Index.builder().addKey('field2', ASC).build()
+    def index1 = ['index': 1]
+    def index1Model = new CreateIndexModel(index1 as Document)
+    def index2Model = new CreateIndexModel(['index2': 1] as Document)
 
     def 'Drop should drop the collection'() {
         when:
-        def client = getMongoClient()
+        def client = Fixture.getMongoClient()
         def database = client.getDatabase(databaseName)
-        get(database.tools().createCollection(collectionName))
+        get(database.createCollection(collectionName))
 
         then:
-        getAsList(database.tools().getCollectionNames()).contains(collectionName)
+        getAsList(database.getCollectionNames()).contains(collectionName)
 
         when:
-        get(collection.tools().drop())
+        get(collection.dropCollection())
 
         then:
-        !getAsList(database.tools().getCollectionNames()).contains(collectionName)
+        !getAsList(database.getCollectionNames()).contains(collectionName)
     }
 
     def 'getIndexes should not error for a nonexistent collection'() {
         when:
-        def database = getMongoClient().getDatabase(databaseName)
+        def database = Fixture.getMongoClient().getDatabase(databaseName)
 
         then:
-        !getAsList(database.tools().getCollectionNames()).contains(collectionName)
-        getAsList(collection.tools().getIndexes()) == []
+        !getAsList(database.getCollectionNames()).contains(collectionName)
+        getAsList(collection.getIndexes()) == []
     }
 
     @SuppressWarnings(['FactoryMethodName'])
     def 'createIndexes should add indexes to the collection'() {
         when:
-        get(collection.tools().createIndexes([index1]))
+        get(collection.createIndexes([index1Model]))
 
         then:
-        getAsList(collection.tools().getIndexes()) *.get('key') containsAll(idIndex, field1Index)
+        getAsList(collection.getIndexes())*.get('key') containsAll(idIndex, index1)
     }
 
     def 'dropIndex should drop index'() {
         when:
-        get(collection.tools().createIndexes([index1]))
+        get(collection.createIndexes([index1Model]))
 
         then:
-        getAsList(collection.tools().getIndexes()) *.get('key') containsAll(idIndex, field1Index)
+        getAsList(collection.getIndexes())*.get('key') containsAll(idIndex, index1)
 
         when:
-        get(collection.tools().dropIndex(index1))
+        get(collection.dropIndex('index_1'))
 
         then:
-        getAsList(collection.tools().getIndexes()) *.get('key') == [idIndex]
+        getAsList(collection.getIndexes())*.get('key') == [idIndex]
     }
 
     def 'dropIndexes should drop all indexes apart from _id'() {
         when:
-        get(collection.tools().createIndexes([index1, index2]))
+        get(collection.createIndexes([index1Model, index2Model]))
 
         then:
-        getAsList(collection.tools().getIndexes()) *.get('key') containsAll(idIndex, field1Index)
+        getAsList(collection.getIndexes())*.get('key') containsAll(idIndex, index1)
 
         when:
-        get(collection.tools().dropIndexes())
+        get(collection.dropIndexes())
 
         then:
-        getAsList(collection.tools().getIndexes()) *.get('key') == [idIndex]
+        getAsList(collection.getIndexes())*.get('key') == [idIndex]
     }
 
 }

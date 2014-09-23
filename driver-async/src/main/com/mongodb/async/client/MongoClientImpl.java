@@ -19,18 +19,22 @@ package com.mongodb.async.client;
 import com.mongodb.MongoException;
 import com.mongodb.ReadPreference;
 import com.mongodb.async.MongoFuture;
+import com.mongodb.async.SingleResultCallback;
+import com.mongodb.async.SingleResultFuture;
 import com.mongodb.binding.AsyncClusterBinding;
 import com.mongodb.binding.AsyncReadBinding;
 import com.mongodb.binding.AsyncReadWriteBinding;
 import com.mongodb.binding.AsyncWriteBinding;
 import com.mongodb.connection.Cluster;
-import com.mongodb.async.SingleResultCallback;
+import com.mongodb.operation.AsyncOperationExecutor;
 import com.mongodb.operation.AsyncReadOperation;
 import com.mongodb.operation.AsyncWriteOperation;
-import com.mongodb.async.SingleResultFuture;
+import com.mongodb.operation.GetDatabaseNamesOperation;
 
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import static com.mongodb.ReadPreference.primary;
 import static com.mongodb.assertions.Assertions.notNull;
 
 class MongoClientImpl implements MongoClient {
@@ -44,11 +48,17 @@ class MongoClientImpl implements MongoClient {
 
     @Override
     public MongoDatabase getDatabase(final String name) {
-        return new MongoDatabaseImpl(name, this, MongoDatabaseOptions.builder()
-                                                                     .readPreference(settings.getReadPreference())
-                                                                     .writeConcern(settings.getWriteConcern())
-                                                                     .build()
-                                                                     .withDefaults(settings));
+        return getDatabase(name, MongoDatabaseOptions.builder()
+                                                     .readPreference(settings.getReadPreference())
+                                                     .writeConcern(settings.getWriteConcern())
+                                                     .build()
+                                                     .withDefaults(settings));
+    }
+
+
+    @Override
+    public MongoDatabase getDatabase(final String databaseName, final MongoDatabaseOptions options) {
+        return new MongoDatabaseImpl(databaseName, options, executor);
     }
 
     @Override
@@ -57,8 +67,8 @@ class MongoClientImpl implements MongoClient {
     }
 
     @Override
-    public ClientAdministration tools() {
-        return new ClientAdministrationImpl(this);
+    public MongoFuture<List<String>> getDatabaseNames() {
+        return executor.execute(new GetDatabaseNamesOperation(), primary());
     }
 
     Cluster getCluster() {
@@ -105,6 +115,18 @@ class MongoClientImpl implements MongoClient {
         return future;
     }
 
+    private AsyncOperationExecutor executor = new AsyncOperationExecutor() {
+        @Override
+        public <T> MongoFuture<T> execute(final AsyncReadOperation<T> operation, final ReadPreference readPreference) {
+            return MongoClientImpl.this.execute(operation, readPreference);
+        }
+
+        @Override
+        public <T> MongoFuture<T> execute(final AsyncWriteOperation<T> operation) {
+            return MongoClientImpl.this.execute(operation);
+        }
+    };
+
     private AsyncWriteBinding getWriteBinding() {
         return getReadWriteBinding(ReadPreference.primary());
     }
@@ -118,4 +140,5 @@ class MongoClientImpl implements MongoClient {
         return new AsyncClusterBinding(cluster, readPreference, settings.getConnectionPoolSettings().getMaxWaitTime(TimeUnit.MILLISECONDS),
                                        TimeUnit.MILLISECONDS);
     }
+
 }

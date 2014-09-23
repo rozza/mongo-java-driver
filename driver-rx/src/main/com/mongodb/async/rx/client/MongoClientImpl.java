@@ -16,6 +16,12 @@
 
 package com.mongodb.async.rx.client;
 
+import com.mongodb.async.MongoFuture;
+import rx.Observable;
+import rx.functions.Func1;
+
+import java.util.List;
+
 class MongoClientImpl implements MongoClient {
 
     private final com.mongodb.async.client.MongoClient wrapped;
@@ -35,7 +41,19 @@ class MongoClientImpl implements MongoClient {
     }
 
     @Override
-    public ClientAdministration tools() {
-        return new ClientAdministrationImpl(wrapped.tools());
+    public Observable<String> getDatabaseNames() {
+        return Observable.concat(Observable.create(new OnSubscribeAdapter<List<String>>(
+                                                     new OnSubscribeAdapter.FutureFunction<List<String>>() {
+                                                         @Override
+                                                         public MongoFuture<List<String>> apply() {
+                                                             return wrapped.getDatabaseNames();
+                                                         }
+                                                     })
+                                                   ).map(new Func1<List<String>, Observable<String>>() {
+                                                            @Override
+                                                            public Observable<String> call(final List<String> strings) {
+                                                                return Observable.from(strings);
+                                                            }
+                                                        }));
     }
 }

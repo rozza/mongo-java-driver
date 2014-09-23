@@ -36,10 +36,10 @@ class DatabaseAdministrationSpecification extends FunctionalSpecification {
         get(database.getCollection('DatabaseAdministrationSpecificationCollection').insert(new Document()))
 
         when:
-        get(database.tools().drop())
+        get(database.dropDatabase())
 
         then:
-        !getAsList(client.tools().getDatabaseNames()).contains(databaseToDrop)
+        !getAsList(client.getDatabaseNames()).contains(databaseToDrop)
 
         cleanup:
         dropDatabase(databaseToDrop)
@@ -53,17 +53,17 @@ class DatabaseAdministrationSpecification extends FunctionalSpecification {
         when:
         def client = getMongoClient()
         def database = client.getDatabase('RxDatabaseAdministrationSpecificationDatabase')
-        get(database.tools().createCollection(collectionName))
+        get(database.createCollection(collectionName))
 
         then:
-        getAsList(database.tools().getCollectionNames()).contains(collectionName)
+        getAsList(database.getCollectionNames()).contains(collectionName)
 
         when:
-        get(database.tools().renameCollection(collectionName, newCollectionName))
+        get(database.renameCollection(collectionName, newCollectionName))
 
         then:
-        !getAsList(database.tools().getCollectionNames()).contains(collectionName)
-        getAsList(database.tools().getCollectionNames()).contains(newCollectionName)
+        !getAsList(database.getCollectionNames()).contains(collectionName)
+        getAsList(database.getCollectionNames()).contains(newCollectionName)
 
         cleanup:
         if (database) {

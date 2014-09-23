@@ -22,16 +22,19 @@ import com.mongodb.MongoNamespace;
 import com.mongodb.async.MongoFuture;
 import com.mongodb.async.SingleResultCallback;
 import com.mongodb.async.client.MongoCollectionOptions;
-import org.bson.codecs.Codec;
+import com.mongodb.client.model.CreateIndexModel;
+import com.mongodb.client.model.CreateIndexOptions;
 import org.mongodb.ConvertibleToDocument;
 import org.mongodb.Document;
 import org.mongodb.WriteResult;
 import rx.Observable;
 import rx.Subscriber;
+import rx.functions.Func1;
 
 import java.util.List;
 
 import static com.mongodb.async.rx.client.OnSubscribeAdapter.FutureFunction;
+import static java.util.Arrays.asList;
 import static rx.Observable.OnSubscribe;
 
 class MongoCollectionImpl<T> implements MongoCollection<T> {
@@ -54,11 +57,6 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
     @Override
     public MongoCollectionOptions getOptions() {
         return wrapped.getOptions();
-    }
-
-    @Override
-    public Codec<T> getCodec() {
-        return wrapped.getCodec();
     }
 
     @Override
@@ -87,18 +85,69 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
     }
 
     @Override
-    public Observable<WriteResult> save(final T document) {
-        return Observable.create(new OnSubscribeAdapter<WriteResult>(new FutureFunction<WriteResult>() {
+    public Observable<Void> dropCollection() {
+        return Observable.create(new OnSubscribeAdapter<Void>(new OnSubscribeAdapter.FutureFunction<Void>() {
             @Override
-            public MongoFuture<WriteResult> apply() {
-                return wrapped.save(document);
+            public MongoFuture<Void> apply() {
+                return wrapped.dropCollection();
             }
         }));
     }
 
     @Override
-    public CollectionAdministration tools() {
-        return new CollectionAdministrationImpl(wrapped.tools());
+    public Observable<Void> createIndex(final Object key) {
+        return createIndexes(asList(new CreateIndexModel(key, new CreateIndexOptions())));
+    }
+
+    @Override
+    public Observable<Void> createIndex(final Object key, final CreateIndexOptions createIndexOptions) {
+        return createIndexes(asList(new CreateIndexModel(key, createIndexOptions)));
+    }
+
+    @Override
+    public Observable<Void> createIndexes(final List<CreateIndexModel> indexModels) {
+        return Observable.create(new OnSubscribeAdapter<Void>(new OnSubscribeAdapter.FutureFunction<Void>() {
+            @Override
+            public MongoFuture<Void> apply() {
+                return wrapped.createIndexes(indexModels);
+            }
+        }));
+    }
+
+    @Override
+    public Observable<Document> getIndexes() {
+        return getIndexes(Document.class);
+    }
+
+    @Override
+    public <C> Observable<C> getIndexes(final Class<C> clazz) {
+        return Observable.concat(
+            Observable.create(
+                new OnSubscribeAdapter<List<C>>(new OnSubscribeAdapter.FutureFunction<List<C>>() {
+                    @Override
+                    public MongoFuture<List<C>> apply() {
+                        return wrapped.getIndexes(clazz);
+                    }})
+            ).map(new Func1<List<C>, Observable<C>>() {
+                @Override
+                public Observable<C> call(final List<C> documents) {
+                    return Observable.from(documents);
+                }}));
+    }
+
+    @Override
+    public Observable<Void> dropIndex(final String indexName) {
+        return Observable.create(new OnSubscribeAdapter<Void>(new OnSubscribeAdapter.FutureFunction<Void>() {
+            @Override
+            public MongoFuture<Void> apply() {
+                return wrapped.dropIndex(indexName);
+            }
+        }));
+    }
+
+    @Override
+    public Observable<Void> dropIndexes() {
+        return dropIndex("*");
     }
 
     private final class MongoCollectionView implements MongoView<T> {

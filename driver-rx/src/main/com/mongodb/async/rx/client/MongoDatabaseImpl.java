@@ -18,9 +18,13 @@ package com.mongodb.async.rx.client;
 
 import com.mongodb.async.MongoFuture;
 import com.mongodb.async.client.MongoCollectionOptions;
-import org.bson.codecs.Codec;
+import com.mongodb.client.model.CreateCollectionOptions;
+import com.mongodb.client.model.RenameCollectionOptions;
 import org.mongodb.Document;
 import rx.Observable;
+import rx.functions.Func1;
+
+import java.util.List;
 
 class MongoDatabaseImpl implements MongoDatabase {
     private final com.mongodb.async.client.MongoDatabase wrapped;
@@ -45,8 +49,8 @@ class MongoDatabaseImpl implements MongoDatabase {
     }
 
     @Override
-    public <T> MongoCollection<T> getCollection(final String name, final Codec<T> codec, final MongoCollectionOptions options) {
-        return new MongoCollectionImpl<T>(wrapped.getCollection(name, codec, options));
+    public <T> MongoCollection<T> getCollection(final String name, final Class<T> clazz, final MongoCollectionOptions options) {
+        return new MongoCollectionImpl<T>(wrapped.getCollection(name, clazz, options));
     }
 
     @Override
@@ -60,7 +64,73 @@ class MongoDatabaseImpl implements MongoDatabase {
     }
 
     @Override
-    public DatabaseAdministration tools() {
-        return new DatabaseAdministrationImpl(wrapped.tools());
+    public Observable<Void> dropDatabase() {
+        return Observable.create(new OnSubscribeAdapter<Void>(new OnSubscribeAdapter.FutureFunction<Void>() {
+            @Override
+            public MongoFuture<Void> apply() {
+                return wrapped.dropDatabase();
+            }
+        }));
     }
+
+    @Override
+    public Observable<String> getCollectionNames() {
+        return Observable.concat(Observable.create(
+                new OnSubscribeAdapter<List<String>>(
+                           new OnSubscribeAdapter.FutureFunction<List<String>>() {
+                               @Override
+                               public MongoFuture<List<String>> apply() {
+                                   return wrapped.getCollectionNames();
+                               }
+                           })
+                ).map(new Func1<List<String>, Observable<String>>() {
+                            @Override
+                            public Observable<String> call(final List<String> strings) {
+                                return Observable.from(strings);
+                            }
+                     })
+        );
+    }
+
+    @Override
+    public Observable<Void> createCollection(final String collectionName) {
+        return Observable.create(new OnSubscribeAdapter<Void>(new OnSubscribeAdapter.FutureFunction<Void>() {
+            @Override
+            public MongoFuture<Void> apply() {
+                return wrapped.createCollection(collectionName);
+            }
+        }));
+    }
+
+    @Override
+    public Observable<Void> createCollection(final String collectionName, final CreateCollectionOptions createCollectionOptions) {
+        return Observable.create(new OnSubscribeAdapter<Void>(new OnSubscribeAdapter.FutureFunction<Void>() {
+            @Override
+            public MongoFuture<Void> apply() {
+                return wrapped.createCollection(collectionName, createCollectionOptions);
+            }
+        }));
+    }
+
+    @Override
+    public Observable<Void> renameCollection(final String oldCollectionName, final String newCollectionName) {
+        return Observable.create(new OnSubscribeAdapter<Void>(new OnSubscribeAdapter.FutureFunction<Void>() {
+            @Override
+            public MongoFuture<Void> apply() {
+                return wrapped.renameCollection(oldCollectionName, newCollectionName);
+            }
+        }));
+    }
+
+    @Override
+    public Observable<Void> renameCollection(final String oldCollectionName, final String newCollectionName,
+                                             final RenameCollectionOptions renameCollectionOptions) {
+        return Observable.create(new OnSubscribeAdapter<Void>(new OnSubscribeAdapter.FutureFunction<Void>() {
+            @Override
+            public MongoFuture<Void> apply() {
+                return wrapped.renameCollection(oldCollectionName, newCollectionName, renameCollectionOptions);
+            }
+        }));
+    }
+
 }

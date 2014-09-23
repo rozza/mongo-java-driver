@@ -33,10 +33,10 @@ class DatabaseAdministrationSpecification extends FunctionalSpecification {
         database.getCollection(collectionName).insert(new Document()).get()
 
         when:
-        database.tools().drop().get()
+        database.dropDatabase().get()
 
         then:
-        !client.tools().getDatabaseNames().get().contains(databaseToDrop)
+        !client.getDatabaseNames().get().contains(databaseToDrop)
 
         cleanup:
         dropDatabase(databaseToDrop)
@@ -49,16 +49,16 @@ class DatabaseAdministrationSpecification extends FunctionalSpecification {
         when:
         def client = Fixture.getMongoClient()
         def database = client.getDatabase('AsyncDatabaseAdministrationSpecificationDatabase')
-        database.tools().createCollection(collectionName).get()
+        database.createCollection(collectionName).get()
 
         then:
-        database.tools().getCollectionNames().get().contains(collectionName)
+        database.getCollectionNames().get().contains(collectionName)
         when:
-        database.tools().renameCollection(collectionName, newCollectionName).get()
+        database.renameCollection(collectionName, newCollectionName).get()
 
         then:
-        !database.tools().getCollectionNames().get().contains(collectionName)
-        database.tools().getCollectionNames().get().contains(newCollectionName)
+        !database.getCollectionNames().get().contains(collectionName)
+        database.getCollectionNames().get().contains(newCollectionName)
 
         cleanup:
         dropDatabase(database.getName())

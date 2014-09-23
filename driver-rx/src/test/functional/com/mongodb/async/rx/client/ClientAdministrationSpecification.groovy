@@ -29,7 +29,7 @@ class ClientAdministrationSpecification extends FunctionalSpecification {
         def client = getMongoClient()
 
         then:
-        getAsList(client.tools().getDatabaseNames()).contains(databaseName)
+        getAsList(client.getDatabaseNames()).contains(databaseName)
     }
 
 }

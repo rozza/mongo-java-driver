@@ -18,11 +18,12 @@ package com.mongodb.async.client;
 
 import com.mongodb.ReadPreference;
 import com.mongodb.WriteConcern;
-import com.mongodb.codecs.DocumentCodec;
-import org.bson.codecs.Codec;
-import org.mongodb.Document;
+import com.mongodb.codecs.DocumentCodecProvider;
+import org.bson.codecs.configuration.CodecRegistry;
+import org.bson.codecs.configuration.RootCodecRegistry;
 
 import static com.mongodb.assertions.Assertions.notNull;
+import static java.util.Arrays.asList;
 
 /**
  * Default options for a Mongo collection.
@@ -32,10 +33,19 @@ import static com.mongodb.assertions.Assertions.notNull;
 public class MongoDatabaseOptions {
     private final WriteConcern writeConcern;
     private final ReadPreference readPreference;
-    private final Codec<Document> documentCodec;
+    private final CodecRegistry codecRegistry;
 
     public static Builder builder() {
         return new Builder();
+    }
+
+    public MongoDatabaseOptions withDefaults(final MongoClientSettings settings) {
+        Builder builder = new Builder();
+        builder.writeConcern = getWriteConcern() != null ? getWriteConcern() : settings.getWriteConcern();
+        builder.readPreference = getReadPreference() != null ? getReadPreference() : settings.getReadPreference();
+        builder.codecRegistry(getCodecRegistry() != null ? getCodecRegistry()
+                                                         : new RootCodecRegistry(asList(new DocumentCodecProvider())));
+        return builder.build();
     }
 
     public WriteConcern getWriteConcern() {
@@ -46,14 +56,26 @@ public class MongoDatabaseOptions {
         return readPreference;
     }
 
-    public Codec<Document> getDocumentCodec() {
-        return documentCodec;
+    public CodecRegistry getCodecRegistry() {
+        return codecRegistry;
     }
 
     public static class Builder {
         private WriteConcern writeConcern;
         private ReadPreference readPreference;
-        private Codec<Document> documentCodec = new DocumentCodec();
+        private CodecRegistry codecRegistry;
+
+        public WriteConcern getWriteConcern() {
+            return writeConcern;
+        }
+
+        public ReadPreference getReadPreference() {
+            return readPreference;
+        }
+
+        public CodecRegistry getCodecRegistry() {
+            return codecRegistry;
+        }
 
         public Builder writeConcern(final WriteConcern writeConcern) {
             this.writeConcern = notNull("writeConcern", writeConcern);
@@ -65,38 +87,25 @@ public class MongoDatabaseOptions {
             return this;
         }
 
-        protected WriteConcern getWriteConcern() {
-            return writeConcern;
-        }
-
-        protected ReadPreference getReadPreference() {
-            return readPreference;
-        }
-
-        protected Codec<Document> getDocumentCodec() {
-            return documentCodec;
+        public Builder codecRegistry(final CodecRegistry codecRegistry) {
+            this.codecRegistry = notNull("codecRegistry", codecRegistry);
+            return this;
         }
 
         public MongoDatabaseOptions build() {
-            return new MongoDatabaseOptions(writeConcern, readPreference, documentCodec);
+            return new MongoDatabaseOptions(writeConcern, readPreference, codecRegistry);
         }
 
         Builder() {
         }
     }
 
-    MongoDatabaseOptions(final WriteConcern writeConcern, final ReadPreference readPreference, final Codec<Document> documentCodec) {
-        this.writeConcern =  writeConcern;
-        this.readPreference = readPreference;
-        this.documentCodec = documentCodec;
-    }
+    MongoDatabaseOptions(final WriteConcern writeConcern,
+                         final ReadPreference readPreference,
+                         final CodecRegistry codecRegistry) {
 
-    public MongoDatabaseOptions withDefaults(final MongoClientSettings settings) {
-        Builder builder = new Builder();
-        builder.writeConcern = getWriteConcern() != null ? getWriteConcern() : settings.getWriteConcern();
-        builder.readPreference = getReadPreference() != null ? getReadPreference() : settings.getReadPreference();
-        builder.documentCodec = getDocumentCodec() != null ? getDocumentCodec()
-                                                           : new DocumentCodec();
-        return builder.build();
+        this.writeConcern = writeConcern;
+        this.readPreference = readPreference;
+        this.codecRegistry = codecRegistry;
     }
 }

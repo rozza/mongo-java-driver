@@ -25,21 +25,29 @@ import com.mongodb.async.MongoAsyncCursor;
 import com.mongodb.async.MongoFuture;
 import com.mongodb.async.SingleResultCallback;
 import com.mongodb.async.SingleResultFuture;
+import com.mongodb.client.model.CreateIndexModel;
+import com.mongodb.client.model.CreateIndexOptions;
 import com.mongodb.client.model.FindModel;
 import com.mongodb.codecs.CollectibleCodec;
-import com.mongodb.operation.AsyncReadOperation;
-import com.mongodb.operation.AsyncWriteOperation;
+import com.mongodb.operation.AsyncOperationExecutor;
 import com.mongodb.operation.CountOperation;
+import com.mongodb.operation.CreateIndexesOperation;
 import com.mongodb.operation.DeleteOperation;
 import com.mongodb.operation.DeleteRequest;
+import com.mongodb.operation.DropCollectionOperation;
+import com.mongodb.operation.DropIndexOperation;
 import com.mongodb.operation.FindOperation;
+import com.mongodb.operation.GetIndexesOperation;
 import com.mongodb.operation.InsertOperation;
 import com.mongodb.operation.InsertRequest;
 import com.mongodb.operation.UpdateOperation;
 import com.mongodb.operation.UpdateRequest;
 import com.mongodb.operation.WriteRequest;
+import org.bson.BsonBoolean;
 import org.bson.BsonDocument;
 import org.bson.BsonDocumentWrapper;
+import org.bson.BsonInt32;
+import org.bson.BsonString;
 import org.bson.codecs.Codec;
 import org.mongodb.ConvertibleToDocument;
 import org.mongodb.Document;
@@ -55,17 +63,16 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 class MongoCollectionImpl<T> implements MongoCollection<T> {
     private final MongoNamespace namespace;
-    private final Codec<T> codec;
+    private final Class<T> clazz;
     private final MongoCollectionOptions options;
-    private final MongoClientImpl client;
+    private final AsyncOperationExecutor executor;
 
-    public MongoCollectionImpl(final MongoNamespace namespace, final Codec<T> codec, final MongoCollectionOptions options,
-                               final MongoClientImpl client) {
-
+    public MongoCollectionImpl(final MongoNamespace namespace, final Class<T> clazz, final MongoCollectionOptions options,
+                               final AsyncOperationExecutor executor) {
         this.namespace = namespace;
-        this.codec = codec;
+        this.clazz = clazz;
         this.options = options;
-        this.client = client;
+        this.executor = executor;
     }
 
     @Override
@@ -83,9 +90,13 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
         return options;
     }
 
-    @Override
-    public Codec<T> getCodec() {
-        return codec;
+
+    private Codec<T> getCodec() {
+        return getCodec(clazz);
+    }
+
+    private <C> Codec<C> getCodec(final Class<C> clazz) {
+        return options.getCodecRegistry().get(clazz);
     }
 
     @Override
@@ -110,35 +121,96 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
             }
             insertRequests.add(new InsertRequest(new BsonDocumentWrapper<T>(document, getCodec())));
         }
-        return execute(new InsertOperation(getNamespace(), true, options.getWriteConcern(), insertRequests));
+        return executor.execute(new InsertOperation(getNamespace(), true, options.getWriteConcern(), insertRequests));
     }
 
     @Override
-    public MongoFuture<WriteResult> save(final T document) {
-        if (!(codec instanceof CollectibleCodec)) {
-            throw new UnsupportedOperationException();
+    public MongoFuture<Void> dropCollection() {
+        return executor.execute(new DropCollectionOperation(namespace));
+    }
+
+    @Override
+    public MongoFuture<Void> createIndex(final Object key) {
+        return createIndexes(asList(new CreateIndexModel(key, new CreateIndexOptions())));
+    }
+
+    @Override
+    public MongoFuture<Void> createIndex(final Object key, final CreateIndexOptions createIndexOptions) {
+        return createIndexes(asList(new CreateIndexModel(key, createIndexOptions)));
+    }
+
+    @Override
+    public MongoFuture<Void> createIndexes(final List<CreateIndexModel> indexModels) {
+        List<BsonDocument> indexes = new ArrayList<BsonDocument>();
+        for (CreateIndexModel index : indexModels) {
+            indexes.add(createIndexModelToBsonDocument(index));
         }
-        CollectibleCodec<T> collectibleCodec = (CollectibleCodec<T>) codec;
-        if (!collectibleCodec.documentHasId(document)) {
-            return insert(document);
+        return executor.execute(new CreateIndexesOperation(namespace, indexes));
+    }
+
+    private BsonDocument createIndexModelToBsonDocument(final CreateIndexModel index) {
+        CreateIndexOptions options = index.getOptions();
+        BsonDocument indexDetails = new BsonDocument();
+        if (options.getName() != null) {
+            indexDetails.append("name", new BsonString(options.getName()));
+        }
+        indexDetails.append("key", asBson(index.getKeys()));
+        if (options.isUnique()) {
+            indexDetails.append("unique", BsonBoolean.TRUE);
+        }
+        if (options.isSparse()) {
+            indexDetails.append("sparse", BsonBoolean.TRUE);
+        }
+        if (options.isDropDups()) {
+            indexDetails.append("dropDups", BsonBoolean.TRUE);
+        }
+        if (options.isBackground()) {
+            indexDetails.append("background", BsonBoolean.TRUE);
+        }
+        if (options.getExpireAfterSeconds() != null) {
+            indexDetails.append("expireAfterSeconds", new BsonInt32(options.getExpireAfterSeconds()));
+        }
+        Object extraIndexOptions = options.getExtraIndexOptions();
+        if (extraIndexOptions != null) {
+            indexDetails.putAll(asBson(extraIndexOptions));
+        }
+        indexDetails.put("ns", new BsonString(namespace.getFullName()));
+        return indexDetails;
+    }
+
+    @Override
+    public MongoFuture<List<Document>> getIndexes() {
+        return getIndexes(Document.class);
+    }
+
+    @Override
+    public <C> MongoFuture<List<C>> getIndexes(final Class<C> clazz) {
+        return executor.execute(new GetIndexesOperation<C>(namespace, getCodec(clazz)), options.getReadPreference());
+    }
+
+    @Override
+    public MongoFuture<Void> dropIndex(final String indexName) {
+        return executor.execute(new DropIndexOperation(namespace, indexName));
+    }
+
+    @Override
+    public MongoFuture<Void> dropIndexes() {
+        return dropIndex("*");
+    }
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private BsonDocument asBson(final Object document) {
+        if (document == null) {
+            return null;
+        }
+        if (document instanceof BsonDocument) {
+            return (BsonDocument) document;
+        } else if (document instanceof Document) {
+            return new BsonDocumentWrapper(document, getCodec());
         } else {
-            return new MongoCollectionView().find(new BsonDocument("_id", collectibleCodec.getDocumentId(document)))
-                                            .upsert()
-                                            .replace(document);
+            throw new IllegalArgumentException("No encoder for class " + document.getClass());
         }
-    }
 
-    @Override
-    public CollectionAdministration tools() {
-        return new CollectionAdministrationImpl(client, namespace);
-    }
-
-    <V> MongoFuture<V> execute(final AsyncWriteOperation<V> writeOperation) {
-        return client.execute(writeOperation);
-    }
-
-    <V> MongoFuture<V> execute(final AsyncReadOperation<V> readOperation, final ReadPreference readPreference) {
-        return client.execute(readOperation, readPreference);
     }
 
     private class MongoCollectionView implements MongoView<T> {
@@ -151,30 +223,30 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
             FindOperation<T> findOperation = createQueryOperation().batchSize(-1);
 
             final SingleResultFuture<T> retVal = new SingleResultFuture<T>();
-            execute(findOperation, readPreference)
-            .register(new
-                      SingleResultCallback<MongoAsyncCursor<T>>() {
-                          @Override
-                          public void onResult(final MongoAsyncCursor<T> cursor, final MongoException e) {
-                              if (e != null) {
-                                  retVal.init(null, e);
-                              } else {
-                                  cursor.forEach(new Block<T>() {
+            executor.execute(findOperation, readPreference)
+                    .register(new
+                                  SingleResultCallback<MongoAsyncCursor<T>>() {
                                       @Override
-                                      public void apply(final T t) {
-                                          retVal.init(t, null);
-                                      }
-                                  }).register(new SingleResultCallback<Void>() {
-                                      @Override
-                                      public void onResult(final Void result, final MongoException e) {
-                                          if (!retVal.isDone()) {
+                                      public void onResult(final MongoAsyncCursor<T> cursor, final MongoException e) {
+                                          if (e != null) {
                                               retVal.init(null, e);
+                                          } else {
+                                              cursor.forEach(new Block<T>() {
+                                                  @Override
+                                                  public void apply(final T t) {
+                                                      retVal.init(t, null);
+                                                  }
+                                              }).register(new SingleResultCallback<Void>() {
+                                                  @Override
+                                                  public void onResult(final Void result, final MongoException e) {
+                                                      if (!retVal.isDone()) {
+                                                          retVal.init(null, e);
+                                                      }
+                                                  }
+                                              });
                                           }
                                       }
                                   });
-                              }
-                          }
-                      });
             return retVal;
         }
 
@@ -185,12 +257,12 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
                                            .skip(findModel.getOptions().getSkip())
                                            .limit(findModel.getOptions().getLimit())
                                            .maxTime(findModel.getOptions().getMaxTime(MILLISECONDS), MILLISECONDS);
-            return execute(operation, readPreference);
+            return executor.execute(operation, readPreference);
         }
 
         @Override
         public MongoView<T> find(final Document filter) {
-            findModel.getOptions().criteria(new BsonDocumentWrapper<Document>(filter, options.getDocumentCodec()));
+            findModel.getOptions().criteria(new BsonDocumentWrapper<Document>(filter, getCodec(Document.class)));
             return this;
         }
 
@@ -206,7 +278,7 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
 
         @Override
         public MongoView<T> sort(final Document sortCriteria) {
-            findModel.getOptions().sort(new BsonDocumentWrapper<Document>(sortCriteria, options.getDocumentCodec()));
+            findModel.getOptions().sort(new BsonDocumentWrapper<Document>(sortCriteria, getCodec(Document.class)));
             return this;
         }
 
@@ -229,7 +301,7 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
 
         @Override
         public MongoView<T> fields(final Document selector) {
-            findModel.getOptions().projection(new BsonDocumentWrapper<Document>(selector, options.getDocumentCodec()));
+            findModel.getOptions().projection(new BsonDocumentWrapper<Document>(selector, getCodec(Document.class)));
             return this;
         }
 
@@ -247,32 +319,32 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
         @Override
         public MongoFuture<Void> forEach(final Block<? super T> block) {
             final SingleResultFuture<Void> retVal = new SingleResultFuture<Void>();
-            execute(createQueryOperation(), readPreference)
-            .register(new
-                      SingleResultCallback<MongoAsyncCursor<T>>() {
-                          @Override
-                          public void onResult(final MongoAsyncCursor<T> cursor, final MongoException e) {
-                              if (e != null) {
-                                  retVal.init(null, e);
-                              } else {
-                                  cursor.forEach(new Block<T>() {
+            executor.execute(createQueryOperation(), readPreference)
+                    .register(new
+                                  SingleResultCallback<MongoAsyncCursor<T>>() {
                                       @Override
-                                      public void apply(final T t) {
-                                          block.apply(t);
-                                      }
-                                  }).register(new SingleResultCallback<Void>() {
-                                      @Override
-                                      public void onResult(final Void result, final MongoException e) {
+                                      public void onResult(final MongoAsyncCursor<T> cursor, final MongoException e) {
                                           if (e != null) {
                                               retVal.init(null, e);
                                           } else {
-                                              retVal.init(null, null);
+                                              cursor.forEach(new Block<T>() {
+                                                  @Override
+                                                  public void apply(final T t) {
+                                                      block.apply(t);
+                                                  }
+                                              }).register(new SingleResultCallback<Void>() {
+                                                  @Override
+                                                  public void onResult(final Void result, final MongoException e) {
+                                                      if (e != null) {
+                                                          retVal.init(null, e);
+                                                      } else {
+                                                          retVal.init(null, null);
+                                                      }
+                                                  }
+                                              });
                                           }
                                       }
                                   });
-                              }
-                          }
-                      });
             return retVal;
         }
 
@@ -306,49 +378,51 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
         @SuppressWarnings("unchecked")
         public MongoFuture<WriteResult> replace(final T replacement) {
             notNull("replacement", replacement);
-            return execute(new UpdateOperation(getNamespace(), true, options.getWriteConcern(),
-                                                   asList(new UpdateRequest((BsonDocument) findModel.getOptions().getCriteria(),
-                                                                             asBson(replacement), WriteRequest.Type.REPLACE)
-                                                          .upsert(upsert))
+            return executor.execute(new UpdateOperation(getNamespace(), true, options.getWriteConcern(),
+                                                        asList(new UpdateRequest((BsonDocument) findModel.getOptions().getCriteria(),
+                                                                                 asBson(replacement), WriteRequest.Type.REPLACE)
+                                                                   .upsert(upsert))
             ));
         }
 
         @Override
         public MongoFuture<WriteResult> update(final Document updateOperations) {
             notNull("updateOperations", updateOperations);
-            return execute(new UpdateOperation(getNamespace(), true, options.getWriteConcern(),
-                                               asList(new UpdateRequest((BsonDocument) findModel.getOptions().getCriteria(),
-                                                                        new BsonDocumentWrapper<Document>(updateOperations,
-                                                                                                          options.getDocumentCodec()),
-                                                                        WriteRequest.Type.UPDATE)
-                                                      .upsert(upsert).multi(true))
+            return executor.execute(new UpdateOperation(getNamespace(), true, options.getWriteConcern(),
+                                                        asList(new UpdateRequest((BsonDocument) findModel.getOptions().getCriteria(),
+                                                                                 new BsonDocumentWrapper<Document>(updateOperations,
+                                                                                                                   getCodec(Document
+                                                                                                                                .class)),
+                                                                                 WriteRequest.Type.UPDATE)
+                                                                   .upsert(upsert).multi(true))
             ));
         }
 
         @Override
         public MongoFuture<WriteResult> updateOne(final Document updateOperations) {
             notNull("updateOperations", updateOperations);
-            return execute(new UpdateOperation(getNamespace(), true, options.getWriteConcern(),
-                                               asList(new UpdateRequest((BsonDocument) findModel.getOptions().getCriteria(),
-                                                                        new BsonDocumentWrapper<Document>(updateOperations,
-                                                                                                          options.getDocumentCodec()),
-                                                                        WriteRequest.Type.UPDATE)
-                                                      .upsert(upsert).multi(false))
+            return executor.execute(new UpdateOperation(getNamespace(), true, options.getWriteConcern(),
+                                                        asList(new UpdateRequest((BsonDocument) findModel.getOptions().getCriteria(),
+                                                                                 new BsonDocumentWrapper<Document>(updateOperations,
+                                                                                                                   getCodec(Document
+                                                                                                                                .class)),
+                                                                                 WriteRequest.Type.UPDATE)
+                                                                   .upsert(upsert).multi(false))
             ));
         }
 
         @Override
         public MongoFuture<WriteResult> remove() {
-            return execute(new DeleteOperation(getNamespace(), true, options.getWriteConcern(),
-                                               asList(new DeleteRequest((BsonDocument) findModel.getOptions().getCriteria())
-                                                      .multi(true))));
+            return executor.execute(new DeleteOperation(getNamespace(), true, options.getWriteConcern(),
+                                                        asList(new DeleteRequest((BsonDocument) findModel.getOptions().getCriteria())
+                                                                   .multi(true))));
         }
 
         @Override
         public MongoFuture<WriteResult> removeOne() {
-            return execute(new DeleteOperation(getNamespace(), true, options.getWriteConcern(),
-                                               asList(new DeleteRequest((BsonDocument) findModel.getOptions().getCriteria())
-                                                      .multi(false))));
+            return executor.execute(new DeleteOperation(getNamespace(), true, options.getWriteConcern(),
+                                                        asList(new DeleteRequest((BsonDocument) findModel.getOptions().getCriteria())
+                                                                   .multi(false))));
         }
 
         private FindOperation<T> createQueryOperation() {
@@ -362,21 +436,5 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
                        .projection(asBson(findModel.getOptions().getProjection()))
                        .sort(asBson(findModel.getOptions().getSort()));
         }
-
-        @SuppressWarnings({"rawtypes", "unchecked"})
-        private BsonDocument asBson(final Object document) {
-            if (document == null) {
-                return null;
-            }
-            if (document instanceof BsonDocument) {
-                return (BsonDocument) document;
-            } else if (document instanceof Document) {
-                return new BsonDocumentWrapper(document, options.getDocumentCodec());
-            } else {
-                throw new IllegalArgumentException("No encoder for class " + document.getClass());
-            }
-
-        }
-
     }
 }
