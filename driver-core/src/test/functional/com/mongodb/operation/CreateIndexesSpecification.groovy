@@ -17,10 +17,13 @@
 package com.mongodb.operation
 
 import category.Async
+import com.mongodb.CommandFailureException
 import com.mongodb.DuplicateKeyException
-import com.mongodb.MongoServerException
 import com.mongodb.OperationFunctionalSpecification
 import com.mongodb.codecs.DocumentCodec
+import org.bson.BsonBoolean
+import org.bson.BsonDocument
+import org.bson.BsonInt32
 import org.junit.experimental.categories.Category
 import org.mongodb.Document
 import spock.lang.IgnoreIf
@@ -28,7 +31,6 @@ import spock.lang.IgnoreIf
 import static com.mongodb.ClusterFixture.getAsyncBinding
 import static com.mongodb.ClusterFixture.getBinding
 import static com.mongodb.ClusterFixture.serverVersionAtLeast
-import static com.mongodb.operation.OrderBy.ASC
 
 class CreateIndexesSpecification extends OperationFunctionalSpecification {
     def idIndex = ['_id': 1]
@@ -39,7 +41,7 @@ class CreateIndexesSpecification extends OperationFunctionalSpecification {
 
     def 'should be able to create a single index'() {
         given:
-        def index = Index.builder().addKey('field', ASC).build()
+        def index = new BsonDocument('key', new BsonDocument('field', new BsonInt32(1)))
         def createIndexesOperation = new CreateIndexesOperation(getNamespace(), [index])
 
         when:
@@ -51,7 +53,7 @@ class CreateIndexesSpecification extends OperationFunctionalSpecification {
 
     def 'should be able to create a single index on a nested field'() {
         given:
-        def index = Index.builder().addKey('x.y', ASC).build()
+        def index = new BsonDocument('key', new BsonDocument('x.y', new BsonInt32(1)))
         def createIndexesOperation = new CreateIndexesOperation(getNamespace(), [index])
 
         when:
@@ -65,7 +67,7 @@ class CreateIndexesSpecification extends OperationFunctionalSpecification {
     def 'should be able to create a single index asynchronously'() {
 
         given:
-        def index = Index.builder().addKey('field', ASC).build()
+        def index = new BsonDocument('key', new BsonDocument('field', new BsonInt32(1)))
         def createIndexesOperation = new CreateIndexesOperation(getNamespace(), [index])
 
         when:
@@ -77,8 +79,8 @@ class CreateIndexesSpecification extends OperationFunctionalSpecification {
 
     def 'should be able to create multiple indexes'() {
         given:
-        def index1 = Index.builder().addKey('field', ASC).build()
-        def index2 = Index.builder().addKey('field2', ASC).build()
+        def index1 = new BsonDocument('key', new BsonDocument('field', new BsonInt32(1)))
+        def index2 = new BsonDocument('key', new BsonDocument('field2', new BsonInt32(1)))
         def createIndexesOperation = new CreateIndexesOperation(getNamespace(), [index1, index2])
 
 
@@ -93,8 +95,8 @@ class CreateIndexesSpecification extends OperationFunctionalSpecification {
     def 'should be able to create multiple indexes asynchronously'() {
 
         given:
-        def index1 = Index.builder().addKey('field', ASC).build()
-        def index2 = Index.builder().addKey('field2', ASC).build()
+        def index1 = new BsonDocument('key', new BsonDocument('field', new BsonInt32(1)))
+        def index2 = new BsonDocument('key', new BsonDocument('field2', new BsonInt32(1)))
         def createIndexesOperation = new CreateIndexesOperation(getNamespace(), [index1, index2])
 
         when:
@@ -104,11 +106,10 @@ class CreateIndexesSpecification extends OperationFunctionalSpecification {
         getIndexes()*.get('key') containsAll(idIndex, field1Index, field2Index)
     }
 
-    // Todo remove once 2.7 has fixed SERVER-14920
     @IgnoreIf({ serverVersionAtLeast([2, 7, 0]) })
-    def 'should be able to handle duplicated indexes in the same array'() {
+    def 'should be able to handle duplicated indexes in the same array pre 2.7.0'() {
         given:
-        def index = Index.builder().addKey('field', ASC).build()
+        def index = new BsonDocument('key', new BsonDocument('field', new BsonInt32(1)))
         def createIndexesOperation = new CreateIndexesOperation(getNamespace(), [index, index])
 
         when:
@@ -119,11 +120,10 @@ class CreateIndexesSpecification extends OperationFunctionalSpecification {
     }
 
     @Category(Async)
-    // Todo remove once 2.7 has fixed SERVER-14920
     @IgnoreIf({ serverVersionAtLeast([2, 7, 0]) })
-    def 'should be able to handle duplicated indexes asynchronously in the same array'() {
+    def 'should be able to handle duplicated indexes asynchronously in the same array pre 2.7.0'() {
         given:
-        def index = Index.builder().addKey('field', ASC).build()
+        def index = new BsonDocument('key', new BsonDocument('field', new BsonInt32(1)))
         def createIndexesOperation = new CreateIndexesOperation(getNamespace(), [index, index])
 
         when:
@@ -133,10 +133,39 @@ class CreateIndexesSpecification extends OperationFunctionalSpecification {
         getIndexes()*.get('key') containsAll(idIndex, field1Index)
     }
 
+    @IgnoreIf({ !serverVersionAtLeast([2, 7, 0]) })
+    def 'should not be able to handle duplicated indexes in the same array'() {
+        // See SERVER-14920
+        given:
+        def index = new BsonDocument('key', new BsonDocument('field', new BsonInt32(1)))
+        def createIndexesOperation = new CreateIndexesOperation(getNamespace(), [index, index])
+
+        when:
+        createIndexesOperation.execute(getBinding())
+
+        then:
+        thrown(CommandFailureException)
+    }
+
+    @Category(Async)
+    @IgnoreIf({ !serverVersionAtLeast([2, 7, 0]) })
+    def 'should not be able to handle duplicated indexes asynchronously in the same array'() {
+        // See SERVER-14920
+        given:
+        def index = new BsonDocument('key', new BsonDocument('field', new BsonInt32(1)))
+        def createIndexesOperation = new CreateIndexesOperation(getNamespace(), [index, index])
+
+        when:
+        createIndexesOperation.executeAsync(getAsyncBinding()).get()
+
+        then:
+        thrown(CommandFailureException)
+    }
+
     def 'should be able to handle duplicate key errors when indexing'() {
         given:
         getCollectionHelper().insertDocuments(new DocumentCodec(), x1 as Document, x1 as Document)
-        def index = Index.builder().addKey('field', ASC).unique().build()
+        def index = new BsonDocument('key', new BsonDocument('field', new BsonInt32(1))).append('unique', BsonBoolean.TRUE)
         def createIndexesOperation = new CreateIndexesOperation(getNamespace(), [index])
 
         when:
@@ -150,7 +179,7 @@ class CreateIndexesSpecification extends OperationFunctionalSpecification {
     def 'should be able to handle duplicate key errors when indexing asynchronously'() {
         given:
         getCollectionHelper().insertDocuments(new DocumentCodec(), x1 as Document, x1 as Document)
-        def index = Index.builder().addKey('field', ASC).unique().build()
+        def index = new BsonDocument('key', new BsonDocument('field', new BsonInt32(1))).append('unique', BsonBoolean.TRUE)
         def createIndexesOperation = new CreateIndexesOperation(getNamespace(), [index])
 
         when:
@@ -162,27 +191,27 @@ class CreateIndexesSpecification extends OperationFunctionalSpecification {
 
     def 'should throw when trying to build an invalid index'() {
         given:
-        def index = Index.builder().build()
+        def index = new BsonDocument()
         def createIndexesOperation = new CreateIndexesOperation(getNamespace(), [index])
 
         when:
         createIndexesOperation.execute(getBinding())
 
         then:
-        thrown(MongoServerException)
+        thrown(IllegalStateException)
     }
 
     @Category(Async)
     def 'should throw when trying to build an invalid index asynchronously'() {
         given:
-        def index = Index.builder().build()
+        def index = new BsonDocument()
         def createIndexesOperation = new CreateIndexesOperation(getNamespace(), [index])
 
         when:
         createIndexesOperation.execute(getBinding())
 
         then:
-        thrown(MongoServerException)
+        thrown(IllegalStateException)
     }
 
     def getIndexes() {

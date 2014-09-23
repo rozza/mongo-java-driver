@@ -19,12 +19,13 @@ package com.mongodb.operation
 import category.Async
 import com.mongodb.OperationFunctionalSpecification
 import com.mongodb.codecs.DocumentCodec
+import org.bson.BsonDocument
+import org.bson.BsonInt32
 import org.junit.experimental.categories.Category
 import org.mongodb.Document
 
 import static com.mongodb.ClusterFixture.getAsyncBinding
 import static com.mongodb.ClusterFixture.getBinding
-import static com.mongodb.operation.OrderBy.ASC
 import static java.util.concurrent.TimeUnit.SECONDS
 
 class GetIndexesOperationSpecification extends OperationFunctionalSpecification {
@@ -58,7 +59,7 @@ class GetIndexesOperationSpecification extends OperationFunctionalSpecification 
     def 'should return created indexes on Collection'() {
         given:
         def operation = new GetIndexesOperation(getNamespace(), new DocumentCodec())
-        createIndexes(Index.builder().addKey('theField', ASC).build())
+        collectionHelper.createIndexes([new BsonDocument('key', new BsonDocument('theField', new BsonInt32(1)))])
 
         when:
         List<Document> indexes = operation.execute(getBinding())
@@ -73,7 +74,7 @@ class GetIndexesOperationSpecification extends OperationFunctionalSpecification 
     def 'should return created indexes on Collection asynchronously'() {
         given:
         def operation = new GetIndexesOperation(getNamespace(), new DocumentCodec())
-        createIndexes(Index.builder().addKey('theField', ASC).build())
+        collectionHelper.createIndexes([new BsonDocument('key', new BsonDocument('theField', new BsonInt32(1)))])
 
         when:
         List<Document> indexes = operation.executeAsync(getAsyncBinding()).get(1, SECONDS)
@@ -82,11 +83,6 @@ class GetIndexesOperationSpecification extends OperationFunctionalSpecification 
         indexes.size() == 2
         indexes[0].name == '_id_'
         indexes[1].name == 'theField_1'
-    }
-
-    @SuppressWarnings('FactoryMethodName')
-    def createIndexes(Index[] indexes) {
-        new CreateIndexesOperation(getNamespace(), indexes.toList()).execute(getBinding())
     }
 
 }

@@ -222,8 +222,7 @@ class MongoQueryCursorSpecification extends OperationFunctionalSpecification {
 
     @Category(Slow)
     def 'test tailable'() {
-        collectionHelper.create(collectionName, new CreateCollectionOptions(true, 1000))
-
+        collectionHelper.create(collectionName, new CreateCollectionOptions().capped(true).sizeInBytes(1000))
         collectionHelper.insertDocuments(new DocumentCodec(), new Document('_id', 1).append('ts', new BsonTimestamp(5, 0)))
         def firstBatch = executeQuery(new BsonDocument('ts', new BsonDocument('$gte', new BsonTimestamp(5, 0))), 2,
                                       EnumSet.of(CursorFlag.TAILABLE, CursorFlag.AWAIT_DATA))
@@ -265,8 +264,7 @@ class MongoQueryCursorSpecification extends OperationFunctionalSpecification {
 
     @Category(Slow)
     def 'test tailable interrupt'() throws InterruptedException {
-        collectionHelper.create(collectionName, new CreateCollectionOptions(true, 1000))
-
+        collectionHelper.create(collectionName, new CreateCollectionOptions().capped(true).sizeInBytes(1000))
         collectionHelper.insertDocuments(new DocumentCodec(), new Document('_id', 1))
 
         def firstBatch = executeQuery(new BsonDocument('ts', new BsonDocument('$gte', new BsonTimestamp(5, 0))), 2,

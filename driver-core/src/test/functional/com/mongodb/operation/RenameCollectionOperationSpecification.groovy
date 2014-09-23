@@ -42,7 +42,7 @@ class RenameCollectionOperationSpecification extends OperationFunctionalSpecific
         assert collectionNameExists(getCollectionName())
 
         when:
-        new RenameCollectionOperation(getDatabaseName(), getCollectionName(), 'newCollection', false).execute(getBinding())
+        new RenameCollectionOperation(getDatabaseName(), getCollectionName(), 'newCollection').execute(getBinding())
 
         then:
         !collectionNameExists(getCollectionName())
@@ -56,7 +56,7 @@ class RenameCollectionOperationSpecification extends OperationFunctionalSpecific
         assert collectionNameExists(getCollectionName())
 
         when:
-        new RenameCollectionOperation(getDatabaseName(), getCollectionName(), 'newCollection', false).executeAsync(getAsyncBinding()).get()
+        new RenameCollectionOperation(getDatabaseName(), getCollectionName(), 'newCollection').executeAsync(getAsyncBinding()).get()
 
         then:
         !collectionNameExists(getCollectionName())
@@ -69,7 +69,7 @@ class RenameCollectionOperationSpecification extends OperationFunctionalSpecific
         assert collectionNameExists(getCollectionName())
 
         when:
-        new RenameCollectionOperation(getDatabaseName(), getCollectionName(), getCollectionName(), false).execute(getBinding())
+        new RenameCollectionOperation(getDatabaseName(), getCollectionName(), getCollectionName()).execute(getBinding())
 
         then:
         thrown(MongoServerException)
@@ -83,7 +83,7 @@ class RenameCollectionOperationSpecification extends OperationFunctionalSpecific
         assert collectionNameExists(getCollectionName())
 
         when:
-        new RenameCollectionOperation(getDatabaseName(), getCollectionName(), getCollectionName(), false).execute(getBinding())
+        new RenameCollectionOperation(getDatabaseName(), getCollectionName(), getCollectionName()).execute(getBinding())
 
         then:
         thrown(MongoServerException)
