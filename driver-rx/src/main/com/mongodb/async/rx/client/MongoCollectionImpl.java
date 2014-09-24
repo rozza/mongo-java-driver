@@ -116,23 +116,18 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
 
     @Override
     public Observable<Document> getIndexes() {
-        return getIndexes(Document.class);
-    }
-
-    @Override
-    public <C> Observable<C> getIndexes(final Class<C> clazz) {
         return Observable.concat(
-            Observable.create(
-                new OnSubscribeAdapter<List<C>>(new OnSubscribeAdapter.FutureFunction<List<C>>() {
-                    @Override
-                    public MongoFuture<List<C>> apply() {
-                        return wrapped.getIndexes(clazz);
-                    }})
-            ).map(new Func1<List<C>, Observable<C>>() {
-                @Override
-                public Observable<C> call(final List<C> documents) {
-                    return Observable.from(documents);
-                }}));
+           Observable.create(
+                 new OnSubscribeAdapter<List<Document>>(new OnSubscribeAdapter.FutureFunction<List<Document>>() {
+                        @Override
+                        public MongoFuture<List<Document>> apply() {
+                            return wrapped.getIndexes();
+                        }})
+                ).map(new Func1<List<Document>, Observable<Document>>() {
+                   @Override
+                   public Observable<Document> call(final List<Document> documents) {
+                       return Observable.from(documents);
+                   }}));
     }
 
     @Override

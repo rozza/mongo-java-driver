@@ -180,12 +180,7 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
 
     @Override
     public MongoFuture<List<Document>> getIndexes() {
-        return getIndexes(Document.class);
-    }
-
-    @Override
-    public <C> MongoFuture<List<C>> getIndexes(final Class<C> clazz) {
-        return executor.execute(new GetIndexesOperation<C>(namespace, getCodec(clazz)), options.getReadPreference());
+        return executor.execute(new GetIndexesOperation<Document>(namespace, getCodec(Document.class)), options.getReadPreference());
     }
 
     @Override
