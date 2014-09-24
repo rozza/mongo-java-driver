@@ -72,19 +72,6 @@ class IndexSpecification extends Specification {
     }
 
     @Unroll
-    def 'should support dropping duplicates'() {
-        expect:
-        index.isDropDups() == dropDups
-
-        where:
-        index                                                          | dropDups
-        Index.builder().addKey('x').build()                            | false
-        Index.builder().addKey('x').dropDups().build()                 | true
-        Index.builder().addKey('x').dropDups(false).build()            | false
-        Index.builder().addKey('x').dropDups().dropDups(false).build() | false
-    }
-
-    @Unroll
     def 'should support unknown attributes'() {
         expect:
         index.getExtra() == extra

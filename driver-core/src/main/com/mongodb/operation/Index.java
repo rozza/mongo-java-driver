@@ -42,11 +42,6 @@ public final class Index {
     private final boolean unique;
 
     /**
-     * Tells the unique index to drop duplicates silently when creating; only the first will be kept
-     */
-    private final boolean dropDups;
-
-    /**
      * Create the index in the background
      */
     private final boolean background;
@@ -65,11 +60,10 @@ public final class Index {
 
     private final BsonDocument extra;
 
-    private Index(final String name, final boolean unique, final boolean dropDups, final boolean sparse, final boolean background,
+    private Index(final String name, final boolean unique, final boolean sparse, final boolean background,
                   final int expireAfterSeconds, final BsonDocument keys, final BsonDocument extra) {
         this.name = name;
         this.unique = unique;
-        this.dropDups = dropDups;
         this.sparse = sparse;
 
         this.background = background;
@@ -88,10 +82,6 @@ public final class Index {
 
     public boolean isUnique() {
         return unique;
-    }
-
-    public boolean isDropDups() {
-        return dropDups;
     }
 
     public boolean isBackground() {
@@ -200,7 +190,6 @@ public final class Index {
     public static final class Builder {
         private String name;
         private boolean unique = false;
-        private boolean dropDups = false;
         private boolean background = false;
         private boolean sparse = false;
         private int expireAfterSeconds = -1;
@@ -228,19 +217,6 @@ public final class Index {
 
         public Builder unique(final boolean value) {
             this.unique = value;
-            return this;
-        }
-
-        /**
-         * Tells the unique index to drop duplicates silently when creating; only the first will be kept
-         */
-        public Builder dropDups() {
-            dropDups = true;
-            return this;
-        }
-
-        public Builder dropDups(final boolean value) {
-            this.dropDups = value;
             return this;
         }
 
@@ -345,7 +321,7 @@ public final class Index {
             if (name == null) {
                 name = generateIndexName();
             }
-            return new Index(name, unique, dropDups, sparse, background, expireAfterSeconds, keys, extra);
+            return new Index(name, unique, sparse, background, expireAfterSeconds, keys, extra);
         }
     }
 }

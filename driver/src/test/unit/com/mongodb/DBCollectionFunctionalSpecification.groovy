@@ -140,7 +140,6 @@ class DBCollectionFunctionalSpecification extends FunctionalSpecification {
         document.get('expireAfterSeconds') == 42
         document.get('somethingOdd') == 'jeff'
         document.get('background') == true
-        !document.containsField('dropDups')
     }
 
     def 'drop index should not fail if collection does not exist'() {
