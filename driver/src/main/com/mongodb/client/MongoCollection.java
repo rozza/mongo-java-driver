@@ -541,13 +541,6 @@ public interface MongoCollection<T> {
     List<Document> getIndexes();
 
     /**
-     * @param clazz the class to decode each document into
-     * @return all the indexes on this collection
-     * @mongodb.driver.manual reference/method/db.collection.getIndexes/ getIndexes
-     */
-    <C> List<C> getIndexes(Class<C> clazz);
-
-    /**
      * Drops the given index.
      *
      * @param indexName the name of the index to remove
