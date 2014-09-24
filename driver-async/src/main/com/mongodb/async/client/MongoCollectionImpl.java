@@ -161,9 +161,6 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
         if (options.isSparse()) {
             indexDetails.append("sparse", BsonBoolean.TRUE);
         }
-        if (options.isDropDups()) {
-            indexDetails.append("dropDups", BsonBoolean.TRUE);
-        }
         if (options.isBackground()) {
             indexDetails.append("background", BsonBoolean.TRUE);
         }
