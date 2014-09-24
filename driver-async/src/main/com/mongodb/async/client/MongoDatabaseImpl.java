@@ -105,19 +105,19 @@ class MongoDatabaseImpl implements MongoDatabase {
     }
 
     @Override
-    public MongoFuture<Void> renameCollection(final String oldCollectionName, final String newCollectionName) {
-        return renameCollection(new RenameCollectionModel(oldCollectionName, newCollectionName, new RenameCollectionOptions()));
+    public MongoFuture<Void>  renameCollection(final MongoNamespace originalNamespace, final MongoNamespace newNamespace) {
+        return renameCollection(new RenameCollectionModel(originalNamespace, newNamespace, new RenameCollectionOptions()));
     }
 
     @Override
-    public MongoFuture<Void> renameCollection(final String oldCollectionName, final String newCollectionName,
+    public MongoFuture<Void> renameCollection(final MongoNamespace originalNamespace, final MongoNamespace newNamespace,
                                               final RenameCollectionOptions renameCollectionOptions) {
-        return renameCollection(new RenameCollectionModel(oldCollectionName, newCollectionName, renameCollectionOptions));
+        return renameCollection(new RenameCollectionModel(originalNamespace, newNamespace, renameCollectionOptions));
     }
 
     private MongoFuture<Void> renameCollection(final RenameCollectionModel model) {
-        return executor.execute(new RenameCollectionOperation(name, model.getOriginalCollectionName(),
-                                                              model.getNewCollectionName()).dropTarget(model.getOptions().isDropTarget()));
+        return executor.execute(new RenameCollectionOperation(model.getOriginalNamespace(),
+                                                              model.getNewNamespace()).dropTarget(model.getOptions().isDropTarget()));
     }
 
 }

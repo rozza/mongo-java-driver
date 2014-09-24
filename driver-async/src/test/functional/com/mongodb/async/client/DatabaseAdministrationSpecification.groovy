@@ -16,6 +16,7 @@
 
 package com.mongodb.async.client
 
+import com.mongodb.MongoNamespace
 import org.mongodb.Document
 import spock.lang.IgnoreIf
 
@@ -53,8 +54,10 @@ class DatabaseAdministrationSpecification extends FunctionalSpecification {
 
         then:
         database.getCollectionNames().get().contains(collectionName)
+
         when:
-        database.renameCollection(collectionName, newCollectionName).get()
+        database.renameCollection(new MongoNamespace(database.getName(), collectionName),
+                                  new MongoNamespace(database.getName(), newCollectionName)).get()
 
         then:
         !database.getCollectionNames().get().contains(collectionName)

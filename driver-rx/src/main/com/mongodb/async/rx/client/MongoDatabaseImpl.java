@@ -16,6 +16,7 @@
 
 package com.mongodb.async.rx.client;
 
+import com.mongodb.MongoNamespace;
 import com.mongodb.async.MongoFuture;
 import com.mongodb.async.client.MongoCollectionOptions;
 import com.mongodb.client.model.CreateCollectionOptions;
@@ -113,22 +114,22 @@ class MongoDatabaseImpl implements MongoDatabase {
     }
 
     @Override
-    public Observable<Void> renameCollection(final String oldCollectionName, final String newCollectionName) {
+    public Observable<Void> renameCollection(final MongoNamespace originalNamespace, final MongoNamespace newNamespace) {
         return Observable.create(new OnSubscribeAdapter<Void>(new OnSubscribeAdapter.FutureFunction<Void>() {
             @Override
             public MongoFuture<Void> apply() {
-                return wrapped.renameCollection(oldCollectionName, newCollectionName);
+                return wrapped.renameCollection(originalNamespace, newNamespace);
             }
         }));
     }
 
     @Override
-    public Observable<Void> renameCollection(final String oldCollectionName, final String newCollectionName,
+    public Observable<Void> renameCollection(final MongoNamespace originalNamespace, final MongoNamespace newNamespace,
                                              final RenameCollectionOptions renameCollectionOptions) {
         return Observable.create(new OnSubscribeAdapter<Void>(new OnSubscribeAdapter.FutureFunction<Void>() {
             @Override
             public MongoFuture<Void> apply() {
-                return wrapped.renameCollection(oldCollectionName, newCollectionName, renameCollectionOptions);
+                return wrapped.renameCollection(originalNamespace, newNamespace, renameCollectionOptions);
             }
         }));
     }
