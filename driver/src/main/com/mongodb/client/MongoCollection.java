@@ -527,14 +527,6 @@ public interface MongoCollection<T> {
     void createIndex(Object key, CreateIndexOptions createIndexOptions);
 
     /**
-     * Builds one or more indexes on a collection.
-     *
-     * @param indexModels a list of models representing indexes
-     * @mongodb.driver.manual reference/command/createIndexes createIndexes
-     */
-    void createIndexes(List<CreateIndexModel> indexModels);
-
-    /**
      * @return all the indexes on this collection
      * @mongodb.driver.manual reference/method/db.collection.getIndexes/ getIndexes
      */
