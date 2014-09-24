@@ -18,7 +18,6 @@ package com.mongodb.async.client;
 
 import com.mongodb.MongoNamespace;
 import com.mongodb.async.MongoFuture;
-import com.mongodb.client.model.CreateCollectionModel;
 import com.mongodb.client.model.CreateCollectionOptions;
 import com.mongodb.client.model.RenameCollectionModel;
 import com.mongodb.client.model.RenameCollectionOptions;
@@ -92,16 +91,12 @@ class MongoDatabaseImpl implements MongoDatabase {
 
     @Override
     public MongoFuture<Void> createCollection(final String collectionName, final CreateCollectionOptions createCollectionOptions) {
-        return createCollection(new CreateCollectionModel(collectionName, createCollectionOptions));
-    }
-
-    private MongoFuture<Void> createCollection(final CreateCollectionModel model) {
-        return executor.execute(new CreateCollectionOperation(name, model.getCollectionName())
-                                    .capped(model.getOptions().isCapped())
-                                    .sizeInBytes(model.getOptions().getSizeInBytes())
-                                    .autoIndex(model.getOptions().isAutoIndex())
-                                    .maxDocuments(model.getOptions().getMaxDocuments())
-                                    .usePowerOf2Sizes(model.getOptions().isUsePowerOf2Sizes()));
+        return executor.execute(new CreateCollectionOperation(name, collectionName)
+                                    .capped(createCollectionOptions.isCapped())
+                                    .sizeInBytes(createCollectionOptions.getSizeInBytes())
+                                    .autoIndex(createCollectionOptions.isAutoIndex())
+                                    .maxDocuments(createCollectionOptions.getMaxDocuments())
+                                    .usePowerOf2Sizes(createCollectionOptions.isUsePowerOf2Sizes()));
     }
 
     @Override

@@ -20,7 +20,6 @@ import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCollectionOptions;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.MongoDatabaseOptions;
-import com.mongodb.client.model.CreateCollectionModel;
 import com.mongodb.client.model.CreateCollectionOptions;
 import com.mongodb.client.model.RenameCollectionModel;
 import com.mongodb.client.model.RenameCollectionOptions;
@@ -88,21 +87,17 @@ class MongoDatabaseImpl implements MongoDatabase {
 
     @Override
     public void createCollection(final String collectionName) {
-        createCollection(new CreateCollectionModel(collectionName, new CreateCollectionOptions()));
+        createCollection(collectionName, new CreateCollectionOptions());
     }
 
     @Override
     public void createCollection(final String collectionName, final CreateCollectionOptions createCollectionOptions) {
-        createCollection(new CreateCollectionModel(collectionName, createCollectionOptions));
-    }
-
-    private void createCollection(final CreateCollectionModel model) {
-        executor.execute(new CreateCollectionOperation(name, model.getCollectionName())
-                             .capped(model.getOptions().isCapped())
-                             .sizeInBytes(model.getOptions().getSizeInBytes())
-                             .autoIndex(model.getOptions().isAutoIndex())
-                             .maxDocuments(model.getOptions().getMaxDocuments())
-                             .usePowerOf2Sizes(model.getOptions().isUsePowerOf2Sizes()));
+        executor.execute(new CreateCollectionOperation(name, collectionName)
+                             .capped(createCollectionOptions.isCapped())
+                             .sizeInBytes(createCollectionOptions.getSizeInBytes())
+                             .autoIndex(createCollectionOptions.isAutoIndex())
+                             .maxDocuments(createCollectionOptions.getMaxDocuments())
+                             .usePowerOf2Sizes(createCollectionOptions.isUsePowerOf2Sizes()));
     }
 
     @Override
