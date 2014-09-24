@@ -16,6 +16,8 @@
 
 package com.mongodb.client.model;
 
+import com.mongodb.MongoNamespace;
+
 import static com.mongodb.assertions.Assertions.notNull;
 
 /**
@@ -25,50 +27,50 @@ import static com.mongodb.assertions.Assertions.notNull;
  * @since 3.0
  */
 public class RenameCollectionModel {
-    private final String originalCollectionName;
-    private final String newCollectionName;
+    private final MongoNamespace originalNamespace;
+    private final MongoNamespace newNamespace;
     private final RenameCollectionOptions options;
 
     /**
      * Construct an instance.
      *
-     * @param originalCollectionName the name of the collection to rename
-     * @param newCollectionName      the desired new name for the collection
+     * @param originalNamespace the namespace to rename
+     * @param newNamespace      the desired new namespace
      */
-    public RenameCollectionModel(final String originalCollectionName, final String newCollectionName) {
-        this(originalCollectionName, newCollectionName, new RenameCollectionOptions());
+    public RenameCollectionModel(final MongoNamespace originalNamespace, final MongoNamespace newNamespace) {
+        this(originalNamespace, newNamespace, new RenameCollectionOptions());
     }
 
     /**
      * Construct an instance.
      *
-     * @param originalCollectionName the name of the collection to rename
-     * @param newCollectionName      the desired new name for the collection
+     * @param originalNamespace the namespace to rename
+     * @param newNamespace      the desired new namespace
      * @param renameCollectionOptions the options
      */
-    public RenameCollectionModel(final String originalCollectionName, final String newCollectionName,
+    public RenameCollectionModel(final MongoNamespace originalNamespace, final MongoNamespace newNamespace,
                                  final RenameCollectionOptions renameCollectionOptions) {
-        this.originalCollectionName = notNull("originalCollectionName", originalCollectionName);
-        this.newCollectionName = notNull("newCollectionName", newCollectionName);
+        this.originalNamespace = notNull("originalNamespace", originalNamespace);
+        this.newNamespace = notNull("newNamespace", newNamespace);
         this.options = notNull("renameCollectionOptions", renameCollectionOptions);
     }
 
     /**
-     * Gets the name of the collection to be renamed.
+     * Gets the namespace to be renamed.
      *
-     * @return the name of the collection to be renamed.
+     * @return the namespace to be renamed.
      */
-    public String getOriginalCollectionName() {
-        return originalCollectionName;
+    public MongoNamespace getOriginalNamespace() {
+        return originalNamespace;
     }
 
     /**
-     * Gets the new collection name.
+     * Gets the new namespace.
      *
-     * @return the new collection name.
+     * @return the new namespace.
      */
-    public String getNewCollectionName() {
-        return newCollectionName;
+    public MongoNamespace getNewNamespace() {
+        return newNamespace;
     }
 
     /**
