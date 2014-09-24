@@ -567,8 +567,7 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
         createIndexes(asList(new CreateIndexModel(key, createIndexOptions)));
     }
 
-    @Override
-    public void createIndexes(final List<CreateIndexModel> indexModels) {
+    void createIndexes(final List<CreateIndexModel> indexModels) {
         List<BsonDocument> indexes = new ArrayList<BsonDocument>();
         for (CreateIndexModel index : indexModels) {
             indexes.add(createIndexModelToBsonDocument(index));

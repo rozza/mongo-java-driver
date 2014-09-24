@@ -14,29 +14,59 @@
  * limitations under the License.
  */
 
-package com.mongodb.client.model;
+package com.mongodb.operation;
+
+import com.mongodb.CommandFailureException;
+import com.mongodb.MongoException;
+import com.mongodb.MongoNamespace;
+import com.mongodb.WriteConcern;
+import com.mongodb.async.MongoFuture;
+import com.mongodb.async.SingleResultCallback;
+import com.mongodb.async.SingleResultFuture;
+import com.mongodb.binding.AsyncWriteBinding;
+import com.mongodb.binding.WriteBinding;
+import com.mongodb.connection.Connection;
+import com.mongodb.protocol.InsertProtocol;
+import org.bson.BsonArray;
+import org.bson.BsonBoolean;
+import org.bson.BsonDocument;
+import org.bson.BsonDouble;
+import org.bson.BsonInt32;
+import org.bson.BsonString;
+import org.bson.BsonValue;
+import org.mongodb.WriteResult;
 
 import java.util.List;
 
 import static com.mongodb.assertions.Assertions.isTrue;
+import static com.mongodb.assertions.Assertions.notNull;
+import static com.mongodb.operation.CommandOperationHelper.executeWrappedCommandProtocol;
+import static com.mongodb.operation.CommandOperationHelper.executeWrappedCommandProtocolAsync;
+import static com.mongodb.operation.OperationHelper.AsyncCallableWithConnection;
+import static com.mongodb.operation.OperationHelper.CallableWithConnection;
+import static com.mongodb.operation.OperationHelper.DUPLICATE_KEY_ERROR_CODES;
+import static com.mongodb.operation.OperationHelper.serverIsAtLeastVersionTwoDotSix;
+import static com.mongodb.operation.OperationHelper.withConnection;
 import static java.util.Arrays.asList;
 
 /**
- * The options to apply to an operation that atomically finds a document and deletes it.
+ * An operation that creates an index.
  *
  * @since 3.0
- * @mongodb.driver.manual reference/method/db.collection.ensureIndex/#options Index options
  */
-public class CreateIndexOptions {
+public class CreateIndexOperation implements AsyncWriteOperation<Void>, WriteOperation<Void> {
     private final static List<Integer> VALID_TEXT_INDEX_VERSIONS = asList(1, 2);
     private final static List<Integer> VALID_SPHERE_INDEX_VERSIONS = asList(1, 2);
+    private final MongoNamespace namespace;
+    private final BsonDocument key;
+    private final MongoNamespace systemIndexes;
     private boolean background;
     private boolean unique;
     private String name;
     private boolean sparse;
     private Integer expireAfterSeconds;
     private String version;
-    private Object weights;
+    private BsonDocument weights;
     private String default_language;
     private String language_override;
     private Integer textIndexVersion;
@@ -45,6 +75,27 @@ public class CreateIndexOptions {
     private Double min;
     private Double max;
     private Double bucketSize;
+
+    /**
+     * Construct a new instance.
+     *
+     * @param namespace the database and collection namespace for the operation.
+     * @param key the index key.
+     */
+    public CreateIndexOperation(final MongoNamespace namespace, final BsonDocument key) {
+        this.namespace = notNull("namespace", namespace);
+        this.key = notNull("key", key);
+        this.systemIndexes = new MongoNamespace(namespace.getDatabaseName(), "system.indexes");
+    }
+
+    /**
+     * Gets the index key.
+     *
+     * @return the index key.
+     */
+    public BsonDocument getKey() {
+        return key;
+    }
 
     /**
      * Create the index in the background
@@ -61,7 +112,7 @@ public class CreateIndexOptions {
      * @param background true if should create the index in the background
      * @return this
      */
-    public CreateIndexOptions background(final boolean background) {
+    public CreateIndexOperation background(final boolean background) {
         this.background = background;
         return this;
     }
@@ -81,7 +132,7 @@ public class CreateIndexOptions {
      * @param unique if the index should be unique
      * @return this
      */
-    public CreateIndexOptions unique(final boolean unique) {
+    public CreateIndexOperation unique(final boolean unique) {
         this.unique = unique;
         return this;
     }
@@ -101,7 +152,7 @@ public class CreateIndexOptions {
      * @param name of the index
      * @return this
      */
-    public CreateIndexOptions name(final String name) {
+    public CreateIndexOperation name(final String name) {
         this.name = name;
         return this;
     }
@@ -121,7 +172,7 @@ public class CreateIndexOptions {
      * @param sparse if true, the index only references documents with the specified field
      * @return this
      */
-    public CreateIndexOptions sparse(final boolean sparse) {
+    public CreateIndexOperation sparse(final boolean sparse) {
         this.sparse = sparse;
         return this;
     }
@@ -143,7 +194,7 @@ public class CreateIndexOptions {
      * @return this
      * @mongodb.driver.manual manual/tutorial/expire-data TTL
      */
-    public CreateIndexOptions expireAfterSeconds(final Integer expireAfterSeconds) {
+    public CreateIndexOperation expireAfterSeconds(final Integer expireAfterSeconds) {
         this.expireAfterSeconds = expireAfterSeconds;
         return this;
     }
@@ -163,7 +214,7 @@ public class CreateIndexOptions {
      * @param version the index version number
      * @return this
      */
-    public CreateIndexOptions version(final String version) {
+    public CreateIndexOperation version(final String version) {
         this.version = version;
         return this;
     }
@@ -182,16 +233,16 @@ public class CreateIndexOptions {
     }
 
     /**
-     * Sets the weighting object for use with a text index.
+     * Sets the weighting document for use with a text index.
      *
-     * <p>An object that represents field and weight pairs. The weight is an integer ranging from 1 to 99,999 and denotes the significance
+     * <p>A document that represents field and weight pairs. The weight is an integer ranging from 1 to 99,999 and denotes the significance
      * of the field relative to the other indexed fields in terms of the score.</p>
      *
-     * @param weights the weighting object
+     * @param weights the weighting document
      * @return this
      * @mongodb.driver.manual tutorial/control-results-of-text-search Control Search Results with Weights
      */
-    public CreateIndexOptions weights(final Object weights) {
+    public CreateIndexOperation weights(final BsonDocument weights) {
         this.weights = weights;
         return this;
     }
@@ -217,7 +268,7 @@ public class CreateIndexOptions {
      * @return this
      * @mongodb.driver.manual reference/text-search-languages Text Search languages
      */
-    public CreateIndexOptions default_language(final String default_language) {
+    public CreateIndexOperation default_language(final String default_language) {
         this.default_language = default_language;
         return this;
     }
@@ -243,7 +294,7 @@ public class CreateIndexOptions {
      * @return this
      * @mongodb.driver.manual tutorial/specify-language-for-text-index/#specify-language-field-text-index-example Language override
      */
-    public CreateIndexOptions language_override(final String language_override) {
+    public CreateIndexOperation language_override(final String language_override) {
         this.language_override = language_override;
         return this;
     }
@@ -263,7 +314,7 @@ public class CreateIndexOptions {
      * @param textIndexVersion the text index version number.
      * @return this
      */
-    public CreateIndexOptions textIndexVersion(final int textIndexVersion) {
+    public CreateIndexOperation textIndexVersion(final int textIndexVersion) {
         isTrue("textIndexVersion must be 1 or 2", VALID_TEXT_INDEX_VERSIONS.contains(textIndexVersion));
         this.textIndexVersion = textIndexVersion;
         return this;
@@ -284,7 +335,7 @@ public class CreateIndexOptions {
      * @param sphereIndexVersion the 2dsphere index version number.
      * @return this
      */
-    public CreateIndexOptions set2dSphereIndexVersion(final int sphereIndexVersion) {
+    public CreateIndexOperation set2dSphereIndexVersion(final int sphereIndexVersion) {
         isTrue("sphereIndexVersion must be 1 or 2", VALID_SPHERE_INDEX_VERSIONS.contains(sphereIndexVersion));
         this.sphereIndexVersion = sphereIndexVersion;
         return this;
@@ -305,7 +356,7 @@ public class CreateIndexOptions {
      * @param bits the number of precision of the stored geohash value
      * @return this
      */
-    public CreateIndexOptions bits(final Integer bits) {
+    public CreateIndexOperation bits(final int bits) {
         this.bits = bits;
         return this;
     }
@@ -325,7 +376,7 @@ public class CreateIndexOptions {
      * @param min the lower inclusive boundary for the longitude and latitude values
      * @return this
      */
-    public CreateIndexOptions min(final Double min) {
+    public CreateIndexOperation min(final Double min) {
         this.min = min;
         return this;
     }
@@ -345,7 +396,7 @@ public class CreateIndexOptions {
      * @param max the upper inclusive boundary for the longitude and latitude values
      * @return this
      */
-    public CreateIndexOptions max(final Double max) {
+    public CreateIndexOperation max(final Double max) {
         this.max = max;
         return this;
     }
@@ -367,8 +418,149 @@ public class CreateIndexOptions {
      * @return this
      * @mongodb.driver.manual core/geohaystack/ geoHaystack Indexes
      */
-    public CreateIndexOptions bucketSize(final Double bucketSize) {
+    public CreateIndexOperation bucketSize(final Double bucketSize) {
         this.bucketSize = bucketSize;
         return this;
+    }
+    
+    @Override
+    public Void execute(final WriteBinding binding) {
+        return withConnection(binding, new CallableWithConnection<Void>() {
+            @Override
+            public Void call(final Connection connection) {
+                if (serverIsAtLeastVersionTwoDotSix(connection)) {
+                    try {
+                        executeWrappedCommandProtocol(namespace.getDatabaseName(), getCommand(), connection);
+                    } catch (CommandFailureException e) {
+                        throw checkForDuplicateKeyError(e);
+                    }
+                } else {
+                    asInsertProtocol(getIndex()).execute(connection);
+                }
+                return null;
+            }
+        });
+    }
+
+    @Override
+    public MongoFuture<Void> executeAsync(final AsyncWriteBinding binding) {
+        return withConnection(binding, new AsyncCallableWithConnection<Void>() {
+            @Override
+            public MongoFuture<Void> call(final Connection connection) {
+                final SingleResultFuture<Void> future = new SingleResultFuture<Void>();
+                if (serverIsAtLeastVersionTwoDotSix(connection)) {
+                    executeWrappedCommandProtocolAsync(namespace.getDatabaseName(), getCommand(), connection)
+                        .register(new SingleResultCallback<BsonDocument>() {
+                            @Override
+                            public void onResult(final BsonDocument result, final MongoException e) {
+                                future.init(null, translateException(e));
+                            }
+                        });
+                } else {
+                    asInsertProtocol(getIndex()).executeAsync(connection).register(new SingleResultCallback<WriteResult>() {
+                        @Override
+                        public void onResult(final WriteResult result, final MongoException e) {
+                            future.init(null, translateException(e));
+                        }
+                    });
+                }
+                return future;
+            }
+        });
+    }
+
+    private BsonDocument getIndex() {
+        BsonDocument index = new BsonDocument();
+        index.append("key", key);
+        index.append("name", getName() != null ? new BsonString(getName()) : generateIndexName(key));
+        if (background) {
+            index.append("background", BsonBoolean.TRUE);
+        }
+        if (unique) {
+            index.append("unique", BsonBoolean.TRUE);
+        }
+        if (sparse) {
+            index.append("sparse", BsonBoolean.TRUE);
+        }
+        if (expireAfterSeconds != null) {
+            index.append("expireAfterSeconds", new BsonInt32(expireAfterSeconds));
+        }
+        if (version != null) {
+            index.append("v", new BsonString(version));
+        }
+        if (weights != null) {
+            index.append("weights", weights);
+        }
+        if (default_language != null) {
+            index.append("default_language", new BsonString(default_language));
+        }
+        if (language_override != null) {
+            index.append("language_override", new BsonString(language_override));
+        }
+        if (textIndexVersion != null) {
+            index.append("textIndexVersion", new BsonInt32(textIndexVersion));
+        }
+        if (sphereIndexVersion != null) {
+            index.append("2dsphereIndexVersion", new BsonInt32(sphereIndexVersion));
+        }
+        if (bits != null) {
+            index.append("bits", new BsonInt32(bits));
+        }
+        if (min != null) {
+            index.append("min", new BsonDouble(min));
+        }
+        if (expireAfterSeconds != null) {
+            index.append("max", new BsonDouble(max));
+        }
+        if (expireAfterSeconds != null) {
+            index.append("bucketSize", new BsonDouble(bucketSize));
+        }
+        return index;
+    }
+
+    private BsonDocument getCommand() {
+        BsonDocument command = new BsonDocument("createIndexes", new BsonString(namespace.getCollectionName()));
+        BsonArray array = new BsonArray(asList(getIndex()));
+        command.put("indexes", array);
+        return command;
+    }
+
+    @SuppressWarnings("unchecked")
+    private InsertProtocol asInsertProtocol(final BsonDocument index) {
+        return new InsertProtocol(systemIndexes, true, WriteConcern.ACKNOWLEDGED, asList(new InsertRequest(index)));
+    }
+
+    private MongoException translateException(final MongoException e) {
+        return (e instanceof CommandFailureException) ? checkForDuplicateKeyError((CommandFailureException) e) : e;
+    }
+
+    private MongoException checkForDuplicateKeyError(final CommandFailureException e) {
+        if (DUPLICATE_KEY_ERROR_CODES.contains(e.getCode())) {
+            return new MongoException.DuplicateKey(e.getResponse(), e.getServerAddress(), new com.mongodb.WriteResult(0, false, null));
+        } else {
+            return e;
+        }
+    }
+
+    /**
+     * Convenience method to generate an index name from the set of fields it is over.
+     *
+     * @return a string representation of this index's fields
+     */
+    private BsonString generateIndexName(final BsonDocument index) {
+        StringBuilder indexName = new StringBuilder();
+        for (final String keyNames : index.getDocument("key").keySet()) {
+            if (indexName.length() != 0) {
+                indexName.append('_');
+            }
+            indexName.append(keyNames).append('_');
+            BsonValue ascOrDescValue = index.getDocument("key").get(keyNames);
+            if (ascOrDescValue instanceof BsonInt32) {
+                indexName.append(((BsonInt32) ascOrDescValue).getValue());
+            } else if (ascOrDescValue instanceof BsonString) {
+                indexName.append(((BsonString) ascOrDescValue).getValue().replace(' ', '_'));
+            }
+        }
+        return new BsonString(indexName.toString());
     }
 }
