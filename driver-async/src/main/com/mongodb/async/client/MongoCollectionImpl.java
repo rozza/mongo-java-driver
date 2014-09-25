@@ -25,13 +25,12 @@ import com.mongodb.async.MongoAsyncCursor;
 import com.mongodb.async.MongoFuture;
 import com.mongodb.async.SingleResultCallback;
 import com.mongodb.async.SingleResultFuture;
-import com.mongodb.client.model.CreateIndexModel;
 import com.mongodb.client.model.CreateIndexOptions;
 import com.mongodb.client.model.FindModel;
 import com.mongodb.codecs.CollectibleCodec;
 import com.mongodb.operation.AsyncOperationExecutor;
 import com.mongodb.operation.CountOperation;
-import com.mongodb.operation.CreateIndexesOperation;
+import com.mongodb.operation.CreateIndexOperation;
 import com.mongodb.operation.DeleteOperation;
 import com.mongodb.operation.DeleteRequest;
 import com.mongodb.operation.DropCollectionOperation;
@@ -43,11 +42,8 @@ import com.mongodb.operation.InsertRequest;
 import com.mongodb.operation.UpdateOperation;
 import com.mongodb.operation.UpdateRequest;
 import com.mongodb.operation.WriteRequest;
-import org.bson.BsonBoolean;
 import org.bson.BsonDocument;
 import org.bson.BsonDocumentWrapper;
-import org.bson.BsonInt32;
-import org.bson.BsonString;
 import org.bson.codecs.Codec;
 import org.mongodb.ConvertibleToDocument;
 import org.mongodb.Document;
@@ -90,15 +86,6 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
         return options;
     }
 
-
-    private Codec<T> getCodec() {
-        return getCodec(clazz);
-    }
-
-    private <C> Codec<C> getCodec(final Class<C> clazz) {
-        return options.getCodecRegistry().get(clazz);
-    }
-
     @Override
     public MongoView<T> find(final Document filter) {
         return new MongoCollectionView().find(filter);
@@ -131,48 +118,12 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
 
     @Override
     public MongoFuture<Void> createIndex(final Object key) {
-        return createIndexes(asList(new CreateIndexModel(key, new CreateIndexOptions())));
+        return createIndex(key, new CreateIndexOptions());
     }
 
     @Override
     public MongoFuture<Void> createIndex(final Object key, final CreateIndexOptions createIndexOptions) {
-        return createIndexes(asList(new CreateIndexModel(key, createIndexOptions)));
-    }
-
-    @Override
-    public MongoFuture<Void> createIndexes(final List<CreateIndexModel> indexModels) {
-        List<BsonDocument> indexes = new ArrayList<BsonDocument>();
-        for (CreateIndexModel index : indexModels) {
-            indexes.add(createIndexModelToBsonDocument(index));
-        }
-        return executor.execute(new CreateIndexesOperation(namespace, indexes));
-    }
-
-    private BsonDocument createIndexModelToBsonDocument(final CreateIndexModel index) {
-        CreateIndexOptions options = index.getOptions();
-        BsonDocument indexDetails = new BsonDocument();
-        if (options.getName() != null) {
-            indexDetails.append("name", new BsonString(options.getName()));
-        }
-        indexDetails.append("key", asBson(index.getKeys()));
-        if (options.isUnique()) {
-            indexDetails.append("unique", BsonBoolean.TRUE);
-        }
-        if (options.isSparse()) {
-            indexDetails.append("sparse", BsonBoolean.TRUE);
-        }
-        if (options.isBackground()) {
-            indexDetails.append("background", BsonBoolean.TRUE);
-        }
-        if (options.getExpireAfterSeconds() != null) {
-            indexDetails.append("expireAfterSeconds", new BsonInt32(options.getExpireAfterSeconds()));
-        }
-        Object extraIndexOptions = options.getExtraIndexOptions();
-        if (extraIndexOptions != null) {
-            indexDetails.putAll(asBson(extraIndexOptions));
-        }
-        indexDetails.put("ns", new BsonString(namespace.getFullName()));
-        return indexDetails;
+        return executor.execute(createIndexOperation(key, createIndexOptions));
     }
 
     @Override
@@ -203,6 +154,35 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
             throw new IllegalArgumentException("No encoder for class " + document.getClass());
         }
 
+    }
+
+
+    private Codec<T> getCodec() {
+        return getCodec(clazz);
+    }
+
+    private <C> Codec<C> getCodec(final Class<C> clazz) {
+        return options.getCodecRegistry().get(clazz);
+    }
+
+    private CreateIndexOperation createIndexOperation(final Object key, final CreateIndexOptions options) {
+        CreateIndexOperation operation = new CreateIndexOperation(getNamespace(), asBson(key));
+        operation.name(options.getName());
+        operation.background(options.isBackground());
+        operation.unique(options.isUnique());
+        operation.sparse(options.isSparse());
+        operation.expireAfterSeconds(options.getExpireAfterSeconds());
+        operation.version(options.getVersion());
+        operation.weights(asBson(options.getWeights()));
+        operation.defaultLanguage(options.getDefaultLanguage());
+        operation.languageOverride(options.getLanguageOverride());
+        operation.textIndexVersion(options.getTextIndexVersion());
+        operation.set2dSphereIndexVersion(options.get2dSphereIndexVersion());
+        operation.bits(options.getBits());
+        operation.min(options.getMin());
+        operation.max(options.getMax());
+        operation.bucketSize(options.getBucketSize());
+        return operation;
     }
 
     private class MongoCollectionView implements MongoView<T> {

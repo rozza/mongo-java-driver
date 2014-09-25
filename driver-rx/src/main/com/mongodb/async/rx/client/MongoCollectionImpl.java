@@ -22,7 +22,6 @@ import com.mongodb.MongoNamespace;
 import com.mongodb.async.MongoFuture;
 import com.mongodb.async.SingleResultCallback;
 import com.mongodb.async.client.MongoCollectionOptions;
-import com.mongodb.client.model.CreateIndexModel;
 import com.mongodb.client.model.CreateIndexOptions;
 import org.mongodb.ConvertibleToDocument;
 import org.mongodb.Document;
@@ -34,7 +33,6 @@ import rx.functions.Func1;
 import java.util.List;
 
 import static com.mongodb.async.rx.client.OnSubscribeAdapter.FutureFunction;
-import static java.util.Arrays.asList;
 import static rx.Observable.OnSubscribe;
 
 class MongoCollectionImpl<T> implements MongoCollection<T> {
@@ -96,20 +94,15 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
 
     @Override
     public Observable<Void> createIndex(final Object key) {
-        return createIndexes(asList(new CreateIndexModel(key, new CreateIndexOptions())));
+        return createIndex(key, new CreateIndexOptions());
     }
 
     @Override
     public Observable<Void> createIndex(final Object key, final CreateIndexOptions createIndexOptions) {
-        return createIndexes(asList(new CreateIndexModel(key, createIndexOptions)));
-    }
-
-    @Override
-    public Observable<Void> createIndexes(final List<CreateIndexModel> indexModels) {
         return Observable.create(new OnSubscribeAdapter<Void>(new OnSubscribeAdapter.FutureFunction<Void>() {
             @Override
             public MongoFuture<Void> apply() {
-                return wrapped.createIndexes(indexModels);
+                return wrapped.createIndex(key, createIndexOptions);
             }
         }));
     }

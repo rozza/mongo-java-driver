@@ -152,7 +152,7 @@ class FindOperationSpecification extends OperationFunctionalSpecification {
         (1..100).each {
             collectionHelper.insertDocuments(new DocumentCodec(), new Document('x', 'y').append('count', it))
         }
-        collectionHelper.createIndexes([new BsonDocument('key', new BsonDocument('count', new BsonInt32(1)))])
+        collectionHelper.createIndex(new BsonDocument('count', new BsonInt32(1)))
         def count = 0;
         def findOperation = new FindOperation<Document>(getNamespace(), new DocumentCodec())
                 .modifiers(new BsonDocument('$max', new BsonDocument('count', new BsonInt32(11))))
@@ -171,7 +171,7 @@ class FindOperationSpecification extends OperationFunctionalSpecification {
         (1..100).each {
             collectionHelper.insertDocuments(new DocumentCodec(), new Document('x', 'y').append('count', it))
         }
-        collectionHelper.createIndexes([new BsonDocument('key', new BsonDocument('count', new BsonInt32(1)))])
+        collectionHelper.createIndex(new BsonDocument('count', new BsonInt32(1)))
         def count = 0;
         def findOperation = new FindOperation<Document>(getNamespace(), new DocumentCodec())
                 .modifiers(new BsonDocument('$min', new BsonDocument('count', new BsonInt32(10))))
@@ -208,7 +208,7 @@ class FindOperationSpecification extends OperationFunctionalSpecification {
         (1..13).each {
             collectionHelper.insertDocuments(new DocumentCodec(), new Document('x', it))
         }
-        collectionHelper.createIndexes([new BsonDocument('key', new BsonDocument('x', new BsonInt32(1)))])
+        collectionHelper.createIndex(new BsonDocument('x', new BsonInt32(1)))
 
         def findOperation = new FindOperation<Document>(getNamespace(), new DocumentCodec())
                 .criteria(new BsonDocument('x', new BsonInt32(7)))

@@ -16,18 +16,15 @@
 
 package com.mongodb.async.rx.client
 
-import com.mongodb.client.model.CreateIndexModel
 import org.mongodb.Document
 
 import static com.mongodb.async.rx.client.Fixture.get
 import static com.mongodb.async.rx.client.Fixture.getAsList
 
 class CollectionAdministrationSpecification extends FunctionalSpecification {
-
-    def idIndex = ['_id': 1]
-    def index1 = ['index': 1]
-    def index1Model = new CreateIndexModel(index1 as Document)
-    def index2Model = new CreateIndexModel(['index2': 1] as Document)
+    def idIndex = ['_id': 1] as Document
+    def index1 = ['index': 1] as Document
+    def index2 = ['index2': 1] as Document
 
     def 'Drop should drop the collection'() {
         when:
@@ -55,9 +52,9 @@ class CollectionAdministrationSpecification extends FunctionalSpecification {
     }
 
     @SuppressWarnings(['FactoryMethodName'])
-    def 'createIndexes should add indexes to the collection'() {
+    def 'createIndex should add an index to the collection'() {
         when:
-        get(collection.createIndexes([index1Model]))
+        get(collection.createIndex(index1))
 
         then:
         getAsList(collection.getIndexes())*.get('key') containsAll(idIndex, index1)
@@ -65,7 +62,7 @@ class CollectionAdministrationSpecification extends FunctionalSpecification {
 
     def 'dropIndex should drop index'() {
         when:
-        get(collection.createIndexes([index1Model]))
+        get(collection.createIndex(index1))
 
         then:
         getAsList(collection.getIndexes())*.get('key') containsAll(idIndex, index1)
@@ -79,7 +76,8 @@ class CollectionAdministrationSpecification extends FunctionalSpecification {
 
     def 'dropIndexes should drop all indexes apart from _id'() {
         when:
-        get(collection.createIndexes([index1Model, index2Model]))
+        get(collection.createIndex(index1))
+        get(collection.createIndex(index2))
 
         then:
         getAsList(collection.getIndexes())*.get('key') containsAll(idIndex, index1)

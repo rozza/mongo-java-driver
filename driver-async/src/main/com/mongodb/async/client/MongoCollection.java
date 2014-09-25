@@ -20,7 +20,6 @@ package com.mongodb.async.client;
 import com.mongodb.MongoNamespace;
 import com.mongodb.annotations.Immutable;
 import com.mongodb.async.MongoFuture;
-import com.mongodb.client.model.CreateIndexModel;
 import com.mongodb.client.model.CreateIndexOptions;
 import org.mongodb.Document;
 import org.mongodb.WriteResult;
@@ -104,15 +103,6 @@ public interface MongoCollection<T> {
      * @mongodb.driver.manual reference/method/db.collection.ensureIndex Ensure Index
      */
     MongoFuture<Void> createIndex(Object key, CreateIndexOptions createIndexOptions);
-
-    /**
-     * Builds one or more indexes on a collection.
-     *
-     * @param indexModels a list of models representing indexes
-     * @return a future that indicates when operation is complete
-     * @mongodb.driver.manual reference/command/createIndexes createIndexes
-     */
-    MongoFuture<Void> createIndexes(List<CreateIndexModel> indexModels);
 
     /**
      * @return all the indexes on this collection
