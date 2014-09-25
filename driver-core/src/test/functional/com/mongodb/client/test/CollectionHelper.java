@@ -24,7 +24,7 @@ import com.mongodb.client.model.CreateCollectionOptions;
 import com.mongodb.codecs.DocumentCodec;
 import com.mongodb.operation.CountOperation;
 import com.mongodb.operation.CreateCollectionOperation;
-import com.mongodb.operation.CreateIndexesOperation;
+import com.mongodb.operation.CreateIndexOperation;
 import com.mongodb.operation.DropCollectionOperation;
 import com.mongodb.operation.DropDatabaseOperation;
 import com.mongodb.operation.FindOperation;
@@ -148,7 +148,7 @@ public final class CollectionHelper<T> {
         return new BsonDocumentWrapper<Document>(document, new DocumentCodec());
     }
 
-    public void createIndexes(final List<BsonDocument> indexes) {
-        new CreateIndexesOperation(namespace, indexes).execute(getBinding());
+    public void createIndex(final BsonDocument key) {
+        new CreateIndexOperation(namespace, key).execute(getBinding());
     }
 }

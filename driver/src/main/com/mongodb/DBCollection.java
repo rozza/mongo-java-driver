@@ -22,7 +22,7 @@ import com.mongodb.operation.AggregateOperation;
 import com.mongodb.operation.AggregateToCollectionOperation;
 import com.mongodb.operation.BaseWriteOperation;
 import com.mongodb.operation.CountOperation;
-import com.mongodb.operation.CreateIndexesOperation;
+import com.mongodb.operation.CreateIndexOperation;
 import com.mongodb.operation.DeleteOperation;
 import com.mongodb.operation.DeleteRequest;
 import com.mongodb.operation.DistinctOperation;
@@ -62,7 +62,6 @@ import org.bson.types.ObjectId;
 import org.mongodb.Document;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -1470,7 +1469,7 @@ public class DBCollection {
      * @mongodb.driver.manual /administration/indexes-creation/ Index Creation Tutorials
      */
     public void createIndex(final DBObject keys, final DBObject options) {
-        execute(new CreateIndexesOperation(getNamespace(), toIndexes(keys, options)));
+        execute(createIndexOperation(keys, options));
     }
 
     /**
@@ -1949,15 +1948,54 @@ public class DBCollection {
                                  DBObjectCodecProvider.getDefaultBsonTypeClassMap());
     }
 
-    private List<BsonDocument> toIndexes(final DBObject keys, final DBObject options) {
-        BsonDocument indexDetails = new BsonDocument();
-        indexDetails.append("key", wrap(keys));
-        indexDetails.putAll(wrap(options));
-        if (!options.containsKey("name")) {
-            indexDetails.append("name", new BsonString(getIndexNameFromIndexFields(keys)));
+    private CreateIndexOperation createIndexOperation(final DBObject key, final DBObject options) {
+        CreateIndexOperation operation = new CreateIndexOperation(getNamespace(), wrap(key));
+        if (options.containsField("name")) {
+            operation.name((String) options.get("name"));
         }
-        indexDetails.put("ns", new BsonString(getFullName()));
-        return Arrays.asList(indexDetails);
+        if (options.containsField("background")) {
+            operation.background((Boolean) options.get("background"));
+        }
+        if (options.containsField("unique")) {
+            operation.unique((Boolean) options.get("unique"));
+        }
+        if (options.containsField("sparse")) {
+            operation.sparse((Boolean) options.get("sparse"));
+        }
+        if (options.containsField("expireAfterSeconds")) {
+            operation.expireAfterSeconds((Integer) options.get("expireAfterSeconds"));
+        }
+        if (options.containsField("v")) {
+            operation.version((Integer) options.get("version"));
+        }
+        if (options.containsField("weights")) {
+            operation.weights(wrap((DBObject) options.get("weights")));
+        }
+        if (options.containsField("default_language")) {
+            operation.defaultLanguage((String) options.get("default_language"));
+        }
+        if (options.containsField("language_override")) {
+            operation.languageOverride((String) options.get("language_override"));
+        }
+        if (options.containsField("textIndexVersion")) {
+            operation.textIndexVersion((Integer) options.get("textIndexVersion"));
+        }
+        if (options.containsField("2dsphereIndexVersion")) {
+            operation.set2dSphereIndexVersion((Integer) options.get("2dsphereIndexVersion"));
+        }
+        if (options.containsField("bits")) {
+            operation.bits((Integer) options.get("bits"));
+        }
+        if (options.containsField("min")) {
+            operation.min((Double) options.get("min"));
+        }
+        if (options.containsField("max")) {
+            operation.max((Double) options.get("max"));
+        }
+        if (options.containsField("bucketSize")) {
+            operation.bucketSize((Double) options.get("bucketSize"));
+        }
+        return operation;
     }
 
     private String getIndexNameFromIndexFields(final DBObject index) {
@@ -1969,9 +2007,13 @@ public class DBCollection {
             indexName.append(keyNames).append('_');
             Object keyType = index.get(keyNames);
             if (keyType instanceof Integer) {
+                List<Integer> validIndexTypes = asList(1, -1);
+                if (!validIndexTypes.contains(keyType)) {
+                    throw new UnsupportedOperationException("Unsupported index type: " + keyType);
+                }
                 indexName.append(((Integer) keyType));
             } else if (keyType instanceof String) {
-                List<String> validIndexTypes = asList("2d", "2dsphere", "text");
+                List<String> validIndexTypes = asList("2d", "2dsphere", "text", "geoHaystack", "hashed");
                 if (!validIndexTypes.contains(keyType)) {
                     throw new UnsupportedOperationException("Unsupported index type: " + keyType);
                 }
