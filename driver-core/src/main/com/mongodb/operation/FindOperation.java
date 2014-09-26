@@ -138,7 +138,7 @@ public class FindOperation<T> implements AsyncReadOperation<MongoAsyncCursor<T>>
      *
      * @param batchSize the batch size
      * @return this
-     * @mongodb.driver.manual manual/reference/method/ Batch Size
+     * @mongodb.driver.manual manual/reference/method/cursor.batchSize/#cursor.batchSize Batch Size
      */
     public FindOperation<T> batchSize(final int batchSize) {
         this.batchSize = batchSize;
@@ -574,9 +574,14 @@ public class FindOperation<T> implements AsyncReadOperation<MongoAsyncCursor<T>>
     }
 
     private QueryProtocol<T> asQueryProtocol(final ServerDescription serverDescription, final ReadPreference readPreference) {
-        return new QueryProtocol<T>(namespace, getFlags(readPreference), skip,
-                                    getNumberToReturn(), asDocument(serverDescription, readPreference),
-                                    projection, decoder);
+        return new QueryProtocol<T>(namespace, skip, getNumberToReturn(), asDocument(serverDescription, readPreference), projection,
+                                    decoder).tailableCursor(isTailableCursor())
+                                            .slaveOk(isSlaveOk() || readPreference.isSlaveOk())
+                                            .oplogReplay(isOplogReplay())
+                                            .noCursorTimeout(isNoCursorTimeout())
+                                            .awaitData(isAwaitData())
+                                            .exhaust(isExhaust())
+                                            .partial(isPartial());
     }
 
     /**
@@ -603,32 +608,6 @@ public class FindOperation<T> implements AsyncReadOperation<MongoAsyncCursor<T>>
         } else {
             return batchSize;
         }
-    }
-
-    private int getFlags(final ReadPreference readPreference) {
-        int flags = 0;
-        if (isTailableCursor()) {
-            flags |= 1 << 1;
-        }
-        if (isSlaveOk() || readPreference.isSlaveOk()){
-            flags |= 1 << 2;
-        }
-        if (isOplogReplay()){
-            flags |= 1 << 3;
-        }
-        if (isNoCursorTimeout()){
-            flags |= 1 << 4;
-        }
-        if (isAwaitData()){
-            flags |= 1 << 5;
-        }
-        if (isExhaust()) {
-            flags |= 1 << 6;
-        }
-        if (isPartial()) {
-            flags |= 1 << 7;
-        }
-        return flags;
     }
 
     private BsonDocument asDocument(final ServerDescription serverDescription, final ReadPreference readPreference) {
