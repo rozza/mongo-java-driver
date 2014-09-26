@@ -16,11 +16,9 @@
 
 package com.mongodb.async.rx.client;
 
-import com.mongodb.operation.Index;
+import com.mongodb.client.model.CreateIndexOptions;
 import org.mongodb.Document;
 import rx.Observable;
-
-import java.util.List;
 
 /**
  * Provides the functionality for a collection that is useful for administration, but not necessarily in the course of normal use of a
@@ -29,12 +27,21 @@ import java.util.List;
  * @since 3.0
  */
 public interface CollectionAdministration {
+
     /**
-     * @param indexes all the details of the index to add
-     * @mongodb.driver.manual reference/method/db.collection.createIndex/ Ensure Index
-     * @see Index
+     * @param key an object describing the index key(s), which may not be null. This can be of any type for which a {@code Codec} is
+     *            registered
+     * @mongodb.driver.manual reference/method/db.collection.ensureIndex Ensure Index
      */
-    Observable<Void> createIndexes(List<Index> indexes);
+    Observable<Void> createIndex(Document key);
+
+    /**
+     * @param key an object describing the index key(s), which may not be null. This can be of any type for which a {@code Codec} is
+     *            registered
+     * @param createIndexOptions the options for the index
+     * @mongodb.driver.manual reference/method/db.collection.ensureIndex Ensure Index
+     */
+    Observable<Void> createIndex(Document key, CreateIndexOptions createIndexOptions);
 
     /**
      * @return all the indexes on this collection
@@ -52,10 +59,10 @@ public interface CollectionAdministration {
     /**
      * Drops the given index.
      *
-     * @param index the details of the index to remove
+     * @param indexName the name of the index to remove
      * @mongodb.driver.manual reference/command/dropIndexes/ Drop Indexes
      */
-    Observable<Void> dropIndex(Index index);
+    Observable<Void> dropIndex(String indexName);
 
     /**
      * Drop all the indexes on this collection, except for the default on _id.

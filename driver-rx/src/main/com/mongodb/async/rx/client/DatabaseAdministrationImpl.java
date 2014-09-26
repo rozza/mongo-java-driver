@@ -16,8 +16,10 @@
 
 package com.mongodb.async.rx.client;
 
+import com.mongodb.MongoNamespace;
 import com.mongodb.async.MongoFuture;
-import com.mongodb.operation.CreateCollectionOptions;
+import com.mongodb.client.model.CreateCollectionOptions;
+import com.mongodb.client.model.RenameCollectionOptions;
 import rx.Observable;
 import rx.functions.Func1;
 
@@ -70,40 +72,31 @@ public class DatabaseAdministrationImpl implements DatabaseAdministration {
 
     @Override
     public Observable<Void> createCollection(final String collectionName) {
+        return createCollection(collectionName, new CreateCollectionOptions());
+    }
+
+    @Override
+    public Observable<Void> createCollection(final String collectionName, final CreateCollectionOptions createCollectionOptions) {
         return Observable.create(new OnSubscribeAdapter<Void>(new OnSubscribeAdapter.FutureFunction<Void>() {
             @Override
             public MongoFuture<Void> apply() {
-                return wrapped.createCollection(collectionName);
+                return wrapped.createCollection(collectionName, createCollectionOptions);
             }
         }));
     }
 
     @Override
-    public Observable<Void> createCollection(final CreateCollectionOptions createCollectionOptions) {
-        return Observable.create(new OnSubscribeAdapter<Void>(new OnSubscribeAdapter.FutureFunction<Void>() {
-            @Override
-            public MongoFuture<Void> apply() {
-                return wrapped.createCollection(createCollectionOptions);
-            }
-        }));
+    public Observable<Void> renameCollection(final MongoNamespace originalNamespace, final MongoNamespace newNamespace) {
+        return renameCollection(originalNamespace, newNamespace, new RenameCollectionOptions());
     }
 
     @Override
-    public Observable<Void> renameCollection(final String oldCollectionName, final String newCollectionName) {
+    public Observable<Void> renameCollection(final MongoNamespace originalNamespace, final MongoNamespace newNamespace,
+                                             final RenameCollectionOptions renameCollectionOptions) {
         return Observable.create(new OnSubscribeAdapter<Void>(new OnSubscribeAdapter.FutureFunction<Void>() {
             @Override
             public MongoFuture<Void> apply() {
-                return wrapped.renameCollection(oldCollectionName, newCollectionName);
-            }
-        }));
-    }
-
-    @Override
-    public Observable<Void> renameCollection(final String oldCollectionName, final String newCollectionName, final boolean dropTarget) {
-        return Observable.create(new OnSubscribeAdapter<Void>(new OnSubscribeAdapter.FutureFunction<Void>() {
-            @Override
-            public MongoFuture<Void> apply() {
-                return wrapped.renameCollection(oldCollectionName, newCollectionName, dropTarget);
+                return wrapped.renameCollection(originalNamespace, newNamespace, renameCollectionOptions);
             }
         }));
     }

@@ -17,7 +17,7 @@
 package com.mongodb.async.rx.client;
 
 import com.mongodb.async.MongoFuture;
-import com.mongodb.operation.Index;
+import com.mongodb.client.model.CreateIndexOptions;
 import org.mongodb.Document;
 import rx.Observable;
 import rx.functions.Func1;
@@ -39,11 +39,16 @@ public class CollectionAdministrationImpl implements CollectionAdministration {
     }
 
     @Override
-    public Observable<Void> createIndexes(final List<Index> indexes) {
+    public Observable<Void> createIndex(final Document key) {
+        return createIndex(key, new CreateIndexOptions());
+    }
+
+    @Override
+    public Observable<Void> createIndex(final Document key, final CreateIndexOptions createIndexOptions) {
         return Observable.create(new OnSubscribeAdapter<Void>(new OnSubscribeAdapter.FutureFunction<Void>() {
             @Override
             public MongoFuture<Void> apply() {
-                return wrapped.createIndexes(indexes);
+                return wrapped.createIndex(key, createIndexOptions);
             }
         }));
     }
@@ -81,11 +86,11 @@ public class CollectionAdministrationImpl implements CollectionAdministration {
     }
 
     @Override
-    public Observable<Void> dropIndex(final Index index) {
+    public Observable<Void> dropIndex(final String indexName) {
         return Observable.create(new OnSubscribeAdapter<Void>(new OnSubscribeAdapter.FutureFunction<Void>() {
             @Override
             public MongoFuture<Void> apply() {
-                return wrapped.dropIndex(index);
+                return wrapped.dropIndex(indexName);
             }
         }));
     }
