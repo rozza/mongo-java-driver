@@ -16,7 +16,6 @@
 
 package com.mongodb.operation;
 
-import com.mongodb.CursorFlag;
 import com.mongodb.MongoNamespace;
 import com.mongodb.async.MongoFuture;
 import com.mongodb.binding.AsyncReadBinding;
@@ -26,7 +25,6 @@ import org.bson.BsonDocument;
 import org.bson.BsonString;
 import org.bson.codecs.Decoder;
 
-import java.util.EnumSet;
 import java.util.List;
 
 import static com.mongodb.assertions.Assertions.notNull;
@@ -75,7 +73,7 @@ public class GetIndexesOperation<T> implements AsyncReadOperation<List<T>>, Read
     }
 
     private QueryProtocol<T> getProtocol() {
-        return new QueryProtocol<T>(getIndexNamespace(), EnumSet.noneOf(CursorFlag.class), 0, 0, asQueryDocument(), null, decoder);
+        return new QueryProtocol<T>(getIndexNamespace(), 0, 0, 0, asQueryDocument(), null, decoder);
     }
 
 }
