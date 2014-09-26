@@ -16,7 +16,6 @@
 
 package com.mongodb.operation;
 
-import com.mongodb.CursorFlag;
 import com.mongodb.Function;
 import com.mongodb.MongoNamespace;
 import com.mongodb.async.MongoFuture;
@@ -26,7 +25,6 @@ import com.mongodb.protocol.QueryProtocol;
 import org.bson.BsonDocument;
 import org.bson.codecs.BsonDocumentCodec;
 
-import java.util.EnumSet;
 import java.util.List;
 
 import static com.mongodb.assertions.Assertions.notNull;
@@ -78,8 +76,7 @@ public class GetCollectionNamesOperation implements AsyncReadOperation<List<Stri
     }
 
     private QueryProtocol<BsonDocument> getProtocol() {
-        return new QueryProtocol<BsonDocument>(getNamespace(), EnumSet.noneOf(CursorFlag.class), 0, 0, new BsonDocument(), null,
-                                               new BsonDocumentCodec());
+        return new QueryProtocol<BsonDocument>(getNamespace(), 0, 0, new BsonDocument(), null, new BsonDocumentCodec());
     }
 
 }
