@@ -18,7 +18,7 @@ package com.mongodb.async.rx.client;
 
 import com.mongodb.MongoNamespace;
 import com.mongodb.async.client.MongoCollectionOptions;
-import org.bson.codecs.Codec;
+import com.mongodb.client.model.CreateIndexOptions;
 import org.mongodb.Document;
 import org.mongodb.WriteResult;
 import rx.Observable;
@@ -48,13 +48,6 @@ public interface MongoCollection<T> {
     MongoCollectionOptions getOptions();
 
     /**
-     * Gets the codec used to encode and decode documents into and out of the collection.
-     *
-     * @return the codec
-     */
-    Codec<T> getCodec();
-
-    /**
      * Create a view on the collection with the given filter. This method does not do any I/O.
      *
      * @param filter the filter
@@ -81,17 +74,50 @@ public interface MongoCollection<T> {
     Observable<WriteResult> insert(List<T> documents);
 
     /**
-     * Saves a document into the collection.  If the document has no id, it is inserted.  Otherwise,
-     * it is upserted using the document's id as the query filter.
+     * Drops this collection from the Database.
      *
-     * @param document the document to save
-     * @return an Observable representing the completion of the save. It will report exactly one event when the command completes
-     * successfully.
+     * @return a future that indicates when operation is complete
+     * @mongodb.driver.manual reference/command/drop/ Drop Collection
      */
-    Observable<WriteResult> save(T document);
+    Observable<Void> dropCollection();
 
     /**
-     * @return the CollectionAdministration that provides admin methods that can be performed
+     * @param key an object describing the index key(s), which may not be null. This can be of any type for which a {@code Codec} is
+     *            registered
+     * @return a future that indicates when operation is complete
+     * @mongodb.driver.manual reference/method/db.collection.ensureIndex Ensure Index
      */
-    CollectionAdministration tools();
+    Observable<Void> createIndex(Object key);
+
+    /**
+     * @param key an object describing the index key(s), which may not be null. This can be of any type for which a {@code Codec} is
+     *            registered
+     * @param createIndexOptions the options for the index
+     * @return a future that indicates when operation is complete
+     * @mongodb.driver.manual reference/method/db.collection.ensureIndex Ensure Index
+     */
+    Observable<Void> createIndex(Object key, CreateIndexOptions createIndexOptions);
+
+    /**
+     * @return all the indexes on this collection
+     * @mongodb.driver.manual reference/method/db.collection.getIndexes/ getIndexes
+     */
+    Observable<Document> getIndexes();
+
+    /**
+     * Drops the given index.
+     *
+     * @param indexName the name of the index to remove
+     * @return a future that indicates when operation is complete
+     * @mongodb.driver.manual reference/command/dropIndexes/ Drop Indexes
+     */
+    Observable<Void> dropIndex(String indexName);
+
+    /**
+     * Drop all the indexes on this collection, except for the default on _id.
+     *
+     * @return a future that indicates when operation is complete
+     * @mongodb.driver.manual reference/command/dropIndexes/ Drop Indexes
+     */
+    Observable<Void> dropIndexes();
 }

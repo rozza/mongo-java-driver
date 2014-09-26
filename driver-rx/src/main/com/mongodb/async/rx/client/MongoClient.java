@@ -17,6 +17,7 @@
 package com.mongodb.async.rx.client;
 
 import com.mongodb.annotations.Immutable;
+import rx.Observable;
 
 import java.io.Closeable;
 
@@ -47,7 +48,8 @@ public interface MongoClient extends Closeable {
     void close();
 
     /**
-     * @return the ClientAdministration that provides admin methods that can be performed
+     * @return an Observable containing the names of all the databases on the server
+     * @mongodb.driver.manual reference/commands/listDatabases List Databases
      */
-    ClientAdministration tools();
+    Observable<String> getDatabaseNames();
 }

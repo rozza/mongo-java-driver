@@ -26,7 +26,7 @@ class ClientAdministrationSpecification extends FunctionalSpecification {
         def client = Fixture.getMongoClient()
 
         then:
-        client.tools().getDatabaseNames().get().contains(databaseName)
+        client.getDatabaseNames().get().contains(databaseName)
     }
 
 }

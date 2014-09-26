@@ -17,8 +17,10 @@
 package com.mongodb.async.client;
 
 import com.mongodb.annotations.Immutable;
+import com.mongodb.async.MongoFuture;
 
 import java.io.Closeable;
+import java.util.List;
 
 /**
  * A client-side representation of a MongoDB cluster.  Instances can represent either a standalone MongoDB instance, a replica set,
@@ -40,13 +42,21 @@ public interface MongoClient extends Closeable {
     MongoDatabase getDatabase(String name);
 
     /**
+     * @param databaseName the name of the database to retrieve
+     * @param options      the database options
+     * @return the database
+     */
+    MongoDatabase getDatabase(String databaseName, MongoDatabaseOptions options);
+
+    /**
      * Close the client, which will close all underlying cached resources, including, for example,
      * sockets and background monitoring threads.
      */
     void close();
 
     /**
-     * @return the ClientAdministration that provides admin methods that can be performed
+     * @return a List of the names of all the databases on the server
+     * @mongodb.driver.manual reference/commands/listDatabases List Databases
      */
-    ClientAdministration tools();
+    MongoFuture<List<String>> getDatabaseNames();
 }
