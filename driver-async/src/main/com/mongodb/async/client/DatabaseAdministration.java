@@ -16,8 +16,10 @@
 
 package com.mongodb.async.client;
 
+import com.mongodb.MongoNamespace;
 import com.mongodb.async.MongoFuture;
-import com.mongodb.operation.CreateCollectionOptions;
+import com.mongodb.client.model.CreateCollectionOptions;
+import com.mongodb.client.model.RenameCollectionOptions;
 
 import java.util.List;
 
@@ -51,31 +53,33 @@ public interface DatabaseAdministration {
     /**
      * Create a new collection with the selected options
      *
+     * @param collectionName the name for the new collection to create
      * @param createCollectionOptions various options for creating the collection
      * @mongodb.driver.manual reference/commands/create Create Command
      */
-    MongoFuture<Void> createCollection(CreateCollectionOptions createCollectionOptions);
+    MongoFuture<Void> createCollection(String collectionName, CreateCollectionOptions createCollectionOptions);
 
     /**
      * Rename the collection with oldCollectionName to the newCollectionName.
      *
-     * @param oldCollectionName the collection to rename
-     * @param newCollectionName the name the collection will be renamed to
+     * @param originalNamespace the namespace to rename
+     * @param newNamespace      the desired new namespace
      * @throws com.mongodb.MongoServerException if you provide a newCollectionName that is the name of an existing collection, or if the
      *                              oldCollectionName is the name of a collection that doesn't exist
      * @mongodb.driver.manual reference/commands/renameCollection Rename collection
      */
-    MongoFuture<Void> renameCollection(String oldCollectionName, String newCollectionName);
+    MongoFuture<Void> renameCollection(MongoNamespace originalNamespace, MongoNamespace newNamespace);
 
     /**
      * Rename the collection with oldCollectionName to the newCollectionName.
      *
-     * @param oldCollectionName the collection to rename
-     * @param newCollectionName the name the collection will be renamed to
-     * @param dropTarget        setting this to true will drop any existing database with the name newCollectionName
+     * @param originalNamespace the namespace to rename
+     * @param newNamespace      the desired new namespace
+     * @param renameCollectionOptions the options for renaming a collection
      * @throws com.mongodb.MongoServerException if you provide a newCollectionName that is the name of an existing collection and
      *                              dropTarget is false, or if the oldCollectionName is the name of a collection that doesn't exist
      * @mongodb.driver.manual reference/commands/renameCollection Rename collection
      */
-    MongoFuture<Void> renameCollection(String oldCollectionName, String newCollectionName, boolean dropTarget);
+    MongoFuture<Void> renameCollection(MongoNamespace originalNamespace, MongoNamespace newNamespace,
+                                       RenameCollectionOptions renameCollectionOptions);
 }

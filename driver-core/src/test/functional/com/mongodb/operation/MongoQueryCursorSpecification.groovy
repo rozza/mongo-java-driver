@@ -22,6 +22,7 @@ import com.mongodb.MongoCursorNotFoundException
 import com.mongodb.OperationFunctionalSpecification
 import com.mongodb.ServerCursor
 import com.mongodb.binding.ConnectionSource
+import com.mongodb.client.model.CreateCollectionOptions
 import com.mongodb.codecs.DocumentCodec
 import com.mongodb.protocol.GetMoreProtocol
 import com.mongodb.protocol.KillCursor
@@ -221,8 +222,7 @@ class MongoQueryCursorSpecification extends OperationFunctionalSpecification {
 
     @Category(Slow)
     def 'test tailable'() {
-        collectionHelper.create(new CreateCollectionOptions(collectionName, true, 1000))
-
+        collectionHelper.create(collectionName, new CreateCollectionOptions().capped(true).sizeInBytes(1000))
         collectionHelper.insertDocuments(new DocumentCodec(), new Document('_id', 1).append('ts', new BsonTimestamp(5, 0)))
         def firstBatch = executeQuery(new BsonDocument('ts', new BsonDocument('$gte', new BsonTimestamp(5, 0))), 2,
                                       EnumSet.of(CursorFlag.TAILABLE, CursorFlag.AWAIT_DATA))
@@ -264,8 +264,7 @@ class MongoQueryCursorSpecification extends OperationFunctionalSpecification {
 
     @Category(Slow)
     def 'test tailable interrupt'() throws InterruptedException {
-        collectionHelper.create(new CreateCollectionOptions(collectionName, true, 1000))
-
+        collectionHelper.create(collectionName, new CreateCollectionOptions().capped(true).sizeInBytes(1000))
         collectionHelper.insertDocuments(new DocumentCodec(), new Document('_id', 1))
 
         def firstBatch = executeQuery(new BsonDocument('ts', new BsonDocument('$gte', new BsonTimestamp(5, 0))), 2,

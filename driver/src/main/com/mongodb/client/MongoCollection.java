@@ -23,6 +23,7 @@ import com.mongodb.annotations.ThreadSafe;
 import com.mongodb.client.model.AggregateOptions;
 import com.mongodb.client.model.BulkWriteOptions;
 import com.mongodb.client.model.CountOptions;
+import com.mongodb.client.model.CreateIndexOptions;
 import com.mongodb.client.model.DistinctOptions;
 import com.mongodb.client.model.ExplainableModel;
 import com.mongodb.client.model.FindOneAndDeleteOptions;
@@ -503,9 +504,46 @@ public interface MongoCollection<T> {
     Document explain(ExplainableModel explainableModel, ExplainVerbosity verbosity);
 
     /**
-     * Collection administration tools
+     * Drops this collection from the Database.
      *
-     * @return the collection administration tools
+     * @mongodb.driver.manual reference/command/drop/ Drop Collection
      */
-    CollectionAdministration tools();
+    void dropCollection();
+
+    /**
+     * @param key an object describing the index key(s), which may not be null. This can be of any type for which a {@code Codec} is
+     *            registered
+     * @mongodb.driver.manual reference/method/db.collection.ensureIndex Ensure Index
+     */
+    void createIndex(Object key);
+
+    /**
+     * @param key an object describing the index key(s), which may not be null. This can be of any type for which a {@code Codec} is
+     *            registered
+     * @param createIndexOptions the options for the index
+     * @mongodb.driver.manual reference/method/db.collection.ensureIndex Ensure Index
+     */
+    void createIndex(Object key, CreateIndexOptions createIndexOptions);
+
+    /**
+     * @return all the indexes on this collection
+     * @mongodb.driver.manual reference/method/db.collection.getIndexes/ getIndexes
+     */
+    List<Document> getIndexes();
+
+    /**
+     * Drops the given index.
+     *
+     * @param indexName the name of the index to remove
+     * @mongodb.driver.manual reference/command/dropIndexes/ Drop Indexes
+     */
+    void dropIndex(String indexName);
+
+    /**
+     * Drop all the indexes on this collection, except for the default on _id.
+     *
+     * @mongodb.driver.manual reference/command/dropIndexes/ Drop Indexes
+     */
+    void dropIndexes();
+
 }

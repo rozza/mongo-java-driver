@@ -17,7 +17,7 @@
 package com.mongodb.async.client;
 
 import com.mongodb.async.MongoFuture;
-import com.mongodb.operation.Index;
+import com.mongodb.client.model.CreateIndexOptions;
 import org.mongodb.Document;
 
 import java.util.List;
@@ -30,11 +30,20 @@ import java.util.List;
  */
 public interface CollectionAdministration {
     /**
-     * @param indexes all the details of the index to add
-     * @mongodb.driver.manual reference/method/db.collection.createIndex/ Ensure Index
-     * @see Index
+     * @param key an object describing the index key(s), which may not be null. This can be of any type for which a {@code Codec} is
+     *            registered
+     * @mongodb.driver.manual reference/method/db.collection.ensureIndex Ensure Index
      */
-    MongoFuture<Void> createIndexes(List<Index> indexes);
+    MongoFuture<Void> createIndex(Document key);
+
+    /**
+     * @param key an object describing the index key(s), which may not be null. This can be of any type for which a {@code Codec} is
+     *            registered
+     * @param createIndexOptions the options for the index
+     * @mongodb.driver.manual reference/method/db.collection.ensureIndex Ensure Index
+     */
+    MongoFuture<Void> createIndex(Document key, CreateIndexOptions createIndexOptions);
+
 
     /**
      * @return all the indexes on this collection
@@ -52,10 +61,10 @@ public interface CollectionAdministration {
     /**
      * Drops the given index.
      *
-     * @param index the details of the index to remove
+     * @param indexName the name of the index to remove
      * @mongodb.driver.manual reference/command/dropIndexes/ Drop Indexes
      */
-    MongoFuture<Void> dropIndex(Index index);
+    MongoFuture<Void> dropIndex(String indexName);
 
     /**
      * Drop all the indexes on this collection, except for the default on _id.

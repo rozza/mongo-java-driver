@@ -22,7 +22,7 @@ import com.mongodb.operation.AggregateOperation;
 import com.mongodb.operation.AggregateToCollectionOperation;
 import com.mongodb.operation.BaseWriteOperation;
 import com.mongodb.operation.CountOperation;
-import com.mongodb.operation.CreateIndexesOperation;
+import com.mongodb.operation.CreateIndexOperation;
 import com.mongodb.operation.DeleteOperation;
 import com.mongodb.operation.DeleteRequest;
 import com.mongodb.operation.DistinctOperation;
@@ -33,7 +33,6 @@ import com.mongodb.operation.FindAndReplaceOperation;
 import com.mongodb.operation.FindAndUpdateOperation;
 import com.mongodb.operation.FindOperation;
 import com.mongodb.operation.GetIndexesOperation;
-import com.mongodb.operation.Index;
 import com.mongodb.operation.InsertOperation;
 import com.mongodb.operation.InsertRequest;
 import com.mongodb.operation.MapReduceCursor;
@@ -41,7 +40,6 @@ import com.mongodb.operation.MapReduceStatistics;
 import com.mongodb.operation.MapReduceToCollectionOperation;
 import com.mongodb.operation.MapReduceWithInlineResultsOperation;
 import com.mongodb.operation.MixedBulkWriteOperation;
-import com.mongodb.operation.OrderBy;
 import com.mongodb.operation.ParallelCollectionScanOperation;
 import com.mongodb.operation.ReadOperation;
 import com.mongodb.operation.RenameCollectionOperation;
@@ -64,7 +62,6 @@ import org.bson.types.ObjectId;
 import org.mongodb.Document;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -933,7 +930,8 @@ public class DBCollection {
      * @throws MongoException if target is the name of an existing collection and {@code dropTarget=false}.
      */
     public DBCollection rename(final String newName, final boolean dropTarget) {
-        execute(new RenameCollectionOperation(getNamespace().getDatabaseName(), getName(), newName, dropTarget));
+        execute(new RenameCollectionOperation(getNamespace(),
+                                              new MongoNamespace(getNamespace().getDatabaseName(), newName)).dropTarget(dropTarget));
         return getDB().getCollection(newName);
     }
 
@@ -1471,7 +1469,7 @@ public class DBCollection {
      * @mongodb.driver.manual /administration/indexes-creation/ Index Creation Tutorials
      */
     public void createIndex(final DBObject keys, final DBObject options) {
-        execute(new CreateIndexesOperation(getNamespace(), Arrays.asList(toIndex(keys, options))));
+        execute(createIndexOperation(keys, options));
     }
 
     /**
@@ -1782,9 +1780,7 @@ public class DBCollection {
      * @throws MongoException if the index does not exist
      */
     public void dropIndex(final DBObject index) {
-        List<Index.Key<?>> keysFromDBObject = getKeysFromDBObject(index);
-        Index indexToDrop = Index.builder().addKeys(keysFromDBObject).build();
-        dropIndex(indexToDrop.getName());
+        dropIndex(getIndexNameFromIndexFields(index));
     }
 
     /**
@@ -1952,64 +1948,79 @@ public class DBCollection {
                                  DBObjectCodecProvider.getDefaultBsonTypeClassMap());
     }
 
-    private Index toIndex(final DBObject keys, final DBObject options) {
-        String indexName = null;
-        boolean unique = false;
-        boolean dropDups = false;
-        boolean sparse = false;
-        boolean background = false;
-        int expireAfterSeconds = -1;
+    private CreateIndexOperation createIndexOperation(final DBObject key, final DBObject options) {
+        CreateIndexOperation operation = new CreateIndexOperation(getNamespace(), wrap(key));
+        if (options.containsField("name")) {
+            operation.name((String) options.get("name"));
+        }
+        if (options.containsField("background")) {
+            operation.background((Boolean) options.get("background"));
+        }
+        if (options.containsField("unique")) {
+            operation.unique((Boolean) options.get("unique"));
+        }
+        if (options.containsField("sparse")) {
+            operation.sparse((Boolean) options.get("sparse"));
+        }
+        if (options.containsField("expireAfterSeconds")) {
+            operation.expireAfterSeconds((Integer) options.get("expireAfterSeconds"));
+        }
+        if (options.containsField("v")) {
+            operation.version((Integer) options.get("version"));
+        }
+        if (options.containsField("weights")) {
+            operation.weights(wrap((DBObject) options.get("weights")));
+        }
+        if (options.containsField("default_language")) {
+            operation.defaultLanguage((String) options.get("default_language"));
+        }
+        if (options.containsField("language_override")) {
+            operation.languageOverride((String) options.get("language_override"));
+        }
+        if (options.containsField("textIndexVersion")) {
+            operation.textIndexVersion((Integer) options.get("textIndexVersion"));
+        }
+        if (options.containsField("2dsphereIndexVersion")) {
+            operation.set2dSphereIndexVersion((Integer) options.get("2dsphereIndexVersion"));
+        }
+        if (options.containsField("bits")) {
+            operation.bits((Integer) options.get("bits"));
+        }
+        if (options.containsField("min")) {
+            operation.min((Double) options.get("min"));
+        }
+        if (options.containsField("max")) {
+            operation.max((Double) options.get("max"));
+        }
+        if (options.containsField("bucketSize")) {
+            operation.bucketSize((Double) options.get("bucketSize"));
+        }
+        return operation;
+    }
 
-        Index.Builder builder = Index.builder();
-        if (options != null) {
-            DBObject optionsCopy = new BasicDBObject(options.toMap());
-            indexName = (String) optionsCopy.get("name");
-            unique = removeBoolean(optionsCopy, "unique");
-            dropDups = removeBoolean(optionsCopy, "dropDups");
-            sparse = removeBoolean(optionsCopy, "sparse");
-            background = removeBoolean(optionsCopy, "background");
-            if (options.get("expireAfterSeconds") != null) {
-                expireAfterSeconds = Integer.parseInt(optionsCopy.removeField("expireAfterSeconds").toString());
+    private String getIndexNameFromIndexFields(final DBObject index) {
+        StringBuilder indexName = new StringBuilder();
+        for (final String keyNames : index.keySet()) {
+            if (indexName.length() != 0) {
+                indexName.append('_');
             }
-            builder.extra(new BsonDocumentWrapper<DBObject>(optionsCopy, getDefaultDBObjectCodec()));
-        }
-
-        builder.name(indexName)
-               .unique(unique)
-               .dropDups(dropDups)
-               .sparse(sparse)
-               .background(background)
-               .expireAfterSeconds(expireAfterSeconds)
-               .addKeys(getKeysFromDBObject(keys));
-
-        return builder.build();
-    }
-
-    private boolean removeBoolean(final DBObject document, final String name) {
-        Boolean value = (Boolean) document.removeField(name);
-        if (value == null) {
-            return false;
-        }
-        return value;
-    }
-
-    private List<Index.Key<?>> getKeysFromDBObject(final DBObject fields) {
-        List<Index.Key<?>> keys = new ArrayList<Index.Key<?>>();
-        for (final String key : fields.keySet()) {
-            Object keyType = fields.get(key);
+            indexName.append(keyNames).append('_');
+            Object keyType = index.get(keyNames);
             if (keyType instanceof Integer) {
-                keys.add(new Index.OrderedKey(key, OrderBy.fromInt((Integer) fields.get(key))));
-            } else if (keyType.equals("2d")) {
-                keys.add(new Index.GeoKey(key));
-            } else if (keyType.equals("2dsphere")) {
-                keys.add(new Index.GeoSphereKey(key));
-            } else if (keyType.equals("text")) {
-                keys.add(new Index.Text(key));
-            } else {
-                throw new UnsupportedOperationException("Unsupported index type: " + keyType);
+                List<Integer> validIndexTypes = asList(1, -1);
+                if (!validIndexTypes.contains(keyType)) {
+                    throw new UnsupportedOperationException("Unsupported index type: " + keyType);
+                }
+                indexName.append(((Integer) keyType));
+            } else if (keyType instanceof String) {
+                List<String> validIndexTypes = asList("2d", "2dsphere", "text", "geoHaystack", "hashed");
+                if (!validIndexTypes.contains(keyType)) {
+                    throw new UnsupportedOperationException("Unsupported index type: " + keyType);
+                }
+                indexName.append(((String) keyType).replace(' ', '_'));
             }
         }
-        return keys;
+        return indexName.toString();
     }
 
     private static BasicDBList toDBList(final MongoCursor<DBObject> source) {

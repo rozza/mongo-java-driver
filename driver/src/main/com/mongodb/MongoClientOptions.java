@@ -21,17 +21,16 @@ import com.mongodb.codecs.DocumentCodecProvider;
 import com.mongodb.connection.ConnectionPoolSettings;
 import com.mongodb.connection.ServerSettings;
 import com.mongodb.connection.SocketSettings;
-import org.bson.codecs.configuration.CodecProvider;
 import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.codecs.configuration.RootCodecRegistry;
 
 import javax.net.SocketFactory;
 import javax.net.ssl.SSLSocketFactory;
-import java.util.Arrays;
 import java.util.List;
 
 import static com.mongodb.assertions.Assertions.isTrueArgument;
 import static com.mongodb.assertions.Assertions.notNull;
+import static java.util.Arrays.asList;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 /**
@@ -624,7 +623,7 @@ public class MongoClientOptions {
      * @since 2.10.0
      */
     public static class Builder {
-        private final List<CodecProvider> codecProviders = Arrays.<CodecProvider>asList(new DocumentCodecProvider());
+        private final List<DocumentCodecProvider> codecProviders = asList(new DocumentCodecProvider());
 
         private String description;
         private ReadPreference readPreference = ReadPreference.primary();

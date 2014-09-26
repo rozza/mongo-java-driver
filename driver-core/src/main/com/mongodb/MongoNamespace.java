@@ -23,7 +23,6 @@ import com.mongodb.annotations.Immutable;
  */
 @Immutable
 public final class MongoNamespace {
-    private static final String NAMESPACE_TEMPLATE = "%s.%s";
     public static final String COMMAND_COLLECTION_NAME = "$cmd";
 
     private final String databaseName;
@@ -91,7 +90,4 @@ public final class MongoNamespace {
         return result;
     }
 
-    public static String asNamespaceString(final String databaseName, final String collectionName) {
-        return String.format(NAMESPACE_TEMPLATE, databaseName, collectionName);
-    }
 }
