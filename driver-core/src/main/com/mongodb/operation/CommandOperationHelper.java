@@ -17,7 +17,6 @@
 package com.mongodb.operation;
 
 import com.mongodb.CommandFailureException;
-import com.mongodb.CursorFlag;
 import com.mongodb.Function;
 import com.mongodb.MongoException;
 import com.mongodb.ReadPreference;
@@ -39,8 +38,6 @@ import org.bson.BsonDocument;
 import org.bson.FieldNameValidator;
 import org.bson.codecs.BsonDocumentCodec;
 import org.bson.codecs.Decoder;
-
-import java.util.EnumSet;
 
 import static com.mongodb.ReadPreference.primary;
 import static com.mongodb.connection.ServerType.SHARD_ROUTER;
@@ -185,7 +182,7 @@ final class CommandOperationHelper {
                                                   final Function<D, T> transformer) {
         return transformer.apply(new CommandProtocol<D>(database, wrapCommand(command, readPreference,
                                                                               connection.getServerDescription()),
-                                                        getQueryFlags(readPreference), fieldNameValidator, decoder)
+                                                        readPreference.isSlaveOk(), fieldNameValidator, decoder)
                                  .execute(connection));
     }
 
@@ -292,7 +289,7 @@ final class CommandOperationHelper {
                                                                     final Function<D, T> transformer) {
         final SingleResultFuture<T> future = new SingleResultFuture<T>();
         new CommandProtocol<D>(database, wrapCommand(command, readPreference, connection.getServerDescription()),
-                               getQueryFlags(readPreference), new NoOpFieldNameValidator(), decoder)
+                               readPreference.isSlaveOk(), new NoOpFieldNameValidator(), decoder)
         .executeAsync(connection).register(new SingleResultCallback<D>() {
             @Override
             public void onResult(final D result, final MongoException e) {
@@ -345,14 +342,6 @@ final class CommandOperationHelper {
         }
     }
 
-    static EnumSet<CursorFlag> getQueryFlags(final ReadPreference readPreference) {
-        if (readPreference.isSlaveOk()) {
-            return EnumSet.of(CursorFlag.SLAVE_OK);
-        } else {
-            return EnumSet.noneOf(CursorFlag.class);
-        }
-    }
-
     private static class CommandProtocolExecutingCallback<D, R> implements SingleResultCallback<AsyncConnectionSource> {
         private final String database;
         private final BsonDocument command;
@@ -379,7 +368,7 @@ final class CommandOperationHelper {
 
         protected Protocol<D> getProtocol(final ServerDescription serverDescription) {
             return new CommandProtocol<D>(database, wrapCommand(command, readPreference, serverDescription),
-                                          getQueryFlags(readPreference), fieldNameValidator, decoder);
+                                          readPreference.isSlaveOk(), fieldNameValidator, decoder);
         }
 
         @Override
