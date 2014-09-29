@@ -148,10 +148,7 @@ public class DBApiLayer extends DB {
                 } else {
                     List<DBObject> collections = (List<DBObject>) res.get("collections");
                     for (DBObject collectionInfo: collections) {
-                        String collectionName = collectionInfo.get("name").toString();
-                        if (!collectionName.contains("$")) {
-                            collectionNames.add(collectionName);
-                        }
+                        collectionNames.add(collectionInfo.get("name").toString());
                     }
                 }
             } else {
