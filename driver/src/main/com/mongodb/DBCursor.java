@@ -220,9 +220,6 @@ public class DBCursor implements Cursor, Iterable<DBObject> {
      * @see Bytes
      */
     public DBCursor setOptions(final int options) {
-        if ((options & Bytes.QUERYOPTION_EXHAUST) != 0) {
-            throw new IllegalArgumentException("The exhaust option is not user settable.");
-        }
         this.options = options;
         return this;
     }
@@ -632,7 +629,7 @@ public class DBCursor implements Cursor, Iterable<DBObject> {
      * @see DBCursor#size
      */
     public int count() {
-        return (int) collection.getCount(getQuery(), getKeysWanted(), 0, 0, getReadPreference(),
+        return (int) collection.getCount(getQuery(), getKeysWanted(), 0, 0, getReadPreferenceForCursor(),
                                          findModel.getOptions().getMaxTime(MILLISECONDS), MILLISECONDS,
                                          ((BsonDocument) findModel.getOptions().getModifiers()).get("$hint"));
     }
@@ -644,7 +641,7 @@ public class DBCursor implements Cursor, Iterable<DBObject> {
         return collection.findOne(getQuery(), getKeysWanted(),
                                   findModel.getOptions().getSort() == null
                                   ? null : DBObjects.toDBObject((BsonDocument) findModel.getOptions().getSort()),
-                                  getReadPreference(), findModel.getOptions().getMaxTime(MILLISECONDS), MILLISECONDS);
+                                  getReadPreferenceForCursor(), findModel.getOptions().getMaxTime(MILLISECONDS), MILLISECONDS);
     }
 
     /**
