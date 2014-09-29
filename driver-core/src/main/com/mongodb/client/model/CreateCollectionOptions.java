@@ -50,18 +50,18 @@ public class CreateCollectionOptions {
     }
 
     /**
-     * Gets the maximum number of documents allowed in the collection.
+     * Gets the maximum number of documents allowed in a capped collection.
      *
-     * @return max number of documents in the collection
+     * @return max number of documents in a capped collection
      */
     public long getMaxDocuments() {
         return maxDocuments;
     }
 
     /**
-     * Sets the maximum number of documents allowed in the collection.
+     * Sets the maximum number of documents allowed in a capped collection.
      *
-     * @param maxDocuments the maximum number of documents allowed in the collection
+     * @param maxDocuments the maximum number of documents allowed in capped collection
      * @return this
      */
     public CreateCollectionOptions maxDocuments(final long maxDocuments) {
@@ -91,18 +91,18 @@ public class CreateCollectionOptions {
     }
 
     /**
-     * Gets the maximum size of the collection in bytes.
+     * Gets the maximum size in bytes of a capped collection.
      *
-     * @return the maximum size of the collection
+     * @return the maximum size of a capped collection.
      */
     public long getSizeInBytes() {
         return sizeInBytes;
     }
 
     /**
-     * Gets the maximum size of the collection in bytes.
+     * Gets the maximum size of in bytes of a capped collection.
      *
-     * @param sizeInBytes the maximum size of the collection
+     * @param sizeInBytes the maximum size of a capped collection.
      * @return this
      */
     public CreateCollectionOptions sizeInBytes(final long sizeInBytes) {
