@@ -72,6 +72,8 @@ import static com.mongodb.BulkWriteHelper.translateBulkWriteResult;
 import static com.mongodb.BulkWriteHelper.translateWriteRequestsToNew;
 import static com.mongodb.ReadPreference.primary;
 import static com.mongodb.ReadPreference.primaryPreferred;
+import static com.mongodb.assertions.Assertions.convertToType;
+import static java.lang.String.format;
 import static java.util.Arrays.asList;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
@@ -1948,52 +1950,57 @@ public class DBCollection {
                                  DBObjectCodecProvider.getDefaultBsonTypeClassMap());
     }
 
+    private <T> T convertOptionsToType(final DBObject options, final String field, final Class<T> clazz) {
+        return convertToType(clazz, options.get(field), format("'%s' should be of class %s", field, clazz.getSimpleName()));
+    }
+
     private CreateIndexOperation createIndexOperation(final DBObject key, final DBObject options) {
         CreateIndexOperation operation = new CreateIndexOperation(getNamespace(), wrap(key));
         if (options.containsField("name")) {
-            operation.name((String) options.get("name"));
+            operation.name(convertOptionsToType(options, "name", String.class));
         }
         if (options.containsField("background")) {
-            operation.background((Boolean) options.get("background"));
+            operation.background(convertOptionsToType(options, "background", Boolean.class));
         }
         if (options.containsField("unique")) {
-            operation.unique((Boolean) options.get("unique"));
+            operation.unique(convertOptionsToType(options, "unique", Boolean.class));
         }
         if (options.containsField("sparse")) {
-            operation.sparse((Boolean) options.get("sparse"));
+            operation.sparse(convertOptionsToType(options, "sparse", Boolean.class));
         }
         if (options.containsField("expireAfterSeconds")) {
-            operation.expireAfterSeconds((Integer) options.get("expireAfterSeconds"));
+            operation.expireAfterSeconds(convertOptionsToType(options, "expireAfterSeconds", Integer.class));
         }
         if (options.containsField("v")) {
-            operation.version((Integer) options.get("version"));
+            operation.version(convertOptionsToType(options, "v", Integer.class));
         }
+
         if (options.containsField("weights")) {
-            operation.weights(wrap((DBObject) options.get("weights")));
+            operation.weights(wrap(convertOptionsToType(options, "weights", DBObject.class)));
         }
         if (options.containsField("default_language")) {
-            operation.defaultLanguage((String) options.get("default_language"));
+            operation.defaultLanguage(convertOptionsToType(options, "default_language", String.class));
         }
         if (options.containsField("language_override")) {
-            operation.languageOverride((String) options.get("language_override"));
+            operation.languageOverride(convertOptionsToType(options, "language_override", String.class));
         }
         if (options.containsField("textIndexVersion")) {
-            operation.textIndexVersion((Integer) options.get("textIndexVersion"));
+            operation.textIndexVersion(convertOptionsToType(options, "textIndexVersion", Integer.class));
         }
         if (options.containsField("2dsphereIndexVersion")) {
-            operation.twoDSphereIndexVersion((Integer) options.get("2dsphereIndexVersion"));
+            operation.twoDSphereIndexVersion(convertOptionsToType(options, "2dsphereIndexVersion", Integer.class));
         }
         if (options.containsField("bits")) {
-            operation.bits((Integer) options.get("bits"));
+            operation.bits(convertOptionsToType(options, "bits", Integer.class));
         }
         if (options.containsField("min")) {
-            operation.min((Double) options.get("min"));
+            operation.min(convertOptionsToType(options, "min", Double.class));
         }
         if (options.containsField("max")) {
-            operation.max((Double) options.get("max"));
+            operation.max(convertOptionsToType(options, "max", Double.class));
         }
         if (options.containsField("bucketSize")) {
-            operation.bucketSize((Double) options.get("bucketSize"));
+            operation.bucketSize(convertOptionsToType(options, "bucketSize", Double.class));
         }
         return operation;
     }
