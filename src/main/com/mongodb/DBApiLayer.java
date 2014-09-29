@@ -81,7 +81,7 @@ public class DBApiLayer extends DB {
     public WriteResult addUser( String username , char[] passwd, boolean readOnly ){
         requestStart();
         try {
-            if (checkServerVersion(asList(2, 6, 0))) {
+            if (isServerVersionAtLeast(asList(2, 6, 0))) {
                 CommandResult userInfoResult = command(new BasicDBObject("usersInfo", username));
                 userInfoResult.throwOnError();
                 DBObject userCommandDocument = getUserCommandDocument(username, passwd, readOnly,
@@ -101,7 +101,7 @@ public class DBApiLayer extends DB {
     public WriteResult removeUser( String username ){
         requestStart();
         try {
-            if (checkServerVersion(asList(2, 6, 0))) {
+            if (isServerVersionAtLeast(asList(2, 6, 0))) {
                 CommandResult res = command(new BasicDBObject("dropUser", username));
                 res.throwOnError();
                 return new WriteResult(res, getWriteConcern());
@@ -141,11 +141,10 @@ public class DBApiLayer extends DB {
     public Set<String> getCollectionNames() {
         {
             List<String> collectionNames = new ArrayList<String>();
-            if (checkServerVersion(asList(2, 7, 7))) {
-                CommandResult res = command(new BasicDBObject("listCollections", getName()));
+            if (isServerVersionAtLeast(asList(2, 7, 7))) {
+                CommandResult res = command(new BasicDBObject("listCollections", getName()), ReadPreference.primary());
                 if (!res.ok() && res.getCode() != 26) {
                     res.throwOnError();
-                    return null;
                 } else {
                     List<DBObject> collections = (List<DBObject>) res.get("collections");
                     for (DBObject collectionInfo: collections) {
@@ -157,7 +156,7 @@ public class DBApiLayer extends DB {
                 }
             } else {
                 Iterator<DBObject> collections = getCollection("system.namespaces")
-                        .find(new BasicDBObject(), null, 0, 0, 0, getOptions(), getReadPreference(), null);
+                        .find(new BasicDBObject(), null, 0, 0, 0, getOptions(), ReadPreference.primary(), null);
                 for (; collections.hasNext();) {
                     String collectionName = collections.next().get("name").toString();
                     if (!collectionName.contains("$")) {
@@ -236,7 +235,7 @@ public class DBApiLayer extends DB {
         return _connector.authenticate(credentials);
     }
 
-    private boolean checkServerVersion(final List<Integer> versionList) {
+    boolean isServerVersionAtLeast(final List<Integer> versionList) {
         return getConnector().getServerDescription(getConnector().getPrimaryPort().getAddress())
                 .getVersion().compareTo(new ServerVersion(versionList)) >= 0;
     }
