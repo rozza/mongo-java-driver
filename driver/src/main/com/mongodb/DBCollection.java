@@ -1981,7 +1981,7 @@ public class DBCollection {
             operation.textIndexVersion((Integer) options.get("textIndexVersion"));
         }
         if (options.containsField("2dsphereIndexVersion")) {
-            operation.set2dSphereIndexVersion((Integer) options.get("2dsphereIndexVersion"));
+            operation.twoDSphereIndexVersion((Integer) options.get("2dsphereIndexVersion"));
         }
         if (options.containsField("bits")) {
             operation.bits((Integer) options.get("bits"));

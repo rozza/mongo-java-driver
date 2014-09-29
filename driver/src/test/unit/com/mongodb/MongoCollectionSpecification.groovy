@@ -766,7 +766,7 @@ class MongoCollectionSpecification extends Specification {
         operation.getDefaultLanguage() == null
         operation.getLanguageOverride() == null
         operation.getTextIndexVersion() == null
-        operation.get2dSphereIndexVersion() == null
+        operation.getTwoDSphereIndexVersion() == null
         operation.getBits() == null
         operation.getMin() == null
         operation.getMax() == null
@@ -784,7 +784,7 @@ class MongoCollectionSpecification extends Specification {
                 .defaultLanguage('es')
                 .languageOverride('language')
                 .textIndexVersion(1)
-                .set2dSphereIndexVersion(1)
+                .twoDSphereIndexVersion(1)
                 .bits(1)
                 .min(-180.0)
                 .max(180.0)
@@ -804,7 +804,7 @@ class MongoCollectionSpecification extends Specification {
         operation2.getDefaultLanguage() == 'es'
         operation2.getLanguageOverride() == 'language'
         operation2.getTextIndexVersion() == 1
-        operation2.get2dSphereIndexVersion() == 1
+        operation2.getTwoDSphereIndexVersion() == 1
         operation2.getBits() == 1
         operation2.getMin() == -180.0
         operation2.getMax() == 180.0

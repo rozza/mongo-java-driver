@@ -49,6 +49,7 @@ import static java.util.Arrays.asList;
 /**
  * An operation that creates an index.
  *
+ * @mongodb.driver.manual reference/method/db.collection.ensureIndex/#options Index options
  * @since 3.0
  */
 public class CreateIndexOperation implements AsyncWriteOperation<Void>, WriteOperation<Void> {
@@ -142,7 +143,7 @@ public class CreateIndexOperation implements AsyncWriteOperation<Void>, WriteOpe
     }
 
     /**
-     * s the name of the index.
+     * Sets the name of the index.
      *
      * @param name of the index
      * @return this
@@ -215,21 +216,21 @@ public class CreateIndexOperation implements AsyncWriteOperation<Void>, WriteOpe
     }
 
     /**
-     * Gets the weighting object for use with a text index
-     * <p/>
-     * <p>An object that represents field and weight pairs. The weight is an integer ranging from 1 to 99,999 and denotes the significance
+     * Gets the weighting document for use with a text index
+     *
+     * <p>A document that represents field and weight pairs. The weight is an integer ranging from 1 to 99,999 and denotes the significance
      * of the field relative to the other indexed fields in terms of the score.</p>
      *
-     * @return the weighting object
+     * @return the weighting document
      * @mongodb.driver.manual tutorial/control-results-of-text-search Control Search Results with Weights
      */
-    public Object getWeights() {
+    public BsonDocument getWeights() {
         return weights;
     }
 
     /**
      * Sets the weighting document for use with a text index.
-     * <p/>
+     *
      * <p>A document that represents field and weight pairs. The weight is an integer ranging from 1 to 99,999 and denotes the significance
      * of the field relative to the other indexed fields in terms of the score.</p>
      *
@@ -244,7 +245,7 @@ public class CreateIndexOperation implements AsyncWriteOperation<Void>, WriteOpe
 
     /**
      * Gets the language for a text index.
-     * <p/>
+     *
      * <p>The language that determines the list of stop words and the rules for the stemmer and tokenizer.</p>
      *
      * @return the language for a text index.
@@ -256,7 +257,7 @@ public class CreateIndexOperation implements AsyncWriteOperation<Void>, WriteOpe
 
     /**
      * Sets the language for the text index.
-     * <p/>
+     *
      * <p>The language that determines the list of stop words and the rules for the stemmer and tokenizer.</p>
      *
      * @param defaultLanguage the language for the text index.
@@ -270,7 +271,7 @@ public class CreateIndexOperation implements AsyncWriteOperation<Void>, WriteOpe
 
     /**
      * Gets the name of the field that contains the language string.
-     * <p/>
+     *
      * <p>For text indexes, the name of the field, in the collection's documents, that contains the override language for the document.</p>
      *
      * @return the name of the field that contains the language string.
@@ -282,7 +283,7 @@ public class CreateIndexOperation implements AsyncWriteOperation<Void>, WriteOpe
 
     /**
      * Sets the name of the field that contains the language string.
-     * <p/>
+     *
      * <p>For text indexes, the name of the field, in the collection's documents, that contains the override language for the document.</p>
      *
      * @param languageOverride the name of the field that contains the language string.
@@ -319,7 +320,7 @@ public class CreateIndexOperation implements AsyncWriteOperation<Void>, WriteOpe
      *
      * @return the 2dsphere index version number
      */
-    public Integer get2dSphereIndexVersion() {
+    public Integer getTwoDSphereIndexVersion() {
         return sphereIndexVersion;
     }
 
@@ -329,7 +330,7 @@ public class CreateIndexOperation implements AsyncWriteOperation<Void>, WriteOpe
      * @param sphereIndexVersion the 2dsphere index version number.
      * @return this
      */
-    public CreateIndexOperation set2dSphereIndexVersion(final Integer sphereIndexVersion) {
+    public CreateIndexOperation twoDSphereIndexVersion(final Integer sphereIndexVersion) {
         this.sphereIndexVersion = sphereIndexVersion;
         return this;
     }
