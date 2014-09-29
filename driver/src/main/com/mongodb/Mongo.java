@@ -36,6 +36,7 @@ import com.mongodb.connection.ServerDescription;
 import com.mongodb.connection.SocketStreamFactory;
 import com.mongodb.management.JMXConnectionPoolListener;
 import com.mongodb.operation.GetDatabaseNamesOperation;
+import com.mongodb.operation.OperationExecutor;
 import com.mongodb.operation.ReadOperation;
 import com.mongodb.operation.WriteOperation;
 import com.mongodb.protocol.KillCursor;
@@ -458,7 +459,7 @@ public class Mongo {
             return db;
         }
 
-        db = new DB(this, dbName, options.getCodecRegistry().get(Document.class));
+        db = new DB(this, dbName, createOperationExecutor(), options.getCodecRegistry().get(Document.class));
         DB temp = dbCache.putIfAbsent(dbName, db);
         if (temp != null) {
             return temp;
@@ -761,10 +762,23 @@ public class Mongo {
         orphanedCursors.add(serverCursor);
     }
 
+    OperationExecutor createOperationExecutor() {
+        return new OperationExecutor() {
+            @Override
+            public <T> T execute(final ReadOperation<T> operation, final ReadPreference readPreference) {
+                return Mongo.this.execute(operation, readPreference, true);
+            }
+
+            @Override
+            public <T> T execute(final WriteOperation<T> operation) {
+                return Mongo.this.execute(operation, true);
+            }
+        };
+    }
+
     <T> T execute(final ReadOperation<T> operation, final ReadPreference readPreference) {
         return execute(operation, readPreference, true);
     }
-
 
     <T> T execute(final WriteOperation<T> operation) {
         return execute(operation, true);

@@ -25,10 +25,9 @@ import com.mongodb.operation.CreateCollectionOperation;
 import com.mongodb.operation.CreateUserOperation;
 import com.mongodb.operation.DropUserOperation;
 import com.mongodb.operation.FindOperation;
-import com.mongodb.operation.ReadOperation;
+import com.mongodb.operation.OperationExecutor;
 import com.mongodb.operation.UpdateUserOperation;
 import com.mongodb.operation.UserExistsOperation;
-import com.mongodb.operation.WriteOperation;
 import org.bson.BsonDocument;
 import org.bson.BsonDocumentWrapper;
 import org.bson.BsonInt32;
@@ -61,19 +60,21 @@ import static java.util.Arrays.asList;
 public class DB {
     private final Mongo mongo;
     private final String name;
+    private final OperationExecutor executor;
+    private final Codec<Document> documentCodec;
     private final ConcurrentHashMap<String, DBCollection> collectionCache;
     private final Bytes.OptionHolder optionHolder;
-    private final Codec<Document> documentCodec;
     private final Codec<DBObject> commandCodec;
     private volatile ReadPreference readPreference;
     private volatile WriteConcern writeConcern;
 
-    DB(final Mongo mongo, final String name, final Codec<Document> documentCodec) {
+    DB(final Mongo mongo, final String name, final OperationExecutor executor, final Codec<Document> documentCodec) {
         if (!isValidName(name)) {
             throw new IllegalArgumentException("Invalid database name format. Database name is either empty or it contains spaces.");
         }
         this.mongo = mongo;
         this.name = name;
+        this.executor = executor;
         this.documentCodec = documentCodec;
         this.collectionCache = new ConcurrentHashMap<String, DBCollection>();
         this.optionHolder = new Bytes.OptionHolder(mongo.getOptionHolder());
@@ -88,7 +89,7 @@ public class DB {
      * @param name  the database name - must not be empty and cannot contain spaces
      */
     public DB(final Mongo mongo, final String name) {
-        this(mongo, name, new DocumentCodec());
+        this(mongo, name, mongo.createOperationExecutor(), new DocumentCodec());
     }
 
     /**
@@ -229,9 +230,9 @@ public class DB {
      * @return the names of collections in this database
      * @throws MongoException
      */
-        public Set<String> getCollectionNames() {
-        MongoCursor<BsonDocument> cursor = execute(new FindOperation<BsonDocument>(new MongoNamespace(name, "system.namespaces"),
-                                                                                    new BsonDocumentCodec()), primary());
+     public Set<String> getCollectionNames() {
+        MongoCursor<BsonDocument> cursor = executor.execute(new FindOperation<BsonDocument>(new MongoNamespace(name, "system.namespaces"),
+                                                                                                new BsonDocumentCodec()), primary());
         HashSet<String> collections = new HashSet<String>();
         int lengthOfDatabaseName = getName().length();
         while (cursor.hasNext()) {
@@ -266,7 +267,7 @@ public class DB {
      * @throws MongoException
      */
     public DBCollection createCollection(final String collectionName, final DBObject options) {
-        execute(getCreateCollectionOperation(collectionName, options));
+        executor.execute(getCreateCollectionOperation(collectionName, options));
         return getCollection(collectionName);
     }
 
@@ -499,12 +500,12 @@ public class DB {
     @Deprecated
     public WriteResult addUser(final String userName, final char[] password, final boolean readOnly) {
         MongoCredential credential = createMongoCRCredential(userName, getName(), password);
-        if (execute(new UserExistsOperation(getName(), userName), primary())) {
-            execute(new UpdateUserOperation(credential, readOnly));
+        if (executor.execute(new UserExistsOperation(getName(), userName), primary())) {
+            executor.execute(new UpdateUserOperation(credential, readOnly));
             return new WriteResult(1, false, null);
 
         } else {
-            execute(new CreateUserOperation(credential, readOnly));
+            executor.execute(new CreateUserOperation(credential, readOnly));
             return new WriteResult(1, true, null);
         }
     }
@@ -520,7 +521,7 @@ public class DB {
      */
     @Deprecated
     public WriteResult removeUser(final String userName) {
-        execute(new DropUserOperation(getName(), userName));
+        executor.execute(new DropUserOperation(getName(), userName));
         return new WriteResult(1, true, null);
     }
 
@@ -575,14 +576,14 @@ public class DB {
     }
 
     CommandResult executeCommand(final BsonDocument commandDocument) {
-        return new CommandResult(getMongo().execute(new CommandWriteOperation<BsonDocument>(getName(), commandDocument,
-                                                                                            new BsonDocumentCodec())));
+        return new CommandResult(executor.execute(new CommandWriteOperation<BsonDocument>(getName(), commandDocument,
+                                                                                          new BsonDocumentCodec())));
     }
 
     CommandResult executeCommand(final BsonDocument commandDocument, final ReadPreference readPreference) {
-        return new CommandResult(getMongo().execute(new CommandReadOperation<BsonDocument>(getName(), commandDocument,
-                                                                                           new BsonDocumentCodec()),
-                                                    readPreference));
+        return new CommandResult(executor.execute(new CommandReadOperation<BsonDocument>(getName(), commandDocument,
+                                                                                         new BsonDocumentCodec()),
+                                                  readPreference));
     }
 
     Bytes.OptionHolder getOptionHolder() {
@@ -595,14 +596,6 @@ public class DB {
 
     private boolean isValidName(final String databaseName) {
         return databaseName.length() != 0 && !databaseName.contains(" ");
-    }
-
-    private <T> T execute(final ReadOperation<T> operation, final ReadPreference readPreference) {
-        return getMongo().execute(operation, readPreference);
-    }
-
-    private <T> T execute(final WriteOperation<T> operation) {
-        return getMongo().execute(operation);
     }
 
     private BsonDocument wrap(final DBObject document) {
