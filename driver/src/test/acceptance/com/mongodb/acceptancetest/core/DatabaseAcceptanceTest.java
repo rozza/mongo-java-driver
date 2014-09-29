@@ -17,7 +17,6 @@
 package com.mongodb.acceptancetest.core;
 
 import com.mongodb.MongoClient;
-import com.mongodb.MongoNamespace;
 import com.mongodb.ReadPreference;
 import com.mongodb.client.DatabaseTestCase;
 import com.mongodb.client.MongoCollection;
@@ -122,8 +121,7 @@ public class DatabaseAcceptanceTest extends DatabaseTestCase {
 
         //when
         String newCollectionName = "TheNewCollectionName";
-        database.renameCollection(new MongoNamespace(database.getName(), originalCollectionName),
-                                  new MongoNamespace(database.getName(), newCollectionName));
+        database.renameCollection(originalCollectionName, newCollectionName);
 
         //then
         assertThat(database.getCollectionNames().contains(originalCollectionName), is(false));
@@ -154,8 +152,7 @@ public class DatabaseAcceptanceTest extends DatabaseTestCase {
         assertThat(database.getCollectionNames().contains(existingCollectionName), is(true));
 
         //when
-        database.renameCollection(new MongoNamespace(database.getName(), originalCollectionName),
-                                  new MongoNamespace(database.getName(), existingCollectionName),
+        database.renameCollection(originalCollectionName, existingCollectionName,
                                   new RenameCollectionOptions().dropTarget(true));
 
         //then
