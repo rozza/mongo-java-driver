@@ -32,10 +32,10 @@ import java.util.TreeMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import static com.mongodb.QueryResultIterator.chooseBatchSize;
 import static com.mongodb.WriteCommandResultHelper.getBulkWriteException;
 import static com.mongodb.WriteCommandResultHelper.getBulkWriteResult;
 import static com.mongodb.WriteCommandResultHelper.hasError;
-import static com.mongodb.QueryResultIterator.chooseBatchSize;
 import static com.mongodb.WriteRequest.Type.INSERT;
 import static com.mongodb.WriteRequest.Type.REMOVE;
 import static com.mongodb.WriteRequest.Type.REPLACE;
@@ -332,6 +332,32 @@ class DBCollectionImpl extends DBCollection {
                 commandResult.put("upserted", bulkWriteResult.getUpserts().get(0).getId());
             }
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    public List<DBObject> getIndexInfo() {
+        List<DBObject> list = new ArrayList<DBObject>();
+
+        if (db.isServerVersionAtLeast(asList(2, 7, 6))) {
+            CommandResult res = _db.command(new BasicDBObject("listIndexes", getName()), ReadPreference.primary());
+            if (!res.ok() && res.getCode() == 26) {
+                return list;
+            }
+            res.throwOnError();
+            for (DBObject indexDocument : (List<DBObject>) res.get("indexes")) {
+                list.add(indexDocument);
+            }
+        } else {
+            BasicDBObject cmd = new BasicDBObject("ns", getFullName());
+            DBCollection systemIndexes = _db.getCollection("system.indexes");
+            systemIndexes.setReadPreference(ReadPreference.primary());
+            DBCursor cur = systemIndexes.find(cmd);
+            while (cur.hasNext()) {
+                list.add(cur.next());
+            }
+        }
+
+        return list;
     }
 
     public void createIndex(final DBObject keys, final DBObject options, DBEncoder encoder) {

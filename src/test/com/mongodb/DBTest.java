@@ -111,6 +111,12 @@ public class DBTest extends TestCase {
 
         obj = new BasicDBObject("parallelCollectionScan", 1);
         assertEquals(ReadPreference.secondaryPreferred(), db.getCommandReadPreference(obj, ReadPreference.secondaryPreferred()));
+
+        obj = new BasicDBObject("listIndexes", 1);
+        assertEquals(ReadPreference.secondaryPreferred(), db.getCommandReadPreference(obj, ReadPreference.secondaryPreferred()));
+
+        obj = new BasicDBObject("listCollections", 1);
+        assertEquals(ReadPreference.secondaryPreferred(), db.getCommandReadPreference(obj, ReadPreference.secondaryPreferred()));
     }
 
     @Test
