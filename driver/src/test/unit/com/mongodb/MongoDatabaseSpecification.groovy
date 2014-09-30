@@ -27,7 +27,6 @@ import com.mongodb.operation.DropDatabaseOperation
 import com.mongodb.operation.GetCollectionNamesOperation
 import com.mongodb.operation.RenameCollectionOperation
 import org.bson.codecs.configuration.RootCodecRegistry
-import org.mongodb.Document
 import spock.lang.Specification
 
 import static com.mongodb.ReadPreference.primary
@@ -64,21 +63,48 @@ class MongoDatabaseSpecification extends Specification {
 
     def 'should get collection'() {
         given:
+        def myCollectionOptions;
         def namespace = new MongoNamespace('databaseName', 'collectionName')
-
-        when:
         database = new MongoDatabaseImpl('databaseName', options, new TestOperationExecutor([]))
 
+
+        when:
+        def defaultCollection = database.getCollection('collectionName')
+        myCollectionOptions = defaultCollection.getOptions()
+
         then:
-        database.getCollection('collectionName') == new MongoCollectionImpl<Document>(namespace, Document, collectionOptions,
-                                                                                      database.executor)
-        database.getCollection('collectionName', customCollectionOptions) == new MongoCollectionImpl<Document>(namespace, Document,
-                                                                                                               customCollectionOptions,
-                                                                                                               database.executor)
-        database.getCollection('collectionName', Worker) == new MongoCollectionImpl<Worker>(namespace, Worker, collectionOptions,
-                                                                                            database.executor)
-        database.getCollection('collectionName', Worker, customCollectionOptions) ==
-        new MongoCollectionImpl<Worker>(namespace, Worker, customCollectionOptions, database.executor)
+        defaultCollection.getNamespace() == namespace
+        myCollectionOptions.getReadPreference() == collectionOptions.getReadPreference()
+        myCollectionOptions.getWriteConcern() == collectionOptions.getWriteConcern()
+
+        when:
+        def customCollection = database.getCollection('collectionName', customCollectionOptions)
+        myCollectionOptions = customCollection.getOptions()
+
+        then:
+        customCollection.getNamespace() == namespace
+        myCollectionOptions.getReadPreference() == customCollectionOptions.getReadPreference()
+        myCollectionOptions.getWriteConcern() == customCollectionOptions.getWriteConcern()
+
+        when:
+        def workerCollection = database.getCollection('collectionName', Worker)
+        myCollectionOptions = workerCollection.getOptions()
+
+        then:
+        workerCollection.getNamespace() == namespace
+        myCollectionOptions.getReadPreference() == collectionOptions.getReadPreference()
+        myCollectionOptions.getWriteConcern() == collectionOptions.getWriteConcern()
+        workerCollection.clazz == Worker
+
+        when:
+        def workerCollectionCustomOptions = database.getCollection('collectionName', Worker, customCollectionOptions)
+        myCollectionOptions = workerCollectionCustomOptions.getOptions()
+
+        then:
+        workerCollectionCustomOptions.getNamespace() == namespace
+        myCollectionOptions.getReadPreference() == customCollectionOptions.getReadPreference()
+        myCollectionOptions.getWriteConcern() == customCollectionOptions.getWriteConcern()
+        workerCollectionCustomOptions.clazz == Worker
     }
 
     def 'should use DropDatabaseOperation properly'() {
