@@ -105,6 +105,7 @@ public class Mongo {
     private final ThreadLocal<BindingHolder> pinnedBinding = new ThreadLocal<BindingHolder>();
     private final ConcurrentLinkedQueue<ServerCursor> orphanedCursors = new ConcurrentLinkedQueue<ServerCursor>();
     private final ExecutorService cursorCleaningService;
+    private final OperationExecutor executor;
 
     // legacy codec registry for DBObjects
     private final CodecRegistry dbObjectCodecRegistry = new RootCodecRegistry(Arrays.<CodecProvider>asList(new DBObjectCodecProvider()));
@@ -321,6 +322,7 @@ public class Mongo {
         this.optionHolder = new Bytes.OptionHolder(null);
         this.credentialsList = unmodifiableList(credentialsList);
         cursorCleaningService = options.isCursorFinalizerEnabled() ? createCursorCleaningService() : null;
+        executor = createOperationExecutor();
     }
 
     /**
@@ -444,7 +446,7 @@ public class Mongo {
      * @throws MongoException
      */
     public List<String> getDatabaseNames() {
-        return execute(new GetDatabaseNamesOperation(), primary());
+        return executor.execute(new GetDatabaseNamesOperation(), primary());
     }
 
     /**
@@ -459,7 +461,7 @@ public class Mongo {
             return db;
         }
 
-        db = new DB(this, dbName, createOperationExecutor(), options.getCodecRegistry().get(Document.class));
+        db = new DB(this, dbName, executor, options.getCodecRegistry().get(Document.class));
         DB temp = dbCache.putIfAbsent(dbName, db);
         if (temp != null) {
             return temp;
@@ -766,22 +768,18 @@ public class Mongo {
         return new OperationExecutor() {
             @Override
             public <T> T execute(final ReadOperation<T> operation, final ReadPreference readPreference) {
-                return Mongo.this.execute(operation, readPreference, true);
+                return Mongo.this.execute(operation, readPreference, getDefaultAllowPinning());
             }
 
             @Override
             public <T> T execute(final WriteOperation<T> operation) {
-                return Mongo.this.execute(operation, true);
+                return Mongo.this.execute(operation, getDefaultAllowPinning());
             }
         };
     }
 
-    <T> T execute(final ReadOperation<T> operation, final ReadPreference readPreference) {
-        return execute(operation, readPreference, true);
-    }
-
-    <T> T execute(final WriteOperation<T> operation) {
-        return execute(operation, true);
+    boolean getDefaultAllowPinning() {
+        return true;
     }
 
     <T> T execute(final ReadOperation<T> operation, final ReadPreference readPreference, final boolean allowPinning) {
@@ -792,7 +790,6 @@ public class Mongo {
             binding.release();
         }
     }
-
 
     <T> T execute(final WriteOperation<T> operation, final boolean allowPinning) {
         WriteBinding binding = getWriteBinding(allowPinning);
