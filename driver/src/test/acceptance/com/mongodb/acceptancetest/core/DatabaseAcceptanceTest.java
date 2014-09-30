@@ -22,8 +22,6 @@ import com.mongodb.client.DatabaseTestCase;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.CreateCollectionOptions;
-import com.mongodb.client.model.RenameCollectionOptions;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.mongodb.Document;
 
@@ -33,7 +31,6 @@ import static com.mongodb.Fixture.getMongoClient;
 import static org.hamcrest.CoreMatchers.hasItem;
 import static org.hamcrest.CoreMatchers.hasItems;
 import static org.hamcrest.CoreMatchers.not;
-import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.core.Is.is;
 import static org.junit.Assert.assertThat;
 
@@ -108,66 +105,6 @@ public class DatabaseAcceptanceTest extends DatabaseTestCase {
 
         assertThat(collections.contains("system.indexes"), is(true));
         assertThat(collections.contains(getCollectionName()), is(true));
-    }
-
-    @Test
-    public void shouldChangeACollectionNameWhenRenameIsCalled() {
-        //given
-        String originalCollectionName = "originalCollection";
-        MongoCollection<Document> originalCollection = database.getCollection(originalCollectionName);
-        originalCollection.insertOne(new Document("someKey", "someValue"));
-
-        assertThat(database.getCollectionNames().contains(originalCollectionName), is(true));
-
-        //when
-        String newCollectionName = "TheNewCollectionName";
-        database.renameCollection(originalCollectionName, newCollectionName);
-
-        //then
-        assertThat(database.getCollectionNames().contains(originalCollectionName), is(false));
-        assertThat(database.getCollectionNames().contains(newCollectionName), is(true));
-
-        MongoCollection<Document> renamedCollection = database.getCollection(newCollectionName);
-        assertThat("Renamed collection should have the same number of documents as original",
-                   renamedCollection.count(), is(1L));
-    }
-
-    @Test
-    public void shouldBeAbleToRenameCollectionToAnExistingCollectionNameAndReplaceItWhenDropIsTrue() {
-        //given
-        String existingCollectionName = "anExistingCollection";
-        String originalCollectionName = "someOriginalCollection";
-
-        MongoCollection<Document> originalCollection = database.getCollection(originalCollectionName);
-        String keyInOriginalCollection = "someKey";
-        String valueInOriginalCollection = "someValue";
-        originalCollection.insertOne(new Document(keyInOriginalCollection, valueInOriginalCollection));
-
-        MongoCollection<Document> existingCollection = database.getCollection(existingCollectionName);
-        String keyInExistingCollection = "aDifferentDocument";
-        String valueInExistingCollection = "withADifferentValue";
-        existingCollection.insertOne(new Document(keyInExistingCollection, valueInExistingCollection));
-
-        assertThat(database.getCollectionNames().contains(originalCollectionName), is(true));
-        assertThat(database.getCollectionNames().contains(existingCollectionName), is(true));
-
-        //when
-        database.renameCollection(originalCollectionName, existingCollectionName,
-                                  new RenameCollectionOptions().dropTarget(true));
-
-        //then
-        assertThat(database.getCollectionNames().contains(originalCollectionName), is(false));
-        assertThat(database.getCollectionNames().contains(existingCollectionName), is(true));
-
-        MongoCollection<Document> replacedCollection = database.getCollection(existingCollectionName);
-        assertThat(replacedCollection.find().first().get(keyInExistingCollection), is(nullValue()));
-        assertThat(replacedCollection.find().first().get(keyInOriginalCollection).toString(), is(valueInOriginalCollection));
-    }
-
-    @Test
-    @Ignore("not implemented")
-    public void shouldFailRenameIfSharded() {
-
     }
 
     @Test

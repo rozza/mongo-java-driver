@@ -16,6 +16,7 @@
 
 package com.mongodb.async.rx.client
 
+import com.mongodb.MongoNamespace
 import org.mongodb.Document
 
 import static Fixture.get
@@ -90,6 +91,27 @@ class CollectionAdministrationSpecification extends FunctionalSpecification {
 
         then:
         getAsList(collection.tools().getIndexes()) *.get('key') == [idIndex]
+    }
+
+    def 'rename collection should rename the collection name'() {
+
+        given:
+        def newCollectionName = 'NewCollection1234'
+        def client = getMongoClient()
+        def database = client.getDatabase(databaseName)
+
+        when:
+        get(database.tools().createCollection(collectionName))
+
+        then:
+        getAsList(database.tools().getCollectionNames()).contains(collectionName)
+
+        when:
+        get(collection.tools().renameCollection(new MongoNamespace(databaseName, newCollectionName)))
+
+        then:
+        !getAsList(database.tools().getCollectionNames()).contains(collectionName)
+        getAsList(database.tools().getCollectionNames()).contains(newCollectionName)
     }
 
 }

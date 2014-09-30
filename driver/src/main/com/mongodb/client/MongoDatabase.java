@@ -19,7 +19,6 @@ package com.mongodb.client;
 import com.mongodb.ReadPreference;
 import com.mongodb.annotations.ThreadSafe;
 import com.mongodb.client.model.CreateCollectionOptions;
-import com.mongodb.client.model.RenameCollectionOptions;
 import org.mongodb.Document;
 
 import java.util.List;
@@ -76,28 +75,5 @@ public interface MongoDatabase {
      * @mongodb.driver.manual reference/commands/create Create Command
      */
     void createCollection(String collectionName, CreateCollectionOptions createCollectionOptions);
-
-    /**
-     * Rename the collection with oldCollectionName to the newCollectionName.
-     *
-     * @param oldCollectionName the collection to rename
-     * @param newCollectionName the name the collection will be renamed to
-     * @throws com.mongodb.MongoServerException if you provide a newCollectionName that is the name of an existing collection, or if the
-     *                                          oldCollectionName is the name of a collection that doesn't exist
-     * @mongodb.driver.manual reference/commands/renameCollection Rename collection
-     */
-    void renameCollection(String oldCollectionName, String newCollectionName);
-
-    /**
-     * Rename the collection with oldCollectionName to the newCollectionName.
-     *
-     * @param oldCollectionName the collection to rename
-     * @param newCollectionName the name the collection will be renamed to
-     * @param renameCollectionOptions the options for renaming a collection
-     * @throws com.mongodb.MongoServerException if you provide a newCollectionName that is the name of an existing collection and dropTarget
-     *                                          is false, or if the oldCollectionName is the name of a collection that doesn't exist
-     * @mongodb.driver.manual reference/commands/renameCollection Rename collection
-     */
-    void renameCollection(String oldCollectionName, String newCollectionName, RenameCollectionOptions renameCollectionOptions);
 
 }

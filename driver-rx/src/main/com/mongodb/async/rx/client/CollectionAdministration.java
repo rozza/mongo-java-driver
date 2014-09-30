@@ -16,7 +16,9 @@
 
 package com.mongodb.async.rx.client;
 
+import com.mongodb.MongoNamespace;
 import com.mongodb.client.model.CreateIndexOptions;
+import com.mongodb.client.model.RenameCollectionOptions;
 import org.mongodb.Document;
 import rx.Observable;
 
@@ -71,4 +73,24 @@ public interface CollectionAdministration {
      */
     Observable<Void> dropIndexes();
 
+    /**
+     * Rename the collection with oldCollectionName to the newCollectionName.
+     *
+     * @param newCollectionNamespace the namespace the collection will be renamed to
+     * @throws com.mongodb.MongoServerException if you provide a newCollectionName that is the name of an existing collection, or if the
+     *                                          oldCollectionName is the name of a collection that doesn't exist
+     * @mongodb.driver.manual reference/commands/renameCollection Rename collection
+     */
+    Observable<Void> renameCollection(MongoNamespace newCollectionNamespace);
+
+    /**
+     * Rename the collection with oldCollectionName to the newCollectionName.
+     *
+     * @param newCollectionNamespace  the name the collection will be renamed to
+     * @param renameCollectionOptions the options for renaming a collection
+     * @throws com.mongodb.MongoServerException if you provide a newCollectionName that is the name of an existing collection and dropTarget
+     *                                          is false, or if the oldCollectionName is the name of a collection that doesn't exist
+     * @mongodb.driver.manual reference/commands/renameCollection Rename collection
+     */
+    Observable<Void> renameCollection(MongoNamespace newCollectionNamespace, RenameCollectionOptions renameCollectionOptions);
 }

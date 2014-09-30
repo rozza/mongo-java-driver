@@ -32,6 +32,7 @@ import com.mongodb.client.model.InsertManyOptions
 import com.mongodb.client.model.InsertOneModel
 import com.mongodb.client.model.MapReduceOptions
 import com.mongodb.client.model.ParallelCollectionScanOptions
+import com.mongodb.client.model.RenameCollectionOptions
 import com.mongodb.client.model.ReplaceOneModel
 import com.mongodb.client.model.ReplaceOneOptions
 import com.mongodb.client.model.UpdateManyModel
@@ -59,6 +60,7 @@ import com.mongodb.operation.MapReduceToCollectionOperation
 import com.mongodb.operation.MapReduceWithInlineResultsOperation
 import com.mongodb.operation.MixedBulkWriteOperation
 import com.mongodb.operation.ParallelCollectionScanOperation
+import com.mongodb.operation.RenameCollectionOperation
 import com.mongodb.operation.UpdateOperation
 import com.mongodb.protocol.AcknowledgedWriteResult
 import org.bson.BsonArray
@@ -847,6 +849,32 @@ class MongoCollectionSpecification extends Specification {
         then:
         def operation = executor.getWriteOperation() as DropIndexOperation
         operation.indexName == '*'
+    }
+
+
+    def 'should use RenameCollectionOperation properly'() {
+        given:
+        def executor = new TestOperationExecutor([null, null])
+        collection = new MongoCollectionImpl<Document>(namespace, Document, options, executor)
+        def newNamespace = new MongoNamespace(namespace.getDatabaseName(), 'anotherCollection')
+
+        when:
+        collection.renameCollection(newNamespace)
+
+        then:
+        def operation = executor.getWriteOperation() as RenameCollectionOperation
+        operation.originalNamespace == namespace
+        operation.newNamespace == newNamespace
+        !operation.isDropTarget()
+
+        when:
+        collection.renameCollection(newNamespace, new RenameCollectionOptions().dropTarget(true))
+
+        then:
+        def operation2 = executor.getWriteOperation() as RenameCollectionOperation
+        operation2.originalNamespace == namespace
+        operation2.newNamespace == newNamespace
+        operation2.isDropTarget()
     }
 
 }

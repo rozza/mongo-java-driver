@@ -33,6 +33,7 @@ import com.mongodb.client.model.FindOptions;
 import com.mongodb.client.model.InsertManyOptions;
 import com.mongodb.client.model.MapReduceOptions;
 import com.mongodb.client.model.ParallelCollectionScanOptions;
+import com.mongodb.client.model.RenameCollectionOptions;
 import com.mongodb.client.model.ReplaceOneOptions;
 import com.mongodb.client.model.UpdateManyOptions;
 import com.mongodb.client.model.UpdateOneModel;
@@ -545,5 +546,26 @@ public interface MongoCollection<T> {
      * @mongodb.driver.manual reference/command/dropIndexes/ Drop Indexes
      */
     void dropIndexes();
+
+    /**
+     * Rename the collection with oldCollectionName to the newCollectionName.
+     *
+     * @param newCollectionNamespace the namespace the collection will be renamed to
+     * @throws com.mongodb.MongoServerException if you provide a newCollectionName that is the name of an existing collection, or if the
+     *                                          oldCollectionName is the name of a collection that doesn't exist
+     * @mongodb.driver.manual reference/commands/renameCollection Rename collection
+     */
+    void renameCollection(MongoNamespace newCollectionNamespace);
+
+    /**
+     * Rename the collection with oldCollectionName to the newCollectionName.
+     *
+     * @param newCollectionNamespace  the name the collection will be renamed to
+     * @param renameCollectionOptions the options for renaming a collection
+     * @throws com.mongodb.MongoServerException if you provide a newCollectionName that is the name of an existing collection and dropTarget
+     *                                          is false, or if the oldCollectionName is the name of a collection that doesn't exist
+     * @mongodb.driver.manual reference/commands/renameCollection Rename collection
+     */
+    void renameCollection(MongoNamespace newCollectionNamespace, RenameCollectionOptions renameCollectionOptions);
 
 }

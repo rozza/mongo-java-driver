@@ -16,14 +16,11 @@
 
 package com.mongodb.async.client;
 
-import com.mongodb.MongoNamespace;
 import com.mongodb.async.MongoFuture;
 import com.mongodb.client.model.CreateCollectionOptions;
-import com.mongodb.client.model.RenameCollectionOptions;
 import com.mongodb.operation.CreateCollectionOperation;
 import com.mongodb.operation.DropDatabaseOperation;
 import com.mongodb.operation.GetCollectionNamesOperation;
-import com.mongodb.operation.RenameCollectionOperation;
 
 import java.util.List;
 
@@ -76,16 +73,4 @@ public class DatabaseAdministrationImpl implements DatabaseAdministration {
                                   .usePowerOf2Sizes(createCollectionOptions.isUsePowerOf2Sizes()));
     }
 
-    @Override
-    public MongoFuture<Void> renameCollection(final String oldCollectionName, final String newCollectionName) {
-        return renameCollection(oldCollectionName, newCollectionName, new RenameCollectionOptions());
-    }
-
-    @Override
-    public MongoFuture<Void> renameCollection(final String oldCollectionName, final String newCollectionName,
-                                              final RenameCollectionOptions renameCollectionOptions) {
-        return client.execute(new RenameCollectionOperation(new MongoNamespace(databaseName, oldCollectionName),
-                                                            new MongoNamespace(databaseName, newCollectionName))
-                                  .dropTarget(renameCollectionOptions.isDropTarget()));
-    }
 }

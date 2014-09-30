@@ -16,8 +16,10 @@
 
 package com.mongodb.async.rx.client;
 
+import com.mongodb.MongoNamespace;
 import com.mongodb.async.MongoFuture;
 import com.mongodb.client.model.CreateIndexOptions;
+import com.mongodb.client.model.RenameCollectionOptions;
 import org.mongodb.Document;
 import rx.Observable;
 import rx.functions.Func1;
@@ -101,6 +103,22 @@ public class CollectionAdministrationImpl implements CollectionAdministration {
             @Override
             public MongoFuture<Void> apply() {
                 return wrapped.dropIndexes();
+            }
+        }));
+    }
+
+    @Override
+    public Observable<Void> renameCollection(final MongoNamespace newCollectionNamespace) {
+        return renameCollection(newCollectionNamespace, new RenameCollectionOptions());
+    }
+
+    @Override
+    public Observable<Void> renameCollection(final MongoNamespace newCollectionNamespace,
+                                             final RenameCollectionOptions renameCollectionOptions) {
+        return Observable.create(new OnSubscribeAdapter<Void>(new OnSubscribeAdapter.FutureFunction<Void>() {
+            @Override
+            public MongoFuture<Void> apply() {
+                return wrapped.renameCollection(newCollectionNamespace, renameCollectionOptions);
             }
         }));
     }
