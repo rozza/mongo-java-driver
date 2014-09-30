@@ -20,6 +20,7 @@ import com.mongodb.annotations.NotThreadSafe;
 import com.mongodb.client.model.FindModel;
 import com.mongodb.client.model.FindOptions;
 import com.mongodb.operation.FindOperation;
+import com.mongodb.operation.OperationExecutor;
 import org.bson.BsonBoolean;
 import org.bson.BsonDocument;
 import org.bson.BsonInt32;
@@ -60,6 +61,7 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 @NotThreadSafe
 public class DBCursor implements Cursor, Iterable<DBObject> {
     private final DBCollection collection;
+    private final OperationExecutor executor;
     private final FindModel findModel;
     private final EnumSet<CursorFlag> cursorFlags = EnumSet.noneOf(CursorFlag.class);
     private ReadPreference readPreference;
@@ -85,7 +87,7 @@ public class DBCursor implements Cursor, Iterable<DBObject> {
      * @param readPreference the read preference for this query
      */
     public DBCursor(final DBCollection collection, final DBObject query, final DBObject fields, final ReadPreference readPreference) {
-        this(collection,
+        this(collection, collection.getExecutor(),
              new FindModel(new FindOptions()
              .modifiers(new BsonDocument())
              .criteria(collection.wrapAllowNull(query))
@@ -100,11 +102,13 @@ public class DBCursor implements Cursor, Iterable<DBObject> {
         }
     }
 
-    private DBCursor(final DBCollection collection, final FindModel findModel, final ReadPreference readPreference) {
+    private DBCursor(final DBCollection collection, final OperationExecutor executor, final FindModel findModel,
+                     final ReadPreference readPreference) {
         if (collection == null) {
             throw new IllegalArgumentException("Collection can't be null");
         }
         this.collection = collection;
+        this.executor = executor;
         this.findModel = findModel;
         this.readPreference = readPreference;
         this.resultDecoder = collection.getObjectCodec();
@@ -119,7 +123,7 @@ public class DBCursor implements Cursor, Iterable<DBObject> {
      * @return the new cursor
      */
     public DBCursor copy() {
-        return new DBCursor(collection, new FindModel(findModel), readPreference);
+        return new DBCursor(collection, executor, new FindModel(findModel), readPreference);
     }
 
     /**
@@ -141,7 +145,7 @@ public class DBCursor implements Cursor, Iterable<DBObject> {
         }
 
         if (cursor == null) {
-            cursor = collection.execute(getQueryOperation(findModel, resultDecoder), getReadPreference());
+            cursor = executor.execute(getQueryOperation(findModel, resultDecoder), getReadPreference());
         }
 
         return cursor.hasNext();
@@ -180,7 +184,7 @@ public class DBCursor implements Cursor, Iterable<DBObject> {
         }
 
         if (cursor == null) {
-            cursor = collection.execute(getQueryOperation(findModel, resultDecoder), getReadPreference());
+            cursor = executor.execute(getQueryOperation(findModel, resultDecoder), getReadPreference());
         }
 
         return cursor.tryNext();
@@ -446,7 +450,7 @@ public class DBCursor implements Cursor, Iterable<DBObject> {
             explainModel.getOptions().batchSize(explainModel.getOptions().getLimit() * -1);
             explainModel.getOptions().limit(0);
         }
-        return collection.execute(getQueryOperation(explainModel, collection.getObjectCodec()), getReadPreference()).next();
+        return executor.execute(getQueryOperation(explainModel, collection.getObjectCodec()), getReadPreference()).next();
     }
 
     private FindOperation<DBObject> getQueryOperation(final FindModel findModel, final Decoder<DBObject> decoder) {
