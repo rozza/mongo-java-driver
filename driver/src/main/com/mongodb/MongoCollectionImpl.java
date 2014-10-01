@@ -112,7 +112,6 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
 
     MongoCollectionImpl(final MongoNamespace namespace, final Class<T> clazz,
                         final MongoCollectionOptions options, final OperationExecutor executor) {
-        // TODO NOT NULL
         this.namespace = notNull("namespace", namespace);
         this.clazz = notNull("clazz", clazz);
         this.options = notNull("options", options);
@@ -745,42 +744,6 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
             aggregateList.add(asBson(obj));
         }
         return aggregateList;
-    }
-
-    @Override
-    public boolean equals(final Object o) {
-        if (this == o) {
-            return true;
-        }
-        if (!(o instanceof MongoCollectionImpl)) {
-            return false;
-        }
-
-        MongoCollectionImpl<?> that = (MongoCollectionImpl) o;
-
-        if (!clazz.equals(that.clazz)) {
-            return false;
-        }
-        if (!executor.equals(that.executor)) {
-            return false;
-        }
-        if (!namespace.equals(that.namespace)) {
-            return false;
-        }
-        if (!options.equals(that.options)) {
-            return false;
-        }
-
-        return true;
-    }
-
-    @Override
-    public int hashCode() {
-        int result = namespace.hashCode();
-        result = 31 * result + options.hashCode();
-        result = 31 * result + clazz.hashCode();
-        result = 31 * result + executor.hashCode();
-        return result;
     }
 
     private final class OperationIterable<D> implements MongoIterable<D> {
