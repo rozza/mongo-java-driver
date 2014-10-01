@@ -16,19 +16,18 @@
 
 package com.mongodb.async.rx.client
 
-import com.mongodb.operation.Index
+import org.mongodb.Document
 
 import static Fixture.get
 import static Fixture.getAsList
 import static Fixture.getMongoClient
-import static com.mongodb.operation.OrderBy.ASC
 
 class CollectionAdministrationSpecification extends FunctionalSpecification {
 
     def idIndex = ['_id': 1]
     def field1Index = ['field': 1]
-    def index1 = Index.builder().addKey('field', ASC).build()
-    def index2 = Index.builder().addKey('field2', ASC).build()
+    def index1 = ['field': 1] as Document
+    def index2 = ['field2': 1] as Document
 
     def 'Drop should drop the collection'() {
         when:
@@ -56,9 +55,9 @@ class CollectionAdministrationSpecification extends FunctionalSpecification {
     }
 
     @SuppressWarnings(['FactoryMethodName'])
-    def 'createIndexes should add indexes to the collection'() {
+    def 'createIndex should add indexes to the collection'() {
         when:
-        get(collection.tools().createIndexes([index1]))
+        get(collection.tools().createIndex(index1))
 
         then:
         getAsList(collection.tools().getIndexes()) *.get('key') containsAll(idIndex, field1Index)
@@ -66,13 +65,13 @@ class CollectionAdministrationSpecification extends FunctionalSpecification {
 
     def 'dropIndex should drop index'() {
         when:
-        get(collection.tools().createIndexes([index1]))
+        get(collection.tools().createIndex(index1))
 
         then:
         getAsList(collection.tools().getIndexes()) *.get('key') containsAll(idIndex, field1Index)
 
         when:
-        get(collection.tools().dropIndex(index1))
+        get(collection.tools().dropIndex('field_1'))
 
         then:
         getAsList(collection.tools().getIndexes()) *.get('key') == [idIndex]
@@ -80,7 +79,8 @@ class CollectionAdministrationSpecification extends FunctionalSpecification {
 
     def 'dropIndexes should drop all indexes apart from _id'() {
         when:
-        get(collection.tools().createIndexes([index1, index2]))
+        get(collection.tools().createIndex(index1))
+        get(collection.tools().createIndex(index2))
 
         then:
         getAsList(collection.tools().getIndexes()) *.get('key') containsAll(idIndex, field1Index)
