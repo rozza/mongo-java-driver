@@ -105,7 +105,6 @@ public class Mongo {
     private final ThreadLocal<BindingHolder> pinnedBinding = new ThreadLocal<BindingHolder>();
     private final ConcurrentLinkedQueue<ServerCursor> orphanedCursors = new ConcurrentLinkedQueue<ServerCursor>();
     private final ExecutorService cursorCleaningService;
-    private final OperationExecutor executor;
 
     // legacy codec registry for DBObjects
     private final CodecRegistry dbObjectCodecRegistry = new RootCodecRegistry(Arrays.<CodecProvider>asList(new DBObjectCodecProvider()));
@@ -322,7 +321,6 @@ public class Mongo {
         this.optionHolder = new Bytes.OptionHolder(null);
         this.credentialsList = unmodifiableList(credentialsList);
         cursorCleaningService = options.isCursorFinalizerEnabled() ? createCursorCleaningService() : null;
-        executor = createOperationExecutor();
     }
 
     /**
@@ -446,7 +444,7 @@ public class Mongo {
      * @throws MongoException
      */
     public List<String> getDatabaseNames() {
-        return executor.execute(new GetDatabaseNamesOperation(), primary());
+        return execute(new GetDatabaseNamesOperation(), primary(), true);
     }
 
     /**
@@ -461,7 +459,7 @@ public class Mongo {
             return db;
         }
 
-        db = new DB(this, dbName, executor, options.getCodecRegistry().get(Document.class));
+        db = new DB(this, dbName, createOperationExecutor(true), options.getCodecRegistry().get(Document.class));
         DB temp = dbCache.putIfAbsent(dbName, db);
         if (temp != null) {
             return temp;
@@ -764,22 +762,18 @@ public class Mongo {
         orphanedCursors.add(serverCursor);
     }
 
-    OperationExecutor createOperationExecutor() {
+    OperationExecutor createOperationExecutor(final boolean allowPinning) {
         return new OperationExecutor() {
             @Override
             public <T> T execute(final ReadOperation<T> operation, final ReadPreference readPreference) {
-                return Mongo.this.execute(operation, readPreference, getDefaultAllowPinning());
+                return Mongo.this.execute(operation, readPreference, allowPinning);
             }
 
             @Override
             public <T> T execute(final WriteOperation<T> operation) {
-                return Mongo.this.execute(operation, getDefaultAllowPinning());
+                return Mongo.this.execute(operation, allowPinning);
             }
         };
-    }
-
-    boolean getDefaultAllowPinning() {
-        return true;
     }
 
     <T> T execute(final ReadOperation<T> operation, final ReadPreference readPreference, final boolean allowPinning) {
