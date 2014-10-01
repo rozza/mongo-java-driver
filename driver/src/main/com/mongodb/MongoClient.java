@@ -283,4 +283,10 @@ public class MongoClient extends Mongo {
     public MongoDatabase getDatabase(final String databaseName, final MongoDatabaseOptions options) {
         return new MongoDatabaseImpl(databaseName, options, createOperationExecutor());
     }
+
+    @Override
+    boolean getDefaultAllowPinning() {
+        return false;
+    }
+
 }
