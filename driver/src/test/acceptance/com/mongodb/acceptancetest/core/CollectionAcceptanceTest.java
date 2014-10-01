@@ -103,7 +103,7 @@ public class CollectionAcceptanceTest extends DatabaseTestCase {
 
         assertThat(database.getCollectionNames().contains(collectionName), is(true));
 
-        newCollection.tools().drop();
+        newCollection.dropCollection();
 
         assertThat(database.getCollectionNames().contains(collectionName), is(false));
     }
