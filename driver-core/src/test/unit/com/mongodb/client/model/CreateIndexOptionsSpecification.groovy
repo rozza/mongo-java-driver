@@ -43,19 +43,19 @@ class CreateIndexOptionsSpecification extends Specification {
 
     def 'should validate 2dsphereIndexVersion'() {
         when:
-        new CreateIndexOptions().set2dSphereIndexVersion(1)
+        new CreateIndexOptions().twoDSphereIndexVersion(1)
 
         then:
         notThrown(IllegalArgumentException)
 
         when:
-        new CreateIndexOptions().set2dSphereIndexVersion(2)
+        new CreateIndexOptions().twoDSphereIndexVersion(2)
 
         then:
         notThrown(IllegalArgumentException)
 
         when:
-        new CreateIndexOptions().set2dSphereIndexVersion(3)
+        new CreateIndexOptions().twoDSphereIndexVersion(3)
 
         then:
         thrown(IllegalArgumentException)

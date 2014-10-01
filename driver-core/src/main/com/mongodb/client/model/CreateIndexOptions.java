@@ -56,7 +56,7 @@ public class CreateIndexOptions {
     }
 
     /**
-     * s if the index should be created in the background
+     * Should the index should be created in the background
      *
      * @param background true if should create the index in the background
      * @return this
@@ -76,7 +76,7 @@ public class CreateIndexOptions {
     }
 
     /**
-     * s if the index should be unique.
+     * Should the index should be unique.
      *
      * @param unique if the index should be unique
      * @return this
@@ -96,7 +96,7 @@ public class CreateIndexOptions {
     }
 
     /**
-     * s the name of the index.
+     * Sets the name of the index.
      *
      * @param name of the index
      * @return this
@@ -170,8 +170,8 @@ public class CreateIndexOptions {
 
     /**
      * Gets the weighting object for use with a text index
-     * <p/>
-     * <p>An object that represents field and weight pairs. The weight is an integer ranging from 1 to 99,999 and denotes the significance
+     *
+     * <p>A document that represents field and weight pairs. The weight is an integer ranging from 1 to 99,999 and denotes the significance
      * of the field relative to the other indexed fields in terms of the score.</p>
      *
      * @return the weighting object
@@ -183,8 +183,8 @@ public class CreateIndexOptions {
 
     /**
      * Sets the weighting object for use with a text index.
-     * <p/>
-     * <p>An object that represents field and weight pairs. The weight is an integer ranging from 1 to 99,999 and denotes the significance
+     *
+     * <p>An document that represents field and weight pairs. The weight is an integer ranging from 1 to 99,999 and denotes the significance
      * of the field relative to the other indexed fields in terms of the score.</p>
      *
      * @param weights the weighting object
@@ -198,7 +198,7 @@ public class CreateIndexOptions {
 
     /**
      * Gets the language for a text index.
-     * <p/>
+     *
      * <p>The language that determines the list of stop words and the rules for the stemmer and tokenizer.</p>
      *
      * @return the language for a text index.
@@ -210,7 +210,7 @@ public class CreateIndexOptions {
 
     /**
      * Sets the language for the text index.
-     * <p/>
+     *
      * <p>The language that determines the list of stop words and the rules for the stemmer and tokenizer.</p>
      *
      * @param defaultLanguage the language for the text index.
@@ -224,7 +224,7 @@ public class CreateIndexOptions {
 
     /**
      * Gets the name of the field that contains the language string.
-     * <p/>
+     *
      * <p>For text indexes, the name of the field, in the collection's documents, that contains the override language for the document.</p>
      *
      * @return the name of the field that contains the language string.
@@ -236,7 +236,7 @@ public class CreateIndexOptions {
 
     /**
      * Sets the name of the field that contains the language string.
-     * <p/>
+     *
      * <p>For text indexes, the name of the field, in the collection's documents, that contains the override language for the document.</p>
      *
      * @param languageOverride the name of the field that contains the language string.
@@ -274,7 +274,7 @@ public class CreateIndexOptions {
      *
      * @return the 2dsphere index version number
      */
-    public Integer get2dSphereIndexVersion() {
+    public Integer getTwoDSphereIndexVersion() {
         return sphereIndexVersion;
     }
 
@@ -284,7 +284,7 @@ public class CreateIndexOptions {
      * @param sphereIndexVersion the 2dsphere index version number.
      * @return this
      */
-    public CreateIndexOptions set2dSphereIndexVersion(final int sphereIndexVersion) {
+    public CreateIndexOptions twoDSphereIndexVersion(final int sphereIndexVersion) {
         isTrueArgument("sphereIndexVersion must be 1 or 2", VALID_SPHERE_INDEX_VERSIONS.contains(sphereIndexVersion));
         this.sphereIndexVersion = sphereIndexVersion;
         return this;

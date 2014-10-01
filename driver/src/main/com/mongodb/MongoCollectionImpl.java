@@ -570,7 +570,7 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
                              .defaultLanguage(createIndexOptions.getDefaultLanguage())
                              .languageOverride(createIndexOptions.getLanguageOverride())
                              .textIndexVersion(createIndexOptions.getTextIndexVersion())
-                             .set2dSphereIndexVersion(createIndexOptions.get2dSphereIndexVersion())
+                             .twoDSphereIndexVersion(createIndexOptions.getTwoDSphereIndexVersion())
                              .bits(createIndexOptions.getBits())
                              .min(createIndexOptions.getMin())
                              .max(createIndexOptions.getMax())
