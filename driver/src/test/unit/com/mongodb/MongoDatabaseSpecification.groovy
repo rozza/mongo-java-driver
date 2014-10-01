@@ -150,11 +150,11 @@ class MongoDatabaseSpecification extends Specification {
         given:
         def executor = new TestOperationExecutor([null, null])
         database = new MongoDatabaseImpl('databaseName', options, executor)
-        def oldNamespace = new MongoNamespace('databaseName', 'collectionName')
-        def newNamespace = new MongoNamespace('anotherDatabase', 'anotherCollection')
+        def oldNamespace = new MongoNamespace(database.getName(), 'collectionName')
+        def newNamespace = new MongoNamespace(database.getName(), 'anotherCollection')
 
         when:
-        database.renameCollection(oldNamespace, newNamespace)
+        database.renameCollection(oldNamespace.getCollectionName(), newNamespace.getCollectionName())
 
         then:
         def operation = executor.getWriteOperation() as RenameCollectionOperation
@@ -163,7 +163,8 @@ class MongoDatabaseSpecification extends Specification {
         !operation.isDropTarget()
 
         when:
-        database.renameCollection(oldNamespace, newNamespace, new RenameCollectionOptions().dropTarget(true))
+        database.renameCollection(oldNamespace.getCollectionName(), newNamespace.getCollectionName(),
+                                  new RenameCollectionOptions().dropTarget(true))
 
         then:
         def operation2 = executor.getWriteOperation() as RenameCollectionOperation

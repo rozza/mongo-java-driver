@@ -77,14 +77,15 @@ public class DatabaseAdministrationImpl implements DatabaseAdministration {
     }
 
     @Override
-    public MongoFuture<Void> renameCollection(final MongoNamespace originalNamespace, final MongoNamespace newNamespace) {
-        return renameCollection(originalNamespace, newNamespace, new RenameCollectionOptions());
+    public MongoFuture<Void> renameCollection(final String oldCollectionName, final String newCollectionName) {
+        return renameCollection(oldCollectionName, newCollectionName, new RenameCollectionOptions());
     }
 
     @Override
-    public MongoFuture<Void> renameCollection(final MongoNamespace originalNamespace, final MongoNamespace newNamespace, final
-                                              RenameCollectionOptions renameCollectionOptions) {
-        return client.execute(new RenameCollectionOperation(originalNamespace, newNamespace)
+    public MongoFuture<Void> renameCollection(final String oldCollectionName, final String newCollectionName,
+                                              final RenameCollectionOptions renameCollectionOptions) {
+        return client.execute(new RenameCollectionOperation(new MongoNamespace(databaseName, oldCollectionName),
+                                                            new MongoNamespace(databaseName, newCollectionName))
                                   .dropTarget(renameCollectionOptions.isDropTarget()));
     }
 }

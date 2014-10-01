@@ -21,7 +21,6 @@ import com.mongodb.client.MongoCollectionOptions;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.MongoDatabaseOptions;
 import com.mongodb.client.model.CreateCollectionOptions;
-import com.mongodb.client.model.RenameCollectionModel;
 import com.mongodb.client.model.RenameCollectionOptions;
 import com.mongodb.operation.CommandReadOperation;
 import com.mongodb.operation.CommandWriteOperation;
@@ -101,19 +100,16 @@ class MongoDatabaseImpl implements MongoDatabase {
     }
 
     @Override
-    public void renameCollection(final MongoNamespace originalNamespace, final MongoNamespace newNamespace) {
-        renameCollection(new RenameCollectionModel(originalNamespace, newNamespace, new RenameCollectionOptions()));
+    public void renameCollection(final String oldCollectionName, final String newCollectionName) {
+        renameCollection(oldCollectionName, newCollectionName, new RenameCollectionOptions());
     }
 
     @Override
-    public void renameCollection(final MongoNamespace originalNamespace, final MongoNamespace newNamespace,
+    public void renameCollection(final String oldCollectionName, final String newCollectionName,
                                  final RenameCollectionOptions renameCollectionOptions) {
-        renameCollection(new RenameCollectionModel(originalNamespace, newNamespace, renameCollectionOptions));
-    }
-
-    private void renameCollection(final RenameCollectionModel model) {
-        executor.execute(new RenameCollectionOperation(model.getOriginalNamespace(),
-                                                       model.getNewNamespace()).dropTarget(model.getOptions().isDropTarget()));
+        executor.execute(new RenameCollectionOperation(new MongoNamespace(name, oldCollectionName),
+                                                       new MongoNamespace(name, newCollectionName))
+                                                       .dropTarget(renameCollectionOptions.isDropTarget()));
     }
 
     @Override

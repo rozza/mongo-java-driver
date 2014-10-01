@@ -16,7 +16,6 @@
 
 package com.mongodb.async.rx.client;
 
-import com.mongodb.MongoNamespace;
 import com.mongodb.async.MongoFuture;
 import com.mongodb.client.model.CreateCollectionOptions;
 import com.mongodb.client.model.RenameCollectionOptions;
@@ -86,17 +85,17 @@ public class DatabaseAdministrationImpl implements DatabaseAdministration {
     }
 
     @Override
-    public Observable<Void> renameCollection(final MongoNamespace originalNamespace, final MongoNamespace newNamespace) {
-        return renameCollection(originalNamespace, newNamespace, new RenameCollectionOptions());
+    public Observable<Void> renameCollection(final String oldCollectionName, final String newCollectionName) {
+        return renameCollection(oldCollectionName, newCollectionName, new RenameCollectionOptions());
     }
 
     @Override
-    public Observable<Void> renameCollection(final MongoNamespace originalNamespace, final MongoNamespace newNamespace,
+    public Observable<Void> renameCollection(final String oldCollectionName, final String newCollectionName,
                                              final RenameCollectionOptions renameCollectionOptions) {
         return Observable.create(new OnSubscribeAdapter<Void>(new OnSubscribeAdapter.FutureFunction<Void>() {
             @Override
             public MongoFuture<Void> apply() {
-                return wrapped.renameCollection(originalNamespace, newNamespace, renameCollectionOptions);
+                return wrapped.renameCollection(oldCollectionName, newCollectionName, renameCollectionOptions);
             }
         }));
     }
