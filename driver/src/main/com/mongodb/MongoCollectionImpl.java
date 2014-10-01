@@ -46,6 +46,7 @@ import com.mongodb.client.model.MapReduceModel;
 import com.mongodb.client.model.MapReduceOptions;
 import com.mongodb.client.model.ParallelCollectionScanModel;
 import com.mongodb.client.model.ParallelCollectionScanOptions;
+import com.mongodb.client.model.RenameCollectionOptions;
 import com.mongodb.client.model.ReplaceOneModel;
 import com.mongodb.client.model.UpdateManyModel;
 import com.mongodb.client.model.UpdateOneModel;
@@ -77,6 +78,7 @@ import com.mongodb.operation.MixedBulkWriteOperation;
 import com.mongodb.operation.OperationExecutor;
 import com.mongodb.operation.ParallelCollectionScanOperation;
 import com.mongodb.operation.ReadOperation;
+import com.mongodb.operation.RenameCollectionOperation;
 import com.mongodb.operation.UpdateOperation;
 import com.mongodb.operation.UpdateRequest;
 import com.mongodb.operation.WriteRequest;
@@ -589,6 +591,17 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
     @Override
     public void dropIndexes() {
         dropIndex("*");
+    }
+
+    @Override
+    public void renameCollection(final MongoNamespace newCollectionNamespace) {
+        renameCollection(newCollectionNamespace, new RenameCollectionOptions());
+    }
+
+    @Override
+    public void renameCollection(final MongoNamespace newCollectionNamespace, final RenameCollectionOptions renameCollectionOptions) {
+        executor.execute(new RenameCollectionOperation(getNamespace(), newCollectionNamespace)
+                             .dropTarget(renameCollectionOptions.isDropTarget()));
     }
 
     private Document explainCount(final CountModel countModel, final ExplainVerbosity verbosity) {

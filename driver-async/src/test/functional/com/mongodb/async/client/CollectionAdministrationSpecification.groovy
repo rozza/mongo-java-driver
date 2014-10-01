@@ -16,7 +16,10 @@
 
 package com.mongodb.async.client
 
+import com.mongodb.MongoNamespace
 import org.mongodb.Document
+
+import static Fixture.getMongoClient
 
 class CollectionAdministrationSpecification extends FunctionalSpecification {
 
@@ -27,7 +30,7 @@ class CollectionAdministrationSpecification extends FunctionalSpecification {
 
     def 'Drop should drop the collection'() {
         when:
-        def client = Fixture.getMongoClient()
+        def client = getMongoClient()
         def database = client.getDatabase(databaseName)
         database.tools().createCollection(collectionName).get()
 
@@ -43,7 +46,7 @@ class CollectionAdministrationSpecification extends FunctionalSpecification {
 
     def 'getIndexes should not error for a nonexistent collection'() {
         when:
-        def database = Fixture.getMongoClient().getDatabase(databaseName)
+        def database = getMongoClient().getDatabase(databaseName)
 
         then:
         !database.tools().getCollectionNames().get().contains(collectionName)
@@ -86,6 +89,27 @@ class CollectionAdministrationSpecification extends FunctionalSpecification {
 
         then:
         collection.tools().getIndexes().get()*.get('key') == [idIndex]
+    }
+
+    def 'rename collection should rename the collection name'() {
+
+        given:
+        def newCollectionName = 'NewCollection1234'
+        def client = getMongoClient()
+        def database = client.getDatabase(databaseName)
+
+        when:
+        database.tools().createCollection(collectionName).get()
+
+        then:
+        database.tools().getCollectionNames().get().contains(collectionName)
+
+        when:
+        collection.tools().renameCollection(new MongoNamespace(databaseName, newCollectionName)).get()
+
+        then:
+        !database.tools().getCollectionNames().get().contains(collectionName)
+        database.tools().getCollectionNames().get().contains(newCollectionName)
     }
 
 }

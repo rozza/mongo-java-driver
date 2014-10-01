@@ -21,14 +21,12 @@ import com.mongodb.client.MongoCollectionOptions;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.MongoDatabaseOptions;
 import com.mongodb.client.model.CreateCollectionOptions;
-import com.mongodb.client.model.RenameCollectionOptions;
 import com.mongodb.operation.CommandReadOperation;
 import com.mongodb.operation.CommandWriteOperation;
 import com.mongodb.operation.CreateCollectionOperation;
 import com.mongodb.operation.DropDatabaseOperation;
 import com.mongodb.operation.GetCollectionNamesOperation;
 import com.mongodb.operation.OperationExecutor;
-import com.mongodb.operation.RenameCollectionOperation;
 import org.bson.BsonDocument;
 import org.bson.BsonDocumentWrapper;
 import org.mongodb.Document;
@@ -97,19 +95,6 @@ class MongoDatabaseImpl implements MongoDatabase {
                              .autoIndex(createCollectionOptions.isAutoIndex())
                              .maxDocuments(createCollectionOptions.getMaxDocuments())
                              .usePowerOf2Sizes(createCollectionOptions.isUsePowerOf2Sizes()));
-    }
-
-    @Override
-    public void renameCollection(final String oldCollectionName, final String newCollectionName) {
-        renameCollection(oldCollectionName, newCollectionName, new RenameCollectionOptions());
-    }
-
-    @Override
-    public void renameCollection(final String oldCollectionName, final String newCollectionName,
-                                 final RenameCollectionOptions renameCollectionOptions) {
-        executor.execute(new RenameCollectionOperation(new MongoNamespace(name, oldCollectionName),
-                                                       new MongoNamespace(name, newCollectionName))
-                                                       .dropTarget(renameCollectionOptions.isDropTarget()));
     }
 
     @Override

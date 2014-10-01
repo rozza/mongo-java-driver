@@ -19,13 +19,11 @@ package com.mongodb
 import com.mongodb.client.MongoCollectionOptions
 import com.mongodb.client.MongoDatabaseOptions
 import com.mongodb.client.model.CreateCollectionOptions
-import com.mongodb.client.model.RenameCollectionOptions
 import com.mongodb.client.test.Worker
 import com.mongodb.codecs.DocumentCodecProvider
 import com.mongodb.operation.CreateCollectionOperation
 import com.mongodb.operation.DropDatabaseOperation
 import com.mongodb.operation.GetCollectionNamesOperation
-import com.mongodb.operation.RenameCollectionOperation
 import org.bson.codecs.configuration.RootCodecRegistry
 import spock.lang.Specification
 
@@ -171,32 +169,4 @@ class MongoDatabaseSpecification extends Specification {
         operation2.getMaxDocuments() == 100
         operation2.getSizeInBytes() == 1024
     }
-
-    def 'should use RenameCollectionOperation properly'() {
-        given:
-        def executor = new TestOperationExecutor([null, null])
-        database = new MongoDatabaseImpl('databaseName', options, executor)
-        def oldNamespace = new MongoNamespace(database.getName(), 'collectionName')
-        def newNamespace = new MongoNamespace(database.getName(), 'anotherCollection')
-
-        when:
-        database.renameCollection(oldNamespace.getCollectionName(), newNamespace.getCollectionName())
-
-        then:
-        def operation = executor.getWriteOperation() as RenameCollectionOperation
-        operation.originalNamespace == oldNamespace
-        operation.newNamespace == newNamespace
-        !operation.isDropTarget()
-
-        when:
-        database.renameCollection(oldNamespace.getCollectionName(), newNamespace.getCollectionName(),
-                                  new RenameCollectionOptions().dropTarget(true))
-
-        then:
-        def operation2 = executor.getWriteOperation() as RenameCollectionOperation
-        operation2.originalNamespace == oldNamespace
-        operation2.newNamespace == newNamespace
-        operation2.isDropTarget()
-    }
-
 }
