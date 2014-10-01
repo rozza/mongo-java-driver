@@ -18,7 +18,6 @@ package com.mongodb.acceptancetest.index;
 
 import com.mongodb.client.DatabaseTestCase;
 import com.mongodb.client.MongoCollection;
-import com.mongodb.client.model.CreateIndexModel;
 import com.mongodb.client.model.CreateIndexOptions;
 import com.mongodb.operation.OrderBy;
 import org.junit.Test;
@@ -27,7 +26,6 @@ import org.mongodb.Document;
 import static com.mongodb.operation.OrderBy.ASC;
 import static com.mongodb.operation.OrderBy.DESC;
 import static com.mongodb.operation.OrderBy.fromInt;
-import static java.util.Arrays.asList;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.core.Is.is;
@@ -67,15 +65,6 @@ public class AddIndexAcceptanceTest extends DatabaseTestCase {
     @Test
     public void shouldCreateAnAscendingIndex() {
         collection.createIndex(new Document("field", 1));
-
-        Document newIndexDetails = collection.getIndexes().get(1);
-        OrderBy order = fromInt((Integer) ((Document) newIndexDetails.get("key")).get("field"));
-        assertThat("Index created should be ascending", order, is(ASC));
-    }
-
-    @Test
-    public void shouldCreateAnAscendingIndexWhenUsingModel() {
-        collection.createIndexes(asList(new CreateIndexModel(new Document("field", 1))));
 
         Document newIndexDetails = collection.getIndexes().get(1);
         OrderBy order = fromInt((Integer) ((Document) newIndexDetails.get("key")).get("field"));

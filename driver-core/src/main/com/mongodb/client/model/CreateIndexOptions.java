@@ -18,27 +18,27 @@ package com.mongodb.client.model;
 
 import java.util.List;
 
-import static com.mongodb.assertions.Assertions.isTrue;
+import static com.mongodb.assertions.Assertions.isTrueArgument;
 import static java.util.Arrays.asList;
 
 /**
  * The options to apply to an operation that atomically finds a document and deletes it.
  *
- * @since 3.0
  * @mongodb.driver.manual reference/method/db.collection.ensureIndex/#options Index options
+ * @since 3.0
  */
 public class CreateIndexOptions {
-    private final static List<Integer> VALID_TEXT_INDEX_VERSIONS = asList(1, 2);
-    private final static List<Integer> VALID_SPHERE_INDEX_VERSIONS = asList(1, 2);
+    private static final List<Integer> VALID_TEXT_INDEX_VERSIONS = asList(1, 2);
+    private static final List<Integer> VALID_SPHERE_INDEX_VERSIONS = asList(1, 2);
     private boolean background;
     private boolean unique;
     private String name;
     private boolean sparse;
     private Integer expireAfterSeconds;
-    private String version;
+    private Integer version;
     private Object weights;
-    private String default_language;
-    private String language_override;
+    private String defaultLanguage;
+    private String languageOverride;
     private Integer textIndexVersion;
     private Integer sphereIndexVersion;
     private Integer bits;
@@ -153,7 +153,7 @@ public class CreateIndexOptions {
      *
      * @return the index version number
      */
-    public String getVersion() {
+    public Integer getVersion() {
         return this.version;
     }
 
@@ -163,14 +163,14 @@ public class CreateIndexOptions {
      * @param version the index version number
      * @return this
      */
-    public CreateIndexOptions version(final String version) {
+    public CreateIndexOptions version(final Integer version) {
         this.version = version;
         return this;
     }
 
     /**
      * Gets the weighting object for use with a text index
-     *
+     * <p/>
      * <p>An object that represents field and weight pairs. The weight is an integer ranging from 1 to 99,999 and denotes the significance
      * of the field relative to the other indexed fields in terms of the score.</p>
      *
@@ -183,7 +183,7 @@ public class CreateIndexOptions {
 
     /**
      * Sets the weighting object for use with a text index.
-     *
+     * <p/>
      * <p>An object that represents field and weight pairs. The weight is an integer ranging from 1 to 99,999 and denotes the significance
      * of the field relative to the other indexed fields in terms of the score.</p>
      *
@@ -198,53 +198,53 @@ public class CreateIndexOptions {
 
     /**
      * Gets the language for a text index.
-     *
+     * <p/>
      * <p>The language that determines the list of stop words and the rules for the stemmer and tokenizer.</p>
      *
      * @return the language for a text index.
      * @mongodb.driver.manual reference/text-search-languages Text Search languages
      */
-    public String getDefault_language() {
-        return default_language;
+    public String getDefaultLanguage() {
+        return defaultLanguage;
     }
 
     /**
      * Sets the language for the text index.
-     *
+     * <p/>
      * <p>The language that determines the list of stop words and the rules for the stemmer and tokenizer.</p>
      *
-     * @param default_language the language for the text index.
+     * @param defaultLanguage the language for the text index.
      * @return this
      * @mongodb.driver.manual reference/text-search-languages Text Search languages
      */
-    public CreateIndexOptions default_language(final String default_language) {
-        this.default_language = default_language;
+    public CreateIndexOptions defaultLanguage(final String defaultLanguage) {
+        this.defaultLanguage = defaultLanguage;
         return this;
     }
 
     /**
      * Gets the name of the field that contains the language string.
-     *
+     * <p/>
      * <p>For text indexes, the name of the field, in the collection's documents, that contains the override language for the document.</p>
      *
      * @return the name of the field that contains the language string.
      * @mongodb.driver.manual tutorial/specify-language-for-text-index/#specify-language-field-text-index-example Language override
      */
-    public String getLanguage_override() {
-        return language_override;
+    public String getLanguageOverride() {
+        return languageOverride;
     }
 
     /**
      * Sets the name of the field that contains the language string.
-     *
+     * <p/>
      * <p>For text indexes, the name of the field, in the collection's documents, that contains the override language for the document.</p>
      *
-     * @param language_override the name of the field that contains the language string.
+     * @param languageOverride the name of the field that contains the language string.
      * @return this
      * @mongodb.driver.manual tutorial/specify-language-for-text-index/#specify-language-field-text-index-example Language override
      */
-    public CreateIndexOptions language_override(final String language_override) {
-        this.language_override = language_override;
+    public CreateIndexOptions languageOverride(final String languageOverride) {
+        this.languageOverride = languageOverride;
         return this;
     }
 
@@ -264,7 +264,7 @@ public class CreateIndexOptions {
      * @return this
      */
     public CreateIndexOptions textIndexVersion(final int textIndexVersion) {
-        isTrue("textIndexVersion must be 1 or 2", VALID_TEXT_INDEX_VERSIONS.contains(textIndexVersion));
+        isTrueArgument("textIndexVersion must be 1 or 2", VALID_TEXT_INDEX_VERSIONS.contains(textIndexVersion));
         this.textIndexVersion = textIndexVersion;
         return this;
     }
@@ -285,7 +285,7 @@ public class CreateIndexOptions {
      * @return this
      */
     public CreateIndexOptions set2dSphereIndexVersion(final int sphereIndexVersion) {
-        isTrue("sphereIndexVersion must be 1 or 2", VALID_SPHERE_INDEX_VERSIONS.contains(sphereIndexVersion));
+        isTrueArgument("sphereIndexVersion must be 1 or 2", VALID_SPHERE_INDEX_VERSIONS.contains(sphereIndexVersion));
         this.sphereIndexVersion = sphereIndexVersion;
         return this;
     }

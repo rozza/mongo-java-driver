@@ -126,8 +126,7 @@ class DBCollectionFunctionalSpecification extends FunctionalSpecification {
         def options = ~[
                 'sparse'            : true,
                 'background'        : true,
-                'expireAfterSeconds': 42,
-                'somethingOdd'      : 'jeff'
+                'expireAfterSeconds': 42
         ]
 
         when:
@@ -138,7 +137,6 @@ class DBCollectionFunctionalSpecification extends FunctionalSpecification {
 
         DBObject document = collection.getIndexInfo()[1]
         document.get('expireAfterSeconds') == 42
-        document.get('somethingOdd') == 'jeff'
         document.get('background') == true
     }
 

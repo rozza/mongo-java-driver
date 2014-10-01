@@ -72,7 +72,7 @@ class DropIndexesOperationSpecification extends OperationFunctionalSpecification
 
     def 'should drop existing index'() {
         given:
-        collectionHelper.createIndexes([new BsonDocument('key', new BsonDocument('theField', new BsonInt32(1)))])
+        collectionHelper.createIndex(new BsonDocument('theField', new BsonInt32(1)))
 
         when:
         new DropIndexOperation(getNamespace(), 'theField_1').execute(getBinding())
@@ -86,7 +86,7 @@ class DropIndexesOperationSpecification extends OperationFunctionalSpecification
     @Category(Async)
     def 'should drop existing index asynchronously'() {
         given:
-        collectionHelper.createIndexes([new BsonDocument('key', new BsonDocument('theField', new BsonInt32(1)))])
+        collectionHelper.createIndex(new BsonDocument('theField', new BsonInt32(1)))
         def operation = new DropIndexOperation(getNamespace(), 'theField_1');
 
         when:
@@ -100,8 +100,9 @@ class DropIndexesOperationSpecification extends OperationFunctionalSpecification
 
     def 'should drop all indexes when passed *'() {
         given:
-        collectionHelper.createIndexes([new BsonDocument('key', new BsonDocument('theField', new BsonInt32(1))),
-                                        new BsonDocument('key', new BsonDocument('theOtherField', new BsonInt32(1)))])
+        collectionHelper.createIndex(new BsonDocument('theField', new BsonInt32(1)))
+        collectionHelper.createIndex(new BsonDocument('theOtherField', new BsonInt32(1)))
+
         when:
         new DropIndexOperation(getNamespace(), '*').execute(getBinding())
         List<Document> indexes = getIndexes()
@@ -114,8 +115,9 @@ class DropIndexesOperationSpecification extends OperationFunctionalSpecification
     @Category(Async)
     def 'should drop all indexes when passed * asynchronously'() {
         given:
-        collectionHelper.createIndexes([new BsonDocument('key', new BsonDocument('theField', new BsonInt32(1))),
-                                        new BsonDocument('key', new BsonDocument('theOtherField', new BsonInt32(1)))])
+        collectionHelper.createIndex(new BsonDocument('theField', new BsonInt32(1)))
+        collectionHelper.createIndex(new BsonDocument('theOtherField', new BsonInt32(1)))
+
         when:
         new DropIndexOperation(getNamespace(), '*').executeAsync(getAsyncBinding()).get()
         List<Document> indexes = getIndexes()

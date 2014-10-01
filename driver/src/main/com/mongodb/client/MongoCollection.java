@@ -23,7 +23,6 @@ import com.mongodb.annotations.ThreadSafe;
 import com.mongodb.client.model.AggregateOptions;
 import com.mongodb.client.model.BulkWriteOptions;
 import com.mongodb.client.model.CountOptions;
-import com.mongodb.client.model.CreateIndexModel;
 import com.mongodb.client.model.CreateIndexOptions;
 import com.mongodb.client.model.DistinctOptions;
 import com.mongodb.client.model.ExplainableModel;

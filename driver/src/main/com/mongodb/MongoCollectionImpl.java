@@ -25,7 +25,6 @@ import com.mongodb.client.model.BulkWriteModel;
 import com.mongodb.client.model.BulkWriteOptions;
 import com.mongodb.client.model.CountModel;
 import com.mongodb.client.model.CountOptions;
-import com.mongodb.client.model.CreateIndexModel;
 import com.mongodb.client.model.CreateIndexOptions;
 import com.mongodb.client.model.DeleteManyModel;
 import com.mongodb.client.model.DeleteOneModel;
@@ -59,7 +58,7 @@ import com.mongodb.codecs.DocumentCodec;
 import com.mongodb.operation.AggregateOperation;
 import com.mongodb.operation.AggregateToCollectionOperation;
 import com.mongodb.operation.CountOperation;
-import com.mongodb.operation.CreateIndexesOperation;
+import com.mongodb.operation.CreateIndexOperation;
 import com.mongodb.operation.DeleteOperation;
 import com.mongodb.operation.DeleteRequest;
 import com.mongodb.operation.DistinctOperation;
@@ -82,11 +81,9 @@ import com.mongodb.operation.UpdateOperation;
 import com.mongodb.operation.UpdateRequest;
 import com.mongodb.operation.WriteRequest;
 import org.bson.BsonArray;
-import org.bson.BsonBoolean;
 import org.bson.BsonDocument;
 import org.bson.BsonDocumentReader;
 import org.bson.BsonDocumentWrapper;
-import org.bson.BsonInt32;
 import org.bson.BsonJavaScript;
 import org.bson.BsonString;
 import org.bson.BsonValue;
@@ -102,6 +99,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
+import static com.mongodb.assertions.Assertions.notNull;
 import static java.lang.String.format;
 import static java.util.Arrays.asList;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
@@ -114,11 +112,11 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
 
     MongoCollectionImpl(final MongoNamespace namespace, final Class<T> clazz,
                         final MongoCollectionOptions options, final OperationExecutor executor) {
-
-        this.namespace = namespace;
-        this.clazz = clazz;
-        this.options = options;
-        this.executor = executor;
+        // TODO NOT NULL
+        this.namespace = notNull("namespace", namespace);
+        this.clazz = notNull("clazz", clazz);
+        this.options = notNull("options", options);
+        this.executor = notNull("executor", executor);
     }
 
     @Override
@@ -556,47 +554,27 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
 
     @Override
     public void createIndex(final Object key) {
-        createIndexes(asList(new CreateIndexModel(key, new CreateIndexOptions())));
+        createIndex(key, new CreateIndexOptions());
     }
 
     @Override
     public void createIndex(final Object key, final CreateIndexOptions createIndexOptions) {
-        createIndexes(asList(new CreateIndexModel(key, createIndexOptions)));
-    }
-
-    void createIndexes(final List<CreateIndexModel> indexModels) {
-        List<BsonDocument> indexes = new ArrayList<BsonDocument>();
-        for (CreateIndexModel index : indexModels) {
-            indexes.add(createIndexModelToBsonDocument(index));
-        }
-        executor.execute(new CreateIndexesOperation(namespace, indexes));
-    }
-
-    private BsonDocument createIndexModelToBsonDocument(final CreateIndexModel index) {
-        CreateIndexOptions options = index.getOptions();
-        BsonDocument indexDetails = new BsonDocument();
-        if (options.getName() != null) {
-            indexDetails.append("name", new BsonString(options.getName()));
-        }
-        indexDetails.append("key", asBson(index.getKeys()));
-        if (options.isUnique()) {
-            indexDetails.append("unique", BsonBoolean.TRUE);
-        }
-        if (options.isSparse()) {
-            indexDetails.append("sparse", BsonBoolean.TRUE);
-        }
-        if (options.isBackground()) {
-            indexDetails.append("background", BsonBoolean.TRUE);
-        }
-        if (options.getExpireAfterSeconds() != null) {
-            indexDetails.append("expireAfterSeconds", new BsonInt32(options.getExpireAfterSeconds()));
-        }
-        Object extraIndexOptions = options.getExtraIndexOptions();
-        if (extraIndexOptions != null) {
-            indexDetails.putAll(asBson(extraIndexOptions));
-        }
-        indexDetails.put("ns", new BsonString(namespace.getFullName()));
-        return indexDetails;
+        executor.execute(new CreateIndexOperation(getNamespace(), asBson(key))
+                             .name(createIndexOptions.getName())
+                             .background(createIndexOptions.isBackground())
+                             .unique(createIndexOptions.isUnique())
+                             .sparse(createIndexOptions.isSparse())
+                             .expireAfterSeconds(createIndexOptions.getExpireAfterSeconds())
+                             .version(createIndexOptions.getVersion())
+                             .weights(asBson(createIndexOptions.getWeights()))
+                             .defaultLanguage(createIndexOptions.getDefaultLanguage())
+                             .languageOverride(createIndexOptions.getLanguageOverride())
+                             .textIndexVersion(createIndexOptions.getTextIndexVersion())
+                             .set2dSphereIndexVersion(createIndexOptions.get2dSphereIndexVersion())
+                             .bits(createIndexOptions.getBits())
+                             .min(createIndexOptions.getMin())
+                             .max(createIndexOptions.getMax())
+                             .bucketSize(createIndexOptions.getBucketSize()));
     }
 
     @Override
@@ -767,6 +745,42 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
             aggregateList.add(asBson(obj));
         }
         return aggregateList;
+    }
+
+    @Override
+    public boolean equals(final Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof MongoCollectionImpl)) {
+            return false;
+        }
+
+        MongoCollectionImpl<?> that = (MongoCollectionImpl) o;
+
+        if (!clazz.equals(that.clazz)) {
+            return false;
+        }
+        if (!executor.equals(that.executor)) {
+            return false;
+        }
+        if (!namespace.equals(that.namespace)) {
+            return false;
+        }
+        if (!options.equals(that.options)) {
+            return false;
+        }
+
+        return true;
+    }
+
+    @Override
+    public int hashCode() {
+        int result = namespace.hashCode();
+        result = 31 * result + options.hashCode();
+        result = 31 * result + clazz.hashCode();
+        result = 31 * result + executor.hashCode();
+        return result;
     }
 
     private final class OperationIterable<D> implements MongoIterable<D> {

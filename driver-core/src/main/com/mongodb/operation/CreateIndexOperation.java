@@ -36,9 +36,6 @@ import org.bson.BsonString;
 import org.bson.BsonValue;
 import org.mongodb.WriteResult;
 
-import java.util.List;
-
-import static com.mongodb.assertions.Assertions.isTrue;
 import static com.mongodb.assertions.Assertions.notNull;
 import static com.mongodb.operation.CommandOperationHelper.executeWrappedCommandProtocol;
 import static com.mongodb.operation.CommandOperationHelper.executeWrappedCommandProtocolAsync;
@@ -55,8 +52,6 @@ import static java.util.Arrays.asList;
  * @since 3.0
  */
 public class CreateIndexOperation implements AsyncWriteOperation<Void>, WriteOperation<Void> {
-    private final static List<Integer> VALID_TEXT_INDEX_VERSIONS = asList(1, 2);
-    private final static List<Integer> VALID_SPHERE_INDEX_VERSIONS = asList(1, 2);
     private final MongoNamespace namespace;
     private final BsonDocument key;
     private final MongoNamespace systemIndexes;
@@ -65,10 +60,10 @@ public class CreateIndexOperation implements AsyncWriteOperation<Void>, WriteOpe
     private String name;
     private boolean sparse;
     private Integer expireAfterSeconds;
-    private String version;
+    private Integer version;
     private BsonDocument weights;
-    private String default_language;
-    private String language_override;
+    private String defaultLanguage;
+    private String languageOverride;
     private Integer textIndexVersion;
     private Integer sphereIndexVersion;
     private Integer bits;
@@ -80,12 +75,12 @@ public class CreateIndexOperation implements AsyncWriteOperation<Void>, WriteOpe
      * Construct a new instance.
      *
      * @param namespace the database and collection namespace for the operation.
-     * @param key the index key.
+     * @param key       the index key.
      */
     public CreateIndexOperation(final MongoNamespace namespace, final BsonDocument key) {
         this.namespace = notNull("namespace", namespace);
-        this.key = notNull("key", key);
         this.systemIndexes = new MongoNamespace(namespace.getDatabaseName(), "system.indexes");
+        this.key = notNull("key", key);
     }
 
     /**
@@ -204,7 +199,7 @@ public class CreateIndexOperation implements AsyncWriteOperation<Void>, WriteOpe
      *
      * @return the index version number
      */
-    public String getVersion() {
+    public Integer getVersion() {
         return this.version;
     }
 
@@ -214,14 +209,14 @@ public class CreateIndexOperation implements AsyncWriteOperation<Void>, WriteOpe
      * @param version the index version number
      * @return this
      */
-    public CreateIndexOperation version(final String version) {
+    public CreateIndexOperation version(final Integer version) {
         this.version = version;
         return this;
     }
 
     /**
      * Gets the weighting object for use with a text index
-     *
+     * <p/>
      * <p>An object that represents field and weight pairs. The weight is an integer ranging from 1 to 99,999 and denotes the significance
      * of the field relative to the other indexed fields in terms of the score.</p>
      *
@@ -234,7 +229,7 @@ public class CreateIndexOperation implements AsyncWriteOperation<Void>, WriteOpe
 
     /**
      * Sets the weighting document for use with a text index.
-     *
+     * <p/>
      * <p>A document that represents field and weight pairs. The weight is an integer ranging from 1 to 99,999 and denotes the significance
      * of the field relative to the other indexed fields in terms of the score.</p>
      *
@@ -249,53 +244,53 @@ public class CreateIndexOperation implements AsyncWriteOperation<Void>, WriteOpe
 
     /**
      * Gets the language for a text index.
-     *
+     * <p/>
      * <p>The language that determines the list of stop words and the rules for the stemmer and tokenizer.</p>
      *
      * @return the language for a text index.
      * @mongodb.driver.manual reference/text-search-languages Text Search languages
      */
-    public String getDefault_language() {
-        return default_language;
+    public String getDefaultLanguage() {
+        return defaultLanguage;
     }
 
     /**
      * Sets the language for the text index.
-     *
+     * <p/>
      * <p>The language that determines the list of stop words and the rules for the stemmer and tokenizer.</p>
      *
-     * @param default_language the language for the text index.
+     * @param defaultLanguage the language for the text index.
      * @return this
      * @mongodb.driver.manual reference/text-search-languages Text Search languages
      */
-    public CreateIndexOperation default_language(final String default_language) {
-        this.default_language = default_language;
+    public CreateIndexOperation defaultLanguage(final String defaultLanguage) {
+        this.defaultLanguage = defaultLanguage;
         return this;
     }
 
     /**
      * Gets the name of the field that contains the language string.
-     *
+     * <p/>
      * <p>For text indexes, the name of the field, in the collection's documents, that contains the override language for the document.</p>
      *
      * @return the name of the field that contains the language string.
      * @mongodb.driver.manual tutorial/specify-language-for-text-index/#specify-language-field-text-index-example Language override
      */
-    public String getLanguage_override() {
-        return language_override;
+    public String getLanguageOverride() {
+        return languageOverride;
     }
 
     /**
      * Sets the name of the field that contains the language string.
-     *
+     * <p/>
      * <p>For text indexes, the name of the field, in the collection's documents, that contains the override language for the document.</p>
      *
-     * @param language_override the name of the field that contains the language string.
+     * @param languageOverride the name of the field that contains the language string.
      * @return this
      * @mongodb.driver.manual tutorial/specify-language-for-text-index/#specify-language-field-text-index-example Language override
      */
-    public CreateIndexOperation language_override(final String language_override) {
-        this.language_override = language_override;
+    public CreateIndexOperation languageOverride(final String languageOverride) {
+        this.languageOverride = languageOverride;
         return this;
     }
 
@@ -314,8 +309,7 @@ public class CreateIndexOperation implements AsyncWriteOperation<Void>, WriteOpe
      * @param textIndexVersion the text index version number.
      * @return this
      */
-    public CreateIndexOperation textIndexVersion(final int textIndexVersion) {
-        isTrue("textIndexVersion must be 1 or 2", VALID_TEXT_INDEX_VERSIONS.contains(textIndexVersion));
+    public CreateIndexOperation textIndexVersion(final Integer textIndexVersion) {
         this.textIndexVersion = textIndexVersion;
         return this;
     }
@@ -335,8 +329,7 @@ public class CreateIndexOperation implements AsyncWriteOperation<Void>, WriteOpe
      * @param sphereIndexVersion the 2dsphere index version number.
      * @return this
      */
-    public CreateIndexOperation set2dSphereIndexVersion(final int sphereIndexVersion) {
-        isTrue("sphereIndexVersion must be 1 or 2", VALID_SPHERE_INDEX_VERSIONS.contains(sphereIndexVersion));
+    public CreateIndexOperation set2dSphereIndexVersion(final Integer sphereIndexVersion) {
         this.sphereIndexVersion = sphereIndexVersion;
         return this;
     }
@@ -356,7 +349,7 @@ public class CreateIndexOperation implements AsyncWriteOperation<Void>, WriteOpe
      * @param bits the number of precision of the stored geohash value
      * @return this
      */
-    public CreateIndexOperation bits(final int bits) {
+    public CreateIndexOperation bits(final Integer bits) {
         this.bits = bits;
         return this;
     }
@@ -422,7 +415,7 @@ public class CreateIndexOperation implements AsyncWriteOperation<Void>, WriteOpe
         this.bucketSize = bucketSize;
         return this;
     }
-    
+
     @Override
     public Void execute(final WriteBinding binding) {
         return withConnection(binding, new CallableWithConnection<Void>() {
@@ -472,7 +465,7 @@ public class CreateIndexOperation implements AsyncWriteOperation<Void>, WriteOpe
     private BsonDocument getIndex() {
         BsonDocument index = new BsonDocument();
         index.append("key", key);
-        index.append("name", getName() != null ? new BsonString(getName()) : generateIndexName(key));
+        index.append("name", new BsonString(getName() != null ? getName() : generateIndexName(key)));
         if (background) {
             index.append("background", BsonBoolean.TRUE);
         }
@@ -486,16 +479,16 @@ public class CreateIndexOperation implements AsyncWriteOperation<Void>, WriteOpe
             index.append("expireAfterSeconds", new BsonInt32(expireAfterSeconds));
         }
         if (version != null) {
-            index.append("v", new BsonString(version));
+            index.append("v", new BsonInt32(version));
         }
         if (weights != null) {
             index.append("weights", weights);
         }
-        if (default_language != null) {
-            index.append("default_language", new BsonString(default_language));
+        if (defaultLanguage != null) {
+            index.append("default_language", new BsonString(defaultLanguage));
         }
-        if (language_override != null) {
-            index.append("language_override", new BsonString(language_override));
+        if (languageOverride != null) {
+            index.append("language_override", new BsonString(languageOverride));
         }
         if (textIndexVersion != null) {
             index.append("textIndexVersion", new BsonInt32(textIndexVersion));
@@ -509,10 +502,10 @@ public class CreateIndexOperation implements AsyncWriteOperation<Void>, WriteOpe
         if (min != null) {
             index.append("min", new BsonDouble(min));
         }
-        if (expireAfterSeconds != null) {
+        if (max != null) {
             index.append("max", new BsonDouble(max));
         }
-        if (expireAfterSeconds != null) {
+        if (bucketSize != null) {
             index.append("bucketSize", new BsonDouble(bucketSize));
         }
         return index;
@@ -547,20 +540,20 @@ public class CreateIndexOperation implements AsyncWriteOperation<Void>, WriteOpe
      *
      * @return a string representation of this index's fields
      */
-    private BsonString generateIndexName(final BsonDocument index) {
+    private String generateIndexName(final BsonDocument index) {
         StringBuilder indexName = new StringBuilder();
-        for (final String keyNames : index.getDocument("key").keySet()) {
+        for (final String keyNames : index.keySet()) {
             if (indexName.length() != 0) {
                 indexName.append('_');
             }
             indexName.append(keyNames).append('_');
-            BsonValue ascOrDescValue = index.getDocument("key").get(keyNames);
+            BsonValue ascOrDescValue = index.get(keyNames);
             if (ascOrDescValue instanceof BsonInt32) {
                 indexName.append(((BsonInt32) ascOrDescValue).getValue());
             } else if (ascOrDescValue instanceof BsonString) {
                 indexName.append(((BsonString) ascOrDescValue).getValue().replace(' ', '_'));
             }
         }
-        return new BsonString(indexName.toString());
+        return indexName.toString();
     }
 }
