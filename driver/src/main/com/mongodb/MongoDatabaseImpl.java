@@ -16,31 +16,39 @@
 
 package com.mongodb;
 
-import com.mongodb.client.DatabaseAdministration;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCollectionOptions;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.MongoDatabaseOptions;
+import com.mongodb.client.model.CreateCollectionModel;
+import com.mongodb.client.model.CreateCollectionOptions;
+import com.mongodb.client.model.RenameCollectionModel;
+import com.mongodb.client.model.RenameCollectionOptions;
 import com.mongodb.operation.CommandReadOperation;
 import com.mongodb.operation.CommandWriteOperation;
+import com.mongodb.operation.CreateCollectionOperation;
+import com.mongodb.operation.DropDatabaseOperation;
+import com.mongodb.operation.GetCollectionNamesOperation;
 import com.mongodb.operation.OperationExecutor;
+import com.mongodb.operation.RenameCollectionOperation;
 import org.bson.BsonDocument;
 import org.bson.BsonDocumentWrapper;
 import org.mongodb.Document;
 
+import java.util.List;
+
+import static com.mongodb.ReadPreference.primary;
 import static com.mongodb.assertions.Assertions.notNull;
 
 class MongoDatabaseImpl implements MongoDatabase {
     private final MongoDatabaseOptions options;
     private final String name;
     private final OperationExecutor executor;
-    private final DatabaseAdministration admin;
 
     MongoDatabaseImpl(final String name, final MongoDatabaseOptions options, final OperationExecutor executor) {
         this.name = name;
         this.executor = executor;
         this.options = options;
-        this.admin = new DatabaseAdministrationImpl(name, executor);
     }
 
     @Override
@@ -69,8 +77,48 @@ class MongoDatabaseImpl implements MongoDatabase {
     }
 
     @Override
-    public DatabaseAdministration tools() {
-        return admin;
+    public void dropDatabase() {
+        executor.execute(new DropDatabaseOperation(name));
+    }
+
+    @Override
+    public List<String> getCollectionNames() {
+        return executor.execute(new GetCollectionNamesOperation(name), primary());
+    }
+
+    @Override
+    public void createCollection(final String collectionName) {
+        createCollection(new CreateCollectionModel(collectionName, new CreateCollectionOptions()));
+    }
+
+    @Override
+    public void createCollection(final String collectionName, final CreateCollectionOptions createCollectionOptions) {
+        createCollection(new CreateCollectionModel(collectionName, createCollectionOptions));
+    }
+
+    private void createCollection(final CreateCollectionModel model) {
+        executor.execute(new CreateCollectionOperation(name, model.getCollectionName())
+                             .capped(model.getOptions().isCapped())
+                             .sizeInBytes(model.getOptions().getSizeInBytes())
+                             .autoIndex(model.getOptions().isAutoIndex())
+                             .maxDocuments(model.getOptions().getMaxDocuments())
+                             .usePowerOf2Sizes(model.getOptions().isUsePowerOf2Sizes()));
+    }
+
+    @Override
+    public void renameCollection(final String oldCollectionName, final String newCollectionName) {
+        renameCollection(new RenameCollectionModel(oldCollectionName, newCollectionName, new RenameCollectionOptions()));
+    }
+
+    @Override
+    public void renameCollection(final String oldCollectionName, final String newCollectionName,
+                                 final RenameCollectionOptions renameCollectionOptions) {
+        renameCollection(new RenameCollectionModel(oldCollectionName, newCollectionName, renameCollectionOptions));
+    }
+
+    private void renameCollection(final RenameCollectionModel model) {
+        executor.execute(new RenameCollectionOperation(name, model.getOriginalCollectionName(),
+                                                       model.getNewCollectionName()).dropTarget(model.getOptions().isDropTarget()));
     }
 
     @Override

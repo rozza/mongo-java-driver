@@ -30,31 +30,49 @@ import static com.mongodb.operation.CommandOperationHelper.executeWrappedCommand
 import static com.mongodb.operation.OperationHelper.VoidTransformer;
 
 /**
- * An operation that renames the given collection to the new name.  If the new name is the same as an existing collection and dropTarget is
- * true, this existing collection will be dropped. If dropTarget is false and the newCollectionName is the same as an existing collection, a
- * MongoServerException will be thrown.
+ * An operation that renames the given collection to the new name.
  *
+ * <p>If the new name is the same as an existing collection and dropTarget is true, this existing collection will be dropped. If
+ * dropTarget is false and the newCollectionName is the same as an existing collection, a MongoServerException will be thrown.</p>
+ *
+ * @mongodb.driver.manual reference/command/renameCollection renameCollection
  * @since 3.0
  */
 public class RenameCollectionOperation implements AsyncWriteOperation<Void>, WriteOperation<Void> {
     private final String databaseName;
     private final String originalCollectionName;
     private final String newCollectionName;
-    private final boolean dropTarget;
+    private boolean dropTarget;
 
     /**
-     * @param databaseName the name of the database for the operation.
+     * @param databaseName           the name of the database for the operation.
      * @param originalCollectionName the name of the collection to rename
      * @param newCollectionName      the desired new name for the collection
-     * @param dropTarget             set to true if you want any existing database with newCollectionName to be dropped during the rename
      */
-    public RenameCollectionOperation(final String databaseName, final String originalCollectionName, final String newCollectionName,
-                                     final boolean dropTarget) {
-        super();
+    public RenameCollectionOperation(final String databaseName, final String originalCollectionName, final String newCollectionName) {
+        this.databaseName = notNull("databaseName", databaseName);
         this.originalCollectionName = notNull("originalCollectionName", originalCollectionName);
         this.newCollectionName = notNull("newCollectionName", newCollectionName);
-        this.dropTarget = notNull("dropTarget", dropTarget);
-        this.databaseName = notNull("databaseName", databaseName);
+    }
+
+    /**
+     * Gets if mongod should drop the target of renameCollection prior to renaming the collection.
+     *
+     * @return true if mongod should drop the target of renameCollection prior to renaming the collection.
+     */
+    public boolean isDropTarget() {
+        return dropTarget;
+    }
+
+    /**
+     * Sets if mongod should drop the target of renameCollection prior to renaming the collection.
+     *
+     * @param dropTarget true if mongod should drop the target of renameCollection prior to renaming the collection.
+     * @return this
+     */
+    public RenameCollectionOperation dropTarget(final boolean dropTarget) {
+        this.dropTarget = dropTarget;
+        return this;
     }
 
     /**
@@ -88,5 +106,4 @@ public class RenameCollectionOperation implements AsyncWriteOperation<Void>, Wri
                .append("to", new BsonString(new MongoNamespace(databaseName, newCollectionName).getFullName()))
                .append("dropTarget", BsonBoolean.valueOf(dropTarget));
     }
-
 }
