@@ -39,20 +39,17 @@ import static com.mongodb.operation.OperationHelper.VoidTransformer;
  * @since 3.0
  */
 public class RenameCollectionOperation implements AsyncWriteOperation<Void>, WriteOperation<Void> {
-    private final String databaseName;
-    private final String originalCollectionName;
-    private final String newCollectionName;
+    private final MongoNamespace originalNamespace;
+    private final MongoNamespace newNamespace;
     private boolean dropTarget;
 
     /**
-     * @param databaseName           the name of the database for the operation.
-     * @param originalCollectionName the name of the collection to rename
-     * @param newCollectionName      the desired new name for the collection
+     * @param originalNamespace the name of the collection to rename
+     * @param newNamespace      the desired new name for the collection
      */
-    public RenameCollectionOperation(final String databaseName, final String originalCollectionName, final String newCollectionName) {
-        this.databaseName = notNull("databaseName", databaseName);
-        this.originalCollectionName = notNull("originalCollectionName", originalCollectionName);
-        this.newCollectionName = notNull("newCollectionName", newCollectionName);
+    public RenameCollectionOperation(final MongoNamespace originalNamespace, final MongoNamespace newNamespace) {
+        this.originalNamespace = notNull("originalNamespace", originalNamespace);
+        this.newNamespace = notNull("newNamespace", newNamespace);
     }
 
     /**
@@ -102,8 +99,8 @@ public class RenameCollectionOperation implements AsyncWriteOperation<Void>, Wri
     }
 
     private BsonDocument getCommand() {
-        return new BsonDocument("renameCollection", new BsonString(new MongoNamespace(databaseName, originalCollectionName).getFullName()))
-               .append("to", new BsonString(new MongoNamespace(databaseName, newCollectionName).getFullName()))
-               .append("dropTarget", BsonBoolean.valueOf(dropTarget));
+        return new BsonDocument("renameCollection", new BsonString(originalNamespace.getFullName()))
+                   .append("to", new BsonString(newNamespace.getFullName()))
+                   .append("dropTarget", BsonBoolean.valueOf(dropTarget));
     }
 }
