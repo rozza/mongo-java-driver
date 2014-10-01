@@ -32,16 +32,16 @@ import com.mongodb.operation.FindAndDeleteOperation;
 import com.mongodb.operation.FindAndReplaceOperation;
 import com.mongodb.operation.FindAndUpdateOperation;
 import com.mongodb.operation.FindOperation;
-import com.mongodb.operation.ListIndexesOperation;
 import com.mongodb.operation.InsertOperation;
 import com.mongodb.operation.InsertRequest;
+import com.mongodb.operation.ListIndexesOperation;
 import com.mongodb.operation.MapReduceCursor;
 import com.mongodb.operation.MapReduceStatistics;
 import com.mongodb.operation.MapReduceToCollectionOperation;
 import com.mongodb.operation.MapReduceWithInlineResultsOperation;
 import com.mongodb.operation.MixedBulkWriteOperation;
+import com.mongodb.operation.OperationExecutor;
 import com.mongodb.operation.ParallelCollectionScanOperation;
-import com.mongodb.operation.ReadOperation;
 import com.mongodb.operation.RenameCollectionOperation;
 import com.mongodb.operation.UpdateOperation;
 import com.mongodb.operation.UpdateRequest;
@@ -110,19 +110,17 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 @SuppressWarnings({"rawtypes", "deprecation"})
 public class DBCollection {
     public static final String ID_FIELD_NAME = "_id";
-    private final DB database;
     private final String name;
+    private final DB database;
+    private final OperationExecutor executor;
+    private final Codec<Document> documentCodec;
+    private final Bytes.OptionHolder optionHolder;
     private volatile ReadPreference readPreference;
     private volatile WriteConcern writeConcern;
-
     private List<DBObject> hintFields;
-    private final Bytes.OptionHolder optionHolder;
-
     private DBEncoderFactory encoderFactory;
     private DBDecoderFactory decoderFactory;
     private DBCollectionObjectFactory objectFactory;
-
-    private final Codec<Document> documentCodec;
     private volatile CompoundDBObjectCodec objectCodec;
 
 
@@ -133,9 +131,10 @@ public class DBCollection {
      * @param database      the database to which this collections belongs to
      * @param documentCodec codec to be used for messages to server
      */
-    DBCollection(final String name, final DB database, final Codec<Document> documentCodec) {
+    DBCollection(final String name, final DB database, final OperationExecutor executor, final Codec<Document> documentCodec) {
         this.name = name;
         this.database = database;
+        this.executor = executor;
         this.documentCodec = documentCodec;
         this.optionHolder = new Bytes.OptionHolder(database.getOptionHolder());
         this.objectFactory = new DBCollectionObjectFactory();
@@ -149,7 +148,15 @@ public class DBCollection {
      * @param name     the name of the collection
      */
     protected DBCollection(final DB database, final String name) {
-        this(name, database, new com.mongodb.codecs.DocumentCodec());
+        this(name, database, database.getExecutor(), new com.mongodb.codecs.DocumentCodec());
+    }
+
+    private static BasicDBList toDBList(final MongoCursor<DBObject> source) {
+        BasicDBList dbList = new BasicDBList();
+        while (source.hasNext()) {
+            dbList.add(source.next());
+        }
+        return dbList;
     }
 
     /**
@@ -300,7 +307,7 @@ public class DBCollection {
     }
 
     WriteResult executeWriteOperation(final BaseWriteOperation operation) {
-        return translateWriteResult(execute(operation));
+        return translateWriteResult(executor.execute(operation));
     }
 
     private WriteResult translateWriteResult(final org.mongodb.WriteResult writeResult) {
@@ -422,16 +429,16 @@ public class DBCollection {
             } else {
                 UpdateRequest replaceRequest = new UpdateRequest(wrap(query), wrap(update, encoder),
                                                                  com.mongodb.operation.WriteRequest.Type.REPLACE)
-                                               .upsert(upsert);
+                                                   .upsert(upsert);
                 return executeWriteOperation(new UpdateOperation(getNamespace(), true, aWriteConcern, asList(replaceRequest)));
             }
         } catch (WriteConcernException e) {
             if (e.getWriteResult().getUpsertedId() != null && e.getWriteResult().getUpsertedId() instanceof BsonValue) {
                 WriteConcernException translatedException =
-                new WriteConcernException(e.getResponse(), e.getServerAddress(),
-                                          translateWriteResult(e.getWriteResult().getN(),
-                                                               e.getWriteResult().isUpdateOfExisting(),
-                                                               (BsonValue) e.getWriteResult().getUpsertedId()));
+                    new WriteConcernException(e.getResponse(), e.getServerAddress(),
+                                              translateWriteResult(e.getWriteResult().getN(),
+                                                                   e.getWriteResult().isUpdateOfExisting(),
+                                                                   (BsonValue) e.getWriteResult().getUpsertedId()));
                 translatedException.setStackTrace(e.getStackTrace());
                 throw translatedException;
             } else {
@@ -684,12 +691,12 @@ public class DBCollection {
     DBObject findOne(final DBObject query, final DBObject projection, final DBObject sort,
                      final ReadPreference readPreference, final long maxTime, final TimeUnit maxTimeUnit) {
         FindOperation<DBObject> findOperation = new FindOperation<DBObject>(getNamespace(), objectCodec)
-                                                      .criteria(wrapAllowNull(query))
-                                                      .projection(wrapAllowNull(projection))
-                                                      .sort(wrapAllowNull(sort))
-                                                      .batchSize(-1)
-                                                      .maxTime(maxTime, maxTimeUnit);
-        MongoCursor<DBObject> cursor = execute(findOperation, readPreference);
+                                                    .criteria(wrapAllowNull(query))
+                                                    .projection(wrapAllowNull(projection))
+                                                    .sort(wrapAllowNull(sort))
+                                                    .batchSize(-1)
+                                                    .maxTime(maxTime, maxTimeUnit);
+        MongoCursor<DBObject> cursor = executor.execute(findOperation, readPreference);
         return cursor.hasNext() ? cursor.next() : null;
     }
 
@@ -814,7 +821,6 @@ public class DBCollection {
         return getCount(new BasicDBObject(), null, readPreference);
     }
 
-
     /**
      * Get the count of documents in collection that would match a criteria.
      *
@@ -909,7 +915,7 @@ public class DBCollection {
                                        .skip(skip)
                                        .limit(limit)
                                        .maxTime(maxTime, maxTimeUnit);
-        return execute(operation, readPreference);
+        return executor.execute(operation, readPreference);
     }
 
     /**
@@ -932,8 +938,9 @@ public class DBCollection {
      * @throws MongoException if target is the name of an existing collection and {@code dropTarget=false}.
      */
     public DBCollection rename(final String newName, final boolean dropTarget) {
-        execute(new RenameCollectionOperation(getNamespace(),
-                                              new MongoNamespace(getNamespace().getDatabaseName(), newName)).dropTarget(dropTarget));
+        executor.execute(new RenameCollectionOperation(getNamespace(),
+                                                       new MongoNamespace(getNamespace().getDatabaseName(),
+                                                                          newName)).dropTarget(dropTarget));
         return getDB().getCollection(newName);
     }
 
@@ -1009,7 +1016,7 @@ public class DBCollection {
      * @mongodb.driver.manual reference/command/group/ Group Command
      */
     public DBObject group(final GroupCommand cmd, final ReadPreference readPreference) {
-        return toDBList(execute(cmd.toOperation(getNamespace(), getDefaultDBObjectCodec()), readPreference));
+        return toDBList(executor.execute(cmd.toOperation(getNamespace(), getDefaultDBObjectCodec()), readPreference));
     }
 
     /**
@@ -1058,7 +1065,8 @@ public class DBCollection {
      */
     @SuppressWarnings("unchecked")
     public List distinct(final String fieldName, final DBObject query, final ReadPreference readPreference) {
-        BsonArray distinctArray = execute(new DistinctOperation(getNamespace(), fieldName).criteria(wrapAllowNull(query)), readPreference);
+        BsonArray distinctArray = executor.execute(new DistinctOperation(getNamespace(), fieldName).criteria(wrapAllowNull(query)),
+                                                   readPreference);
 
         List distinctList = new ArrayList();
         for (BsonValue value : distinctArray) {
@@ -1141,12 +1149,12 @@ public class DBCollection {
                                                                   new BsonJavaScript(command.getReduce()),
                                                                   getDefaultDBObjectCodec());
 
-                    operation.criteria(wrapAllowNull(command.getQuery()));
-                    operation.limit(command.getLimit());
-                    operation.maxTime(command.getMaxTime(MILLISECONDS), MILLISECONDS);
-                    operation.jsMode(command.getJsMode() == null ? false : command.getJsMode());
-                    operation.sort(wrapAllowNull(command.getSort()));
-                    operation.verbose(command.isVerbose());
+            operation.criteria(wrapAllowNull(command.getQuery()));
+            operation.limit(command.getLimit());
+            operation.maxTime(command.getMaxTime(MILLISECONDS), MILLISECONDS);
+            operation.jsMode(command.getJsMode() == null ? false : command.getJsMode());
+            operation.sort(wrapAllowNull(command.getSort()));
+            operation.verbose(command.isVerbose());
 
             if (command.getScope() != null) {
                 operation.scope(wrap(new BasicDBObject(command.getScope())));
@@ -1154,7 +1162,7 @@ public class DBCollection {
             if (command.getFinalize() != null) {
                 operation.finalizeFunction(new BsonJavaScript(command.getFinalize()));
             }
-            MapReduceCursor<DBObject> executionResult = execute(operation, readPreference);
+            MapReduceCursor<DBObject> executionResult = executor.execute(operation, readPreference);
             return new MapReduceOutput(command.toDBObject(), executionResult);
         } else {
             String action;
@@ -1192,7 +1200,7 @@ public class DBCollection {
             if (command.getFinalize() != null) {
                 operation.finalizeFunction(new BsonJavaScript(command.getFinalize()));
             }
-            MapReduceStatistics mapReduceStatistics = execute(operation);
+            MapReduceStatistics mapReduceStatistics = executor.execute(operation);
             DBCollection mapReduceOutputCollection = getMapReduceOutputCollection(command);
             DBCursor executionResult = mapReduceOutputCollection.find();
             return new MapReduceOutput(command.toDBObject(), executionResult, mapReduceStatistics, mapReduceOutputCollection);
@@ -1303,7 +1311,7 @@ public class DBCollection {
             AggregateToCollectionOperation operation = new AggregateToCollectionOperation(getNamespace(), stages)
                                                            .maxTime(options.getMaxTime(MILLISECONDS), MILLISECONDS)
                                                            .allowDiskUse(options.getAllowDiskUse());
-            execute(operation);
+            executor.execute(operation);
             if (returnCursorForOutCollection) {
                 return new DBCursor(database.getCollection(outCollection.asString().getValue()), new BasicDBObject(), null, primary());
             } else {
@@ -1315,7 +1323,7 @@ public class DBCollection {
                                                          .allowDiskUse(options.getAllowDiskUse())
                                                          .batchSize(options.getBatchSize())
                                                          .useCursor(options.getOutputMode() == CURSOR);
-            MongoCursor<DBObject> cursor = execute(operation, readPreference);
+            MongoCursor<DBObject> cursor = executor.execute(operation, readPreference);
             return new MongoCursorAdapter(cursor);
         }
     }
@@ -1333,9 +1341,9 @@ public class DBCollection {
     public CommandResult explainAggregate(final List<DBObject> pipeline, final AggregationOptions options) {
         AggregateOperation<BsonDocument> operation = new AggregateOperation<BsonDocument>(getNamespace(), preparePipeline(pipeline),
                                                                                           new BsonDocumentCodec())
-                                                     .maxTime(options.getMaxTime(MILLISECONDS), MILLISECONDS)
-                                                     .allowDiskUse(options.getAllowDiskUse());
-        return new CommandResult(execute(operation.asExplainableOperation(ExplainVerbosity.QUERY_PLANNER), primaryPreferred()));
+                                                         .maxTime(options.getMaxTime(MILLISECONDS), MILLISECONDS)
+                                                         .allowDiskUse(options.getAllowDiskUse());
+        return new CommandResult(executor.execute(operation.asExplainableOperation(ExplainVerbosity.QUERY_PLANNER), primaryPreferred()));
     }
 
     @SuppressWarnings("unchecked")
@@ -1362,12 +1370,13 @@ public class DBCollection {
      */
     public List<Cursor> parallelScan(final ParallelScanOptions options) {
         List<Cursor> cursors = new ArrayList<Cursor>();
-
         ParallelCollectionScanOperation<DBObject> operation = new ParallelCollectionScanOperation<DBObject>(getNamespace(),
-                                                                                        options.getNumCursors(),
-                                                                                        objectCodec).batchSize(options.getBatchSize());
-        List<MongoCursor<DBObject>> mongoCursors = execute(operation, options.getReadPreference() != null ? options.getReadPreference()
-                                                                                                          : getReadPreference());
+                                                                                                            options.getNumCursors(),
+                                                                                                            objectCodec)
+                                                                  .batchSize(options.getBatchSize());
+        List<MongoCursor<DBObject>> mongoCursors = executor.execute(operation,
+                                                                    options.getReadPreference() != null ? options.getReadPreference()
+                                                                                                        : getReadPreference());
 
         for (MongoCursor<DBObject> mongoCursor : mongoCursors) {
             cursors.add(new MongoCursorAdapter(mongoCursor));
@@ -1471,16 +1480,7 @@ public class DBCollection {
      * @mongodb.driver.manual /administration/indexes-creation/ Index Creation Tutorials
      */
     public void createIndex(final DBObject keys, final DBObject options) {
-        execute(createIndexOperation(keys, options));
-    }
-
-    /**
-     * Override MongoDB's default index selection and query optimization process.
-     *
-     * @param indexes list of indexes to "hint" or force MongoDB to use when performing the query.
-     */
-    public void setHintFields(final List<DBObject> indexes) {
-        this.hintFields = indexes;
+        executor.execute(createIndexOperation(keys, options));
     }
 
     /**
@@ -1490,6 +1490,15 @@ public class DBCollection {
      */
     public List<DBObject> getHintFields() {
         return hintFields;
+    }
+
+    /**
+     * Override MongoDB's default index selection and query optimization process.
+     *
+     * @param indexes list of indexes to "hint" or force MongoDB to use when performing the query.
+     */
+    public void setHintFields(final List<DBObject> indexes) {
+        this.hintFields = indexes;
     }
 
     /**
@@ -1518,7 +1527,6 @@ public class DBCollection {
     public DBObject findAndModify(final DBObject query, final DBObject update) {
         return findAndModify(query, null, null, false, update, false, false);
     }
-
 
     /**
      * Atomically remove and return a single document. The returned document is the original document before removal.
@@ -1605,7 +1613,7 @@ public class DBCollection {
             }
         }
 
-        return execute(operation);
+        return executor.execute(operation);
     }
 
     /**
@@ -1711,7 +1719,7 @@ public class DBCollection {
      * @throws MongoException
      */
     public void drop() {
-        execute(new DropCollectionOperation(getNamespace()));
+        executor.execute(new DropCollectionOperation(getNamespace()));
     }
 
     /**
@@ -1771,7 +1779,7 @@ public class DBCollection {
      * @throws MongoException
      */
     public List<DBObject> getIndexInfo() {
-        return execute(new ListIndexesOperation<DBObject>(getNamespace(), getDefaultDBObjectCodec()), primary());
+        return executor.execute(new ListIndexesOperation<DBObject>(getNamespace(), getDefaultDBObjectCodec()), primary());
     }
 
     /**
@@ -1792,7 +1800,7 @@ public class DBCollection {
      * @throws MongoException if the index does not exist
      */
     public void dropIndex(final String indexName) {
-        execute(new DropIndexOperation(getNamespace(), indexName));
+        executor.execute(new DropIndexOperation(getNamespace(), indexName));
     }
 
     /**
@@ -1927,22 +1935,14 @@ public class DBCollection {
     BulkWriteResult executeBulkWriteOperation(final boolean ordered, final List<WriteRequest> writeRequests,
                                               final WriteConcern writeConcern) {
         try {
-            return translateBulkWriteResult(execute(new MixedBulkWriteOperation(getNamespace(),
-                                                                                translateWriteRequestsToNew(writeRequests,
-                                                                                                            getObjectCodec()),
-                                                                                ordered, writeConcern)),
+            return translateBulkWriteResult(executor.execute(new MixedBulkWriteOperation(getNamespace(),
+                                                                                         translateWriteRequestsToNew(writeRequests,
+                                                                                                                     getObjectCodec()),
+                                                                                         ordered, writeConcern)),
                                             getObjectCodec());
         } catch (org.mongodb.BulkWriteException e) {
             throw BulkWriteHelper.translateBulkWriteException(e, DBObjects.codec);
         }
-    }
-
-    <T> T execute(final WriteOperation<T> operation) {
-        return getDB().getMongo().execute(operation);
-    }
-
-    <T> T execute(final ReadOperation<T> operation, final ReadPreference readPreference) {
-        return getDB().getMongo().execute(operation, readPreference);
     }
 
     DBObjectCodec getDefaultDBObjectCodec() {
@@ -2030,16 +2030,12 @@ public class DBCollection {
         return indexName.toString();
     }
 
-    private static BasicDBList toDBList(final MongoCursor<DBObject> source) {
-        BasicDBList dbList = new BasicDBList();
-        while (source.hasNext()) {
-            dbList.add(source.next());
-        }
-        return dbList;
-    }
-
     Codec<DBObject> getObjectCodec() {
         return objectCodec;
+    }
+
+    OperationExecutor getExecutor() {
+        return executor;
     }
 
     MongoNamespace getNamespace() {

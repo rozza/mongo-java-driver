@@ -187,7 +187,7 @@ public class DB {
             return collection;
         }
 
-        collection = new DBCollection(name, this, documentCodec);
+        collection = new DBCollection(name, this, executor, documentCodec);
         if (mongo.getMongoClientOptions().getDbDecoderFactory() != DefaultDBDecoder.FACTORY) {
             collection.setDBDecoderFactory(mongo.getMongoClientOptions().getDbDecoderFactory());
         }
@@ -577,6 +577,10 @@ public class DB {
         return new CommandResult(executor.execute(new CommandReadOperation<BsonDocument>(getName(), commandDocument,
                                                                                          new BsonDocumentCodec()),
                                                   readPreference));
+    }
+
+    OperationExecutor getExecutor() {
+        return executor;
     }
 
     Bytes.OptionHolder getOptionHolder() {
