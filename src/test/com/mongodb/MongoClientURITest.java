@@ -21,11 +21,12 @@ import org.junit.Test;
 import javax.net.SocketFactory;
 import javax.net.ssl.SSLSocketFactory;
 import java.net.UnknownHostException;
+import java.util.List;
 
+import static java.util.Arrays.asList;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -329,28 +330,50 @@ public class MongoClientURITest {
     }
 
     @Test
-    public void testEqualsAndHashCode() {
-      MongoClientURI uris[] = new MongoClientURI[] {
-          new MongoClientURI("mongodb://user:pass@[2010:836B:4179::836B:4179]"),
-          new MongoClientURI("mongodb://localhost/?readPreference=secondaryPreferred"),
-          new MongoClientURI("mongodb://[::1]:1000,[2010:836B:4179::836B:4179]:2000"),
-          new MongoClientURI("mongodb://localhost/?" +
-              "maxPoolSize=10;waitQueueMultiple=5;waitQueueTimeoutMS=150;" +
-              "minPoolSize=7;maxIdleTimeMS=1000;maxLifeTimeMS=2000;" +
-              "replicaSet=test;" +
-              "connectTimeoutMS=2500;socketTimeoutMS=5500;autoConnectRetry=true;" +
-              "slaveOk=true;safe=false;w=1;wtimeout=2500;fsync=true")
-      };
-      for (MongoClientURI uri : uris) {
-        assertEquals(uri, uri);
-        MongoClientURI reinstantiatedUri = new MongoClientURI(uri.getURI());
-        assertEquals(uri, reinstantiatedUri);
-        assertEquals(uri.hashCode(), reinstantiatedUri.hashCode());
-        for (MongoClientURI anotherURI : uris) {
-          if (uri == anotherURI) continue;
-          assertNotEquals(uri, anotherURI);
-        }
+    public void testSimpleEqualsAndHashCode() {
+      List<String> uris = asList(
+          "mongodb://user:pass@[2010:836B:4179::836B:4179]",
+          "mongodb://localhost/?readPreference=secondaryPreferred",
+          "mongodb://[::1]:1000,[2010:836B:4179::836B:4179]:2000",
+          "mongodb://localhost/?maxPoolSize=10;waitQueueMultiple=5;waitQueueTimeoutMS=150;"
+                  + "minPoolSize=7;maxIdleTimeMS=1000;maxLifeTimeMS=2000;replicaSet=test;"
+                  + "connectTimeoutMS=2500;socketTimeoutMS=5500;autoConnectRetry=true;"
+                  + "slaveOk=true;safe=false;w=1;wtimeout=2500;fsync=true"
+      );
+      for (String uri : uris) {
+        assertEquals(new MongoClientURI(uri), new MongoClientURI(uri));
+        assertEquals(new MongoClientURI(uri).hashCode(), new MongoClientURI(uri).hashCode());
       }
+    }
+
+    @Test
+    public void testEqualsAndHashCodeWithOptions() {
+        MongoClientURI uri = new MongoClientURI("mongodb://user:pass@host1:1,host2:2,host3:3/bar?"
+                        + "maxPoolSize=10;waitQueueMultiple=5;waitQueueTimeoutMS=150;"
+                        + "minPoolSize=7;maxIdleTimeMS=1000;maxLifeTimeMS=2000;replicaSet=test;"
+                        + "connectTimeoutMS=2500;socketTimeoutMS=5500;autoConnectRetry=true;"
+                        + "slaveOk=true;safe=false;w=1;wtimeout=2600;fsync=true");
+
+        MongoClientOptions.Builder builder = MongoClientOptions.builder()
+                .connectionsPerHost(10)
+                .threadsAllowedToBlockForConnectionMultiplier(5)
+                .maxWaitTime(150)
+                .minConnectionsPerHost(7)
+                .maxConnectionIdleTime(1000)
+                .maxConnectionLifeTime(2000)
+                .requiredReplicaSetName("test")
+                .connectTimeout(2500)
+                .socketTimeout(5500)
+                .autoConnectRetry(true)
+                .readPreference(ReadPreference.secondaryPreferred())
+                .writeConcern(new WriteConcern(1, 2600, true));
+
+        MongoClientOptions options = builder.build();
+        assertEquals(uri.getOptions(), options);
+
+        MongoClientURI uri2 = new MongoClientURI("mongodb://user:pass@host3:3,host1:1,host2:2/bar?", builder);
+        assertEquals(uri, uri2);
+        assertEquals(uri.hashCode(), uri2.hashCode());
     }
 
     @SuppressWarnings("deprecation")
