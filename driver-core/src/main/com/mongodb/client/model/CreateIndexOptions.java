@@ -26,7 +26,6 @@ public class CreateIndexOptions {
     private boolean background;
     private boolean unique;
     private String name;
-    private boolean dropDups;
     private boolean sparse;
     private Integer expireAfterSeconds;
     private Object extra;
@@ -88,29 +87,6 @@ public class CreateIndexOptions {
      */
     public CreateIndexOptions name(final String name) {
         this.name = name;
-        return this;
-    }
-
-    /**
-     * CreatE a unique index on a field that may have duplicates.
-     *
-     * @return true creating a unique index on a field that may have duplicates
-     */
-    public boolean isDropDups() {
-        return dropDups;
-    }
-
-    /**
-     * Create a unique index on a field that may have duplicates.
-     *
-     * <p>MongoDB will silently drop duplicates silently when creating and only the first will be kept</p>
-     *
-     *
-     * @param dropDups create a unique index on a field that may have duplicates
-     * @return this
-     */
-    public CreateIndexOptions dropDups(final boolean dropDups) {
-        this.dropDups = dropDups;
         return this;
     }
 
