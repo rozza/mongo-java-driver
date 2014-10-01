@@ -272,7 +272,7 @@ public class MongoClient extends Mongo {
                                                                              .writeConcern(getWriteConcern())
                                                                              .readPreference(getReadPreference())
                                                                              .codecRegistry(getMongoClientOptions().getCodecRegistry())
-                                                                             .build(), createOperationExecutor());
+                                                                             .build(), createOperationExecutor(false));
     }
 
     /**
@@ -281,12 +281,7 @@ public class MongoClient extends Mongo {
      * @return a {@code MongoDatabase} representing the specified database
      */
     public MongoDatabase getDatabase(final String databaseName, final MongoDatabaseOptions options) {
-        return new MongoDatabaseImpl(databaseName, options, createOperationExecutor());
-    }
-
-    @Override
-    boolean getDefaultAllowPinning() {
-        return false;
+        return new MongoDatabaseImpl(databaseName, options, createOperationExecutor(false));
     }
 
 }

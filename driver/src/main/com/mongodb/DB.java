@@ -91,7 +91,7 @@ public class DB {
      * @param name  the database name - must not be empty and cannot contain spaces
      */
     public DB(final Mongo mongo, final String name) {
-        this(mongo, name, mongo.createOperationExecutor(), new DocumentCodec());
+        this(mongo, name, mongo.createOperationExecutor(true), new DocumentCodec());
     }
 
     /**
