@@ -286,7 +286,7 @@ class MongoCollectionSpecification extends Specification {
 
     def 'find should use FindOperation properly'() {
         given:
-        def cursor = Stub(MongoCursor)
+        def cursor = Stub(MongoTailableCursor)
         cursor.hasNext() >>> [true, false]
         def executor = new TestOperationExecutor([cursor, cursor])
         collection = new MongoCollectionImpl<Document>(namespace, Document, options, executor)
