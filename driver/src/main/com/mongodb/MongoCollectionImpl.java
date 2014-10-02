@@ -191,8 +191,7 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
     }
 
     private <C> MongoIterable<C> find(final FindModel findModel, final Class<C> clazz) {
-        return new OperationIterable<C>(createQueryOperation(findModel, getCodec(clazz)),
-                                        options.getReadPreference());
+        return new OperationIterable<C>(createQueryOperation(findModel, getCodec(clazz)), options.getReadPreference());
     }
 
     @Override

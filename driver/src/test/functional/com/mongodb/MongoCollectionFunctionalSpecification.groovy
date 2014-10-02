@@ -16,51 +16,35 @@
 
 package com.mongodb
 
-import com.mongodb.client.MongoCollectionOptions
+import category.Slow
 import com.mongodb.client.model.AggregateModel
 import com.mongodb.client.model.AggregateOptions
 import com.mongodb.client.model.CountModel
+import com.mongodb.client.model.CreateCollectionOptions
 import com.mongodb.client.model.CreateIndexOptions
 import com.mongodb.client.model.FindModel
 import com.mongodb.client.model.FindOptions
 import com.mongodb.client.model.MapReduceModel
-import com.mongodb.codecs.DocumentCodecProvider
-import com.mongodb.operation.OperationExecutor
-import com.mongodb.operation.ReadOperation
-import com.mongodb.operation.WriteOperation
-import org.bson.codecs.configuration.RootCodecRegistry
+import org.junit.experimental.categories.Category
 import org.mongodb.Document
 import spock.lang.IgnoreIf
+import spock.lang.Specification
 
-import java.util.concurrent.TimeUnit
+import java.util.concurrent.CountDownLatch
 
-import static com.mongodb.ClusterFixture.getBinding
 import static com.mongodb.ClusterFixture.isSharded
 import static com.mongodb.ClusterFixture.serverVersionAtLeast
-import static com.mongodb.ReadPreference.secondary
+import static com.mongodb.Fixture.getDefaultDatabaseName
+import static com.mongodb.Fixture.getMongoClient
 import static java.util.Arrays.asList
+import static java.util.concurrent.TimeUnit.SECONDS
 
 // Due to the implementation of explain using private classes, it can't be effectively unit tests, so instead there is this integration
 // test.
-class MongoCollectionFunctionalSpecification extends FunctionalSpecification {
-    def namespace = new MongoNamespace('db', 'coll')
-    def options = MongoCollectionOptions.builder().writeConcern(WriteConcern.JOURNALED)
-                                        .readPreference(secondary())
-                                        .codecRegistry(new RootCodecRegistry([new DocumentCodecProvider()]))
-                                        .build()
+class MongoCollectionFunctionalSpecification extends Specification {
 
-    def executor = new OperationExecutor() {
-        @Override
-        def <T> T execute(final ReadOperation<T> operation, final ReadPreference readPreference) {
-            operation.execute(getBinding())
-        }
-
-        @Override
-        def <T> T execute(final WriteOperation<T> operation) {
-            operation.execute(getBinding());
-        }
-    }
-    def collection = new MongoCollectionImpl<Document>(namespace, Document, options, executor);
+    def database = getMongoClient().getDatabase(getDefaultDatabaseName())
+    def collection = database.getCollection('MongoCollectionFunctionalSpecification')
 
     def 'should explain a find model'() {
         given:
@@ -69,7 +53,7 @@ class MongoCollectionFunctionalSpecification extends FunctionalSpecification {
         when:
         def model = new FindModel(new FindOptions().criteria(new Document('cold', true))
                                                    .batchSize(4)
-                                                   .maxTime(1, TimeUnit.SECONDS)
+                                                   .maxTime(1, SECONDS)
                                                    .skip(5)
                                                    .limit(100)
                                                    .modifiers(new Document('$hint', 'x_1'))
@@ -88,7 +72,7 @@ class MongoCollectionFunctionalSpecification extends FunctionalSpecification {
                                        new AggregateOptions()
                                                .allowDiskUse(true)
                                                .batchSize(10)
-                                               .maxTime(1, TimeUnit.SECONDS)
+                                               .maxTime(1, SECONDS)
                                                .useCursor(true))
 
         when:
@@ -114,5 +98,104 @@ class MongoCollectionFunctionalSpecification extends FunctionalSpecification {
 
         then:
         result
+    }
+
+    def 'should support tailable cursors'() {
+        given:
+        collection.dropCollection()
+        database.createCollection(collection.getNamespace().getCollectionName(),
+                                  new CreateCollectionOptions().capped(true).sizeInBytes(1024))
+        def document1 = ['a': 1] as Document
+        def document2 = ['a': 2] as Document
+
+        when:
+        collection.insertOne(document1)
+        def cursor = collection.find(new FindOptions().sort(['$natural': 1] as Document).tailable(true)).iterator()
+
+        then:
+        cursor.tryNext() == document1
+        cursor.tryNext() == null
+
+        when:
+        collection.insertOne(document2)
+
+        then:
+        cursor.tryNext() == document2
+    }
+
+    @SuppressWarnings('EmptyCatchBlock')
+    @Category(Slow)
+    def 'test tailable blocks when calling hasNext'() {
+        given:
+        collection.dropCollection()
+        database.createCollection(collection.getNamespace().getCollectionName(),
+                                  new CreateCollectionOptions().capped(true).sizeInBytes(1024))
+        def document1 = ['_id': 1] as Document
+        def document2 = ['_id': 2] as Document
+
+        when:
+        collection.insertOne(document1)
+        def cursor = collection.find(new FindOptions().sort(['$natural': 1] as Document).tailable(true)).iterator()
+
+        then:
+        cursor.hasNext()
+        cursor.next().get('_id') == 1
+
+        when:
+        def latch = new CountDownLatch(1)
+        Thread.start {
+            try {
+                sleep(1000)
+                collection.insertOne(document2)
+            } catch (interrupt) {
+                //pass
+            } finally {
+                latch.countDown()
+            }
+        }
+
+        then:
+        cursor.hasNext()
+        cursor.next().get('_id') == 2
+
+        cleanup:
+        latch.await(5, SECONDS)
+    }
+
+    @SuppressWarnings('EmptyCatchBlock')
+    @Category(Slow)
+    def 'test tailable interrupt'() throws InterruptedException {
+        given:
+        collection.dropCollection()
+        database.createCollection(collection.getNamespace().getCollectionName(),
+                                  new CreateCollectionOptions().capped(true).sizeInBytes(1024))
+        def document1 = ['_id': 1] as Document
+        def document2 = ['_id': 2] as Document
+
+        when:
+        collection.insertOne(document1)
+        def cursor = collection.find(new FindOptions().sort(['$natural': 1] as Document).tailable(true)).iterator()
+
+        CountDownLatch latch = new CountDownLatch(1)
+        def seen;
+        def thread = Thread.start {
+           try {
+                cursor.next()
+                seen = 1
+                cursor.next()
+                seen = 2
+            } catch (interrupt) {
+                //pass
+            } finally {
+                latch.countDown()
+            }
+        }
+        sleep(1000)
+        thread.interrupt()
+        collection.insertOne(document2)
+        latch.await()
+
+        then:
+        seen == 1
     }
 }

@@ -40,6 +40,13 @@ public interface MongoCursor<T> extends Iterator<T>, Closeable {
     T next();
 
     /**
+     * A special {@code next()} case that returns the next element in the iteration if available or null.
+     *
+     * @return the next element in the iteration if available or null.
+     */
+    T tryNext();
+
+    /**
      * Returns the server cursor
      *
      * @return ServerCursor
