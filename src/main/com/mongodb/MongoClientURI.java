@@ -232,9 +232,8 @@ public class MongoClientURI {
 
                 Collections.addAll(all, serverPart.split(","));
 
+                Collections.sort(all);
                 hosts = Collections.unmodifiableList(all);
-                sortedHosts = new ArrayList<String>(hosts);
-                Collections.sort(sortedHosts);
             }
 
             if (nsPart != null && nsPart.length() != 0) { // database,_collection
@@ -643,7 +642,6 @@ public class MongoClientURI {
     private final MongoClientOptions options;
     private final MongoCredential credentials;
     private final List<String> hosts;
-    private final List<String> sortedHosts;
     private final String database;
     private final String collection;
     private final String uri;
@@ -661,16 +659,13 @@ public class MongoClientURI {
         if (this == o) {
             return true;
         }
-        if (!(o instanceof MongoClientURI)) {
+        if (o == null || getClass() != o.getClass()) {
             return false;
         }
 
         MongoClientURI that = (MongoClientURI) o;
 
-        if ((sortedHosts != null && that.sortedHosts == null) || (sortedHosts == null && that.sortedHosts != null)) {
-            return false;
-        }
-        if (sortedHosts != null && (sortedHosts.size() != that.sortedHosts.size() || !sortedHosts.containsAll(that.sortedHosts))) {
+        if (!hosts.equals(that.hosts)) {
             return false;
         }
         if (database != null ? !database.equals(that.database) : that.database != null) {
@@ -682,7 +677,7 @@ public class MongoClientURI {
         if (credentials != null ? !credentials.equals(that.credentials) : that.credentials != null) {
             return false;
         }
-        if (options != null ? !options.equals(that.options) : that.options != null) {
+        if (!options.equals(that.options)) {
             return false;
         }
 
@@ -691,9 +686,9 @@ public class MongoClientURI {
 
     @Override
     public int hashCode() {
-        int result = options != null ? options.hashCode() : 0;
+        int result = options.hashCode();
         result = 31 * result + (credentials != null ? credentials.hashCode() : 0);
-        result = 31 * result + (sortedHosts != null ? sortedHosts.hashCode() : 0);
+        result = 31 * result + hosts.hashCode();
         result = 31 * result + (database != null ? database.hashCode() : 0);
         result = 31 * result + (collection != null ? collection.hashCode() : 0);
         return result;

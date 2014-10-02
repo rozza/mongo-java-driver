@@ -56,8 +56,7 @@ public class MongoClientURITest {
     @Test()
     public void testSingleServer() {
         MongoClientURI u = new MongoClientURI("mongodb://db.example.com");
-        assertEquals(1, u.getHosts().size());
-        assertEquals("db.example.com", u.getHosts().get(0));
+        assertEquals(asList("db.example.com"), u.getHosts());
         assertNull(u.getDatabase());
         assertNull(u.getCollection());
         assertNull( u.getUsername());
@@ -67,8 +66,7 @@ public class MongoClientURITest {
     @Test()
     public void testWithDatabase() {
         MongoClientURI u = new MongoClientURI("mongodb://foo/bar");
-        assertEquals(1, u.getHosts().size());
-        assertEquals("foo", u.getHosts().get(0));
+        assertEquals(asList("foo"), u.getHosts());
         assertEquals("bar", u.getDatabase());
         assertEquals(null, u.getCollection());
         assertEquals(null, u.getUsername());
@@ -85,8 +83,7 @@ public class MongoClientURITest {
     @Test()
     public void testBasic2() {
         MongoClientURI u = new MongoClientURI("mongodb://foo/bar.goo");
-        assertEquals(1, u.getHosts().size());
-        assertEquals("foo", u.getHosts().get(0));
+        assertEquals(asList("foo"), u.getHosts());
         assertEquals("bar", u.getDatabase());
         assertEquals("goo", u.getCollection());
     }
@@ -97,8 +94,7 @@ public class MongoClientURITest {
         final char[] password = "pass".toCharArray();
 
         MongoClientURI u = new MongoClientURI("mongodb://user:pass@host/bar");
-        assertEquals(1, u.getHosts().size());
-        assertEquals("host", u.getHosts().get(0));
+        assertEquals(asList("host"), u.getHosts());
         assertEquals(userName, u.getUsername());
         assertArrayEquals(password, u.getPassword());
 
@@ -148,21 +144,17 @@ public class MongoClientURITest {
     @Test()
     public void testUserPassAndPort() {
         MongoClientURI u = new MongoClientURI("mongodb://user:pass@host:27011/bar");
-        assertEquals(1, u.getHosts().size());
-        assertEquals("host:27011", u.getHosts().get(0));
         assertEquals("user", u.getUsername());
         assertEquals("pass", new String(u.getPassword()));
+        assertEquals(asList("host:27011"), u.getHosts());
     }
 
     @Test()
     public void testUserPassAndMultipleHostsWithPort() {
         MongoClientURI u = new MongoClientURI("mongodb://user:pass@host:27011,host2:27012,host3:27013/bar");
-        assertEquals(3, u.getHosts().size());
-        assertEquals("host:27011", u.getHosts().get(0));
-        assertEquals("host2:27012", u.getHosts().get(1));
-        assertEquals("host3:27013", u.getHosts().get(2));
         assertEquals("user", u.getUsername());
         assertEquals("pass", new String(u.getPassword()));
+        assertEquals(asList("host2:27012" , "host3:27013", "host:27011"), u.getHosts());
     }
 
     @Test()
@@ -293,15 +285,13 @@ public class MongoClientURITest {
     @Test()
     public void testSingleIPV6Server() {
         MongoClientURI u = new MongoClientURI("mongodb://[2010:836B:4179::836B:4179]");
-        assertEquals(1, u.getHosts().size());
-        assertEquals("[2010:836B:4179::836B:4179]", u.getHosts().get(0));
+        assertEquals(asList("[2010:836B:4179::836B:4179]"), u.getHosts());
     }
 
     @Test()
     public void testSingleIPV6ServerWithPort() {
         MongoClientURI u = new MongoClientURI("mongodb://[2010:836B:4179::836B:4179]:1000");
-        assertEquals(1, u.getHosts().size());
-        assertEquals("[2010:836B:4179::836B:4179]:1000", u.getHosts().get(0));
+        assertEquals(asList("[2010:836B:4179::836B:4179]:1000"), u.getHosts());
     }
 
     @Test()
@@ -309,24 +299,19 @@ public class MongoClientURITest {
         MongoClientURI u = new MongoClientURI("mongodb://user:pass@[2010:836B:4179::836B:4179]");
         assertEquals("user", u.getUsername());
         assertArrayEquals("pass".toCharArray(), u.getPassword());
-        assertEquals(1, u.getHosts().size());
-        assertEquals("[2010:836B:4179::836B:4179]", u.getHosts().get(0));
+        assertEquals(asList("[2010:836B:4179::836B:4179]"), u.getHosts());
     }
 
     @Test()
     public void testMultipleIPV6Servers() {
         MongoClientURI u = new MongoClientURI("mongodb://[::1],[2010:836B:4179::836B:4179]");
-        assertEquals(2, u.getHosts().size());
-        assertEquals("[::1]", u.getHosts().get(0));
-        assertEquals("[2010:836B:4179::836B:4179]", u.getHosts().get(1));
+        assertEquals(asList("[2010:836B:4179::836B:4179]", "[::1]"), u.getHosts());
     }
 
     @Test()
     public void testMultipleIPV6ServersWithPorts() {
         MongoClientURI u = new MongoClientURI("mongodb://[::1]:1000,[2010:836B:4179::836B:4179]:2000");
-        assertEquals(2, u.getHosts().size());
-        assertEquals("[::1]:1000", u.getHosts().get(0));
-        assertEquals("[2010:836B:4179::836B:4179]:2000", u.getHosts().get(1));
+        assertEquals(asList("[2010:836B:4179::836B:4179]:2000", "[::1]:1000"), u.getHosts());
     }
 
     @Test
