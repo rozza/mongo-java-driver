@@ -109,7 +109,7 @@ public interface MongoCollection<T> {
      * @return an iterable containing the result of the find operation
      * @mongodb.driver.manual manual/tutorial/query-documents/ Find
      */
-    MongoIterable<T> find();
+    MongoTailableIterable<T> find();
 
     /**
      * Finds all documents in the collection.
@@ -119,7 +119,7 @@ public interface MongoCollection<T> {
      * @return an iterable containing the result of the find operation
      * @mongodb.driver.manual manual/tutorial/query-documents/ Find
      */
-    <C> MongoIterable<C> find(Class<C> clazz);
+    <C> MongoTailableIterable<C> find(Class<C> clazz);
 
     /**
      * Finds documents in the collection according to the specified options.
@@ -128,7 +128,7 @@ public interface MongoCollection<T> {
      * @return an iterable containing the result of the find operation
      * @mongodb.driver.manual manual/tutorial/query-documents/ Find
      */
-    MongoIterable<T> find(FindOptions findOptions);
+    MongoTailableIterable<T> find(FindOptions findOptions);
 
     /**
      * Finds documents according to the specified criteria.
@@ -139,7 +139,7 @@ public interface MongoCollection<T> {
      * @return an iterable containing the result of the find operation
      * @mongodb.driver.manual manual/tutorial/query-documents/ Find
      */
-    <C> MongoIterable<C> find(FindOptions findOptions, Class<C> clazz);
+    <C> MongoTailableIterable<C> find(FindOptions findOptions, Class<C> clazz);
 
     /**
      * Aggregates documents according to the specified aggregation pipeline.

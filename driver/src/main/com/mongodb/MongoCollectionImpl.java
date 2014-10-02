@@ -19,6 +19,7 @@ package com.mongodb;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCollectionOptions;
 import com.mongodb.client.MongoIterable;
+import com.mongodb.client.MongoTailableIterable;
 import com.mongodb.client.model.AggregateModel;
 import com.mongodb.client.model.AggregateOptions;
 import com.mongodb.client.model.BulkWriteModel;
@@ -171,28 +172,28 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
     }
 
     @Override
-    public MongoIterable<T> find() {
+    public MongoTailableIterable<T> find() {
         return find(new FindOptions());
     }
 
     @Override
-    public <C> MongoIterable<C> find(final Class<C> clazz) {
+    public <C> MongoTailableIterable<C> find(final Class<C> clazz) {
         return find(new FindOptions(), clazz);
     }
 
     @Override
-    public MongoIterable<T> find(final FindOptions findOptions) {
+    public MongoTailableIterable<T> find(final FindOptions findOptions) {
         return find(findOptions, clazz);
     }
 
     @Override
-    public <C> MongoIterable<C> find(final FindOptions findOptions, final Class<C> clazz) {
+    public <C> MongoTailableIterable<C> find(final FindOptions findOptions, final Class<C> clazz) {
         return find(new FindModel(findOptions), clazz);
     }
 
-    private <C> MongoIterable<C> find(final FindModel findModel, final Class<C> clazz) {
-        return new OperationIterable<C>(createQueryOperation(findModel, getCodec(clazz)),
-                                        options.getReadPreference());
+    private <C> MongoTailableIterable<C> find(final FindModel findModel, final Class<C> clazz) {
+        return new TailableOperationIterable<C>(createQueryOperation(findModel, getCodec(clazz)),
+                                                options.getReadPreference());
     }
 
     @Override
@@ -759,11 +760,11 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
         return aggregateList;
     }
 
-    private final class OperationIterable<D> implements MongoIterable<D> {
+    private class OperationIterable<D> implements MongoIterable<D> {
         private final ReadOperation<? extends MongoCursor<D>> operation;
         private final ReadPreference readPreference;
 
-        private OperationIterable(final ReadOperation<? extends MongoCursor<D>> operation, final ReadPreference readPreference) {
+        OperationIterable(final ReadOperation<? extends MongoCursor<D>> operation, final ReadPreference readPreference) {
             this.operation = operation;
             this.readPreference = readPreference;
         }
@@ -808,6 +809,22 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
                 }
             });
             return target;
+        }
+    }
+
+    private final class TailableOperationIterable<D> extends OperationIterable<D> implements MongoTailableIterable<D> {
+        private final ReadOperation<? extends MongoTailableCursor<D>> operation;
+        private final ReadPreference readPreference;
+
+        TailableOperationIterable(final ReadOperation<? extends MongoTailableCursor<D>> operation, final ReadPreference readPreference) {
+            super(operation, readPreference);
+            this.operation = operation;
+            this.readPreference = readPreference;
+        }
+
+        @Override
+        public MongoTailableCursor<D> iterator() {
+            return executor.execute(operation, readPreference);
         }
     }
 
