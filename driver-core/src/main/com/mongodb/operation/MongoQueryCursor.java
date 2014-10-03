@@ -147,8 +147,10 @@ class MongoQueryCursor<T> implements MongoCursor<T> {
     /**
      * A special {@code next()} case that returns the next element in the iteration if available or null.
      *
-     * <p>Note: With tailable cursors that don't have {@code await_data} set you should use this method rather than iterating via
-     * {@code next()}, as that automatically sets {@code await_data} and blocks until new data is available.</p>
+     * <p>Note: Tailable cursors that don't have the {@see com.mongodb.Bytes#QUERYOPTION_AWAITDATA} query flag set either via
+     * {@see com.mongodb.client.model.FindOptions#awaitData} or via {@see com.mongodb.DBCursor#addOption} should
+     * use this method rather than iterating via {@code next()} as that may throw a {@code NoSuchElementException} even though in the
+     * future there may be more results available.</p>
      *
      * @return the next element in the iteration if available or null.
      */
