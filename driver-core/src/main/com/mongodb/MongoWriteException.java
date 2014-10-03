@@ -78,6 +78,12 @@ public class MongoWriteException extends MongoServerException {
                 }
             }
         }
+        if (response.containsKey("err")) {
+            String errorMessage = extractErrorMessage(response);
+            if (errorMessage.contains("E11000 duplicate key error")) {
+                return 11000;
+            }
+        }
 
         return response.getNumber("code", new BsonInt32(-1)).intValue();
     }
