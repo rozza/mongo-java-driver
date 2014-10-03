@@ -109,6 +109,9 @@ public class CommandResult extends BasicDBObject {
                 }
             }
         }
+        if (get("err") != null && ((String) get("err")).contains("E11000 duplicate key error")) {
+            return 11000;
+        }
 
         return code;
     }
