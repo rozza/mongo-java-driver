@@ -42,7 +42,7 @@ import static com.mongodb.operation.DocumentHelper.putIfNotZero;
  */
 public class CountOperation implements AsyncReadOperation<Long>, ReadOperation<Long> {
     private final MongoNamespace namespace;
-    private BsonDocument criteria;
+    private final BsonDocument criteria;
     private BsonValue hint;
     private long skip;
     private long limit;
@@ -52,9 +52,11 @@ public class CountOperation implements AsyncReadOperation<Long>, ReadOperation<L
      * Construct a new instance.
      *
      * @param namespace the database and collection namespace for the operation.
+     * @param criteria the query criteria
      */
-    public CountOperation(final MongoNamespace namespace) {
+    public CountOperation(final MongoNamespace namespace, final BsonDocument criteria) {
         this.namespace = notNull("namespace", namespace);
+        this.criteria = notNull("criteria", criteria);
     }
 
     /**
@@ -65,18 +67,6 @@ public class CountOperation implements AsyncReadOperation<Long>, ReadOperation<L
      */
     public BsonDocument getCriteria() {
         return criteria;
-    }
-
-    /**
-     * Sets the criteria to apply to the query.
-     *
-     * @param criteria the criteria, which may be null.
-     * @return this
-     * @mongodb.driver.manual manual/reference/method/db.collection.find/ Criteria
-     */
-    public CountOperation criteria(final BsonDocument criteria) {
-        this.criteria = criteria;
-        return this;
     }
 
     /**
@@ -215,7 +205,9 @@ public class CountOperation implements AsyncReadOperation<Long>, ReadOperation<L
 
     private BsonDocument getCommand() {
         BsonDocument document = new BsonDocument("count", new BsonString(namespace.getCollectionName()));
-        putIfNotNull(document, "query", criteria);
+        if (!criteria.isEmpty()) {
+            document.put("query", criteria);
+        }
         putIfNotZero(document, "limit", limit);
         putIfNotZero(document, "skip", skip);
         putIfNotNull(document, "hint", hint);

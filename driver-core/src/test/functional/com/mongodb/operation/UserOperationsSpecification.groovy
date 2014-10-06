@@ -262,7 +262,7 @@ class UserOperationsSpecification extends OperationFunctionalSpecification {
                             asList(new InsertRequest(new BsonDocument()))).execute(getBinding(cluster))
 
         then:
-        new CountOperation(getNamespace()).execute(getBinding(cluster)) == 1
+        new CountOperation(getNamespace(), new BsonDocument()).execute(getBinding(cluster)) == 1
 
         cleanup:
         new DropUserOperation('admin', rwCredential.userName).execute(getBinding())
@@ -296,7 +296,7 @@ class UserOperationsSpecification extends OperationFunctionalSpecification {
         def cluster = getCluster(roCredential)
 
         when:
-        def count = new CountOperation(getNamespace()).execute(getBinding())
+        def count = new CountOperation(getNamespace(), new BsonDocument()).execute(getBinding())
 
         then:
         count == 0

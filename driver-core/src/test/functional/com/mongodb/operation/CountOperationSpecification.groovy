@@ -55,20 +55,20 @@ class CountOperationSpecification extends OperationFunctionalSpecification {
 
     def 'should get the count'() {
         expect:
-        new CountOperation(getNamespace()).execute(getBinding()) == documents.size()
+        new CountOperation(getNamespace(), new BsonDocument()).execute(getBinding()) == documents.size()
     }
 
     @Category(Async)
     def 'should get the count asynchronously'() {
         expect:
-        new CountOperation(getNamespace()).executeAsync(getAsyncBinding()).get() ==
+        new CountOperation(getNamespace(), new BsonDocument()).executeAsync(getAsyncBinding()).get() ==
         documents.size()
     }
 
     @IgnoreIf({ !serverVersionAtLeast(asList(2, 6, 0)) })
     def 'should throw execution timeout exception from execute'() {
         given:
-        def countOperation = new CountOperation(getNamespace())
+        def countOperation = new CountOperation(getNamespace(), new BsonDocument())
                 .maxTime(1, SECONDS)
         enableMaxTimeFailPoint()
 
@@ -86,7 +86,7 @@ class CountOperationSpecification extends OperationFunctionalSpecification {
     @IgnoreIf({ !serverVersionAtLeast(asList(2, 6, 0)) })
     def 'should throw execution timeout exception from executeAsync'() {
         given:
-        def countOperation = new CountOperation(getNamespace())
+        def countOperation = new CountOperation(getNamespace(), new BsonDocument())
                 .maxTime(1, SECONDS)
         enableMaxTimeFailPoint()
 
@@ -102,7 +102,7 @@ class CountOperationSpecification extends OperationFunctionalSpecification {
 
     def 'should use limit with the count'() {
         when:
-        def countOperation = new CountOperation(getNamespace())
+        def countOperation = new CountOperation(getNamespace(), new BsonDocument())
                 .limit(1)
         then:
         countOperation.execute(getBinding()) == 1
@@ -111,7 +111,7 @@ class CountOperationSpecification extends OperationFunctionalSpecification {
     @Category(Async)
     def 'should use limit with the count asynchronously'() {
         when:
-        def countOperation = new CountOperation(getNamespace())
+        def countOperation = new CountOperation(getNamespace(), new BsonDocument())
                 .limit(1)
 
         then:
@@ -120,7 +120,7 @@ class CountOperationSpecification extends OperationFunctionalSpecification {
 
     def 'should use skip with the count'() {
         when:
-        def countOperation = new CountOperation(getNamespace())
+        def countOperation = new CountOperation(getNamespace(), new BsonDocument())
                 .skip(documents.size() - 2)
 
         then:
@@ -130,7 +130,7 @@ class CountOperationSpecification extends OperationFunctionalSpecification {
     @Category(Async)
     def 'should use skip with the count asynchronously'() {
         when:
-        def countOperation = new CountOperation(getNamespace())
+        def countOperation = new CountOperation(getNamespace(), new BsonDocument())
                 .skip(documents.size() - 2)
 
         then:
@@ -140,7 +140,7 @@ class CountOperationSpecification extends OperationFunctionalSpecification {
     def 'should use hint with the count'() {
         given:
         def createIndexOperation = new CreateIndexOperation(getNamespace(), new BsonDocument('x', new BsonInt32(1))).sparse(true)
-        def countOperation = new CountOperation(getNamespace()).hint(new BsonString('x_1'))
+        def countOperation = new CountOperation(getNamespace(), new BsonDocument()).hint(new BsonString('x_1'))
 
         when:
         createIndexOperation.execute(getBinding())
@@ -153,7 +153,7 @@ class CountOperationSpecification extends OperationFunctionalSpecification {
     def 'should use hint with the count asynchronously'() {
         given:
         def createIndexOperation = new CreateIndexOperation(getNamespace(), new BsonDocument('x', new BsonInt32(1))).sparse(true)
-        def countOperation = new CountOperation(getNamespace()).hint(new BsonString('x_1'))
+        def countOperation = new CountOperation(getNamespace(), new BsonDocument()).hint(new BsonString('x_1'))
 
         when:
         createIndexOperation.executeAsync(getAsyncBinding()).get()
@@ -165,8 +165,7 @@ class CountOperationSpecification extends OperationFunctionalSpecification {
     @IgnoreIf({ !serverVersionAtLeast(asList(2, 6, 0)) })
     def 'should throw with bad hint with mongod 2.6+'() {
         given:
-        def countOperation = new CountOperation(getNamespace())
-                .criteria(new BsonDocument('a', new BsonInt32(1)))
+        def countOperation = new CountOperation(getNamespace(), new BsonDocument('a', new BsonInt32(1)))
                 .hint(new BsonString('BAD HINT'))
 
         when:
@@ -180,8 +179,7 @@ class CountOperationSpecification extends OperationFunctionalSpecification {
     @IgnoreIf({ !serverVersionAtLeast(asList(2, 6, 0)) })
     def 'should throw with bad hint with mongod 2.6+ asynchronously'() {
         given:
-        def countOperation = new CountOperation(getNamespace())
-                .criteria(new BsonDocument('a', new BsonInt32(1)))
+        def countOperation = new CountOperation(getNamespace(), new BsonDocument('a', new BsonInt32(1)))
                 .hint(new BsonString('BAD HINT'))
 
         when:
@@ -194,8 +192,7 @@ class CountOperationSpecification extends OperationFunctionalSpecification {
     @IgnoreIf({ serverVersionAtLeast(asList(2, 6, 0)) })
     def 'should ignore with bad hint with mongod < 2.6'() {
         given:
-        def countOperation = new CountOperation(getNamespace())
-                .criteria(new BsonDocument('a', new BsonInt32(1)))
+        def countOperation = new CountOperation(getNamespace(), new BsonDocument('a', new BsonInt32(1)))
                 .hint(new BsonString('BAD HINT'))
 
         when:
@@ -209,8 +206,7 @@ class CountOperationSpecification extends OperationFunctionalSpecification {
     @IgnoreIf({ serverVersionAtLeast(asList(2, 6, 0)) })
     def 'should ignore with bad hint with mongod < 2.6 asynchronously'() {
         given:
-        def countOperation = new CountOperation(getNamespace())
-                .criteria(new BsonDocument('a', new BsonInt32(1)))
+        def countOperation = new CountOperation(getNamespace(), new BsonDocument('a', new BsonInt32(1)))
                 .hint(new BsonString('BAD HINT'))
 
         when:
@@ -223,8 +219,7 @@ class CountOperationSpecification extends OperationFunctionalSpecification {
     @IgnoreIf({ !serverVersionAtLeast(asList(2, 7, 7)) || isSharded() })
     def 'should explain'() {
         given:
-        def countOperation = new CountOperation(getNamespace())
-                .criteria(new BsonDocument('a', new BsonInt32(1)))
+        def countOperation = new CountOperation(getNamespace(), new BsonDocument('a', new BsonInt32(1)))
 
         when:
         BsonDocument result = countOperation.asExplainableOperation(ExplainVerbosity.QUERY_PLANNER).execute(getBinding())
@@ -237,8 +232,7 @@ class CountOperationSpecification extends OperationFunctionalSpecification {
     @IgnoreIf({ !serverVersionAtLeast(asList(2, 7, 7)) || isSharded() })
     def 'should explain asynchronously'() {
         given:
-        def countOperation = new CountOperation(getNamespace())
-                .criteria(new BsonDocument('a', new BsonInt32(1)))
+        def countOperation = new CountOperation(getNamespace(), new BsonDocument('a', new BsonInt32(1)))
 
         when:
         BsonDocument result = countOperation.asExplainableOperationAsync(ExplainVerbosity.QUERY_PLANNER).executeAsync(getAsyncBinding())

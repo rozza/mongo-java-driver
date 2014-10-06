@@ -690,8 +690,9 @@ public class DBCollection {
      */
     DBObject findOne(final DBObject query, final DBObject projection, final DBObject sort,
                      final ReadPreference readPreference, final long maxTime, final TimeUnit maxTimeUnit) {
-        FindOperation<DBObject> findOperation = new FindOperation<DBObject>(getNamespace(), objectCodec)
-                                                    .criteria(wrapAllowNull(query))
+        FindOperation<DBObject> findOperation = new FindOperation<DBObject>(getNamespace(),
+                                                                            query == null ? new BsonDocument() : wrap(query),
+                                                                            objectCodec)
                                                     .projection(wrapAllowNull(projection))
                                                     .sort(wrapAllowNull(sort))
                                                     .batchSize(-1)
@@ -909,8 +910,7 @@ public class DBCollection {
             throw new IllegalArgumentException("skip is too large: " + skip);
         }
 
-        CountOperation operation = new CountOperation(getNamespace())
-                                       .criteria(wrapAllowNull(query))
+        CountOperation operation = new CountOperation(getNamespace(), query == null ? new BsonDocument() : wrap(query))
                                        .hint(hint)
                                        .skip(skip)
                                        .limit(limit)

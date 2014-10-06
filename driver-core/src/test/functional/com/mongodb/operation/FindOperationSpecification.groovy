@@ -49,7 +49,7 @@ class FindOperationSpecification extends OperationFunctionalSpecification {
         def document = new Document('_id', 1)
         given:
         getCollectionHelper().insertDocuments(new DocumentCodec(), document);
-        def findOperation = new FindOperation<Document>(getNamespace(), new DocumentCodec())
+        def findOperation = new FindOperation<Document>(getNamespace(), new BsonDocument(), new DocumentCodec())
 
         when:
         def cursor = findOperation.execute(getBinding())
@@ -61,9 +61,8 @@ class FindOperationSpecification extends OperationFunctionalSpecification {
     def 'should apply criteria'() {
         given:
         def document = new Document('_id', 1)
-        getCollectionHelper().insertDocuments(new DocumentCodec(), document, new Document());
-        def findOperation = new FindOperation<Document>(getNamespace(), new DocumentCodec())
-                .criteria(new BsonDocument('_id', new BsonInt32(1)))
+        getCollectionHelper().insertDocuments(new DocumentCodec(), document, new Document())
+        def findOperation = new FindOperation<Document>(getNamespace(), new BsonDocument('_id', new BsonInt32(1)), new DocumentCodec())
 
         when:
         def cursor = findOperation.execute(getBinding())
@@ -81,7 +80,7 @@ class FindOperationSpecification extends OperationFunctionalSpecification {
 
 
         when: 'ascending'
-        def findOperation = new FindOperation<Document>(getNamespace(), new DocumentCodec())
+        def findOperation = new FindOperation<Document>(getNamespace(), new BsonDocument(), new DocumentCodec())
                 .sort(new BsonDocument('_id', new BsonInt32(1)))
         def cursor = findOperation.execute(getBinding())
         def list = []
@@ -97,7 +96,7 @@ class FindOperationSpecification extends OperationFunctionalSpecification {
         given:
         def document = new Document('_id', 1).append('x', 5).append('y', 10)
         getCollectionHelper().insertDocuments(new DocumentCodec(), document, new Document());
-        def findOperation = new FindOperation<Document>(getNamespace(), new DocumentCodec())
+        def findOperation = new FindOperation<Document>(getNamespace(), new BsonDocument(), new DocumentCodec())
                 .projection(new BsonDocument('_id', new BsonInt32(0)).append('x', new BsonInt32(1)))
 
         when:
@@ -111,7 +110,7 @@ class FindOperationSpecification extends OperationFunctionalSpecification {
     def 'should throw execution timeout exception from execute'() {
         given:
         getCollectionHelper().insertDocuments(new DocumentCodec(), new Document())
-        def operation = new FindOperation<Document>(getNamespace(), new DocumentCodec())
+        def operation = new FindOperation<Document>(getNamespace(), new BsonDocument(), new DocumentCodec())
                 .maxTime(1000, MILLISECONDS)
 
         enableMaxTimeFailPoint()
@@ -131,7 +130,7 @@ class FindOperationSpecification extends OperationFunctionalSpecification {
     def 'should throw execution timeout exception from executeAsync'() {
         given:
         getCollectionHelper().insertDocuments(new DocumentCodec(), new Document())
-        def findOperation = new FindOperation<Document>(getNamespace(), new DocumentCodec())
+        def findOperation = new FindOperation<Document>(getNamespace(), new BsonDocument(), new DocumentCodec())
                 .maxTime(1000, MILLISECONDS)
 
         enableMaxTimeFailPoint()
@@ -153,7 +152,7 @@ class FindOperationSpecification extends OperationFunctionalSpecification {
         }
         collectionHelper.createIndex(new BsonDocument('count', new BsonInt32(1)))
         def count = 0;
-        def findOperation = new FindOperation<Document>(getNamespace(), new DocumentCodec())
+        def findOperation = new FindOperation<Document>(getNamespace(), new BsonDocument(), new DocumentCodec())
                 .modifiers(new BsonDocument('$max', new BsonDocument('count', new BsonInt32(11))))
 
         when:
@@ -172,7 +171,7 @@ class FindOperationSpecification extends OperationFunctionalSpecification {
         }
         collectionHelper.createIndex(new BsonDocument('count', new BsonInt32(1)))
         def count = 0;
-        def findOperation = new FindOperation<Document>(getNamespace(), new DocumentCodec())
+        def findOperation = new FindOperation<Document>(getNamespace(), new BsonDocument(), new DocumentCodec())
                 .modifiers(new BsonDocument('$min', new BsonDocument('count', new BsonInt32(10))))
 
         when:
@@ -190,7 +189,7 @@ class FindOperationSpecification extends OperationFunctionalSpecification {
             collectionHelper.insertDocuments(new DocumentCodec(), new Document('x', 'y'))
         }
         def count = 0;
-        def findOperation = new FindOperation<Document>(getNamespace(), new DocumentCodec())
+        def findOperation = new FindOperation<Document>(getNamespace(), new BsonDocument(), new DocumentCodec())
                 .modifiers(new BsonDocument('$maxScan', new BsonInt32(34)))
 
         when:
@@ -209,8 +208,7 @@ class FindOperationSpecification extends OperationFunctionalSpecification {
         }
         collectionHelper.createIndex(new BsonDocument('x', new BsonInt32(1)))
 
-        def findOperation = new FindOperation<Document>(getNamespace(), new DocumentCodec())
-                .criteria(new BsonDocument('x', new BsonInt32(7)))
+        def findOperation = new FindOperation<Document>(getNamespace(), new BsonDocument('x', new BsonInt32(7)), new DocumentCodec())
                 .modifiers(new BsonDocument('$returnKey', BsonBoolean.TRUE))
 
         when:
@@ -228,7 +226,7 @@ class FindOperationSpecification extends OperationFunctionalSpecification {
             collectionHelper.insertDocuments(new DocumentCodec(), new Document('x', 'y'))
         }
         def found = true;
-        def findOperation = new FindOperation<Document>(getNamespace(), new DocumentCodec())
+        def findOperation = new FindOperation<Document>(getNamespace(), new BsonDocument(), new DocumentCodec())
                 .modifiers(new BsonDocument('$showDiskLoc', BsonBoolean.TRUE))
 
         when:
@@ -243,7 +241,7 @@ class FindOperationSpecification extends OperationFunctionalSpecification {
     @IgnoreIf({ !ClusterFixture.isDiscoverableReplicaSet() })
     def 'should read from a secondary'() {
         collectionHelper.insertDocuments(new DocumentCodec(), new Document())
-        def findOperation = new FindOperation<Document>(getNamespace(), new DocumentCodec())
+        def findOperation = new FindOperation<Document>(getNamespace(), new BsonDocument(), new DocumentCodec())
         def binding = new ClusterBinding(getCluster(), ReadPreference.secondary(), 1, SECONDS)
 
         expect:
@@ -256,7 +254,7 @@ class FindOperationSpecification extends OperationFunctionalSpecification {
         (1..500).each {
             collectionHelper.insertDocuments(new DocumentCodec(), new Document('_id', it))
         }
-        def findOperation = new FindOperation<Document>(getNamespace(), new DocumentCodec()).exhaust(true)
+        def findOperation = new FindOperation<Document>(getNamespace(), new BsonDocument(), new DocumentCodec()).exhaust(true)
 
         when:
         def count = 0;
@@ -282,7 +280,7 @@ class FindOperationSpecification extends OperationFunctionalSpecification {
         (1..500).each {
             collectionHelper.insertDocuments(new DocumentCodec(), new Document('_id', it))
         }
-        def findOperation = new FindOperation<Document>(getNamespace(), new DocumentCodec())
+        def findOperation = new FindOperation<Document>(getNamespace(), new BsonDocument(), new DocumentCodec())
 
         when:
         def count = 0;
@@ -305,7 +303,7 @@ class FindOperationSpecification extends OperationFunctionalSpecification {
         (1..500).each {
             collectionHelper.insertDocuments(new DocumentCodec(), new Document('_id', it))
         }
-        def findOperation = new FindOperation<Document>(getNamespace(), new DocumentCodec()).exhaust(true)
+        def findOperation = new FindOperation<Document>(getNamespace(), new BsonDocument(), new DocumentCodec()).exhaust(true)
 
         when:
         def count = 0;
@@ -325,7 +323,7 @@ class FindOperationSpecification extends OperationFunctionalSpecification {
     @Category(Async)
     def 'should explain'() {
         given:
-        def findOperation = new FindOperation<Document>(getNamespace(), new DocumentCodec())
+        def findOperation = new FindOperation<Document>(getNamespace(), new BsonDocument(), new DocumentCodec())
 
         when:
         BsonDocument result = findOperation.asExplainableOperation(ExplainVerbosity.QUERY_PLANNER).execute(getBinding())
@@ -336,7 +334,7 @@ class FindOperationSpecification extends OperationFunctionalSpecification {
 
     def 'should explain asynchronously'() {
         given:
-        def findOperation = new FindOperation<Document>(getNamespace(), new DocumentCodec())
+        def findOperation = new FindOperation<Document>(getNamespace(), new BsonDocument(), new DocumentCodec())
 
         when:
         BsonDocument result = findOperation.asExplainableOperationAsync(ExplainVerbosity.QUERY_PLANNER).executeAsync(getAsyncBinding())

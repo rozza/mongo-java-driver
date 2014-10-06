@@ -118,13 +118,12 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
 
     @Override
     public long count() {
-        return count(new CountOptions());
+        return count(new Document(), new CountOptions());
     }
 
     @Override
-    public long count(final CountOptions options) {
-        CountOperation operation = new CountOperation(namespace)
-                                       .criteria(asBson(options.getCriteria()))
+    public long count(final Object criteria, final CountOptions options) {
+        CountOperation operation = new CountOperation(namespace, asBson(criteria))
                                        .skip(options.getSkip())
                                        .limit(options.getLimit())
                                        .maxTime(options.getMaxTime(MILLISECONDS), MILLISECONDS);
@@ -160,22 +159,33 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
 
     @Override
     public MongoIterable<T> find() {
-        return find(new FindOptions());
+        return find(new Document(), new FindOptions());
     }
 
     @Override
     public <C> MongoIterable<C> find(final Class<C> clazz) {
-        return find(new FindOptions(), clazz);
+        return find(new Document(), new FindOptions(), clazz);
     }
 
     @Override
-    public MongoIterable<T> find(final FindOptions findOptions) {
-        return find(findOptions, clazz);
+    public MongoIterable<T> find(final Object criteria) {
+        return find(criteria, new FindOptions());
     }
 
     @Override
-    public <C> MongoIterable<C> find(final FindOptions findOptions, final Class<C> clazz) {
-        return new OperationIterable<C>(createQueryOperation(namespace, findOptions, getCodec(clazz)), options.getReadPreference());
+    public <C> MongoIterable<C> find(final Object criteria, final Class<C> clazz) {
+        return find(criteria, new FindOptions(), clazz);
+    }
+
+    @Override
+    public MongoIterable<T> find(final Object criteria, final FindOptions findOptions) {
+        return find(criteria, findOptions, clazz);
+    }
+
+    @Override
+    public <C> MongoIterable<C> find(final Object criteria, final FindOptions findOptions, final Class<C> clazz) {
+        return new OperationIterable<C>(createQueryOperation(namespace, criteria, findOptions, getCodec(clazz)),
+                                        options.getReadPreference());
     }
 
     @Override
@@ -206,6 +216,7 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
             executor.execute(operation);
             return new OperationIterable<C>(new FindOperation<C>(new MongoNamespace(namespace.getDatabaseName(),
                                                                                     outCollection.asString().getValue()),
+                                                                 new BsonDocument(),
                                                                  getCodec(clazz)),
                                             this.options.getReadPreference());
         } else {
@@ -276,10 +287,9 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
             }
             executor.execute(operation);
 
-            String databaseName = options.getDatabaseName() != null ? options.getDatabaseName()
-                                                                             : namespace.getDatabaseName();
+            String databaseName = options.getDatabaseName() != null ? options.getDatabaseName() : namespace.getDatabaseName();
             FindOperation<C> findOperation = createQueryOperation(new MongoNamespace(databaseName, options.getCollectionName()),
-                                                                  new FindOptions(), getCodec(clazz));
+                                                                  new Document(), new FindOptions(), getCodec(clazz));
             return new OperationIterable<C>(findOperation, this.options.getReadPreference());
         }
     }
@@ -587,9 +597,9 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
         }
     }
 
-    private <C> FindOperation<C> createQueryOperation(final MongoNamespace namespace, final FindOptions options, final Decoder<C> decoder) {
-        return new FindOperation<C>(namespace, decoder)
-                   .criteria(asBson(options.getCriteria()))
+    private <C> FindOperation<C> createQueryOperation(final MongoNamespace namespace, final Object criteria, final FindOptions options,
+                                                      final Decoder<C> decoder) {
+        return new FindOperation<C>(namespace, asBson(criteria), decoder)
                    .batchSize(options.getBatchSize())
                    .skip(options.getSkip())
                    .limit(options.getLimit())
