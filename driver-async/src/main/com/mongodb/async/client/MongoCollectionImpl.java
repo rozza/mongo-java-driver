@@ -181,7 +181,8 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
 
         @Override
         public MongoFuture<Long> count() {
-            CountOperation operation = new CountOperation(getNamespace(), criteria)
+            CountOperation operation = new CountOperation(getNamespace())
+                                           .criteria(criteria)
                                            .skip(findOptions.getSkip())
                                            .limit(findOptions.getLimit())
                                            .maxTime(findOptions.getMaxTime(MILLISECONDS), MILLISECONDS);
@@ -349,7 +350,8 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
         }
 
         private FindOperation<T> createQueryOperation() {
-            return new FindOperation<T>(getNamespace(), criteria, getCodec())
+            return new FindOperation<T>(getNamespace(), getCodec())
+                       .criteria(criteria)
                        .batchSize(findOptions.getBatchSize())
                        .skip(findOptions.getSkip())
                        .limit(findOptions.getLimit())

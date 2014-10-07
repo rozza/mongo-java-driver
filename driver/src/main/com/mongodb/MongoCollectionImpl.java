@@ -122,8 +122,14 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
     }
 
     @Override
+    public long count(final Object criteria) {
+        return count(criteria, new CountOptions());
+    }
+
+    @Override
     public long count(final Object criteria, final CountOptions options) {
-        CountOperation operation = new CountOperation(namespace, asBson(criteria))
+        CountOperation operation = new CountOperation(namespace)
+                                       .criteria(asBson(criteria))
                                        .skip(options.getSkip())
                                        .limit(options.getLimit())
                                        .maxTime(options.getMaxTime(MILLISECONDS), MILLISECONDS);
@@ -216,7 +222,6 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
             executor.execute(operation);
             return new OperationIterable<C>(new FindOperation<C>(new MongoNamespace(namespace.getDatabaseName(),
                                                                                     outCollection.asString().getValue()),
-                                                                 new BsonDocument(),
                                                                  getCodec(clazz)),
                                             this.options.getReadPreference());
         } else {
@@ -599,7 +604,8 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
 
     private <C> FindOperation<C> createQueryOperation(final MongoNamespace namespace, final Object criteria, final FindOptions options,
                                                       final Decoder<C> decoder) {
-        return new FindOperation<C>(namespace, asBson(criteria), decoder)
+        return new FindOperation<C>(namespace, decoder)
+                   .criteria(asBson(criteria))
                    .batchSize(options.getBatchSize())
                    .skip(options.getSkip())
                    .limit(options.getLimit())

@@ -86,7 +86,7 @@ public class DBCursor implements Cursor, Iterable<DBObject> {
      * @param readPreference the read preference for this query
      */
     public DBCursor(final DBCollection collection, final DBObject query, final DBObject fields, final ReadPreference readPreference) {
-        this(collection, collection.getExecutor(), query == null ? new BsonDocument() : collection.wrap(query),
+        this(collection, collection.getExecutor(), collection.wrapAllowNull(query),
              new FindOptions()
              .modifiers(new BsonDocument())
              .projection(collection.wrapAllowNull(fields)),
@@ -453,7 +453,7 @@ public class DBCursor implements Cursor, Iterable<DBObject> {
     }
 
     private FindOperation<DBObject> getQueryOperation(final FindOptions options, final Decoder<DBObject> decoder) {
-        FindOperation<DBObject> operation = new FindOperation<DBObject>(collection.getNamespace(), criteria , decoder)
+        FindOperation<DBObject> operation = new FindOperation<DBObject>(collection.getNamespace(), decoder)
                                                 .batchSize(options.getBatchSize())
                                                 .limit(options.getLimit())
                                                 .maxTime(options.getMaxTime(MILLISECONDS), MILLISECONDS)
@@ -485,6 +485,9 @@ public class DBCursor implements Cursor, Iterable<DBObject> {
         }
         if ((this.options & Bytes.QUERYOPTION_PARTIAL) != 0) {
             operation.partial(true);
+        }
+        if (criteria != null) {
+            operation.criteria(criteria);
         }
         return operation;
     }

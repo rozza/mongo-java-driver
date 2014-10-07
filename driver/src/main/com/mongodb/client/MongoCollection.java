@@ -78,6 +78,14 @@ public interface MongoCollection<T> {
      * Counts the number of documents in the collection according to the given options.
      *
      * @param criteria the query criteria
+     * @return the number of documents in the collection
+     */
+    long count(Object criteria);
+
+    /**
+     * Counts the number of documents in the collection according to the given options.
+     *
+     * @param criteria the query criteria
      * @param options the options describing the count
      * @return the number of documents in the collection
      */

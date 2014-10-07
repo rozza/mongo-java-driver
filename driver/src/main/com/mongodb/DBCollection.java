@@ -690,14 +690,16 @@ public class DBCollection {
      */
     DBObject findOne(final DBObject query, final DBObject projection, final DBObject sort,
                      final ReadPreference readPreference, final long maxTime, final TimeUnit maxTimeUnit) {
-        FindOperation<DBObject> findOperation = new FindOperation<DBObject>(getNamespace(),
-                                                                            query == null ? new BsonDocument() : wrap(query),
+        FindOperation<DBObject> operation = new FindOperation<DBObject>(getNamespace(),
                                                                             objectCodec)
                                                     .projection(wrapAllowNull(projection))
                                                     .sort(wrapAllowNull(sort))
                                                     .batchSize(-1)
                                                     .maxTime(maxTime, maxTimeUnit);
-        MongoCursor<DBObject> cursor = executor.execute(findOperation, readPreference);
+        if (query != null) {
+            operation.criteria(wrap(query));
+        }
+        MongoCursor<DBObject> cursor = executor.execute(operation, readPreference);
         return cursor.hasNext() ? cursor.next() : null;
     }
 
@@ -910,11 +912,14 @@ public class DBCollection {
             throw new IllegalArgumentException("skip is too large: " + skip);
         }
 
-        CountOperation operation = new CountOperation(getNamespace(), query == null ? new BsonDocument() : wrap(query))
+        CountOperation operation = new CountOperation(getNamespace())
                                        .hint(hint)
                                        .skip(skip)
                                        .limit(limit)
                                        .maxTime(maxTime, maxTimeUnit);
+        if (query != null) {
+            operation.criteria(wrap(query));
+        }
         return executor.execute(operation, readPreference);
     }
 

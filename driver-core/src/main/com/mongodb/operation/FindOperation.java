@@ -56,7 +56,7 @@ import static com.mongodb.operation.OperationHelper.withConnection;
 public class FindOperation<T> implements AsyncReadOperation<MongoAsyncCursor<T>>, ReadOperation<MongoTailableCursor<T>> {
     private final MongoNamespace namespace;
     private final Decoder<T> decoder;
-    private final BsonDocument criteria;
+    private BsonDocument criteria;
     private int batchSize;
     private int limit;
     private BsonDocument modifiers;
@@ -76,12 +76,10 @@ public class FindOperation<T> implements AsyncReadOperation<MongoAsyncCursor<T>>
      * Construct a new instance.
      *
      * @param namespace the database and collection namespace for the operation.
-     * @param criteria the query criteria
      * @param decoder the decoder for the result documents.
      */
-    public FindOperation(final MongoNamespace namespace, final BsonDocument criteria, final Decoder<T> decoder) {
+    public FindOperation(final MongoNamespace namespace, final Decoder<T> decoder) {
         this.namespace = notNull("namespace", namespace);
-        this.criteria = notNull("criteria", criteria);
         this.decoder = notNull("decoder", decoder);
     }
 
@@ -111,6 +109,18 @@ public class FindOperation<T> implements AsyncReadOperation<MongoAsyncCursor<T>>
      */
     public BsonDocument getCriteria() {
         return criteria;
+    }
+
+    /**
+     * Sets the criteria to apply to the query.
+     *
+     * @param criteria the criteria, which may be null.
+     * @return this
+     * @mongodb.driver.manual manual/reference/method/db.collection.find/ Criteria
+     */
+    public FindOperation<T> criteria(final BsonDocument criteria) {
+        this.criteria = criteria;
+        return this;
     }
 
     /**
@@ -546,7 +556,7 @@ public class FindOperation<T> implements AsyncReadOperation<MongoAsyncCursor<T>>
     }
 
     private FindOperation<BsonDocument> createExplainableQueryOperation() {
-        FindOperation<BsonDocument> explainFindOperation = new FindOperation<BsonDocument>(namespace, criteria, new BsonDocumentCodec());
+        FindOperation<BsonDocument> explainFindOperation = new FindOperation<BsonDocument>(namespace, new BsonDocumentCodec());
 
         BsonDocument explainModifiers = new BsonDocument();
         if (modifiers != null) {
@@ -554,7 +564,8 @@ public class FindOperation<T> implements AsyncReadOperation<MongoAsyncCursor<T>>
         }
         explainModifiers.append("$explain", BsonBoolean.TRUE);
 
-        return explainFindOperation.projection(projection)
+        return explainFindOperation.criteria(criteria)
+                             .projection(projection)
                              .sort(sort)
                              .skip(skip)
                              .limit(limit)
@@ -627,7 +638,7 @@ public class FindOperation<T> implements AsyncReadOperation<MongoAsyncCursor<T>>
 
     private BsonDocument asDocument(final ConnectionDescription connectionDescription, final ReadPreference readPreference) {
         BsonDocument document = modifiers != null ? modifiers : new BsonDocument();
-        document.put("$query", criteria);
+        document.put("$query", criteria != null ? criteria : new BsonDocument());
         if (sort != null) {
             document.put("$orderby", sort);
         }
