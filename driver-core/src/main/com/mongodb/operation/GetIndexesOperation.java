@@ -56,12 +56,12 @@ public class GetIndexesOperation<T> implements AsyncReadOperation<List<T>>, Read
 
     @Override
     public List<T> execute(final ReadBinding binding) {
-        return queryResultToList(getIndexNamespace(), getProtocol(), decoder, binding);
+        return queryResultToList(getIndexNamespace(), getProtocol(binding.getReadPreference().isSlaveOk()), decoder, binding);
     }
 
     @Override
     public MongoFuture<List<T>> executeAsync(final AsyncReadBinding binding) {
-        return queryResultToListAsync(getIndexNamespace(), getProtocol(), decoder, binding);
+        return queryResultToListAsync(getIndexNamespace(), getProtocol(binding.getReadPreference().isSlaveOk()), decoder, binding);
     }
 
     private BsonDocument asQueryDocument() {
@@ -72,8 +72,9 @@ public class GetIndexesOperation<T> implements AsyncReadOperation<List<T>>, Read
         return new MongoNamespace(namespace.getDatabaseName(), "system.indexes");
     }
 
-    private QueryProtocol<T> getProtocol() {
-        return new QueryProtocol<T>(getIndexNamespace(), 0, 0, asQueryDocument(), null, decoder);
+    private QueryProtocol<T> getProtocol(final boolean slaveOk) {
+        return new QueryProtocol<T>(getIndexNamespace(), 0, 0, asQueryDocument(), null, decoder)
+            .slaveOk(slaveOk);
     }
 
 }
