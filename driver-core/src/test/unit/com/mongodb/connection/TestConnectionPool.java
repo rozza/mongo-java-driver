@@ -71,22 +71,22 @@ public class TestConnectionPool implements ConnectionPool {
             }
 
             @Override
+            public void open() {
+                throw new UnsupportedOperationException("Not implemented yet");
+            }
+
+            @Override
+            public MongoFuture<Void> openAsync() {
+                throw new UnsupportedOperationException("Not implemented yet");
+            }
+
+            @Override
             public void close() {
                 throw new UnsupportedOperationException("Not implemented yet!");
             }
 
             @Override
-            public void open() {
-                throw new UnsupportedOperationException("Not implemented yet!");
-            }
-
-            @Override
-            public MongoFuture<Void> openAsync() {
-                throw new UnsupportedOperationException("Not implemented yet!");
-            }
-
-            @Override
-            public boolean isOpened() {
+            public boolean opened() {
                 throw new UnsupportedOperationException("Not implemented yet!");
             }
 

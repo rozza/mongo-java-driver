@@ -25,6 +25,7 @@ import com.mongodb.ServerAddress;
  */
 public class ConnectionDescription {
     private final ServerAddress serverAddress;
+    private final ConnectionId connectionId;
     private final ServerVersion serverVersion;
     private final ServerType serverType;
     private final int maxBatchCount;
@@ -35,16 +36,18 @@ public class ConnectionDescription {
      * Construct an instance.
      *
      * @param serverAddress   the server address
+     * @param connectionId    the connection id
      * @param serverVersion   the server version
      * @param serverType      the server type
      * @param maxBatchCount   the max batch count
      * @param maxDocumentSize the max document size in bytes
      * @param maxMessageSize  the max message size in bytes
      */
-    public ConnectionDescription(final ServerAddress serverAddress, final ServerVersion serverVersion, final ServerType serverType,
-                                 final int maxBatchCount,
-                                 final int maxDocumentSize, final int maxMessageSize) {
+    public ConnectionDescription(final ServerAddress serverAddress, final ConnectionId connectionId,  final ServerVersion serverVersion,
+                                 final ServerType serverType, final int maxBatchCount, final int maxDocumentSize,
+                                 final int maxMessageSize) {
         this.serverAddress = serverAddress;
+        this.connectionId = connectionId;
         this.serverType = serverType;
         this.maxBatchCount = maxBatchCount;
         this.maxDocumentSize = maxDocumentSize;
@@ -59,6 +62,15 @@ public class ConnectionDescription {
      */
     public ServerAddress getServerAddress() {
         return serverAddress;
+    }
+
+    /**
+     * Gets the id of the connection. If possible, this id will correlate with the connection id that the server puts in its log messages.
+     *
+     * @return the connection id
+     */
+    public ConnectionId getConnectionId() {
+        return connectionId;
     }
 
     /**

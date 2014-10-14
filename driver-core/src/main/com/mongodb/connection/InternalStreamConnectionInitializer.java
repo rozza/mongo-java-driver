@@ -18,99 +18,81 @@ package com.mongodb.connection;
 
 import com.mongodb.MongoCredential;
 import com.mongodb.MongoException;
-import com.mongodb.ServerAddress;
 import com.mongodb.async.MongoFuture;
-import com.mongodb.async.SingleResultCallback;
 import com.mongodb.async.SingleResultFuture;
-import com.mongodb.diagnostics.logging.Logger;
-import com.mongodb.diagnostics.logging.Loggers;
 import org.bson.BsonDocument;
 import org.bson.BsonInt32;
 
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.mongodb.assertions.Assertions.notNull;
 import static com.mongodb.connection.CommandHelper.executeCommand;
 import static com.mongodb.connection.DescriptionHelper.createConnectionDescription;
 
-class DefaultConnectionInitializer implements ConnectionInitializer {
-    private static final AtomicInteger INCREMENTING_ID = new AtomicInteger();
-    private final ServerAddress serverAddress;
+class InternalStreamConnectionInitializer implements InternalConnectionInitializer {
     private final List<MongoCredential> credentialList;
-    private final InternalConnection connection;
+    private ConnectionId connectionId;
 
-    private String id;
+    private InternalConnection internalConnection;
     private ConnectionDescription connectionDescription;
 
-    static final Logger LOGGER = Loggers.getLogger("ConnectionInitializer");
-
-    DefaultConnectionInitializer(final ServerAddress serverAddress, final List<MongoCredential> credentialList,
-                                 final InternalConnection connection) {
-        this.serverAddress = notNull("serverAddress", serverAddress);
+    InternalStreamConnectionInitializer(final List<MongoCredential> credentialList) {
         this.credentialList = notNull("credentialList", credentialList);
-        this.connection = notNull("connection", connection);
     }
 
     @Override
-    public void initialize() {
+    public ConnectionDescription initialize(final InternalConnection internalConnection, final ConnectionId connectionId) {
+        this.internalConnection = notNull("internalConnection", internalConnection);
+        this.connectionId = notNull("connectionId", connectionId);
+
         try {
             initializeConnectionId();
             initializeServerDescription();
             authenticateAll();
 
             // try again if there was an exception calling getlasterror before authenticating
-            if (id.contains("*")) {
+            if (!connectionId.hasServerValue()) {
                 initializeConnectionId();
             }
         } catch (Throwable t) {
-            LOGGER.warn("Exception initializing the connection", t);
+            internalConnection.close();
             if (t instanceof MongoException) {
                 throw (MongoException) t;
             } else {
                 throw new MongoException(t.toString(), t);
             }
         }
+        return connectionDescription;
     }
 
     @Override
-    public MongoFuture<Void> initializeAsync(final SingleResultCallback<Void> callback) {
-        SingleResultFuture<Void> future = new SingleResultFuture<Void>();
+    public MongoFuture<ConnectionDescription> initializeAsync(final InternalConnection internalConnection,
+                                                              final ConnectionId connectionId) {
+        SingleResultFuture<ConnectionDescription> future = new SingleResultFuture<ConnectionDescription>();
         try {
-            initialize();
-            future.init(null, null);
+            initialize(internalConnection, connectionId);
+            future.init(connectionDescription, null);
         } catch (MongoException e) {
             future.init(null, e);
         }
-        future.register(callback);
         return future;
-    }
-
-    @Override
-    public String getId() {
-        return id;
-    }
-
-    @Override
-    public ConnectionDescription getDescription() {
-        return connectionDescription;
     }
 
     private void initializeConnectionId() {
         BsonDocument response = CommandHelper.executeCommandWithoutCheckingForFailure("admin",
                                                                                       new BsonDocument("getlasterror", new BsonInt32(1)),
-                                                                                      connection);
-        id = "conn" + (response.containsKey("connectionId")
-                       ? response.getNumber("connectionId").intValue()
-                       : "*" + INCREMENTING_ID.incrementAndGet() + "*");
+                                                                                      internalConnection);
+        if (response.containsKey("connectionId")) {
+            connectionId.setServerValue(response.getNumber("connectionId").intValue());
+        }
     }
 
     private void initializeServerDescription() {
-        BsonDocument isMasterResult = executeCommand("admin", new BsonDocument("ismaster", new BsonInt32(1)), connection);
-        BsonDocument buildInfoResult = executeCommand("admin", new BsonDocument("buildinfo", new BsonInt32(1)), connection);
-        connectionDescription = createConnectionDescription(serverAddress, isMasterResult, buildInfoResult);
+        BsonDocument isMasterResult = executeCommand("admin", new BsonDocument("ismaster", new BsonInt32(1)), internalConnection);
+        BsonDocument buildInfoResult = executeCommand("admin", new BsonDocument("buildinfo", new BsonInt32(1)), internalConnection);
+        connectionDescription = createConnectionDescription(internalConnection.getServerAddress(), connectionId, isMasterResult,
+                                                            buildInfoResult);
     }
-
 
     private void authenticateAll() {
         if (connectionDescription.getServerType() != ServerType.REPLICA_SET_ARBITER) {
@@ -136,15 +118,15 @@ class DefaultConnectionInitializer implements ConnectionInitializer {
         }
         switch (actualCredential.getAuthenticationMechanism()) {
             case MONGODB_CR:
-                return new NativeAuthenticator(actualCredential, connection);
+                return new NativeAuthenticator(actualCredential, internalConnection);
             case GSSAPI:
-                return new GSSAPIAuthenticator(actualCredential, connection);
+                return new GSSAPIAuthenticator(actualCredential, internalConnection);
             case PLAIN:
-                return new PlainAuthenticator(actualCredential, connection);
+                return new PlainAuthenticator(actualCredential, internalConnection);
             case MONGODB_X509:
-                return new X509Authenticator(actualCredential, connection);
+                return new X509Authenticator(actualCredential, internalConnection);
             case SCRAM_SHA_1:
-                return new ScramSha1Authenticator(actualCredential, connection);
+                return new ScramSha1Authenticator(actualCredential, internalConnection);
             default:
                 throw new IllegalArgumentException("Unsupported authentication protocol: " + actualCredential.getMechanism());
         }

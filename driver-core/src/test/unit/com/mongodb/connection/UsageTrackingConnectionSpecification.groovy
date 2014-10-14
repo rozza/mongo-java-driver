@@ -34,12 +34,24 @@ class UsageTrackingConnectionSpecification extends Specification {
         def connection = new UsageTrackingInternalConnection(new TestInternalConnectionFactory().create(new ServerAddress()), 0);
 
         then:
+        connection.openedAt == Long.MAX_VALUE
+
+        when:
+        connection.open()
+
+        then:
         connection.openedAt <= System.currentTimeMillis()
     }
 
     def 'lastUsedAt should be set on open'() {
         when:
         def connection = new UsageTrackingInternalConnection(new TestInternalConnectionFactory().create(new ServerAddress()), 0);
+
+        then:
+        connection.lastUsedAt == Long.MAX_VALUE
+
+        when:
+        connection.open()
 
         then:
         connection.lastUsedAt <= System.currentTimeMillis()

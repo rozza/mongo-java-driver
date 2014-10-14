@@ -94,12 +94,9 @@ class DefaultConnectionPool implements ConnectionPool {
                 pool.release(internalConnection, true);
                 internalConnection = pool.get(timeout, timeUnit);
             }
-            connectionPoolListener.connectionCheckedOut(new ConnectionEvent(clusterId, serverAddress, internalConnection.getId()));
-            LOGGER.trace(format("Checked out connection [%s] to server %s", internalConnection.getId(), serverAddress));
-            InternalConnection connection = new PooledConnection(internalConnection);
-            if (!connection.isOpened()) {
+            if (!internalConnection.opened()) {
                 try {
-                    connection.open();
+                    internalConnection.open();
                 } catch (Exception e) {
                     pool.release(internalConnection, true);
                     if (e instanceof MongoException) {
@@ -109,7 +106,9 @@ class DefaultConnectionPool implements ConnectionPool {
                     }
                 }
             }
-            return connection;
+            connectionPoolListener.connectionCheckedOut(new ConnectionEvent(clusterId, serverAddress, internalConnection.getId()));
+            LOGGER.trace(format("Checked out connection [%s] to server %s", internalConnection.getId(), serverAddress));
+            return new PooledConnection(internalConnection);
         } finally {
             waitQueueSize.decrementAndGet();
             connectionPoolListener.waitQueueExited(new ConnectionPoolWaitQueueEvent(clusterId, serverAddress, currentThread().getId()));
@@ -229,12 +228,13 @@ class DefaultConnectionPool implements ConnectionPool {
 
         @Override
         public void open() {
+            isTrue("open", wrapped != null);
             wrapped.open();
-            LOGGER.info(format("Opened connection [%s] to %s", wrapped.getId(), serverAddress));
         }
 
         @Override
         public MongoFuture<Void> openAsync() {
+            isTrue("open", wrapped != null);
             return wrapped.openAsync();
         }
 
@@ -251,8 +251,9 @@ class DefaultConnectionPool implements ConnectionPool {
         }
 
         @Override
-        public boolean isOpened() {
-            return wrapped == null ? false : wrapped.isOpened();
+        public boolean opened() {
+            isTrue("open", wrapped != null);
+            return wrapped.opened();
         }
 
         @Override
@@ -262,7 +263,7 @@ class DefaultConnectionPool implements ConnectionPool {
 
         @Override
         public ServerAddress getServerAddress() {
-            isTrue("open", !isClosed());
+            isTrue("open", wrapped != null);
             return wrapped.getServerAddress();
         }
 
@@ -307,11 +308,13 @@ class DefaultConnectionPool implements ConnectionPool {
 
         @Override
         public String getId() {
+            isTrue("open", wrapped != null);
             return wrapped.getId();
         }
 
         @Override
         public ConnectionDescription getDescription() {
+            isTrue("open", wrapped != null);
             return wrapped.getDescription();
         }
     }

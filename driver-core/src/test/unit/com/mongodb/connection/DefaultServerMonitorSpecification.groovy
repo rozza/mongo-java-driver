@@ -73,7 +73,7 @@ class DefaultServerMonitorSpecification extends Specification {
 
         when:
         monitor.invalidate()
-        while(monitorId == monitor.monitorThread.getId()) { sleep(10) }
+        while (monitorId == monitor.monitorThread.getId()) { monitor.monitorThread.wait(10) }
 
         then:
         !stateChanged
@@ -100,7 +100,7 @@ class DefaultServerMonitorSpecification extends Specification {
 
         when:
         monitor.close()
-        while(!monitor.isThreadAlive()) { sleep(10); }
+        while (!monitor.isThreadAlive()) {  monitor.monitorThread.wait(10) }
 
         then:
         !stateChanged

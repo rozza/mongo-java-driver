@@ -38,8 +38,8 @@ class TestInternalConnection implements InternalConnection {
     private final String id;
     private final Deque<ResponseBuffers> replies;
     private final List<BsonInput> sent;
-    private volatile boolean opened;
-    private volatile boolean closed;
+    private boolean opened;
+    private boolean closed;
 
     public TestInternalConnection(final String id, final ServerAddress address) {
         this.id = id;
@@ -73,7 +73,6 @@ class TestInternalConnection implements InternalConnection {
         throw new UnsupportedOperationException("Not implemented yet!");
     }
 
-    @Override
     public void open() {
         opened = true;
     }
@@ -81,7 +80,7 @@ class TestInternalConnection implements InternalConnection {
     @Override
     public MongoFuture<Void> openAsync() {
         opened = true;
-        return new SingleResultFuture<Void>(null, null);
+        return new SingleResultFuture<Void>(null);
     }
 
     @Override
@@ -90,8 +89,8 @@ class TestInternalConnection implements InternalConnection {
     }
 
     @Override
-    public boolean isOpened() {
-        return opened && !closed;
+    public boolean opened() {
+        return opened;
     }
 
     @Override

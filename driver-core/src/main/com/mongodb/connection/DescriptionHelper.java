@@ -52,9 +52,10 @@ final class DescriptionHelper {
     static final int DEFAULT_MAX_WRITE_BATCH_SIZE = 512;
 
 
-    static ConnectionDescription createConnectionDescription(final ServerAddress address, final BsonDocument isMasterResult,
+    static ConnectionDescription createConnectionDescription(final ServerAddress address, final ConnectionId connectionId,
+                                                             final BsonDocument isMasterResult,
                                                              final BsonDocument buildInfoResult) {
-        return new ConnectionDescription(address, getVersion(buildInfoResult), getServerType(isMasterResult),
+        return new ConnectionDescription(address, connectionId, getVersion(buildInfoResult), getServerType(isMasterResult),
                                          getMaxWriteBatchSize(isMasterResult), getMaxBsonObjectSize(isMasterResult),
                                          getMaxMessageSizeBytes(isMasterResult));
 

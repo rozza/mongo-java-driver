@@ -29,7 +29,7 @@ import static com.mongodb.assertions.Assertions.isTrue;
  * A connection that tracks when it was opened and when it was last used.
  */
 class UsageTrackingInternalConnection implements InternalConnection {
-    private final long openedAt;
+    private volatile long openedAt;
     private volatile long lastUsedAt;
     private final int generation;
     private volatile InternalConnection wrapped;
@@ -37,29 +37,35 @@ class UsageTrackingInternalConnection implements InternalConnection {
     UsageTrackingInternalConnection(final InternalConnection wrapped, final int generation) {
         this.wrapped = wrapped;
         this.generation = generation;
+        openedAt = Long.MAX_VALUE;
+        lastUsedAt = openedAt;
+    }
+
+    @Override
+    public void open() {
+        isTrue("open", wrapped != null);
+        wrapped.open();
         openedAt = System.currentTimeMillis();
         lastUsedAt = openedAt;
     }
 
     @Override
+    public MongoFuture<Void> openAsync() {
+        isTrue("open", wrapped != null);
+        return wrapped.openAsync();
+    }
+
+    @Override
     public void close() {
+        isTrue("open", wrapped != null);
         wrapped.close();
         wrapped = null;
     }
 
     @Override
-    public void open() {
-        wrapped.open();
-    }
-
-    @Override
-    public MongoFuture<Void> openAsync() {
-        return wrapped.openAsync();
-    }
-
-    @Override
-    public boolean isOpened() {
-        return wrapped == null ? false : wrapped.isOpened();
+    public boolean opened() {
+        isTrue("open", wrapped != null);
+        return wrapped.opened();
     }
 
     @Override
@@ -69,25 +75,26 @@ class UsageTrackingInternalConnection implements InternalConnection {
 
     @Override
     public ServerAddress getServerAddress() {
+        isTrue("open", wrapped != null);
         return wrapped.getServerAddress();
     }
 
     @Override
     public ByteBuf getBuffer(final int size) {
-        isTrue("open", !isClosed());
+        isTrue("open", wrapped != null);
         return wrapped.getBuffer(size);
     }
 
     @Override
     public void sendMessage(final List<ByteBuf> byteBuffers, final int lastRequestId) {
-        isTrue("open", !isClosed());
+        isTrue("open", wrapped != null);
         wrapped.sendMessage(byteBuffers, lastRequestId);
         lastUsedAt = System.currentTimeMillis();
     }
 
     @Override
     public ResponseBuffers receiveMessage(final int responseTo) {
-        isTrue("open", !isClosed());
+        isTrue("open", wrapped != null);
         ResponseBuffers responseBuffers = wrapped.receiveMessage(responseTo);
         lastUsedAt = System.currentTimeMillis();
         return responseBuffers;
@@ -95,25 +102,27 @@ class UsageTrackingInternalConnection implements InternalConnection {
 
     @Override
     public void sendMessageAsync(final List<ByteBuf> byteBuffers, final int lastRequestId, final SingleResultCallback<Void> callback) {
-        isTrue("open", !isClosed());
+        isTrue("open", wrapped != null);
         lastUsedAt = System.currentTimeMillis();
         wrapped.sendMessageAsync(byteBuffers, lastRequestId, callback);
     }
 
     @Override
     public void receiveMessageAsync(final int responseTo, final SingleResultCallback<ResponseBuffers> callback) {
-        isTrue("open", !isClosed());
+        isTrue("open", wrapped != null);
         lastUsedAt = System.currentTimeMillis();
         wrapped.receiveMessageAsync(responseTo, callback);
     }
 
     @Override
     public String getId() {
+        isTrue("open", wrapped != null);
         return wrapped.getId();
     }
 
     @Override
     public ConnectionDescription getDescription() {
+        isTrue("open", wrapped != null);
         return wrapped.getDescription();
     }
 
