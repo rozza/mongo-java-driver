@@ -22,6 +22,7 @@ import com.mongodb.event.ConnectionPoolEvent;
 import com.mongodb.event.ConnectionPoolListener;
 import com.mongodb.event.ConnectionPoolOpenedEvent;
 import com.mongodb.event.ConnectionPoolWaitQueueEvent;
+import org.bson.types.ObjectId;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -34,20 +35,30 @@ import static java.lang.String.format;
  * @since 3.0
  */
 public class JMXConnectionPoolListener implements ConnectionPoolListener {
-    private final ConcurrentMap<ClusterIdServerAddressPair, ConnectionPoolStatistics> map =
+    private final ConcurrentMap<ClusterIdServerAddressPair, ConnectionPoolStatistics> clusterIdServerAddressStatisticsMap =
         new ConcurrentHashMap<ClusterIdServerAddressPair, ConnectionPoolStatistics>();
+    private final ConcurrentMap<ClusterIdServerAddressPair, String> clusterIdServerAddressNameMap =
+        new ConcurrentHashMap<ClusterIdServerAddressPair, String>();
 
     @Override
     public void connectionPoolOpened(final ConnectionPoolOpenedEvent event) {
         ConnectionPoolStatistics statistics = new ConnectionPoolStatistics(event);
-        map.put(new ClusterIdServerAddressPair(event.getClusterId(), event.getServerAddress()), statistics);
-        MBeanServerFactory.getMBeanServer().registerMBean(statistics, getMBeanObjectName(event.getClusterId(), event.getServerAddress()));
+        ClusterIdServerAddressPair clusterIdServerAddressPair = new ClusterIdServerAddressPair(event.getClusterId(),
+                                                                                               event.getServerAddress());
+        String mBeanObjectName = generateMBeanObjectName(clusterIdServerAddressPair.clusterId, clusterIdServerAddressPair.serverAddress);
+        clusterIdServerAddressStatisticsMap.put(clusterIdServerAddressPair, statistics);
+        clusterIdServerAddressNameMap.put(clusterIdServerAddressPair, mBeanObjectName);
+
+        MBeanServerFactory.getMBeanServer().registerMBean(statistics, mBeanObjectName);
     }
 
     @Override
     public void connectionPoolClosed(final ConnectionPoolEvent event) {
-        map.remove(new ClusterIdServerAddressPair(event.getClusterId(), event.getServerAddress()));
-        MBeanServerFactory.getMBeanServer().unregisterMBean(getMBeanObjectName(event.getClusterId(), event.getServerAddress()));
+        ClusterIdServerAddressPair clusterIdServerAddressPair = new ClusterIdServerAddressPair(event.getClusterId(),
+                                                                                               event.getServerAddress());
+        String mBeanObjectName = clusterIdServerAddressNameMap.remove(clusterIdServerAddressPair);
+        clusterIdServerAddressStatisticsMap.remove(clusterIdServerAddressPair);
+        MBeanServerFactory.getMBeanServer().unregisterMBean(mBeanObjectName);
     }
 
     @Override
@@ -98,18 +109,22 @@ public class JMXConnectionPoolListener implements ConnectionPoolListener {
         }
     }
 
-    String getMBeanObjectName(final String clusterId, final ServerAddress serverAddress) {
+    String generateMBeanObjectName(final String clusterId, final ServerAddress serverAddress) {
         // we could do a url encode, but since : is the only invalid character in an object name, then
         // we'll simply do it.
         String adjustedClusterId = clusterId.replace(":", "%3A");
         String adjustedHost = serverAddress.getHost().replace(":", "%3A");
 
-        return format("org.mongodb.driver:type=ConnectionPool,clusterId=%s,host=%s,port=%s", adjustedClusterId, adjustedHost,
-                      serverAddress.getPort());
+        return format("org.mongodb.driver:type=ConnectionPool,clusterId=%s,host=%s,port=%s,oid=%s", adjustedClusterId, adjustedHost,
+                      serverAddress.getPort(), new ObjectId());
     }
 
     ConnectionPoolStatisticsMBean getMBean(final String clusterId, final ServerAddress serverAddress) {
         return getStatistics(clusterId, serverAddress);
+    }
+
+    String getMBeanName(final String clusterId, final ServerAddress serverAddress) {
+        return clusterIdServerAddressNameMap.get(new ClusterIdServerAddressPair(clusterId, serverAddress));
     }
 
     private ConnectionPoolStatistics getStatistics(final ConnectionEvent event) {
@@ -121,7 +136,7 @@ public class JMXConnectionPoolListener implements ConnectionPoolListener {
     }
 
     private ConnectionPoolStatistics getStatistics(final String clusterId, final ServerAddress serverAddress) {
-        return map.get(new ClusterIdServerAddressPair(clusterId, serverAddress));
+        return clusterIdServerAddressStatisticsMap.get(new ClusterIdServerAddressPair(clusterId, serverAddress));
     }
 
     private static final class ClusterIdServerAddressPair {
