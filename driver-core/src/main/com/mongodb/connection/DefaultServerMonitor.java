@@ -70,6 +70,11 @@ class DefaultServerMonitor implements ServerMonitor {
     }
 
     @Override
+    public void start() {
+        monitorThread.start();
+    }
+
+    @Override
     public void connect() {
         lock.lock();
         try {
@@ -85,12 +90,13 @@ class DefaultServerMonitor implements ServerMonitor {
         monitor.close();
         monitorThread.interrupt();
         monitorThread = createMonitorThread();
+        monitorThread.start();
     }
 
     @Override
     public void close() {
         isTrue("open", !isClosed);
-        isClosed = false;
+        isClosed = true;
         monitor.close();
         monitorThread.interrupt();
     }
@@ -99,7 +105,6 @@ class DefaultServerMonitor implements ServerMonitor {
         monitor = new ServerMonitorRunnable();
         Thread monitorThread = new Thread(new ServerMonitorRunnable(), "cluster-" + clusterId + "-" + serverAddress);
         monitorThread.setDaemon(true);
-        monitorThread.start();
         return monitorThread;
     }
 
@@ -222,11 +227,6 @@ class DefaultServerMonitor implements ServerMonitor {
             }
         }
     }
-
-    private boolean isThreadAlive() {
-        return monitorThread.isAlive();
-    }
-
 
     private void reset() {
         count = 0;

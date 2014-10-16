@@ -49,8 +49,9 @@ class DefaultServer implements ClusterableServer {
         this.serverAddress = notNull("serverAddress", serverAddress);
         this.connectionPool = notNull("connectionPool", connectionPool);
         this.serverStateListener = new DefaultServerStateListener();
-        this.serverMonitor = serverMonitorFactory.create(serverStateListener);
-        this.description = ServerDescription.builder().state(CONNECTING).address(serverAddress).build();
+        description = ServerDescription.builder().state(CONNECTING).address(serverAddress).build();
+        serverMonitor = serverMonitorFactory.create(serverStateListener);
+        serverMonitor.start();
     }
 
     @Override
