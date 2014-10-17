@@ -17,10 +17,12 @@
 package com.mongodb.connection;
 
 import com.mongodb.MongoException;
+import com.mongodb.MongoInternalException;
 import com.mongodb.MongoSocketException;
 import com.mongodb.MongoSocketReadTimeoutException;
 import com.mongodb.MongoWaitQueueFullException;
 import com.mongodb.ServerAddress;
+import com.mongodb.async.MongoFuture;
 import com.mongodb.async.SingleResultCallback;
 import com.mongodb.diagnostics.logging.Logger;
 import com.mongodb.diagnostics.logging.Loggers;
@@ -92,8 +94,21 @@ class DefaultConnectionPool implements ConnectionPool {
                 pool.release(internalConnection, true);
                 internalConnection = pool.get(timeout, timeUnit);
             }
-            connectionPoolListener.connectionCheckedOut(new ConnectionEvent(clusterId, serverAddress, internalConnection.getId()));
-            LOGGER.trace(format("Checked out connection [%s] to server %s", internalConnection.getId(), serverAddress));
+            if (!internalConnection.opened()) {
+                try {
+                    internalConnection.open();
+                } catch (Throwable t) {
+                    pool.release(internalConnection, true);
+                    if (t instanceof MongoException) {
+                        throw (MongoException) t;
+                    } else {
+                        throw new MongoInternalException(t.toString(), t);
+                    }
+                }
+            }
+            connectionPoolListener.connectionCheckedOut(new ConnectionEvent(clusterId, serverAddress,
+                                                                            getId(internalConnection)));
+            LOGGER.trace(format("Checked out connection [%s] to server %s", getId(internalConnection), serverAddress));
             return new PooledConnection(internalConnection);
         } finally {
             waitQueueSize.decrementAndGet();
@@ -200,9 +215,13 @@ class DefaultConnectionPool implements ConnectionPool {
     private void incrementGenerationOnSocketException(final InternalConnection connection, final MongoException e) {
         if (e instanceof MongoSocketException && !(e instanceof MongoSocketReadTimeoutException)) {
             LOGGER.warn(format("Got socket exception on connection [%s] to %s. All connections to %s will be closed.",
-                               connection.getId(), serverAddress, serverAddress));
+                               getId(connection), serverAddress, serverAddress));
             invalidate();
         }
+    }
+
+    private String getId(final InternalConnection internalConnection) {
+        return internalConnection.getDescription().getConnectionId().toString();
     }
 
     private class PooledConnection implements InternalConnection {
@@ -213,11 +232,23 @@ class DefaultConnectionPool implements ConnectionPool {
         }
 
         @Override
+        public void open() {
+            isTrue("open", wrapped != null);
+            wrapped.open();
+        }
+
+        @Override
+        public MongoFuture<Void> openAsync() {
+            isTrue("open", wrapped != null);
+            return wrapped.openAsync();
+        }
+
+        @Override
         public void close() {
             if (wrapped != null) {
                 if (!closed) {
-                    connectionPoolListener.connectionCheckedIn(new ConnectionEvent(clusterId, wrapped.getServerAddress(), wrapped.getId()));
-                    LOGGER.trace(format("Checked in connection [%s] to server %s", getId(), serverAddress));
+                    connectionPoolListener.connectionCheckedIn(new ConnectionEvent(clusterId, serverAddress, getId(wrapped)));
+                    LOGGER.trace(format("Checked in connection [%s] to server %s", getId(wrapped), serverAddress));
                 }
                 pool.release(wrapped, wrapped.isClosed() || shouldPrune(wrapped));
                 wrapped = null;
@@ -225,14 +256,14 @@ class DefaultConnectionPool implements ConnectionPool {
         }
 
         @Override
-        public boolean isClosed() {
-            return wrapped == null || wrapped.isClosed();
+        public boolean opened() {
+            isTrue("open", wrapped != null);
+            return wrapped.opened();
         }
 
         @Override
-        public ServerAddress getServerAddress() {
-            isTrue("open", !isClosed());
-            return wrapped.getServerAddress();
+        public boolean isClosed() {
+            return wrapped == null || wrapped.isClosed();
         }
 
         @Override
@@ -275,12 +306,8 @@ class DefaultConnectionPool implements ConnectionPool {
         }
 
         @Override
-        public String getId() {
-            return wrapped.getId();
-        }
-
-        @Override
         public ConnectionDescription getDescription() {
+            isTrue("open", wrapped != null);
             return wrapped.getDescription();
         }
     }
@@ -296,8 +323,7 @@ class DefaultConnectionPool implements ConnectionPool {
         public UsageTrackingInternalConnection create() {
             UsageTrackingInternalConnection internalConnection =
             new UsageTrackingInternalConnection(internalConnectionFactory.create(serverAddress), generation.get());
-            LOGGER.info(format("Opened connection [%s] to %s", internalConnection.getId(), serverAddress));
-            connectionPoolListener.connectionAdded(new ConnectionEvent(clusterId, serverAddress, internalConnection.getId()));
+            connectionPoolListener.connectionAdded(new ConnectionEvent(clusterId, serverAddress, getId(internalConnection)));
             return internalConnection;
         }
 
@@ -314,9 +340,9 @@ class DefaultConnectionPool implements ConnectionPool {
                 reason = "the pool has been closed";
             }
             if (!closed) {
-                connectionPoolListener.connectionRemoved(new ConnectionEvent(clusterId, serverAddress, connection.getId()));
+                connectionPoolListener.connectionRemoved(new ConnectionEvent(clusterId, serverAddress, getId(connection)));
             }
-            LOGGER.info(format("Closed connection [%s] to %s because %s.", connection.getId(), serverAddress, reason));
+            LOGGER.info(format("Closed connection [%s] to %s because %s.", getId(connection), serverAddress, reason));
             connection.close();
         }
 

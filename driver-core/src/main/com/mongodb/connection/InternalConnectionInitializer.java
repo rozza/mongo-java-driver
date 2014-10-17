@@ -16,14 +16,12 @@
 
 package com.mongodb.connection;
 
-interface ServerMonitor {
+import com.mongodb.async.MongoFuture;
 
-    void start();
+interface InternalConnectionInitializer {
 
-    void connect();
+    ConnectionDescription initialize(InternalConnection internalConnection);
 
-    void invalidate();
-
-    void close();
+    MongoFuture<ConnectionDescription> initializeAsync(InternalConnection internalConnection);
 
 }

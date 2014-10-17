@@ -16,14 +16,8 @@
 
 package com.mongodb.connection;
 
-interface ServerMonitor {
+interface ServerMonitorFactory {
 
-    void start();
-
-    void connect();
-
-    void invalidate();
-
-    void close();
+    ServerMonitor create(ChangeListener<ServerDescription> serverStateListener);
 
 }

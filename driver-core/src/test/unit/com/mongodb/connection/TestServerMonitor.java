@@ -16,14 +16,26 @@
 
 package com.mongodb.connection;
 
-interface ServerMonitor {
+class TestServerMonitorFactory implements ServerMonitorFactory {
 
-    void start();
+    @Override
+    public ServerMonitor create(final ChangeListener<ServerDescription> serverStateListener) {
+        return new ServerMonitor(){
+            @Override
+            public void start() {
+            }
 
-    void connect();
+            @Override
+            public void connect() {
+            }
 
-    void invalidate();
+            @Override
+            public void invalidate() {
+            }
 
-    void close();
-
+            @Override
+            public void close() {
+            }
+        };
+    }
 }

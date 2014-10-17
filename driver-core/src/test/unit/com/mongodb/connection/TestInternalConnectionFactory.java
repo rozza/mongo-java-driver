@@ -17,7 +17,9 @@
 package com.mongodb.connection;
 
 import com.mongodb.ServerAddress;
+import com.mongodb.async.MongoFuture;
 import com.mongodb.async.SingleResultCallback;
+import com.mongodb.async.SingleResultFuture;
 import org.bson.ByteBuf;
 
 import java.util.ArrayList;
@@ -44,9 +46,35 @@ class TestInternalConnectionFactory implements InternalConnectionFactory {
     public static class TestInternalConnection implements InternalConnection {
         private final ServerAddress serverAddress;
         private boolean closed;
+        private boolean opened;
 
         public TestInternalConnection(final ServerAddress serverAddress) {
             this.serverAddress = serverAddress;
+        }
+
+        public void open() {
+            opened = true;
+        }
+
+        @Override
+        public MongoFuture<Void> openAsync() {
+            opened = true;
+            return new SingleResultFuture<Void>(null);
+        }
+
+        @Override
+        public void close() {
+            closed = true;
+        }
+
+        @Override
+        public boolean opened() {
+            return opened;
+        }
+
+        @Override
+        public boolean isClosed() {
+            return closed;
         }
 
         @Override
@@ -65,35 +93,17 @@ class TestInternalConnectionFactory implements InternalConnectionFactory {
 
         @Override
         public void sendMessageAsync(final List<ByteBuf> byteBuffers, final int lastRequestId, final SingleResultCallback<Void> callback) {
+            callback.onResult(null, null);
         }
 
         @Override
         public void receiveMessageAsync(final int responseTo, final SingleResultCallback<ResponseBuffers> callback) {
-        }
-
-        @Override
-        public String getId() {
-            return Integer.toString(hashCode());
+            callback.onResult(null, null);
         }
 
         @Override
         public ConnectionDescription getDescription() {
-            throw new UnsupportedOperationException("Not implemented yet!");
-        }
-
-        @Override
-        public void close() {
-            closed = true;
-        }
-
-        @Override
-        public boolean isClosed() {
-            return closed;
-        }
-
-        @Override
-        public ServerAddress getServerAddress() {
-            return serverAddress;
+            return new ConnectionDescription(serverAddress);
         }
     }
 }

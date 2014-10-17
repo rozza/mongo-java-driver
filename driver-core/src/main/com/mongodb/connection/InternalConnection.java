@@ -16,8 +16,8 @@
 
 package com.mongodb.connection;
 
-import com.mongodb.ServerAddress;
 import com.mongodb.annotations.NotThreadSafe;
+import com.mongodb.async.MongoFuture;
 import com.mongodb.async.SingleResultCallback;
 import org.bson.ByteBuf;
 
@@ -33,23 +33,40 @@ import java.util.List;
 interface InternalConnection extends BufferProvider {
 
     /**
-     * Gets the server address of this connection
-     */
-    ServerAddress getServerAddress();
-
-    /**
-     * Gets the id of the connection.  If possible, this id will correlate with the connection id that the server puts in its log messages.
-     *
-     * @return the id
-     */
-    String getId();
-
-    /**
      * Gets the description of this connection.
      *
      * @return the connection description
      */
     ConnectionDescription getDescription();
+
+    /**
+     * Opens the connection so its ready for use
+     */
+    void open();
+
+    /**
+     * Opens the connection so its ready for use
+     */
+    MongoFuture<Void> openAsync();
+
+    /**
+     * Closes the connection.
+     */
+    void close();
+
+    /**
+     * Returns if the connection has been opened
+     *
+     * @return true if connection has been opened
+     */
+    boolean opened();
+
+    /**
+     * Returns the closed state of the connection
+     *
+     * @return true if connection is closed
+     */
+    boolean isClosed();
 
     /**
      * Send a message to the server. The connection may not make any attempt to validate the integrity of the message.
@@ -84,15 +101,4 @@ interface InternalConnection extends BufferProvider {
      */
     void receiveMessageAsync(int responseTo, SingleResultCallback<ResponseBuffers> callback);
 
-    /**
-     * Closes the connection.
-     */
-    void close();
-
-    /**
-     * Returns the closed state of the connection
-     *
-     * @return true if connection is closed
-     */
-    boolean isClosed();
 }
