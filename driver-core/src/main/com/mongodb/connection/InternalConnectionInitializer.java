@@ -20,8 +20,8 @@ import com.mongodb.async.MongoFuture;
 
 interface InternalConnectionInitializer {
 
-    ConnectionDescription initialize(InternalConnection internalConnection, ConnectionId connectionId);
+    ConnectionDescription initialize(InternalConnection internalConnection);
 
-    MongoFuture<ConnectionDescription> initializeAsync(InternalConnection internalConnection, ConnectionId connectionId);
+    MongoFuture<ConnectionDescription> initializeAsync(InternalConnection internalConnection);
 
 }

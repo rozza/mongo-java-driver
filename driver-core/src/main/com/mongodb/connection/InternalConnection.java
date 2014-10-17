@@ -16,7 +16,6 @@
 
 package com.mongodb.connection;
 
-import com.mongodb.ServerAddress;
 import com.mongodb.annotations.NotThreadSafe;
 import com.mongodb.async.MongoFuture;
 import com.mongodb.async.SingleResultCallback;
@@ -32,18 +31,6 @@ import java.util.List;
  */
 @NotThreadSafe
 interface InternalConnection extends BufferProvider {
-
-    /**
-     * Gets the id of the connection.  If possible, this id will correlate with the connection id that the server puts in its log messages.
-     *
-     * @return the id
-     */
-    String getId();
-
-    /**
-     * Gets the server address of this connection
-     */
-    ServerAddress getServerAddress();
 
     /**
      * Gets the description of this connection.

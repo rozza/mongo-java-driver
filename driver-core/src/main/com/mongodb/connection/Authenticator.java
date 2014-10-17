@@ -37,7 +37,7 @@ abstract class Authenticator {
     }
 
     ServerAddress getServerAddress() {
-        return internalConnection.getServerAddress();
+        return internalConnection.getDescription().getServerAddress();
     }
 
     abstract void authenticate();

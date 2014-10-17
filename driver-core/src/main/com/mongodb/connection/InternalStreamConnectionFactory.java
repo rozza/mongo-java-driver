@@ -18,8 +18,6 @@ package com.mongodb.connection;
 
 import com.mongodb.MongoCredential;
 import com.mongodb.ServerAddress;
-import com.mongodb.diagnostics.logging.Logger;
-import com.mongodb.diagnostics.logging.Loggers;
 import com.mongodb.event.ConnectionListener;
 
 import java.util.List;
@@ -27,7 +25,6 @@ import java.util.List;
 import static com.mongodb.assertions.Assertions.notNull;
 
 class InternalStreamConnectionFactory implements InternalConnectionFactory {
-    static final Logger LOGGER = Loggers.getLogger("connection");
     private final String clusterId;
     private final StreamFactory streamFactory;
     private final List<MongoCredential> credentialList;

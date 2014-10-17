@@ -31,28 +31,29 @@ import static com.mongodb.connection.DescriptionHelper.createConnectionDescripti
 
 class InternalStreamConnectionInitializer implements InternalConnectionInitializer {
     private final List<MongoCredential> credentialList;
-    private ConnectionId connectionId;
-
-    private InternalConnection internalConnection;
-    private ConnectionDescription connectionDescription;
 
     InternalStreamConnectionInitializer(final List<MongoCredential> credentialList) {
         this.credentialList = notNull("credentialList", credentialList);
     }
 
     @Override
-    public ConnectionDescription initialize(final InternalConnection internalConnection, final ConnectionId connectionId) {
-        this.internalConnection = notNull("internalConnection", internalConnection);
-        this.connectionId = notNull("connectionId", connectionId);
+    public ConnectionDescription initialize(final InternalConnection internalConnection) {
+        notNull("internalConnection", internalConnection);
 
+        ConnectionDescription connectionDescription;
         try {
-            initializeConnectionId();
-            initializeServerDescription();
-            authenticateAll();
+            connectionDescription = initializeServerDescription(internalConnection, initializeConnectionId(internalConnection));
+            authenticateAll(internalConnection, connectionDescription);
 
             // try again if there was an exception calling getlasterror before authenticating
-            if (!connectionId.hasServerValue()) {
-                initializeConnectionId();
+            if (connectionDescription.getConnectionId().getServerValue() == null) {
+                connectionDescription = new ConnectionDescription(connectionDescription.getServerAddress(),
+                                                                  initializeConnectionId(internalConnection),
+                                                                  connectionDescription.getServerVersion(),
+                                                                  connectionDescription.getServerType(),
+                                                                  connectionDescription.getMaxBatchCount(),
+                                                                  connectionDescription.getMaxDocumentSize(),
+                                                                  connectionDescription.getMaxMessageSize());
             }
         } catch (Throwable t) {
             internalConnection.close();
@@ -66,11 +67,10 @@ class InternalStreamConnectionInitializer implements InternalConnectionInitializ
     }
 
     @Override
-    public MongoFuture<ConnectionDescription> initializeAsync(final InternalConnection internalConnection,
-                                                              final ConnectionId connectionId) {
+    public MongoFuture<ConnectionDescription> initializeAsync(final InternalConnection internalConnection) {
         SingleResultFuture<ConnectionDescription> future = new SingleResultFuture<ConnectionDescription>();
         try {
-            initialize(internalConnection, connectionId);
+            ConnectionDescription connectionDescription = initialize(internalConnection);
             future.init(connectionDescription, null);
         } catch (MongoException e) {
             future.init(null, e);
@@ -78,31 +78,36 @@ class InternalStreamConnectionInitializer implements InternalConnectionInitializ
         return future;
     }
 
-    private void initializeConnectionId() {
+    private ConnectionId initializeConnectionId(final InternalConnection internalConnection) {
         BsonDocument response = CommandHelper.executeCommandWithoutCheckingForFailure("admin",
                                                                                       new BsonDocument("getlasterror", new BsonInt32(1)),
                                                                                       internalConnection);
         if (response.containsKey("connectionId")) {
-            connectionId.setServerValue(response.getNumber("connectionId").intValue());
+            return new ConnectionId(internalConnection.getDescription().getConnectionId().getLocalValue(),
+                                    response.getNumber("connectionId").intValue());
+        } else {
+            return internalConnection.getDescription().getConnectionId();
         }
     }
 
-    private void initializeServerDescription() {
+    private ConnectionDescription initializeServerDescription(final InternalConnection internalConnection,
+                                                              final ConnectionId connectionId) {
         BsonDocument isMasterResult = executeCommand("admin", new BsonDocument("ismaster", new BsonInt32(1)), internalConnection);
         BsonDocument buildInfoResult = executeCommand("admin", new BsonDocument("buildinfo", new BsonInt32(1)), internalConnection);
-        connectionDescription = createConnectionDescription(internalConnection.getServerAddress(), connectionId, isMasterResult,
-                                                            buildInfoResult);
+        return createConnectionDescription(internalConnection.getDescription().getServerAddress(), connectionId, isMasterResult,
+                                           buildInfoResult);
     }
 
-    private void authenticateAll() {
+    private void authenticateAll(final InternalConnection internalConnection, final ConnectionDescription connectionDescription) {
         if (connectionDescription.getServerType() != ServerType.REPLICA_SET_ARBITER) {
             for (final MongoCredential cur : credentialList) {
-                createAuthenticator(cur).authenticate();
+                createAuthenticator(internalConnection, connectionDescription, cur).authenticate();
             }
         }
     }
 
-    private Authenticator createAuthenticator(final MongoCredential credential) {
+    private Authenticator createAuthenticator(final InternalConnection internalConnection,
+                                              final ConnectionDescription connectionDescription, final MongoCredential credential) {
         MongoCredential actualCredential;
         if (credential.getAuthenticationMechanism() == null) {
             if (connectionDescription.getServerVersion().compareTo(new ServerVersion(2, 7)) >= 0) {

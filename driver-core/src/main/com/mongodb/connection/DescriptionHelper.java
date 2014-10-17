@@ -33,6 +33,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import static com.mongodb.connection.ConnectionDescription.getDefaultMaxMessageSize;
+import static com.mongodb.connection.ConnectionDescription.getDefaultMaxWriteBatchSize;
 import static com.mongodb.connection.ServerConnectionState.CONNECTED;
 import static com.mongodb.connection.ServerDescription.getDefaultMaxDocumentSize;
 import static com.mongodb.connection.ServerDescription.getDefaultMaxWireVersion;
@@ -47,10 +49,6 @@ import static java.util.Arrays.asList;
 import static java.util.concurrent.TimeUnit.NANOSECONDS;
 
 final class DescriptionHelper {
-
-    static final int DEFAULT_MAX_MESSAGE_SIZE = 0x2000000;   // 32MB
-    static final int DEFAULT_MAX_WRITE_BATCH_SIZE = 512;
-
 
     static ConnectionDescription createConnectionDescription(final ServerAddress address, final ConnectionId connectionId,
                                                              final BsonDocument isMasterResult,
@@ -84,7 +82,7 @@ final class DescriptionHelper {
     }
 
     private static int getMaxMessageSizeBytes(final BsonDocument isMasterResult) {
-        return isMasterResult.getInt32("maxMessageSizeBytes", new BsonInt32(DEFAULT_MAX_MESSAGE_SIZE)).getValue();
+        return isMasterResult.getInt32("maxMessageSizeBytes", new BsonInt32(getDefaultMaxMessageSize())).getValue();
     }
 
     private static int getMaxBsonObjectSize(final BsonDocument isMasterResult) {
@@ -92,7 +90,7 @@ final class DescriptionHelper {
     }
 
     private static int getMaxWriteBatchSize(final BsonDocument isMasterResult) {
-        return isMasterResult.getInt32("maxWriteBatchSize", new BsonInt32(DEFAULT_MAX_WRITE_BATCH_SIZE)).getValue();
+        return isMasterResult.getInt32("maxWriteBatchSize", new BsonInt32(getDefaultMaxWriteBatchSize())).getValue();
     }
 
     private static String getString(final BsonDocument response, final String key) {

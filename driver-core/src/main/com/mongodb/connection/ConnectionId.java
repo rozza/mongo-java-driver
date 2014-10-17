@@ -21,7 +21,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static java.lang.String.format;
 
 /**
- * A description of a connection to a MongoDB server.
+ * An immutable connection identifier of a connection to a MongoDB server.
+ *
+ * <p>Contains a locally created id and if available the MongoDB server created connection id</p>
  *
  * @since 3.0
  */
@@ -29,32 +31,41 @@ public class ConnectionId {
     private static final AtomicInteger INCREMENTING_ID = new AtomicInteger();
 
     private final int localValue;
-    private volatile Integer serverValue;
+    private final Integer serverValue;
 
     ConnectionId() {
-        localValue = INCREMENTING_ID.incrementAndGet();
+        this(INCREMENTING_ID.incrementAndGet(), null);
     }
 
-    /**
-     * Returns true if the server connection id has been set
-     *
-     * @return true if the server connection id has been set
-     */
-    public boolean hasServerValue() {
-        return serverValue != null;
-    }
-
-    /**
-     * Sets the server value for the connection id
-     *
-     * @param serverValue the server value for the connection id
-     */
-    public void setServerValue(final int serverValue) {
+    ConnectionId(final int localValue, final Integer serverValue) {
+        this.localValue = localValue;
         this.serverValue = serverValue;
+    }
+
+    /**
+     * Gets the locally created id value for the connection
+     *
+     * @return the locally created id value for the connection
+     */
+    public int getLocalValue() {
+        return localValue;
+    }
+
+    /**
+     * Gets the server generated id value for the connection or null if not set.
+     *
+     * @return the server generated id value for the connection or null if not set.
+     */
+    public Integer getServerValue() {
+        return serverValue;
     }
 
     @Override
     public String toString() {
-        return format("connectionId{localValue:%s, serverValue:%s}", localValue, (serverValue != null ? serverValue : "unknown"));
+        if (serverValue == null) {
+            return format("connectionId{localValue:%s}", localValue);
+        } else {
+            return format("connectionId{localValue:%s, serverValue:%s}", localValue, serverValue);
+        }
     }
 }

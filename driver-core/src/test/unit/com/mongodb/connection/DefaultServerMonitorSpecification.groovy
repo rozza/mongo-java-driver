@@ -36,12 +36,16 @@ class DefaultServerMonitorSpecification extends Specification {
                 latch.countDown()
             }
         }
-        def internalConnection = Mock(InternalConnection)
-        def internalConnectionFactory = Mock(InternalConnectionFactory)
-        internalConnection.open() >> { throw new IOException() }
-        internalConnectionFactory.create(_) >> { internalConnection }
+        def internalConnectionFactory = Mock(InternalConnectionFactory) {
+            create(_) >> {
+                Mock(InternalConnection) {
+                    open() >> { throw new IOException() }
+                }
+            }
+        }
         monitor = new DefaultServerMonitor(new ServerAddress(), ServerSettings.builder().build(), 'clusterId', changeListener,
                                            internalConnectionFactory, new TestConnectionPool())
+        monitor.start()
 
         when:
         monitor.monitorThread.interrupt()
@@ -63,12 +67,16 @@ class DefaultServerMonitorSpecification extends Specification {
                 stateChanged = true;
             }
         }
-        def internalConnection = Mock(InternalConnection)
-        def internalConnectionFactory = Mock(InternalConnectionFactory)
-        internalConnection.open() >> { sleep(1000); } // Block the opening by sleeping - causes a race in this test that may rarely hit.
-        internalConnectionFactory.create(_) >> { internalConnection }
+        def internalConnectionFactory = Mock(InternalConnectionFactory) {
+            create(_) >> {
+                Mock(InternalConnection) {
+                    open() >> { sleep(10); }
+                }
+            }
+        }
         monitor = new DefaultServerMonitor(new ServerAddress(), ServerSettings.builder().build(), 'clusterId', changeListener,
                                            internalConnectionFactory, new TestConnectionPool())
+        monitor.start()
         def monitorId = monitor.monitorThread.getId()
 
         when:
@@ -91,23 +99,23 @@ class DefaultServerMonitorSpecification extends Specification {
                 stateChanged = true;
             }
         }
-        def internalConnection = Mock(InternalConnection)
-        def internalConnectionFactory = Mock(InternalConnectionFactory)
-        internalConnection.open() >> { sleep(10000); } // Block the opening by sleeping - causes a race in this test that may rarely hit.
-        internalConnectionFactory.create(_) >> { internalConnection }
+        def internalConnectionFactory = Mock(InternalConnectionFactory) {
+            create(_) >> {
+                Mock(InternalConnection) {
+                    open() >> { sleep(10); }
+                }
+            }
+        }
         monitor = new DefaultServerMonitor(new ServerAddress(), ServerSettings.builder().build(), 'clusterId', changeListener,
                                            internalConnectionFactory, new TestConnectionPool())
+        monitor.start()
 
         when:
         monitor.close()
-        while (!monitor.isThreadAlive()) {  monitor.monitorThread.wait(10) }
 
         then:
+        monitor.monitorThread.isInterrupted()
         !stateChanged
-
-        cleanup:
-        monitor?.close()
     }
-
 
 }

@@ -53,6 +53,9 @@ import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
 import static MongoNamespace.COMMAND_COLLECTION_NAME
+import static com.mongodb.connection.ConnectionDescription.getDefaultMaxMessageSize
+import static com.mongodb.connection.ConnectionDescription.getDefaultMaxWriteBatchSize
+import static com.mongodb.connection.ServerDescription.getDefaultMaxDocumentSize
 import static java.util.concurrent.TimeUnit.SECONDS
 
 @SuppressWarnings(['UnusedVariable'])
@@ -60,17 +63,20 @@ class InternalStreamConnectionSpecification extends Specification {
     private static final String CLUSTER_ID = '1'
     def helper = new StreamHelper()
     def serverAddress = new ServerAddress()
-    def streamFactory = Mock(StreamFactory)
+    def connectionDescription = new ConnectionDescription(serverAddress, new ConnectionId(1, 1), new ServerVersion(), ServerType.STANDALONE,
+                                                          getDefaultMaxWriteBatchSize(), getDefaultMaxDocumentSize(),
+                                                          getDefaultMaxMessageSize())
     def stream = Mock(Stream)
-    def initializer = Mock(InternalConnectionInitializer)
+    def streamFactory = Mock(StreamFactory) {
+        create(_) >> { stream }
+    }
+    def initializer = Mock(InternalConnectionInitializer) {
+        initialize(_) >> { connectionDescription }
+        initializeAsync(_) >> { new SingleResultFuture<ConnectionDescription>(connectionDescription) }
+    }
     def listener = Mock(ConnectionListener)
-    ConnectionDescription connectionDescription = Mock(ConnectionDescription)
-    def connectionId = new ConnectionId();
 
     def getConnection() {
-        streamFactory.create(_) >> { stream }
-        connectionDescription.getConnectionId() >> { connectionId }
-        initializer.initialize(_, _) >> { connectionDescription }
         new InternalStreamConnection(CLUSTER_ID, serverAddress, streamFactory, initializer, listener)
     }
 
@@ -170,6 +176,44 @@ class InternalStreamConnectionSpecification extends Specification {
 
         then:
         1 * listener.messageReceived(_)
+    }
+
+    def 'should change the connection description when opened'() {
+        when:
+        def connection = getConnection()
+
+        then:
+        connection.getDescription().getConnectionId().getServerValue() == null
+        connection.getDescription().getServerType() == ServerType.UNKNOWN
+
+        when:
+        connection.open()
+
+        then:
+        connection.opened()
+        connection.getDescription().getServerType() == ServerType.STANDALONE
+        connection.getDescription().getConnectionId().getServerValue() == 1
+
+    }
+
+    @Category(Async)
+    @IgnoreIf({ javaVersion < 1.7 })
+    def 'should change the connection description when opened asynchronously'() {
+        when:
+        def connection = getConnection()
+
+        then:
+        connection.getDescription().getConnectionId().getServerValue() == null
+        connection.getDescription().getServerType() == ServerType.UNKNOWN
+
+        when:
+        connection.openAsync().get(10, SECONDS)
+
+        then:
+        connection.opened()
+        connection.getDescription().getServerType() == ServerType.STANDALONE
+        connection.getDescription().getConnectionId().getServerValue() == 1
+
     }
 
     def 'should handle out of order messages on the stream'() {
@@ -291,8 +335,10 @@ class InternalStreamConnectionSpecification extends Specification {
 
     def 'should close the stream when initialization throws an exception'() {
         given:
-        initializer.initialize(_, _) >> { throw new MongoInternalException('Something went wrong') }
-        def connection = getConnection()
+        def failedInitializer = Mock(InternalConnectionInitializer) {
+            initialize(_) >> { throw new MongoInternalException('Something went wrong') }
+        }
+        def connection = new InternalStreamConnection(CLUSTER_ID, serverAddress, streamFactory, failedInitializer, listener)
 
         when:
         connection.open()
@@ -306,10 +352,12 @@ class InternalStreamConnectionSpecification extends Specification {
     @IgnoreIf({ javaVersion < 1.7 })
     def 'should close the stream when initialization throws an exception asynchronously'() {
         given:
-        initializer.initializeAsync(_, _) >> {
-            new SingleResultFuture<ConnectionDescription>(null, new MongoInternalException('Something went wrong'));
+        def failedInitializer = Mock(InternalConnectionInitializer) {
+            initializeAsync(_) >> {
+                new SingleResultFuture<ConnectionDescription>(null, new MongoInternalException('Something went wrong'));
+            }
         }
-        def connection = getConnection()
+        def connection = new InternalStreamConnection(CLUSTER_ID, serverAddress, streamFactory, failedInitializer, listener)
 
         when:
         connection.openAsync().get(10, SECONDS)

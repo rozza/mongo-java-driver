@@ -68,7 +68,6 @@ class InternalStreamConnection implements InternalConnection {
     private final Semaphore writing = new Semaphore(1);
     private final Semaphore reading = new Semaphore(1);
 
-    private volatile ConnectionId connectionId;
     private volatile ConnectionDescription description;
     private volatile Stream stream;
     private volatile boolean isClosed;
@@ -84,24 +83,11 @@ class InternalStreamConnection implements InternalConnection {
         this.streamFactory = notNull("streamFactory", streamFactory);
         this.connectionInitializer = notNull("connectionInitializer", connectionInitializer);
         this.connectionListener = notNull("connectionListener", connectionListener);
-        connectionId = new ConnectionId();
-    }
-
-    @Override
-    public String getId() {
-        return connectionId.toString();
-    }
-
-    @Override
-    public ServerAddress getServerAddress() {
-        return serverAddress;
+        description = new ConnectionDescription(serverAddress);
     }
 
     @Override
     public ConnectionDescription getDescription() {
-        if (description == null) {
-            throw new MongoInternalException("Connection has not been opened");
-        }
         return description;
     }
 
@@ -110,8 +96,7 @@ class InternalStreamConnection implements InternalConnection {
         isTrue("Open already called", stream == null);
         stream = streamFactory.create(serverAddress);
         try {
-            description = connectionInitializer.initialize(this, connectionId);
-            connectionId = description.getConnectionId();
+            description = connectionInitializer.initialize(this);
             LOGGER.info(format("Opened connection [%s] to %s", getId(), serverAddress));
             try {
                 connectionListener.connectionOpened(new ConnectionEvent(clusterId, serverAddress, getId()));
@@ -119,12 +104,12 @@ class InternalStreamConnection implements InternalConnection {
                 LOGGER.warn("Exception when trying to signal connectionOpened to the connectionListener", t);
             }
             opened = true;
-        } catch (Exception e) {
+        } catch (Throwable t) {
             close();
-            if (e instanceof MongoException) {
-                throw (MongoException) e;
+            if (t instanceof MongoException) {
+                throw (MongoException) t;
             } else {
-                throw new MongoException(e.toString());
+                throw new MongoException(t.toString(), t);
             }
         }
     }
@@ -134,26 +119,26 @@ class InternalStreamConnection implements InternalConnection {
         isTrue("Open already called", stream == null);
         final SingleResultFuture<Void> future = new SingleResultFuture<Void>();
         stream = streamFactory.create(serverAddress);
-        connectionInitializer.initializeAsync(this, connectionId).register(new SingleResultCallback<ConnectionDescription>() {
-            @Override
-            public void onResult(final ConnectionDescription result, final MongoException e) {
-                if (e != null) {
-                    close();
-                    future.init(null, e);
-                } else {
-                    description = result;
-                    connectionId = description.getConnectionId();
-                    future.init(null, null);
-                    LOGGER.info(format("Opened connection [%s] to %s", getId(), serverAddress));
-                    try {
-                        connectionListener.connectionOpened(new ConnectionEvent(clusterId, serverAddress, getId()));
-                    } catch (Throwable t) {
-                        LOGGER.warn("Exception when trying to signal connectionOpened to the connectionListener", t);
-                    }
-                    opened = true;
-                }
-            }
-        });
+        connectionInitializer.initializeAsync(this)
+                             .register(new SingleResultCallback<ConnectionDescription>() {
+                                 @Override
+                                 public void onResult(final ConnectionDescription result, final MongoException e) {
+                                     if (e != null) {
+                                         close();
+                                         future.init(null, e);
+                                     } else {
+                                         description = result;
+                                         future.init(null, null);
+                                         LOGGER.info(format("Opened connection [%s] to %s", getId(), serverAddress));
+                                         try {
+                                             connectionListener.connectionOpened(new ConnectionEvent(clusterId, serverAddress, getId()));
+                                         } catch (Throwable t) {
+                                             LOGGER.warn("Exception when trying to signal connectionOpened to the connectionListener", t);
+                                         }
+                                         opened = true;
+                                     }
+                                 }
+                             });
         return future;
     }
 
@@ -259,6 +244,14 @@ class InternalStreamConnection implements InternalConnection {
         notNull("open", stream);
         readQueue.put(responseTo, callback);
         processPendingReads();
+    }
+
+    private String getId() {
+        return description.getConnectionId().toString();
+    }
+
+    private ServerAddress getServerAddress() {
+        return description.getServerAddress();
     }
 
     private void fillAndFlipBuffer(final int numBytes, final SingleResultCallback<ByteBuf> callback) {

@@ -93,25 +93,17 @@ class TestInternalConnectionFactory implements InternalConnectionFactory {
 
         @Override
         public void sendMessageAsync(final List<ByteBuf> byteBuffers, final int lastRequestId, final SingleResultCallback<Void> callback) {
+            callback.onResult(null, null);
         }
 
         @Override
         public void receiveMessageAsync(final int responseTo, final SingleResultCallback<ResponseBuffers> callback) {
-        }
-
-        @Override
-        public String getId() {
-            return Integer.toString(hashCode());
+            callback.onResult(null, null);
         }
 
         @Override
         public ConnectionDescription getDescription() {
-            throw new UnsupportedOperationException("Not implemented yet!");
-        }
-
-        @Override
-        public ServerAddress getServerAddress() {
-            return serverAddress;
+            return new ConnectionDescription(serverAddress);
         }
     }
 }

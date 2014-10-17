@@ -33,17 +33,15 @@ import java.util.LinkedList;
 import java.util.List;
 
 class TestInternalConnection implements InternalConnection {
-    private final ServerAddress address;
+    private final ConnectionDescription description;
     private final BufferProvider bufferProvider;
-    private final String id;
     private final Deque<ResponseBuffers> replies;
     private final List<BsonInput> sent;
     private boolean opened;
     private boolean closed;
 
-    public TestInternalConnection(final String id, final ServerAddress address) {
-        this.id = id;
-        this.address = address;
+    public TestInternalConnection(final ServerAddress address) {
+        this.description = new ConnectionDescription(address);
         this.bufferProvider = new SimpleBufferProvider();
 
         this.replies = new LinkedList<ResponseBuffers>();
@@ -59,18 +57,8 @@ class TestInternalConnection implements InternalConnection {
     }
 
     @Override
-    public ServerAddress getServerAddress() {
-        return this.address;
-    }
-
-    @Override
-    public String getId() {
-        return this.id;
-    }
-
-    @Override
     public ConnectionDescription getDescription() {
-        throw new UnsupportedOperationException("Not implemented yet!");
+        return description;
     }
 
     public void open() {
