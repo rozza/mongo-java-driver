@@ -18,7 +18,6 @@ package com.mongodb.connection;
 
 import com.mongodb.ServerAddress;
 
-import static com.mongodb.connection.ConnectionDescription.getDefaultMaxWriteBatchSize;
 import static com.mongodb.connection.ServerDescription.getDefaultMaxDocumentSize;
 
 /**
@@ -35,8 +34,8 @@ public class ConnectionDescription {
     private final int maxDocumentSize;
     private final int maxMessageSize;
 
-    static final int DEFAULT_MAX_MESSAGE_SIZE = 0x2000000;   // 32MB
-    static final int DEFAULT_MAX_WRITE_BATCH_SIZE = 512;
+    private static final int DEFAULT_MAX_MESSAGE_SIZE = 0x2000000;   // 32MB
+    private static final int DEFAULT_MAX_WRITE_BATCH_SIZE = 512;
 
     /**
      * Construct a defaulted connection description instance.
@@ -44,8 +43,8 @@ public class ConnectionDescription {
      * @param serverAddress   the server address
      */
     public ConnectionDescription(final ServerAddress serverAddress) {
-        this(serverAddress, new ConnectionId(), new ServerVersion(), ServerType.UNKNOWN, getDefaultMaxWriteBatchSize(),
-             getDefaultMaxDocumentSize(), getDefaultMaxMessageSize());
+        this(serverAddress, new ConnectionId(), new ServerVersion(), ServerType.UNKNOWN, DEFAULT_MAX_WRITE_BATCH_SIZE,
+             getDefaultMaxDocumentSize(), DEFAULT_MAX_MESSAGE_SIZE);
     }
 
     /**
