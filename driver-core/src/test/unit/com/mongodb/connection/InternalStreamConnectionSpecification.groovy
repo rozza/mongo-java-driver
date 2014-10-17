@@ -183,8 +183,8 @@ class InternalStreamConnectionSpecification extends Specification {
         def connection = getConnection()
 
         then:
-        connection.getDescription().getConnectionId().getServerValue() == null
         connection.getDescription().getServerType() == ServerType.UNKNOWN
+        connection.getDescription().getConnectionId().getServerValue() == null
 
         when:
         connection.open()
@@ -203,8 +203,8 @@ class InternalStreamConnectionSpecification extends Specification {
         def connection = getConnection()
 
         then:
-        connection.getDescription().getConnectionId().getServerValue() == null
         connection.getDescription().getServerType() == ServerType.UNKNOWN
+        connection.getDescription().getConnectionId().getServerValue() == null
 
         when:
         connection.openAsync().get(10, SECONDS)

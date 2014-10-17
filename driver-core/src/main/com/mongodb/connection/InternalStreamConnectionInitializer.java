@@ -70,8 +70,7 @@ class InternalStreamConnectionInitializer implements InternalConnectionInitializ
     public MongoFuture<ConnectionDescription> initializeAsync(final InternalConnection internalConnection) {
         SingleResultFuture<ConnectionDescription> future = new SingleResultFuture<ConnectionDescription>();
         try {
-            ConnectionDescription connectionDescription = initialize(internalConnection);
-            future.init(connectionDescription, null);
+            future.init(initialize(internalConnection), null);
         } catch (MongoException e) {
             future.init(null, e);
         }
