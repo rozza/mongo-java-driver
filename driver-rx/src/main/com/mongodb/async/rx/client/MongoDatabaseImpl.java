@@ -36,12 +36,12 @@ class MongoDatabaseImpl implements MongoDatabase {
 
     @Override
     public MongoCollection<Document> getCollection(final String name) {
-        return new MongoCollectionImpl<Document>(wrapped.getCollection(name));
+        return getCollection(name, MongoCollectionOptions.builder().build());
     }
 
     @Override
-    public MongoCollection<Document> getCollection(final String name, final MongoCollectionOptions options) {
-        return new MongoCollectionImpl<Document>(wrapped.getCollection(name, options));
+    public MongoCollection<Document> getCollection(final String name, final MongoCollectionOptions mongoCollectionOptions) {
+        return new MongoCollectionImpl<Document>(wrapped.getCollection(name, mongoCollectionOptions));
     }
 
     @Override

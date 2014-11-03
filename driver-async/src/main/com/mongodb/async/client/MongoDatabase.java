@@ -48,22 +48,22 @@ public interface MongoDatabase {
     /**
      * Gets a collection with the given name and options
      *
-     * @param name    the collection name
-     * @param options the options to apply
+     * @param name                   the collection name
+     * @param mongoCollectionOptions the options to apply
      * @return the collection
      */
-    MongoCollection<Document> getCollection(String name, MongoCollectionOptions options);
+    MongoCollection<Document> getCollection(String name, MongoCollectionOptions mongoCollectionOptions);
 
     /**
      * Gets a collection with the given name, codec, and options.
      *
-     * @param name    the collection name
-     * @param codec   the codec to use to encode and decode documents in the collection
-     * @param options the options to apply
-     * @param <T>     the document type
+     * @param name                   the collection name
+     * @param codec                  the codec to use to encode and decode documents in the collection
+     * @param mongoCollectionOptions the options to apply
+     * @param <T>                    the document type
      * @return the collection
      */
-    <T> MongoCollection<T> getCollection(String name, Codec<T> codec, MongoCollectionOptions options);
+    <T> MongoCollection<T> getCollection(String name, Codec<T> codec, MongoCollectionOptions mongoCollectionOptions);
 
     /**
      * Asynchronously execute the command described by the given document.

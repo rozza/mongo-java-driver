@@ -52,11 +52,11 @@ public interface MongoDatabase {
     /**
      * Gets a collection with the given name and options
      *
-     * @param name the collection name
-     * @param options the options to apply
+     * @param name                   the collection name
+     * @param mongoCollectionOptions the options to apply
      * @return the collection
      */
-    MongoCollection<Document> getCollection(String name, MongoCollectionOptions options);
+    MongoCollection<Document> getCollection(String name, MongoCollectionOptions mongoCollectionOptions);
 
     /**
      * Gets a collection with the given name, codec, and options.

@@ -44,11 +44,12 @@ class MongoClientImpl implements MongoClient {
 
     @Override
     public MongoDatabase getDatabase(final String name) {
-        return new MongoDatabaseImpl(name, this, MongoDatabaseOptions.builder()
-                                                                     .readPreference(settings.getReadPreference())
-                                                                     .writeConcern(settings.getWriteConcern())
-                                                                     .build()
-                                                                     .withDefaults(settings));
+        return getDatabase(name, MongoDatabaseOptions.builder().build());
+    }
+
+    @Override
+    public MongoDatabase getDatabase(final String name, final MongoDatabaseOptions mongoDatabaseOptions) {
+        return new MongoDatabaseImpl(name, this, mongoDatabaseOptions.withDefaults(settings));
     }
 
     @Override
