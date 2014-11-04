@@ -48,6 +48,7 @@ class MongoClientOptionsSpecification extends Specification {
         options.getMinHeartbeatFrequency() == 10
     }
 
+    @SuppressWarnings('UnnecessaryObjectReferences')
     def 'should handle illegal arguments'() {
         given:
         def builder = new MongoClientOptions.Builder()
@@ -108,7 +109,7 @@ class MongoClientOptionsSpecification extends Specification {
         given:
         def encoderFactory = new MyDBEncoderFactory()
         def options = MongoClientOptions.builder()
-            .description("test")
+            .description('test')
             .readPreference(ReadPreference.secondary())
             .writeConcern(WriteConcern.JOURNAL_SAFE)
             .minConnectionsPerHost(30)
@@ -126,13 +127,13 @@ class MongoClientOptionsSpecification extends Specification {
             .heartbeatConnectTimeout(15)
             .heartbeatSocketTimeout(20)
             .acceptableLatencyDifference(25)
-            .requiredReplicaSetName("test")
+            .requiredReplicaSetName('test')
             .cursorFinalizerEnabled(false)
             .dbEncoderFactory(encoderFactory)
             .build()
 
         expect:
-        options.getDescription() == "test"
+        options.getDescription() == 'test'
         options.getReadPreference() == ReadPreference.secondary()
         options.getWriteConcern() == WriteConcern.JOURNAL_SAFE
         options.getMaxWaitTime() == 200
@@ -151,7 +152,7 @@ class MongoClientOptionsSpecification extends Specification {
         options.getHeartbeatConnectTimeout() == 15
         options.getHeartbeatSocketTimeout() == 20
         options.getAcceptableLatencyDifference() == 25
-        options.getRequiredReplicaSetName() == "test"
+        options.getRequiredReplicaSetName() == 'test'
         !options.isCursorFinalizerEnabled()
         options.getServerSettings().getHeartbeatFrequency(MILLISECONDS) == 5
         options.getServerSettings().getMinHeartbeatFrequency(MILLISECONDS) == 11
@@ -178,8 +179,8 @@ class MongoClientOptionsSpecification extends Specification {
 
     private static class MyDBEncoderFactory implements DBEncoderFactory {
         @Override
-        public DBEncoder create() {
-            return new DefaultDBEncoder()
+        DBEncoder create() {
+            new DefaultDBEncoder()
         }
     }
 }

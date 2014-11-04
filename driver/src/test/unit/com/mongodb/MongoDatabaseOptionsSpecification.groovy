@@ -17,6 +17,7 @@
  */
 
 package com.mongodb
+
 import com.mongodb.client.ConcreteCodecProvider
 import com.mongodb.client.MongoDatabaseOptions
 import org.bson.codecs.configuration.RootCodecRegistry
