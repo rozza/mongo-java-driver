@@ -35,10 +35,10 @@ import static com.mongodb.assertions.Assertions.notNull;
 
 class MongoClientImpl implements MongoClient {
     private final Cluster cluster;
-    private final MongoClientSettings settings;
+    private final MongoClientOptions options;
 
-    MongoClientImpl(final MongoClientSettings settings, final Cluster cluster) {
-        this.settings = settings;
+    MongoClientImpl(final MongoClientOptions options, final Cluster cluster) {
+        this.options = options;
         this.cluster = cluster;
     }
 
@@ -49,12 +49,17 @@ class MongoClientImpl implements MongoClient {
 
     @Override
     public MongoDatabase getDatabase(final String name, final MongoDatabaseOptions mongoDatabaseOptions) {
-        return new MongoDatabaseImpl(name, this, mongoDatabaseOptions.withDefaults(settings));
+        return new MongoDatabaseImpl(name, this, mongoDatabaseOptions.withDefaults(options));
     }
 
     @Override
     public void close() {
         cluster.close();
+    }
+
+    @Override
+    public MongoClientOptions getOptions() {
+        return options;
     }
 
     @Override
@@ -116,7 +121,7 @@ class MongoClientImpl implements MongoClient {
 
     private AsyncReadWriteBinding getReadWriteBinding(final ReadPreference readPreference) {
         notNull("readPreference", readPreference);
-        return new AsyncClusterBinding(cluster, readPreference, settings.getConnectionPoolSettings().getMaxWaitTime(TimeUnit.MILLISECONDS),
+        return new AsyncClusterBinding(cluster, readPreference, options.getConnectionPoolSettings().getMaxWaitTime(TimeUnit.MILLISECONDS),
                                        TimeUnit.MILLISECONDS);
     }
 }

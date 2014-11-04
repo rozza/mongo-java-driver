@@ -17,6 +17,7 @@
 package com.mongodb.async.rx.client;
 
 import com.mongodb.annotations.Immutable;
+import com.mongodb.async.client.MongoClientOptions;
 import com.mongodb.async.client.MongoDatabaseOptions;
 
 import java.io.Closeable;
@@ -55,6 +56,15 @@ public interface MongoClient extends Closeable {
      * sockets and background monitoring threads.
      */
     void close();
+
+    /**
+     * Gets the options that this client uses to connect to server.
+     *
+     * <p>Note: {@link com.mongodb.async.client.MongoClientOptions} is immutable.</p>
+     *
+     * @return the options
+     */
+    MongoClientOptions getOptions();
 
     /**
      * @return the ClientAdministration that provides admin methods that can be performed

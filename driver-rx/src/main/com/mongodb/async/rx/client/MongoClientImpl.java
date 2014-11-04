@@ -16,6 +16,7 @@
 
 package com.mongodb.async.rx.client;
 
+import com.mongodb.async.client.MongoClientOptions;
 import com.mongodb.async.client.MongoDatabaseOptions;
 
 class MongoClientImpl implements MongoClient {
@@ -39,6 +40,11 @@ class MongoClientImpl implements MongoClient {
     @Override
     public void close() {
         wrapped.close();
+    }
+
+    @Override
+    public MongoClientOptions getOptions() {
+        return wrapped.getOptions();
     }
 
     @Override

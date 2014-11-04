@@ -66,6 +66,11 @@ class MongoDatabaseImpl implements MongoDatabase {
     }
 
     @Override
+    public MongoDatabaseOptions getOptions() {
+        return options;
+    }
+
+    @Override
     public DatabaseAdministration tools() {
         return new DatabaseAdministrationImpl(name, client);
     }

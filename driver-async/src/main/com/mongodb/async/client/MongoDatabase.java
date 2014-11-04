@@ -74,6 +74,15 @@ public interface MongoDatabase {
     MongoFuture<Document> executeCommand(Document commandDocument);
 
     /**
+     * Gets the options that are used with the database.
+     *
+     * <p>Note: {@link MongoDatabaseOptions} is immutable.</p>
+     *
+     * @return the options
+     */
+    MongoDatabaseOptions getOptions();
+
+    /**
      * @return the DatabaseAdministration that provides admin methods that can be performed
      */
     DatabaseAdministration tools();

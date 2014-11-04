@@ -55,6 +55,15 @@ public interface MongoClient extends Closeable {
     void close();
 
     /**
+     * Gets the options that this client uses to connect to server.
+     *
+     * <p>Note: {@link MongoClientOptions} is immutable.</p>
+     *
+     * @return the options
+     */
+    MongoClientOptions getOptions();
+
+    /**
      * @return the ClientAdministration that provides admin methods that can be performed
      */
     ClientAdministration tools();
