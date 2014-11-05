@@ -499,10 +499,17 @@ public class DB {
     @Deprecated
     public WriteResult addUser(final String userName, final char[] password, final boolean readOnly) {
         MongoCredential credential = createMongoCRCredential(userName, getName(), password);
-        if (executor.execute(new UserExistsOperation(getName(), userName), primary())) {
+        boolean userExists = false;
+        try {
+            userExists = executor.execute(new UserExistsOperation(getName(), userName), primary());
+        } catch (CommandFailureException e) {
+            if (e.getCode() != 13) {
+                throw e;
+            }
+        }
+        if (userExists) {
             executor.execute(new UpdateUserOperation(credential, readOnly));
             return new WriteResult(1, false, null);
-
         } else {
             executor.execute(new CreateUserOperation(credential, readOnly));
             return new WriteResult(1, true, null);
