@@ -48,6 +48,7 @@ class FindAndUpdateOperationSpecification extends OperationFunctionalSpecificati
         def update = new BsonDocument('$inc', new BsonDocument('numberOfJobs', new BsonInt32(1)))
         FindAndUpdateOperation<Document> operation = new FindAndUpdateOperation<Document>(getNamespace(), documentCodec, update)
                 .filter(new BsonDocument('name', new BsonString('Pete')))
+                .returnOriginal(true)
         Document returnedDocument = operation.execute(getBinding())
 
         then:
@@ -69,6 +70,7 @@ class FindAndUpdateOperationSpecification extends OperationFunctionalSpecificati
         def update = new BsonDocument('$inc', new BsonDocument('numberOfJobs', new BsonInt32(1)))
         FindAndUpdateOperation<Document> operation = new FindAndUpdateOperation<Document>(getNamespace(), documentCodec, update)
                 .filter(new BsonDocument('name', new BsonString('Pete')))
+                .returnOriginal(true)
         Document returnedDocument = operation.executeAsync(getAsyncBinding()).get()
 
         then:
@@ -89,6 +91,7 @@ class FindAndUpdateOperationSpecification extends OperationFunctionalSpecificati
         def update = new BsonDocument('$inc', new BsonDocument('numberOfJobs', new BsonInt32(1)))
         FindAndUpdateOperation<Worker> operation = new FindAndUpdateOperation<Worker>(getNamespace(), workerCodec, update)
                 .filter(new BsonDocument('name', new BsonString('Pete')))
+                .returnOriginal(true)
         Worker returnedDocument = operation.execute(getBinding())
 
         then:
@@ -110,6 +113,7 @@ class FindAndUpdateOperationSpecification extends OperationFunctionalSpecificati
         def update = new BsonDocument('$inc', new BsonDocument('numberOfJobs', new BsonInt32(1)))
         FindAndUpdateOperation<Worker> operation = new FindAndUpdateOperation<Worker>(getNamespace(), workerCodec, update)
                 .filter(new BsonDocument('name', new BsonString('Pete')))
+                .returnOriginal(true)
         Worker returnedDocument = operation.executeAsync(getAsyncBinding()).get()
 
         then:

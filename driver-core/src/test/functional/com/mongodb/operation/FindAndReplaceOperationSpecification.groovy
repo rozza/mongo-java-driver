@@ -50,6 +50,7 @@ class FindAndReplaceOperationSpecification extends OperationFunctionalSpecificat
         when:
         FindAndReplaceOperation<Document> operation = new FindAndReplaceOperation<Document>(getNamespace(), documentCodec, jordan)
                 .filter(new BsonDocument('name', new BsonString('Pete')))
+                .returnOriginal(true)
         Document returnedDocument = operation.execute(getBinding())
 
         then:
@@ -71,6 +72,7 @@ class FindAndReplaceOperationSpecification extends OperationFunctionalSpecificat
         when:
         FindAndReplaceOperation<Document> operation = new FindAndReplaceOperation<Document>(getNamespace(), documentCodec, jordan)
                 .filter(new BsonDocument('name', new BsonString('Pete')))
+                .returnOriginal(true)
         Document returnedDocument = operation.executeAsync(getAsyncBinding()).get()
 
         then:
@@ -92,6 +94,7 @@ class FindAndReplaceOperationSpecification extends OperationFunctionalSpecificat
         when:
         FindAndReplaceOperation<Document> operation = new FindAndReplaceOperation<Document>(getNamespace(), workerCodec, replacement)
                 .filter(new BsonDocument('name', new BsonString('Pete')))
+                .returnOriginal(true)
         Worker returnedDocument = operation.execute(getBinding())
 
         then:
@@ -113,6 +116,7 @@ class FindAndReplaceOperationSpecification extends OperationFunctionalSpecificat
         when:
         FindAndReplaceOperation<Document> operation = new FindAndReplaceOperation<Document>(getNamespace(), workerCodec, replacement)
                 .filter(new BsonDocument('name', new BsonString('Pete')))
+                .returnOriginal(true)
         Worker returnedDocument = operation.executeAsync(getAsyncBinding()).get()
 
         then:
