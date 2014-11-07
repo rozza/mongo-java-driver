@@ -340,6 +340,43 @@ class MongoCollectionSpecification extends Specification {
         operation2.isPartial()
     }
 
+    def 'should set the correct values for tailable cursors'() {
+        given:
+        def cursor = Stub(MongoCursor)
+        cursor.hasNext() >>> [true, false]
+        def executor = new TestOperationExecutor([cursor, cursor, cursor])
+        collection = new MongoCollectionImpl<Document>(namespace, Document, options, executor)
+
+        when: 'tailable is false'
+        def options = new FindOptions().awaitData(true)
+                                       .tailable(false)
+
+        collection.find(new Document(), options).iterator()
+        def operation = executor.getReadOperation() as FindOperation
+
+        then: 'awaitData should also be false'
+        !operation.isAwaitData()
+        !operation.isTailableCursor()
+
+        when: 'tailable is true'
+        options = new FindOptions().tailable(true)
+        collection.find(new Document(), options).iterator()
+        operation = executor.getReadOperation() as FindOperation
+
+        then: 'awaitData should default to true'
+        operation.isAwaitData()
+        operation.isTailableCursor()
+
+        when: 'tailable is true and awaitData false'
+        options = new FindOptions().awaitData(false).tailable(true)
+        collection.find(new Document(), options).iterator()
+        operation = executor.getReadOperation() as FindOperation
+
+        then: 'awaitData should be false'
+        !operation.isAwaitData()
+        operation.isTailableCursor()
+    }
+
     def 'find with first() should temporarily set limit to -1 and batchSize to 0'() {
         given:
         def cursor = Stub(MongoCursor)
