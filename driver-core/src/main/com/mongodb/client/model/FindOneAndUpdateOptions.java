@@ -96,7 +96,7 @@ public class FindOneAndUpdateOptions {
     }
 
     /**
-     * When false, returns the updated document rather than the original. The default is true.
+     * When true, return the original document from before it was updated. The default is true.
      *
      * @return true if the original document should be returned
      */
@@ -105,9 +105,9 @@ public class FindOneAndUpdateOptions {
     }
 
     /**
-     * Set to false if the updated document rather than the original should be returned.
+     * Set whether to return the original document from before it was updated.
      *
-     * @param returnOriginal set to false if the updated document rather than the original should be returned
+     * @param returnOriginal set whether to return the original document from before it was updated
      * @return this
      */
     public FindOneAndUpdateOptions returnOriginal(final boolean returnOriginal) {

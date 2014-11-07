@@ -31,14 +31,11 @@ import org.junit.experimental.categories.Category
 import static com.mongodb.ClusterFixture.getAsyncBinding
 import static com.mongodb.ClusterFixture.getBinding
 
-//TODO: what about custom Date formats?
-//TODO: test null returns
 class FindAndReplaceOperationSpecification extends OperationFunctionalSpecification {
     private final DocumentCodec documentCodec = new DocumentCodec()
     private final WorkerCodec workerCodec = new WorkerCodec()
 
     def 'should replace single document'() {
-
         given:
         CollectionHelper<Document> helper = new CollectionHelper<Document>(documentCodec, getNamespace())
         Document pete = new Document('name', 'Pete').append('job', 'handyman')
@@ -50,13 +47,22 @@ class FindAndReplaceOperationSpecification extends OperationFunctionalSpecificat
         when:
         FindAndReplaceOperation<Document> operation = new FindAndReplaceOperation<Document>(getNamespace(), documentCodec, jordan)
                 .filter(new BsonDocument('name', new BsonString('Pete')))
-                .returnOriginal(true)
         Document returnedDocument = operation.execute(getBinding())
 
         then:
         returnedDocument.getString('name') == 'Pete'
         helper.find().size() == 2;
         helper.find().get(0).getString('name') == 'Jordan'
+
+        when:
+        operation = new FindAndReplaceOperation<Document>(getNamespace(), documentCodec,
+                                                          new BsonDocumentWrapper<Document>(pete, documentCodec))
+                .filter(new BsonDocument('name', new BsonString('Jordan')))
+                .returnOriginal(false)
+        returnedDocument = operation.execute(getBinding())
+
+        then:
+        returnedDocument.getString('name') == 'Pete'
     }
 
     @Category(Async)
@@ -72,13 +78,22 @@ class FindAndReplaceOperationSpecification extends OperationFunctionalSpecificat
         when:
         FindAndReplaceOperation<Document> operation = new FindAndReplaceOperation<Document>(getNamespace(), documentCodec, jordan)
                 .filter(new BsonDocument('name', new BsonString('Pete')))
-                .returnOriginal(true)
         Document returnedDocument = operation.executeAsync(getAsyncBinding()).get()
 
         then:
         returnedDocument.getString('name') == 'Pete'
         helper.find().size() == 2;
         helper.find().get(0).getString('name') == 'Jordan'
+
+        when:
+        operation = new FindAndReplaceOperation<Document>(getNamespace(), documentCodec,
+                                                          new BsonDocumentWrapper<Document>(pete, documentCodec))
+                .filter(new BsonDocument('name', new BsonString('Jordan')))
+                .returnOriginal(false)
+        returnedDocument = operation.executeAsync(getAsyncBinding()).get()
+
+        then:
+        returnedDocument.getString('name') == 'Pete'
     }
 
     def 'should replace single document when using custom codecs'() {
@@ -94,12 +109,21 @@ class FindAndReplaceOperationSpecification extends OperationFunctionalSpecificat
         when:
         FindAndReplaceOperation<Document> operation = new FindAndReplaceOperation<Document>(getNamespace(), workerCodec, replacement)
                 .filter(new BsonDocument('name', new BsonString('Pete')))
-                .returnOriginal(true)
         Worker returnedDocument = operation.execute(getBinding())
 
         then:
         returnedDocument == pete
         helper.find().get(0) == jordan
+
+        when:
+        replacement = new BsonDocumentWrapper<Worker>(pete, workerCodec)
+        operation = new FindAndReplaceOperation<Document>(getNamespace(), workerCodec, replacement)
+                .filter(new BsonDocument('name', new BsonString('Jordan')))
+                .returnOriginal(false)
+        returnedDocument = operation.execute(getBinding())
+
+        then:
+        returnedDocument == pete
     }
 
     @Category(Async)
@@ -116,12 +140,44 @@ class FindAndReplaceOperationSpecification extends OperationFunctionalSpecificat
         when:
         FindAndReplaceOperation<Document> operation = new FindAndReplaceOperation<Document>(getNamespace(), workerCodec, replacement)
                 .filter(new BsonDocument('name', new BsonString('Pete')))
-                .returnOriginal(true)
         Worker returnedDocument = operation.executeAsync(getAsyncBinding()).get()
 
         then:
         returnedDocument == pete
         helper.find().get(0) == jordan
+
+        when:
+        replacement = new BsonDocumentWrapper<Worker>(pete, workerCodec)
+        operation = new FindAndReplaceOperation<Document>(getNamespace(), workerCodec, replacement)
+                .filter(new BsonDocument('name', new BsonString('Jordan')))
+                .returnOriginal(false)
+        returnedDocument = operation.executeAsync(getAsyncBinding()).get()
+
+        then:
+        returnedDocument == pete
+    }
+
+    def 'should return null if query fails to match'() {
+        when:
+        BsonDocument jordan = new BsonDocumentWrapper<Document>([name: 'Jordan', job: 'sparky'] as Document, documentCodec)
+        FindAndReplaceOperation<Document> operation = new FindAndReplaceOperation<Document>(getNamespace(), documentCodec, jordan)
+                .filter(new BsonDocument('name', new BsonString('Pete')))
+        Document returnedDocument = operation.execute(getBinding())
+
+        then:
+        returnedDocument == null
+    }
+
+    @Category(Async)
+    def 'should return null if query fails to match asynchronously'() {
+        when:
+        BsonDocument jordan = new BsonDocumentWrapper<Document>([name: 'Jordan', job: 'sparky'] as Document, documentCodec)
+        FindAndReplaceOperation<Document> operation = new FindAndReplaceOperation<Document>(getNamespace(), documentCodec, jordan)
+                .filter(new BsonDocument('name', new BsonString('Pete')))
+        Document returnedDocument = operation.executeAsync(getAsyncBinding()).get()
+
+        then:
+        returnedDocument == null
     }
 
     def 'should throw an exception if replacement contains update operators'() {

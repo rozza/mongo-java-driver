@@ -54,7 +54,7 @@ public class FindAndReplaceOperation<T> implements AsyncWriteOperation<T>, Write
     private BsonDocument projection;
     private BsonDocument sort;
     private long maxTimeMS;
-    private boolean returnOriginal;
+    private boolean returnOriginal = true;
     private boolean upsert;
 
     /**

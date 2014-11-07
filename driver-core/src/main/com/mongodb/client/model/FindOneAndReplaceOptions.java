@@ -94,7 +94,7 @@ public class FindOneAndReplaceOptions {
     }
 
     /**
-     * When false, returns the replaced document rather than the original. The default is true.
+     * When true, return the original document from before it was replaced. The default is true.
      *
      * @return true if the original document should be returned
      */
@@ -103,9 +103,9 @@ public class FindOneAndReplaceOptions {
     }
 
     /**
-     * Set to false to return the replaced document rather than the original.
+     * Set whether to return the original document from before it was replaced.
      *
-     * @param returnOriginal set to false to return the replaced document rather than the original
+     * @param returnOriginal set whether to return the original document from before it was replaced
      * @return this
      */
     public FindOneAndReplaceOptions returnOriginal(final boolean returnOriginal) {
