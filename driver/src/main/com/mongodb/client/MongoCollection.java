@@ -171,14 +171,56 @@ public interface MongoCollection<T> {
     <C> MongoIterable<C> find(Object filter, FindOptions findOptions, Class<C> clazz);
 
     /**
-     * Aggregates documents according to the specified aggregation pipeline.
+     * Begins an aggregation pipeline.
      *
-     * @param pipeline the aggregate pipeline
-     * @return an iterable containing the result of the aggregation operation
+     * @return the fluent aggregation interface
      * @mongodb.driver.manual aggregation/ Aggregation
      * @mongodb.server.release 2.2
      */
-    MongoIterable<Document> aggregate(List<?> pipeline);
+    AggregateFluent<Document> aggregate();
+
+    /**
+     * Begins an aggregation pipeline.
+     *
+     * @param clazz the class to decode each document into
+     * @param <C> the target document type of the iterable.
+     * @return the fluent aggregation interface
+     * @mongodb.driver.manual aggregation/ Aggregation
+     * @mongodb.server.release 2.2
+     */
+    <C> AggregateFluent<C> aggregate(Class<C> clazz);
+
+    /**
+     * Begins an aggregation pipeline.
+     *
+     * @param options the options to apply to the aggregation operation
+     * @return the fluent aggregation interface
+     * @mongodb.driver.manual aggregation/ Aggregation
+     * @mongodb.server.release 2.2
+     */
+    AggregateFluent<Document> aggregate(AggregateOptions options);
+
+    /**
+     * Begins an aggregation pipeline.
+     *
+     * @param options the options to apply to the aggregation operation
+     * @param clazz the class to decode each document into
+     * @param <C> the target document type of the iterable.
+     * @return the fluent aggregation interface
+     * @mongodb.driver.manual aggregation/ Aggregation
+     * @mongodb.server.release 2.2
+     */
+    <C> AggregateFluent<C> aggregate(AggregateOptions options, Class<C> clazz);
+
+    /**
+     * Aggregates documents according to the specified aggregation pipeline.
+     *
+     * @param pipeline the aggregate pipeline
+     * @return the fluent aggregation interface
+     * @mongodb.driver.manual aggregation/ Aggregation
+     * @mongodb.server.release 2.2
+     */
+    AggregateFluent<Document> aggregate(List<?> pipeline);
 
     /**
      * Aggregates documents according to the specified aggregation pipeline.
@@ -186,22 +228,22 @@ public interface MongoCollection<T> {
      * @param pipeline the aggregate pipeline
      * @param clazz the class to decode each document into
      * @param <C> the target document type of the iterable.
-     * @return an iterable containing the result of the aggregation operation
+     * @return the fluent aggregation interface
      * @mongodb.driver.manual aggregation/ Aggregation
      * @mongodb.server.release 2.2
      */
-    <C> MongoIterable<C> aggregate(List<?> pipeline, Class<C> clazz);
+    <C> AggregateFluent<C> aggregate(List<?> pipeline, Class<C> clazz);
 
     /**
      * Aggregates documents according to the specified aggregation pipeline.
      *
      * @param pipeline the aggregate pipeline
      * @param options the options to apply to the aggregation operation
-     * @return an iterable containing the result of the aggregation operation
+     * @return the fluent aggregation interface
      * @mongodb.driver.manual aggregation/ Aggregation
      * @mongodb.server.release 2.2
      */
-    MongoIterable<Document> aggregate(List<?> pipeline, AggregateOptions options);
+    AggregateFluent<Document> aggregate(List<?> pipeline, AggregateOptions options);
 
     /**
      * Aggregates documents according to the specified aggregation pipeline.
@@ -210,11 +252,11 @@ public interface MongoCollection<T> {
      * @param options the options to apply to the aggregation operation
      * @param clazz the class to decode each document into
      * @param <C> the target document type of the iterable.
-     * @return an iterable containing the result of the aggregation operation
+     * @return the fluent aggregation interface
      * @mongodb.driver.manual aggregation/ Aggregation
      * @mongodb.server.release 2.2
      */
-    <C> MongoIterable<C> aggregate(List<?> pipeline, AggregateOptions options, Class<C> clazz);
+    <C> AggregateFluent<C> aggregate(List<?> pipeline, AggregateOptions options, Class<C> clazz);
 
     /**
      * Aggregates documents according to the specified map-reduce function.
