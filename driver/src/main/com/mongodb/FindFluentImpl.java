@@ -157,7 +157,7 @@ class FindFluentImpl<T> implements FindFluent<T> {
     }
 
     private MongoIterable<T> execute() {
-        return new OperationIterable(createQueryOperation(), this.options.getReadPreference());
+        return new FinalOperationIterable(createQueryOperation(), this.options.getReadPreference(), executor);
     }
 
     private <C> Codec<C> getCodec(final Class<C> clazz) {
@@ -199,26 +199,19 @@ class FindFluentImpl<T> implements FindFluent<T> {
         }
     }
 
-    private final class OperationIterable implements MongoIterable<T> {
+    private final class FinalOperationIterable extends OperationIterable<T> {
         private final FindOperation<T> operation;
         private final ReadPreference readPreference;
+        private final OperationExecutor executor;
 
-        private OperationIterable(final FindOperation<T> operation, final ReadPreference readPreference) {
+        FinalOperationIterable(final FindOperation<T> operation, final ReadPreference readPreference,
+                                  final OperationExecutor executor) {
+            super(operation, readPreference, executor);
             this.operation = operation;
             this.readPreference = readPreference;
+            this.executor = executor;
         }
 
-        @Override
-        public <U> MongoIterable<U> map(final Function<T, U> mapper) {
-            return new MappingIterable<T, U>(this, mapper);
-        }
-
-        @Override
-        public MongoCursor<T> iterator() {
-            return executor.execute(operation, readPreference);
-        }
-
-        @SuppressWarnings("unchecked")
         @Override
         public T first() {
             FindOperation<T> findFirstOperation = createQueryOperation().batchSize(0)
@@ -228,29 +221,6 @@ class FindFluentImpl<T> implements FindFluent<T> {
                 return null;
             }
             return iterator.next();
-        }
-
-        @Override
-        public void forEach(final Block<? super T> block) {
-            MongoCursor<T> cursor = iterator();
-            try {
-                while (cursor.hasNext()) {
-                    block.apply(cursor.next());
-                }
-            } finally {
-                cursor.close();
-            }
-        }
-
-        @Override
-        public <A extends Collection<? super T>> A into(final A target) {
-            forEach(new Block<T>() {
-                @Override
-                public void apply(final T document) {
-                    target.add(document);
-                }
-            });
-            return target;
         }
 
     }

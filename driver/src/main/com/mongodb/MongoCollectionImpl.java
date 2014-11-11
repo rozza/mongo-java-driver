@@ -64,7 +64,6 @@ import com.mongodb.operation.MapReduceToCollectionOperation;
 import com.mongodb.operation.MapReduceWithInlineResultsOperation;
 import com.mongodb.operation.MixedBulkWriteOperation;
 import com.mongodb.operation.OperationExecutor;
-import com.mongodb.operation.ReadOperation;
 import com.mongodb.operation.RenameCollectionOperation;
 import com.mongodb.operation.UpdateOperation;
 import org.bson.BsonArray;
@@ -80,7 +79,6 @@ import org.bson.codecs.CollectibleCodec;
 import org.bson.codecs.DecoderContext;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 
 import static com.mongodb.assertions.Assertions.notNull;
@@ -213,7 +211,8 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
                                             .allowDiskUse(options.getAllowDiskUse())
                                             .batchSize(options.getBatchSize())
                                             .useCursor(options.getUseCursor()),
-                                            this.options.getReadPreference());
+                                            this.options.getReadPreference(),
+                                            executor);
         }
     }
 
@@ -251,7 +250,7 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
             if (options.getFinalizeFunction() != null) {
                 operation.finalizeFunction(new BsonJavaScript(options.getFinalizeFunction()));
             }
-            return new MapReduceResultsIterable<C>(operation, this.options.getReadPreference(), executor);
+            return new OperationIterable<C>(operation, this.options.getReadPreference(), executor);
         } else {
             MapReduceToCollectionOperation operation =
                 new MapReduceToCollectionOperation(getNamespace(),
@@ -566,59 +565,6 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
             aggregateList.add(asBson(obj));
         }
         return aggregateList;
-    }
-
-    private final class OperationIterable<D> implements MongoIterable<D> {
-        private final ReadOperation<? extends MongoCursor<D>> operation;
-        private final ReadPreference readPreference;
-
-        private OperationIterable(final ReadOperation<? extends MongoCursor<D>> operation, final ReadPreference readPreference) {
-            this.operation = operation;
-            this.readPreference = readPreference;
-        }
-
-        @Override
-        public <U> MongoIterable<U> map(final Function<D, U> mapper) {
-            return new MappingIterable<D, U>(this, mapper);
-        }
-
-        @Override
-        public MongoCursor<D> iterator() {
-            return executor.execute(operation, readPreference);
-        }
-
-        @Override
-        public D first() {
-            MongoCursor<D> iterator = iterator();
-            if (!iterator.hasNext()) {
-                return null;
-            }
-            return iterator.next();
-        }
-
-        @Override
-        public void forEach(final Block<? super D> block) {
-            MongoCursor<D> cursor = iterator();
-            try {
-                while (cursor.hasNext()) {
-                    block.apply(cursor.next());
-                }
-            } finally {
-                cursor.close();
-            }
-        }
-
-        @Override
-        public <A extends Collection<? super D>> A into(final A target) {
-            forEach(new Block<D>() {
-                @Override
-                public void apply(final D document) {
-                    target.add(document);
-                }
-            });
-            return target;
-        }
-
     }
 
 }
