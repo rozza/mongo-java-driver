@@ -21,6 +21,7 @@ import com.mongodb.bulk.DeleteRequest;
 import com.mongodb.bulk.InsertRequest;
 import com.mongodb.bulk.UpdateRequest;
 import com.mongodb.bulk.WriteRequest;
+import com.mongodb.client.AggregateFluent;
 import com.mongodb.client.FindFluent;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCollectionOptions;
@@ -47,8 +48,6 @@ import com.mongodb.client.model.UpdateOptions;
 import com.mongodb.client.model.WriteModel;
 import com.mongodb.client.result.DeleteResult;
 import com.mongodb.client.result.UpdateResult;
-import com.mongodb.operation.AggregateOperation;
-import com.mongodb.operation.AggregateToCollectionOperation;
 import com.mongodb.operation.CountOperation;
 import com.mongodb.operation.CreateIndexOperation;
 import com.mongodb.operation.DeleteOperation;
@@ -64,7 +63,6 @@ import com.mongodb.operation.MapReduceToCollectionOperation;
 import com.mongodb.operation.MapReduceWithInlineResultsOperation;
 import com.mongodb.operation.MixedBulkWriteOperation;
 import com.mongodb.operation.OperationExecutor;
-import com.mongodb.operation.ReadOperation;
 import com.mongodb.operation.RenameCollectionOperation;
 import com.mongodb.operation.UpdateOperation;
 import org.bson.BsonArray;
@@ -80,7 +78,6 @@ import org.bson.codecs.CollectibleCodec;
 import org.bson.codecs.DecoderContext;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 
 import static com.mongodb.assertions.Assertions.notNull;
@@ -190,41 +187,43 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
     }
 
     @Override
-    public MongoIterable<Document> aggregate(final List<?> pipeline) {
+    public AggregateFluent<Document> aggregate() {
+        return aggregate(new AggregateOptions());
+    }
+
+    @Override
+    public <C> AggregateFluent<C> aggregate(final Class<C> clazz) {
+        return aggregate(new AggregateOptions(), clazz);
+    }
+
+    @Override
+    public AggregateFluent<Document> aggregate(final AggregateOptions aggregateOptions) {
+        return aggregate(aggregateOptions, Document.class);
+    }
+
+    @Override
+    public <C> AggregateFluent<C> aggregate(final AggregateOptions aggregateOptions, final Class<C> clazz) {
+        return aggregate(new ArrayList<Object>(), aggregateOptions, clazz);
+    }
+
+    @Override
+    public AggregateFluent<Document> aggregate(final List<?> pipeline) {
         return aggregate(pipeline, Document.class);
     }
 
     @Override
-    public <C> MongoIterable<C> aggregate(final List<?> pipeline, final Class<C> clazz) {
+    public <C> AggregateFluent<C> aggregate(final List<?> pipeline, final Class<C> clazz) {
         return aggregate(pipeline, new AggregateOptions(), clazz);
     }
 
     @Override
-    public MongoIterable<Document> aggregate(final List<?> pipeline, final AggregateOptions options) {
-        return aggregate(pipeline, options, Document.class);
+    public AggregateFluent<Document> aggregate(final List<?> pipeline, final AggregateOptions aggregateOptions) {
+        return aggregate(pipeline, aggregateOptions, Document.class);
     }
 
     @Override
-    public <C> MongoIterable<C> aggregate(final List<?> pipeline, final AggregateOptions options, final Class<C> clazz) {
-        List<BsonDocument> aggregateList = createBsonDocumentList(pipeline);
-
-        BsonValue outCollection = aggregateList.size() == 0 ? null : aggregateList.get(aggregateList.size() - 1).get("$out");
-
-        if (outCollection != null) {
-            AggregateToCollectionOperation operation = new AggregateToCollectionOperation(namespace, aggregateList)
-                                                           .maxTime(options.getMaxTime(MILLISECONDS), MILLISECONDS)
-                                                           .allowDiskUse(options.getAllowDiskUse());
-            executor.execute(operation);
-            return new FindFluentImpl<C>(new MongoNamespace(namespace.getDatabaseName(), outCollection.asString().getValue()),
-                                         this.options, executor, new BsonDocument(), new FindOptions(), clazz);
-        } else {
-            return new OperationIterable<C>(new AggregateOperation<C>(namespace, aggregateList, getCodec(clazz))
-                                            .maxTime(options.getMaxTime(MILLISECONDS), MILLISECONDS)
-                                            .allowDiskUse(options.getAllowDiskUse())
-                                            .batchSize(options.getBatchSize())
-                                            .useCursor(options.getUseCursor()),
-                                            this.options.getReadPreference());
-        }
+    public <C> AggregateFluent<C> aggregate(final List<?> pipeline, final AggregateOptions aggregateOptions, final Class<C> clazz) {
+        return new AggregateFluentImpl<C>(namespace, options, executor, pipeline, aggregateOptions, clazz);
     }
 
     @Override
@@ -568,67 +567,6 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
         } else {
             return new BsonDocumentWrapper(document, options.getCodecRegistry().get(document.getClass()));
         }
-    }
-
-    private <D> List<BsonDocument> createBsonDocumentList(final List<D> pipeline) {
-        List<BsonDocument> aggregateList = new ArrayList<BsonDocument>(pipeline.size());
-        for (D obj : pipeline) {
-            aggregateList.add(asBson(obj));
-        }
-        return aggregateList;
-    }
-
-    private final class OperationIterable<D> implements MongoIterable<D> {
-        private final ReadOperation<? extends MongoCursor<D>> operation;
-        private final ReadPreference readPreference;
-
-        private OperationIterable(final ReadOperation<? extends MongoCursor<D>> operation, final ReadPreference readPreference) {
-            this.operation = operation;
-            this.readPreference = readPreference;
-        }
-
-        @Override
-        public <U> MongoIterable<U> map(final Function<D, U> mapper) {
-            return new MappingIterable<D, U>(this, mapper);
-        }
-
-        @Override
-        public MongoCursor<D> iterator() {
-            return executor.execute(operation, readPreference);
-        }
-
-        @Override
-        public D first() {
-            MongoCursor<D> iterator = iterator();
-            if (!iterator.hasNext()) {
-                return null;
-            }
-            return iterator.next();
-        }
-
-        @Override
-        public void forEach(final Block<? super D> block) {
-            MongoCursor<D> cursor = iterator();
-            try {
-                while (cursor.hasNext()) {
-                    block.apply(cursor.next());
-                }
-            } finally {
-                cursor.close();
-            }
-        }
-
-        @Override
-        public <A extends Collection<? super D>> A into(final A target) {
-            forEach(new Block<D>() {
-                @Override
-                public void apply(final D document) {
-                    target.add(document);
-                }
-            });
-            return target;
-        }
-
     }
 
 }
