@@ -21,6 +21,7 @@ import com.mongodb.bulk.DeleteRequest;
 import com.mongodb.bulk.InsertRequest;
 import com.mongodb.bulk.UpdateRequest;
 import com.mongodb.bulk.WriteRequest;
+import com.mongodb.client.FindFluent;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCollectionOptions;
 import com.mongodb.client.MongoIterable;
@@ -57,7 +58,6 @@ import com.mongodb.operation.DropIndexOperation;
 import com.mongodb.operation.FindAndDeleteOperation;
 import com.mongodb.operation.FindAndReplaceOperation;
 import com.mongodb.operation.FindAndUpdateOperation;
-import com.mongodb.operation.FindOperation;
 import com.mongodb.operation.InsertOperation;
 import com.mongodb.operation.ListIndexesOperation;
 import com.mongodb.operation.MapReduceToCollectionOperation;
@@ -77,7 +77,6 @@ import org.bson.BsonValue;
 import org.bson.Document;
 import org.bson.codecs.Codec;
 import org.bson.codecs.CollectibleCodec;
-import org.bson.codecs.Decoder;
 import org.bson.codecs.DecoderContext;
 
 import java.util.ArrayList;
@@ -161,34 +160,33 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
     }
 
     @Override
-    public MongoIterable<T> find() {
-        return find(new Document(), new FindOptions());
+    public FindFluent<T> find() {
+        return find(new BsonDocument(), new FindOptions(), clazz);
     }
 
     @Override
-    public <C> MongoIterable<C> find(final Class<C> clazz) {
-        return find(new Document(), new FindOptions(), clazz);
+    public <C> FindFluent<C> find(final Class<C> clazz) {
+        return find(new BsonDocument(), new FindOptions(), clazz);
     }
 
     @Override
-    public MongoIterable<T> find(final Object filter) {
-        return find(filter, new FindOptions());
-    }
-
-    @Override
-    public <C> MongoIterable<C> find(final Object filter, final Class<C> clazz) {
+    public FindFluent<T> find(final Object filter) {
         return find(filter, new FindOptions(), clazz);
     }
 
     @Override
-    public MongoIterable<T> find(final Object filter, final FindOptions findOptions) {
+    public <C> FindFluent<C> find(final Object filter, final Class<C> clazz) {
+        return find(filter, new FindOptions(), clazz);
+    }
+
+    @Override
+    public FindFluent<T> find(final Object filter, final FindOptions findOptions) {
         return find(filter, findOptions, clazz);
     }
 
     @Override
-    public <C> MongoIterable<C> find(final Object filter, final FindOptions findOptions, final Class<C> clazz) {
-        return new OperationIterable<C>(createQueryOperation(namespace, filter, findOptions, getCodec(clazz)),
-                                        options.getReadPreference());
+    public <C> FindFluent<C> find(final Object filter, final FindOptions findOptions, final Class<C> clazz) {
+        return new FindFluentImpl<C>(namespace, options, executor, filter, findOptions, clazz);
     }
 
     @Override
@@ -217,10 +215,8 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
                                                            .maxTime(options.getMaxTime(MILLISECONDS), MILLISECONDS)
                                                            .allowDiskUse(options.getAllowDiskUse());
             executor.execute(operation);
-            return new OperationIterable<C>(new FindOperation<C>(new MongoNamespace(namespace.getDatabaseName(),
-                                                                                    outCollection.asString().getValue()),
-                                                                 getCodec(clazz)),
-                                            this.options.getReadPreference());
+            return new FindFluentImpl<C>(new MongoNamespace(namespace.getDatabaseName(), outCollection.asString().getValue()),
+                                         this.options, executor, new BsonDocument(), new FindOptions(), clazz);
         } else {
             return new OperationIterable<C>(new AggregateOperation<C>(namespace, aggregateList, getCodec(clazz))
                                             .maxTime(options.getMaxTime(MILLISECONDS), MILLISECONDS)
@@ -290,9 +286,8 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
             executor.execute(operation);
 
             String databaseName = options.getDatabaseName() != null ? options.getDatabaseName() : namespace.getDatabaseName();
-            FindOperation<C> findOperation = createQueryOperation(new MongoNamespace(databaseName, options.getCollectionName()),
-                                                                  new Document(), new FindOptions(), getCodec(clazz));
-            return new OperationIterable<C>(findOperation, this.options.getReadPreference());
+            return new FindFluentImpl<C>(new MongoNamespace(databaseName, options.getCollectionName()), this.options, executor,
+                                         new BsonDocument(), new FindOptions(), clazz);
         }
     }
 
@@ -459,9 +454,9 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
     @Override
     public T findOneAndDelete(final Object filter, final FindOneAndDeleteOptions options) {
         return executor.execute(new FindAndDeleteOperation<T>(namespace, getCodec())
-                                                  .filter(asBson(filter))
-                                                  .projection(asBson(options.getProjection()))
-                                                  .sort(asBson(options.getSort())));
+                                    .filter(asBson(filter))
+                                    .projection(asBson(options.getProjection()))
+                                    .sort(asBson(options.getSort())));
     }
 
     // TODO modifiedCount
@@ -477,11 +472,11 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
     @Override
     public T findOneAndReplace(final Object filter, final T replacement, final FindOneAndReplaceOptions options) {
         return executor.execute(new FindAndReplaceOperation<T>(namespace, getCodec(), asBson(replacement))
-                                                   .filter(asBson(filter))
-                                                   .projection(asBson(options.getProjection()))
-                                                   .sort(asBson(options.getSort()))
-                                                   .returnOriginal(options.getReturnOriginal())
-                                                   .upsert(options.isUpsert()));
+                                    .filter(asBson(filter))
+                                    .projection(asBson(options.getProjection()))
+                                    .sort(asBson(options.getSort()))
+                                    .returnOriginal(options.getReturnOriginal())
+                                    .upsert(options.isUpsert()));
     }
 
     @Override
@@ -492,11 +487,11 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
     @Override
     public T findOneAndUpdate(final Object filter, final Object update, final FindOneAndUpdateOptions options) {
         return executor.execute(new FindAndUpdateOperation<T>(namespace, getCodec(), asBson(update))
-                                                  .filter(asBson(filter))
-                                                  .projection(asBson(options.getProjection()))
-                                                  .sort(asBson(options.getSort()))
-                                                  .returnOriginal(options.getReturnOriginal())
-                                                  .upsert(options.isUpsert()));
+                                    .filter(asBson(filter))
+                                    .projection(asBson(options.getProjection()))
+                                    .sort(asBson(options.getSort()))
+                                    .returnOriginal(options.getReturnOriginal())
+                                    .upsert(options.isUpsert()));
     }
 
     @Override
@@ -575,24 +570,6 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
         }
     }
 
-    private <C> FindOperation<C> createQueryOperation(final MongoNamespace namespace, final Object criteria, final FindOptions options,
-                                                      final Decoder<C> decoder) {
-        return new FindOperation<C>(namespace, decoder)
-                   .filter(asBson(criteria))
-                   .batchSize(options.getBatchSize())
-                   .skip(options.getSkip())
-                   .limit(options.getLimit())
-                   .maxTime(options.getMaxTime(MILLISECONDS), MILLISECONDS)
-                   .modifiers(asBson(options.getModifiers()))
-                   .projection(asBson(options.getProjection()))
-                   .sort(asBson(options.getSort()))
-                   .awaitData(options.isAwaitData())
-                   .noCursorTimeout(options.isNoCursorTimeout())
-                   .oplogReplay(options.isOplogReplay())
-                   .partial(options.isPartial())
-                   .tailableCursor(options.isTailable());
-    }
-
     private <D> List<BsonDocument> createBsonDocumentList(final List<D> pipeline) {
         List<BsonDocument> aggregateList = new ArrayList<BsonDocument>(pipeline.size());
         for (D obj : pipeline) {
@@ -620,30 +597,13 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
             return executor.execute(operation, readPreference);
         }
 
-        @SuppressWarnings("unchecked")
         @Override
         public D first() {
-            if (operation instanceof FindOperation) {
-                FindOperation<D> findOp = (FindOperation<D>) operation;
-                FindOperation<D> findFirstOperation = new FindOperation<D>(findOp.getNamespace(), findOp.getDecoder())
-                                                          .filter(findOp.getFilter())
-                                                          .modifiers(findOp.getModifiers())
-                                                          .projection(findOp.getProjection())
-                                                          .maxTime(findOp.getMaxTime(MILLISECONDS), MILLISECONDS)
-                                                          .skip(findOp.getSkip())
-                                                          .sort(findOp.getSort())
-                                                          .tailableCursor(findOp.isTailableCursor())
-                                                          .slaveOk(findOp.isSlaveOk())
-                                                          .oplogReplay(findOp.isOplogReplay())
-                                                          .noCursorTimeout(findOp.isNoCursorTimeout())
-                                                          .awaitData(findOp.isAwaitData())
-                                                          .partial(findOp.isPartial())
-                                                          .batchSize(0)
-                                                          .limit(-1);
-                return new OperationIterable<D>(findFirstOperation, readPreference).getFirstOrNull();
-            } else {
-                return getFirstOrNull();
+            MongoCursor<D> iterator = iterator();
+            if (!iterator.hasNext()) {
+                return null;
             }
+            return iterator.next();
         }
 
         @Override
@@ -669,13 +629,6 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
             return target;
         }
 
-        private D getFirstOrNull() {
-            MongoCursor<D> iterator = iterator();
-            if (!iterator.hasNext()) {
-                return null;
-            }
-            return iterator.next();
-        }
     }
 
 }

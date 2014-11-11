@@ -57,7 +57,7 @@ public class QueryAcceptanceTest extends DatabaseTestCase {
         collection.insertOne(new Document("name", "Bob"));
 
         Document query = new Document("name", "Bob");
-        MongoCursor<Document> results = collection.find(query, new FindOptions()).iterator();
+        MongoCursor<Document> results = collection.find().filter(query).iterator();
 
         assertThat(results.next().get("name").toString(), is("Bob"));
     }
