@@ -23,6 +23,7 @@ import com.mongodb.async.MongoFuture;
 import com.mongodb.async.SingleResultCallback;
 import com.mongodb.async.SingleResultFuture;
 
+import java.util.ArrayList;
 import java.util.Collection;
 
 class MappingIterable<T, U> implements MongoIterable<U> {
@@ -32,6 +33,24 @@ class MappingIterable<T, U> implements MongoIterable<U> {
     public MappingIterable(final MongoIterable<T> iterable, final Function<T, U> mapper) {
         this.iterable = iterable;
         this.mapper = mapper;
+    }
+
+    @Override
+    public MongoFuture<U> first() {
+        final SingleResultFuture<U> future = new SingleResultFuture<U>();
+        into(new ArrayList<U>(1)).register(new SingleResultCallback<ArrayList<U>>() {
+            @Override
+            public void onResult(final ArrayList<U> result, final MongoException e) {
+                if (e != null) {
+                    future.init(null, e);
+                } else if (result.size() == 0) {
+                    future.init(null, null);
+                } else {
+                    future.init(result.get(0), null);
+                }
+            }
+        });
+        return future;
     }
 
     @Override
