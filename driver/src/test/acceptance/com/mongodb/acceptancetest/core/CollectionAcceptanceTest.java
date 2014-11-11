@@ -211,50 +211,52 @@ public class CollectionAcceptanceTest extends DatabaseTestCase {
     @Test
     public void shouldSortDocumentsWhenUsingAggregate() {
         List<Document> documents = insertAggregationTestDocuments();
-        List<Document> sorted = collection.aggregate(asList(new Document("$sort", new Document("_id", 1)))).into(new ArrayList<Document>());
+        List<Document> sorted = collection.aggregate().sort(new Document("_id", 1)).into(new ArrayList<Document>());
         assertEquals(documents, sorted);
     }
 
     @Test
     public void shouldSkipDocumentsWhenUsingAggregate() {
         List<Document> documents = insertAggregationTestDocuments();
-        List<Document> skipped = collection.aggregate(asList(new Document("$sort", new Document("_id", 1)),
-                                                             new Document("$skip", 1))).into(new ArrayList<Document>());
+        List<Document> skipped = collection.aggregate().sort(new Document("_id", 1)).skip(1).into(new ArrayList<Document>());
         assertEquals(documents.subList(1, 3), skipped);
     }
 
     @Test
     public void shouldLimitDocumentsWhenUsingAggregate() {
         List<Document> documents = insertAggregationTestDocuments();
-        List<Document> limited = collection.aggregate(asList(new Document("$sort", new Document("_id", 1)),
-                                                             new Document("$limit", 2))).into(new ArrayList<Document>());
+        List<Document> limited = collection.aggregate()
+                                           .sort(new Document("_id", 1))
+                                           .limit(2)
+                                           .into(new ArrayList<Document>());
         assertEquals(documents.subList(0, 2), limited);
     }
 
     @Test
     public void shouldFindDocumentsWhenUsingAggregate() {
         List<Document> documents = insertAggregationTestDocuments();
-        List<Document> matched = collection.aggregate(asList(new Document("$match", new Document("_id", "10012"))))
-                                           .into(new ArrayList<Document>());
+        List<Document> matched = collection.aggregate().match(new Document("_id", "10012")).into(new ArrayList<Document>());
         assertEquals(documents.subList(1, 2), matched);
     }
 
     @Test
     public void shouldProjectDocumentsWhenUsingAggregate() {
         insertAggregationTestDocuments();
-        List<Document> sorted = collection.aggregate(asList(new Document("$sort", new Document("_id", 1)),
-                                                            new Document("$project", new Document("_id", 0).append("zip", "$_id")))
-                                                    ).into(new ArrayList<Document>());
+        List<Document> sorted = collection.aggregate()
+                                          .sort(new Document("_id", 1))
+                                          .project(new Document("_id", 0).append("zip", "$_id"))
+                                          .into(new ArrayList<Document>());
         assertEquals(asList(new Document("zip", "01778"), new Document("zip", "10012"), new Document("zip", "94301")), sorted);
     }
 
     @Test
     public void shouldUnwindDocumentsWhenUsingAggregate() {
         insertAggregationTestDocuments();
-        List<Document> unwound = collection.aggregate(asList(new Document("$sort", new Document("_id", 1)),
-                                                             new Document("$project", new Document("_id", 0).append("tags", 1)),
-                                                             new Document("$unwind", "$tags"))
-                                                     ).into(new ArrayList<Document>());
+        List<Document> unwound = collection.aggregate()
+                                           .sort(new Document("_id", 1))
+                                           .project(new Document("_id", 0).append("tags", 1))
+                                           .unwind("$tags")
+                                           .into(new ArrayList<Document>());
         assertEquals(asList(new Document("tags", "driver"),
                             new Document("tags", "driver"),
                             new Document("tags", "SA"),
@@ -269,11 +271,11 @@ public class CollectionAcceptanceTest extends DatabaseTestCase {
     @Test
     public void shouldGroupDocumentsWhenUsingAggregate() {
         insertAggregationTestDocuments();
-        List<Document> grouped = collection.aggregate(asList(new Document("$sort", new Document("_id", 1)),
-                                                             new Document("$project", new Document("_id", 0).append("tags", 1)),
-                                                             new Document("$unwind", "$tags"),
-                                                             new Document("$group", new Document("_id", "$tags")),
-                                                             new Document("$sort", new Document("_id", 1))))
+        List<Document> grouped = collection.aggregate().sort(new Document("_id", 1))
+                                           .project(new Document("_id", 0).append("tags", 1))
+                                           .unwind("$tags")
+                                           .group(new Document("_id", "$tags"))
+                                           .sort(new Document("_id", 1))
                                            .into(new ArrayList<Document>());
         assertEquals(asList(new Document("_id", "CE"),
                             new Document("_id", "SA"),
