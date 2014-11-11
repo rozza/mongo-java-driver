@@ -461,11 +461,11 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
     @Override
     public T findOneAndReplace(final Object filter, final T replacement, final FindOneAndReplaceOptions options) {
         return executor.execute(new FindAndReplaceOperation<T>(namespace, getCodec(), asBson(replacement))
-                                                  .filter(asBson(filter))
-                                                  .projection(asBson(options.getProjection()))
-                                                  .sort(asBson(options.getSort()))
-                                                  .returnOriginal(options.getReturnOriginal())
-                                                  .upsert(options.isUpsert()));
+                                                   .filter(asBson(filter))
+                                                   .projection(asBson(options.getProjection()))
+                                                   .sort(asBson(options.getSort()))
+                                                   .returnOriginal(options.getReturnOriginal())
+                                                   .upsert(options.isUpsert()));
     }
 
     @Override
