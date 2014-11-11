@@ -290,18 +290,17 @@ class MongoCollectionSpecification extends Specification {
         cursor.hasNext() >>> [true, false]
         def executor = new TestOperationExecutor([cursor, cursor])
         collection = new MongoCollectionImpl<Document>(namespace, Document, options, executor)
+        def fluentFind = collection.find(new Document('cold', true))
+                                   .batchSize(4)
+                                   .maxTime(1, TimeUnit.SECONDS)
+                                   .skip(5)
+                                   .limit(100)
+                                   .modifiers(new Document('$hint', 'i1'))
+                                   .projection(new Document('x', 1))
+                                   .sort(new Document('y', 1))
 
         when:
-        def options = new FindOptions()
-                .batchSize(4)
-                .maxTime(1, TimeUnit.SECONDS)
-                .skip(5)
-                .limit(100)
-                .modifiers(new Document('$hint', 'i1'))
-                .projection(new Document('x', 1))
-                .sort(new Document('y', 1))
-
-        collection.find(new Document('cold', true), options).iterator()
+        fluentFind.iterator()
         def operation = executor.getReadOperation() as FindOperation
 
         then:
@@ -322,13 +321,13 @@ class MongoCollectionSpecification extends Specification {
         executor.readPreference == secondary()
 
         when: 'all the boolean properties are enabled'
-        options = new FindOptions().awaitData(true)
-                                   .noCursorTimeout(true)
-                                   .partial(true)
-                                   .tailable(true)
-                                   .oplogReplay(true)
+        fluentFind.awaitData(true)
+                  .noCursorTimeout(true)
+                  .partial(true)
+                  .tailable(true)
+                  .oplogReplay(true)
 
-        collection.find(new Document(), options).iterator()
+        fluentFind.iterator()
         operation = executor.getReadOperation() as FindOperation
 
         then: 'cursor flags contains all flags'
@@ -406,19 +405,19 @@ class MongoCollectionSpecification extends Specification {
         cursor.hasNext() >>> [true, false]
         def executor = new TestOperationExecutor([cursor, cursor])
         collection = new MongoCollectionImpl<Document>(namespace, Document, options, executor)
+        def fluentFind = collection.find(new Document('cold', true))
+                                   .batchSize(4)
+                                   .maxTime(1, TimeUnit.SECONDS)
+                                   .skip(5)
+                                   .limit(100)
+                                   .modifiers(new Document('$hint', 'i1'))
+                                   .projection(new Document('x', 1))
+                                   .sort(new Document('y', 1))
 
         when:
-        def options = new FindOptions()
-                .batchSize(4)
-                .maxTime(1, TimeUnit.SECONDS)
-                .skip(5)
-                .limit(100)
-                .modifiers(new Document('$hint', 'i1'))
-                .projection(new Document('x', 1))
-                .sort(new Document('y', 1))
-
-        collection.find(new Document('cold', true), options).first()
+        fluentFind.first()
         def operation = executor.getReadOperation() as FindOperation
+        def readPreference = executor.getReadPreference()
 
         then:
         operation.filter == new BsonDocument('cold', BsonBoolean.TRUE)
@@ -435,10 +434,10 @@ class MongoCollectionSpecification extends Specification {
         operation.batchSize == 0
         operation.limit == -1
         operation.isSlaveOk()
-        executor.readPreference == secondary()
+        readPreference == secondary()
 
         when:
-        collection.find(new Document('cold', true), options).iterator()
+        fluentFind.iterator()
         operation = executor.getReadOperation() as FindOperation
 
         then: 'cursor flags contains all flags'

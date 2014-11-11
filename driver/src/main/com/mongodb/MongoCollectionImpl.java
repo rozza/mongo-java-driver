@@ -161,32 +161,22 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
 
     @Override
     public FindFluent<T> find() {
-        return find(new BsonDocument(), new FindOptions(), clazz);
+        return find(new BsonDocument(), clazz);
     }
 
     @Override
     public <C> FindFluent<C> find(final Class<C> clazz) {
-        return find(new BsonDocument(), new FindOptions(), clazz);
+        return find(new BsonDocument(), clazz);
     }
 
     @Override
     public FindFluent<T> find(final Object filter) {
-        return find(filter, new FindOptions(), clazz);
+        return find(filter, clazz);
     }
 
     @Override
     public <C> FindFluent<C> find(final Object filter, final Class<C> clazz) {
-        return find(filter, new FindOptions(), clazz);
-    }
-
-    @Override
-    public FindFluent<T> find(final Object filter, final FindOptions findOptions) {
-        return find(filter, findOptions, clazz);
-    }
-
-    @Override
-    public <C> FindFluent<C> find(final Object filter, final FindOptions findOptions, final Class<C> clazz) {
-        return new FindFluentImpl<C>(namespace, options, executor, filter, findOptions, clazz);
+        return new FindFluentImpl<C>(namespace, options, executor, filter, new FindOptions(), clazz);
     }
 
     @Override

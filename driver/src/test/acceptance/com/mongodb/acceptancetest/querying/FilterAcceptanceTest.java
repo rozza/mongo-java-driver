@@ -19,7 +19,6 @@ package com.mongodb.acceptancetest.querying;
 import com.mongodb.MongoCursor;
 import com.mongodb.MongoQueryFailureException;
 import com.mongodb.client.DatabaseTestCase;
-import com.mongodb.client.model.FindOptions;
 import org.bson.Document;
 import org.junit.Test;
 
@@ -43,27 +42,6 @@ public class FilterAcceptanceTest extends DatabaseTestCase {
         assertEquals(1, filteredCollection.size());
         assertThat((Integer) filteredCollection.get(0).get("_id"), is(3));
     }
-
-    @Test
-    public void shouldSortDescendingOptions() {
-        initialiseCollectionWithDocuments(10);
-
-        MongoCursor<Document> filteredAndSortedCollection = collection.find(new Document(),
-                                                                            new FindOptions().sort(new Document("_id", -1)))
-                                                                      .iterator();
-
-        assertThat((Integer) filteredAndSortedCollection.next().get("_id"), is(9));
-        assertThat((Integer) filteredAndSortedCollection.next().get("_id"), is(8));
-        assertThat((Integer) filteredAndSortedCollection.next().get("_id"), is(7));
-        assertThat((Integer) filteredAndSortedCollection.next().get("_id"), is(6));
-        assertThat((Integer) filteredAndSortedCollection.next().get("_id"), is(5));
-        assertThat((Integer) filteredAndSortedCollection.next().get("_id"), is(4));
-        assertThat((Integer) filteredAndSortedCollection.next().get("_id"), is(3));
-        assertThat((Integer) filteredAndSortedCollection.next().get("_id"), is(2));
-        assertThat((Integer) filteredAndSortedCollection.next().get("_id"), is(1));
-        assertThat((Integer) filteredAndSortedCollection.next().get("_id"), is(0));
-    }
-
 
     @Test
     public void shouldSortDescending() {
