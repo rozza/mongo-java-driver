@@ -60,6 +60,7 @@ import com.mongodb.operation.FindAndReplaceOperation;
 import com.mongodb.operation.FindAndUpdateOperation;
 import com.mongodb.operation.InsertOperation;
 import com.mongodb.operation.ListIndexesOperation;
+import com.mongodb.operation.MapReduceStatistics;
 import com.mongodb.operation.MapReduceToCollectionOperation;
 import com.mongodb.operation.MapReduceWithInlineResultsOperation;
 import com.mongodb.operation.MixedBulkWriteOperation;
@@ -268,11 +269,10 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
                     .nonAtomic(options.isNonAtomic())
                     .sharded(options.isSharded())
                     .databaseName(options.getDatabaseName());
-
             if (options.getFinalizeFunction() != null) {
                 operation.finalizeFunction(new BsonJavaScript(options.getFinalizeFunction()));
             }
-            executor.execute(operation);
+            MapReduceStatistics statistics = executor.execute(operation);
 
             String databaseName = options.getDatabaseName() != null ? options.getDatabaseName() : namespace.getDatabaseName();
             return new FindFluentImpl<C>(new MongoNamespace(databaseName, options.getCollectionName()), this.options, executor,
@@ -408,9 +408,9 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
     @Override
     public T findOneAndDelete(final Object filter, final FindOneAndDeleteOptions options) {
         return executor.execute(new FindAndDeleteOperation<T>(namespace, getCodec())
-                                                  .filter(asBson(filter))
-                                                  .projection(asBson(options.getProjection()))
-                                                  .sort(asBson(options.getSort())));
+                                .filter(asBson(filter))
+                                .projection(asBson(options.getProjection()))
+                                .sort(asBson(options.getSort())));
     }
 
     @Override
@@ -456,21 +456,21 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
     @Override
     public void createIndex(final Object key, final CreateIndexOptions createIndexOptions) {
         executor.execute(new CreateIndexOperation(getNamespace(), asBson(key))
-                             .name(createIndexOptions.getName())
-                             .background(createIndexOptions.isBackground())
-                             .unique(createIndexOptions.isUnique())
-                             .sparse(createIndexOptions.isSparse())
-                             .expireAfterSeconds(createIndexOptions.getExpireAfterSeconds())
-                             .version(createIndexOptions.getVersion())
-                             .weights(asBson(createIndexOptions.getWeights()))
-                             .defaultLanguage(createIndexOptions.getDefaultLanguage())
-                             .languageOverride(createIndexOptions.getLanguageOverride())
-                             .textIndexVersion(createIndexOptions.getTextIndexVersion())
-                             .twoDSphereIndexVersion(createIndexOptions.getTwoDSphereIndexVersion())
-                             .bits(createIndexOptions.getBits())
-                             .min(createIndexOptions.getMin())
-                             .max(createIndexOptions.getMax())
-                             .bucketSize(createIndexOptions.getBucketSize()));
+                         .name(createIndexOptions.getName())
+                         .background(createIndexOptions.isBackground())
+                         .unique(createIndexOptions.isUnique())
+                         .sparse(createIndexOptions.isSparse())
+                         .expireAfterSeconds(createIndexOptions.getExpireAfterSeconds())
+                         .version(createIndexOptions.getVersion())
+                         .weights(asBson(createIndexOptions.getWeights()))
+                         .defaultLanguage(createIndexOptions.getDefaultLanguage())
+                         .languageOverride(createIndexOptions.getLanguageOverride())
+                         .textIndexVersion(createIndexOptions.getTextIndexVersion())
+                         .twoDSphereIndexVersion(createIndexOptions.getTwoDSphereIndexVersion())
+                         .bits(createIndexOptions.getBits())
+                         .min(createIndexOptions.getMin())
+                         .max(createIndexOptions.getMax())
+                         .bucketSize(createIndexOptions.getBucketSize()));
     }
 
     @Override
