@@ -22,7 +22,6 @@ import com.mongodb.bulk.InsertRequest;
 import com.mongodb.bulk.UpdateRequest;
 import com.mongodb.bulk.WriteRequest;
 import com.mongodb.client.FindFluent;
-import com.mongodb.client.MapReduceIterable;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCollectionOptions;
 import com.mongodb.client.MongoIterable;
@@ -61,13 +60,11 @@ import com.mongodb.operation.FindAndReplaceOperation;
 import com.mongodb.operation.FindAndUpdateOperation;
 import com.mongodb.operation.InsertOperation;
 import com.mongodb.operation.ListIndexesOperation;
-import com.mongodb.operation.MapReduceCursor;
 import com.mongodb.operation.MapReduceStatistics;
 import com.mongodb.operation.MapReduceToCollectionOperation;
 import com.mongodb.operation.MapReduceWithInlineResultsOperation;
 import com.mongodb.operation.MixedBulkWriteOperation;
 import com.mongodb.operation.OperationExecutor;
-import com.mongodb.operation.ReadOperation;
 import com.mongodb.operation.RenameCollectionOperation;
 import com.mongodb.operation.UpdateOperation;
 import org.bson.BsonArray;
@@ -83,7 +80,6 @@ import org.bson.codecs.CollectibleCodec;
 import org.bson.codecs.DecoderContext;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 
 import static com.mongodb.assertions.Assertions.notNull;
@@ -222,22 +218,22 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
     }
 
     @Override
-    public MapReduceIterable<Document> mapReduce(final String mapFunction, final String reduceFunction) {
+    public MongoIterable<Document> mapReduce(final String mapFunction, final String reduceFunction) {
         return mapReduce(mapFunction, reduceFunction, new MapReduceOptions());
     }
 
     @Override
-    public MapReduceIterable<Document> mapReduce(final String mapFunction, final String reduceFunction, final MapReduceOptions options) {
+    public MongoIterable<Document> mapReduce(final String mapFunction, final String reduceFunction, final MapReduceOptions options) {
         return mapReduce(mapFunction, reduceFunction, options, Document.class);
     }
 
     @Override
-    public <C> MapReduceIterable<C> mapReduce(final String mapFunction, final String reduceFunction, final Class<C> clazz) {
+    public <C> MongoIterable<C> mapReduce(final String mapFunction, final String reduceFunction, final Class<C> clazz) {
         return mapReduce(mapFunction, reduceFunction, new MapReduceOptions(), clazz);
     }
 
     @Override
-    public <C> MapReduceIterable<C> mapReduce(final String mapFunction, final String reduceFunction, final MapReduceOptions options,
+    public <C> MongoIterable<C> mapReduce(final String mapFunction, final String reduceFunction, final MapReduceOptions options,
                                           final Class<C> clazz) {
         if (options.isInline()) {
             MapReduceWithInlineResultsOperation<C> operation =
@@ -255,7 +251,7 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
             if (options.getFinalizeFunction() != null) {
                 operation.finalizeFunction(new BsonJavaScript(options.getFinalizeFunction()));
             }
-            return new MapReduceInlineIterable<C>(operation, this.options.getReadPreference(), executor);
+            return new OperationIterable<C>(operation, this.options.getReadPreference(), executor);
         } else {
             MapReduceToCollectionOperation operation =
                 new MapReduceToCollectionOperation(getNamespace(),
@@ -279,10 +275,8 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
             MapReduceStatistics statistics = executor.execute(operation);
 
             String databaseName = options.getDatabaseName() != null ? options.getDatabaseName() : namespace.getDatabaseName();
-            return new MapReduceCollectionIterable<C>(statistics,
-                                                      new FindFluentImpl<C>(new MongoNamespace(databaseName, options.getCollectionName()),
-                                                                            this.options, executor, new BsonDocument(), new FindOptions(),
-                                                                            clazz));
+            return new FindFluentImpl<C>(new MongoNamespace(databaseName, options.getCollectionName()), this.options, executor,
+                                         new BsonDocument(), new FindOptions(), clazz);
         }
     }
 
@@ -449,9 +443,9 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
     @Override
     public T findOneAndDelete(final Object filter, final FindOneAndDeleteOptions options) {
         return executor.execute(new FindAndDeleteOperation<T>(namespace, getCodec())
-                                                  .filter(asBson(filter))
-                                                  .projection(asBson(options.getProjection()))
-                                                  .sort(asBson(options.getSort())));
+                                .filter(asBson(filter))
+                                .projection(asBson(options.getProjection()))
+                                .sort(asBson(options.getSort())));
     }
 
     // TODO modifiedCount
@@ -502,21 +496,21 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
     @Override
     public void createIndex(final Object key, final CreateIndexOptions createIndexOptions) {
         executor.execute(new CreateIndexOperation(getNamespace(), asBson(key))
-                             .name(createIndexOptions.getName())
-                             .background(createIndexOptions.isBackground())
-                             .unique(createIndexOptions.isUnique())
-                             .sparse(createIndexOptions.isSparse())
-                             .expireAfterSeconds(createIndexOptions.getExpireAfterSeconds())
-                             .version(createIndexOptions.getVersion())
-                             .weights(asBson(createIndexOptions.getWeights()))
-                             .defaultLanguage(createIndexOptions.getDefaultLanguage())
-                             .languageOverride(createIndexOptions.getLanguageOverride())
-                             .textIndexVersion(createIndexOptions.getTextIndexVersion())
-                             .twoDSphereIndexVersion(createIndexOptions.getTwoDSphereIndexVersion())
-                             .bits(createIndexOptions.getBits())
-                             .min(createIndexOptions.getMin())
-                             .max(createIndexOptions.getMax())
-                             .bucketSize(createIndexOptions.getBucketSize()));
+                         .name(createIndexOptions.getName())
+                         .background(createIndexOptions.isBackground())
+                         .unique(createIndexOptions.isUnique())
+                         .sparse(createIndexOptions.isSparse())
+                         .expireAfterSeconds(createIndexOptions.getExpireAfterSeconds())
+                         .version(createIndexOptions.getVersion())
+                         .weights(asBson(createIndexOptions.getWeights()))
+                         .defaultLanguage(createIndexOptions.getDefaultLanguage())
+                         .languageOverride(createIndexOptions.getLanguageOverride())
+                         .textIndexVersion(createIndexOptions.getTextIndexVersion())
+                         .twoDSphereIndexVersion(createIndexOptions.getTwoDSphereIndexVersion())
+                         .bits(createIndexOptions.getBits())
+                         .min(createIndexOptions.getMin())
+                         .max(createIndexOptions.getMax())
+                         .bucketSize(createIndexOptions.getBucketSize()));
     }
 
     @Override
@@ -571,100 +565,6 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
             aggregateList.add(asBson(obj));
         }
         return aggregateList;
-    }
-
-    private final class MapReduceInlineIterable<D> extends OperationIterable<D> implements MapReduceIterable<D> {
-        private final ReadOperation<MapReduceCursor<D>> operation;
-        private final ReadPreference readPreference;
-
-        MapReduceInlineIterable(final ReadOperation<MapReduceCursor<D>> operation,
-                                final ReadPreference readPreference, final OperationExecutor executor) {
-            super(operation, readPreference, executor);
-            this.operation = operation;
-            this.readPreference = readPreference;
-        }
-
-        @Override
-        public MapReduceCursor<D> iterator() {
-            return executor.execute(operation, readPreference);
-        }
-    }
-
-    private final class MapReduceCollectionIterable<D> implements MapReduceIterable<D> {
-        private final MapReduceStatistics statistics;
-        private final FindFluent<D> wrapped;
-
-        MapReduceCollectionIterable(final MapReduceStatistics statistics, final FindFluent<D> wrapped) {
-            this.wrapped = wrapped;
-            this.statistics = statistics;
-        }
-
-        @Override
-        public MapReduceCursor<D> iterator() {
-            final MongoCursor<D> proxy = wrapped.iterator();
-            return new MapReduceCursor<D>() {
-
-                @Override
-                public void close() {
-                    proxy.close();
-                }
-
-                @Override
-                public boolean hasNext() {
-                    return proxy.hasNext();
-                }
-
-                @Override
-                public D next() {
-                    return proxy.next();
-                }
-
-                @Override
-                public void remove() {
-                    proxy.remove();
-                }
-
-                @Override
-                public D tryNext() {
-                    return proxy.tryNext();
-                }
-
-                @Override
-                public ServerCursor getServerCursor() {
-                    return proxy.getServerCursor();
-                }
-
-                @Override
-                public ServerAddress getServerAddress() {
-                    return proxy.getServerAddress();
-                }
-
-                @Override
-                public MapReduceStatistics getStatistics() {
-                    return statistics;
-                }
-            };
-        }
-
-        @Override
-        public D first() {
-            return wrapped.first();
-        }
-
-        @Override
-        public <U> MongoIterable<U> map(final Function<D, U> mapper) {
-            return wrapped.map(mapper);
-        }
-
-        @Override
-        public void forEach(final Block<? super D> block) {
-            wrapped.forEach(block);
-        }
-
-        @Override
-        public <A extends Collection<? super D>> A into(final A target) {
-            return wrapped.into(target);
-        }
     }
 
 }

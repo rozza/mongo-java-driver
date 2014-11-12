@@ -18,7 +18,7 @@ package com.mongodb.acceptancetest.querying;
 
 import com.mongodb.Function;
 import com.mongodb.client.DatabaseTestCase;
-import com.mongodb.client.MapReduceIterable;
+import com.mongodb.client.MongoIterable;
 import com.mongodb.client.MongoIterable;
 import com.mongodb.client.model.MapReduceOptions;
 import com.mongodb.operation.MapReduceStatistics;
@@ -56,7 +56,7 @@ public class MapReduceAcceptanceTest extends DatabaseTestCase {
 
         //when
         // perform Map Reduce on all data
-        MapReduceIterable<Document> results = collection.mapReduce("  function(){ "
+        MongoIterable<Document> results = collection.mapReduce("  function(){ "
                                                                + "  for ( var i=0; i < this.labels.length; i++ ){ "
                                                                + "    emit( this.labels[i] , 1 ); "
                                                                + "  }"
@@ -70,12 +70,6 @@ public class MapReduceAcceptanceTest extends DatabaseTestCase {
                                                                + "}");
 
         //then
-        MapReduceStatistics statistics = results.iterator().getStatistics();
-        assertThat(statistics.getInputCount(), is(10));
-        assertThat(statistics.getEmitCount(), is(20));
-        assertThat(statistics.getOutputCount(), is(4));
-
-
         List<Document> resultList = results.into(new ArrayList<Document>());
         assertThat("There are four distinct labels, a b c d", resultList.size(), is(4));
 
@@ -202,7 +196,7 @@ public class MapReduceAcceptanceTest extends DatabaseTestCase {
 
         //when
         // perform Map Reduce on all data
-        MapReduceIterable<Document> results = collection.mapReduce("  function(){ "
+        MongoIterable<Document> results = collection.mapReduce("  function(){ "
                                                                    + "  for ( var i=0; i < this.labels.length; i++ ){ "
                                                                    + "    emit( this.labels[i] , 1 ); "
                                                                    + "  }"
@@ -216,12 +210,6 @@ public class MapReduceAcceptanceTest extends DatabaseTestCase {
                                                                    + "}", new MapReduceOptions(getCollectionName() + "-output"));
 
         //then
-        MapReduceStatistics statistics = results.iterator().getStatistics();
-        assertThat(statistics.getInputCount(), is(10));
-        assertThat(statistics.getEmitCount(), is(20));
-        assertThat(statistics.getOutputCount(), is(4));
-
-
         List<Document> resultList = results.into(new ArrayList<Document>());
         assertThat("There are four distinct labels, a b c d", resultList.size(), is(4));
 
