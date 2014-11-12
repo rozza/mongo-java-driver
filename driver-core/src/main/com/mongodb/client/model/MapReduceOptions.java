@@ -57,10 +57,13 @@ public class MapReduceOptions {
     /**
      * Constructs a new instance
      *
+     * <p>Defaults to replacing the collection if it exists.</p>
+     *
      * @param collectionName the name of the collection that you want the map-reduce operation to write its output.
      */
     public MapReduceOptions(final String collectionName) {
         this.collectionName = notNull("collectionName", collectionName);
+        this.action = Action.REPLACE;
         this.inline = false;
     }
 

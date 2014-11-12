@@ -201,7 +201,7 @@ public interface MongoCollection<T> {
      * @return an iterable containing the result of the map-reduce operation
      * @mongodb.driver.manual reference/command/mapReduce/ map-reduce
      */
-    MongoIterable<Document> mapReduce(String mapFunction, String reduceFunction);
+    MapReduceIterable<Document> mapReduce(String mapFunction, String reduceFunction);
 
     /**
      * Aggregates documents according to the specified map-reduce function.
@@ -212,7 +212,7 @@ public interface MongoCollection<T> {
      * @return an iterable containing the result of the map-reduce operation
      * @mongodb.driver.manual reference/command/mapReduce/ map-reduce
      */
-    MongoIterable<Document> mapReduce(String mapFunction, String reduceFunction, MapReduceOptions options);
+    MapReduceIterable<Document> mapReduce(String mapFunction, String reduceFunction, MapReduceOptions options);
 
     /**
      * Aggregates documents according to the specified map-reduce function.
@@ -224,7 +224,7 @@ public interface MongoCollection<T> {
      * @return an iterable containing the result of the map-reduce operation
      * @mongodb.driver.manual reference/command/mapReduce/ map-reduce
      */
-    <C> MongoIterable<C> mapReduce(String mapFunction, String reduceFunction, Class<C> clazz);
+    <C> MapReduceIterable<C> mapReduce(String mapFunction, String reduceFunction, Class<C> clazz);
 
     /**
      * Aggregates documents according to the specified map-reduce function.
@@ -237,7 +237,7 @@ public interface MongoCollection<T> {
      * @return an iterable containing the result of the map-reduce operation
      * @mongodb.driver.manual reference/command/mapReduce/ map-reduce
      */
-    <C> MongoIterable<C> mapReduce(String mapFunction, String reduceFunction, MapReduceOptions options, Class<C> clazz);
+    <C> MapReduceIterable<C> mapReduce(String mapFunction, String reduceFunction, MapReduceOptions options, Class<C> clazz);
 
     /**
      * Executes a mix of inserts, updates, replaces, and deletes.
