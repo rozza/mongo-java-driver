@@ -52,8 +52,6 @@ import com.mongodb.operation.FindAndUpdateOperation
 import com.mongodb.operation.FindOperation
 import com.mongodb.operation.InsertOperation
 import com.mongodb.operation.ListIndexesOperation
-import com.mongodb.operation.MapReduceCursor
-import com.mongodb.operation.MapReduceStatistics
 import com.mongodb.operation.MapReduceToCollectionOperation
 import com.mongodb.operation.MapReduceWithInlineResultsOperation
 import com.mongodb.operation.MixedBulkWriteOperation
@@ -637,7 +635,7 @@ class MongoCollectionSpecification extends Specification {
 
     def 'mapReduce should use the MapReduceWithInlineResultsOperation properly'() {
         given:
-        def cursor = Stub(MapReduceCursor)
+        def cursor = Stub(MongoCursor)
         def executor = new TestOperationExecutor([cursor])
         collection = new MongoCollectionImpl<Document>(namespace, Document, options, executor)
 
@@ -661,7 +659,7 @@ class MongoCollectionSpecification extends Specification {
 
     def 'mapReduce with options should use the MapReduceWithInlineResultsOperation properly'() {
         given:
-        def cursor = Stub(MapReduceCursor)
+        def cursor = Stub(MongoCursor)
         def executor = new TestOperationExecutor([cursor])
         collection = new MongoCollectionImpl<Document>(namespace, Document, options, executor)
         def options = new MapReduceOptions()
@@ -695,9 +693,8 @@ class MongoCollectionSpecification extends Specification {
 
     def 'mapReduce with options should use the MapReduceToCollectionOperation properly'() {
         given:
-        def stats = Stub(MapReduceStatistics)
-        def cursor = Stub(MapReduceCursor)
-        def executor = new TestOperationExecutor([stats, cursor])
+        def cursor = Stub(MongoCursor)
+        def executor = new TestOperationExecutor([cursor, cursor])
         collection = new MongoCollectionImpl<Document>(namespace, Document, options, executor)
         def options = new MapReduceOptions('out')
                 .action(MapReduceOptions.Action.MERGE)
