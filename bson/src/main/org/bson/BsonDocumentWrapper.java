@@ -16,12 +16,17 @@
 
 package org.bson;
 
+import org.bson.codecs.Codec;
 import org.bson.codecs.Encoder;
 import org.bson.codecs.EncoderContext;
+import org.bson.codecs.configuration.CodecConfigurationException;
+import org.bson.codecs.configuration.CodecRegistry;
 
 import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
+
+import static java.lang.String.format;
 
 /**
  * A {@code BsonDocument} that begins its life as a document of any type and an {@code Encoder} for that document, which lets an instance of
@@ -40,6 +45,33 @@ public class BsonDocumentWrapper<T> extends BsonDocument {
     private final transient T wrappedDocument;
     private final transient Encoder<T> encoder;
     private BsonDocument unwrapped;
+
+    /**
+     * A helper to convert an document of type Object to a BsonDocument
+     *
+     * <p>If not already a BsonDocument it looks up the documents' class in the codecRegistry and wraps it into a BsonDocumentWrapper</p>
+     *
+     * @param document      the document to convert
+     * @param codecRegistry the codecRegistry that can be used in the conversion of the Object
+     * @throws CodecConfigurationException if no codec is found for the document.
+     * @return a BsonDocument
+     */
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    public static BsonDocument asBson(final Object document, final CodecRegistry codecRegistry) {
+        if (document == null) {
+            return null;
+        }
+        if (document instanceof BsonDocument) {
+            return (BsonDocument) document;
+        } else {
+            try {
+                Codec<? extends Object> codec = codecRegistry.get(document.getClass());
+                return new BsonDocumentWrapper(document, codec);
+            } catch (CodecConfigurationException e) {
+                throw new CodecConfigurationException(format("%s %s", e.getMessage(), document));
+            }
+        }
+    }
 
     /**
      * Construct a new instance with the given document and encoder for the document.
