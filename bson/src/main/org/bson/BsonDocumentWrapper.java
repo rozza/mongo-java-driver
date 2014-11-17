@@ -18,7 +18,6 @@ package org.bson;
 
 import org.bson.codecs.Encoder;
 import org.bson.codecs.EncoderContext;
-import org.bson.codecs.configuration.CodecConfigurationException;
 import org.bson.codecs.configuration.CodecRegistry;
 
 import java.util.Collection;
@@ -50,7 +49,6 @@ public class BsonDocumentWrapper<T> extends BsonDocument {
      *
      * @param document      the document to convert
      * @param codecRegistry the codecRegistry that can be used in the conversion of the Object
-     * @throws CodecConfigurationException if no codec is found for the document.
      * @return a BsonDocument
      */
     @SuppressWarnings({"rawtypes", "unchecked"})
