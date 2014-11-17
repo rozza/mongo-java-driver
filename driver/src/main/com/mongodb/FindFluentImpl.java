@@ -181,7 +181,7 @@ final class FindFluentImpl<T> implements FindFluent<T> {
     }
 
     private BsonDocument asBson(final Object document) {
-        return BsonDocumentWrapper.asBson(document, options.getCodecRegistry());
+        return BsonDocumentWrapper.asBsonDocument(document, options.getCodecRegistry());
     }
 
     private final class FindOperationIterable extends OperationIterable<T> {

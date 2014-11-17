@@ -16,11 +16,16 @@
 
 package com.mongodb.async.client
 
+import com.mongodb.WriteConcern
+import com.mongodb.client.options.OperationOptions
 import com.mongodb.connection.Cluster
 import com.mongodb.operation.GetDatabaseNamesOperation
+import org.bson.codecs.configuration.RootCodecRegistry
 import spock.lang.Specification
 
 import static com.mongodb.ReadPreference.primary
+import static com.mongodb.ReadPreference.secondary
+import static com.mongodb.ReadPreference.secondaryPreferred
 
 class MongoClientSpecification extends Specification {
 
@@ -47,6 +52,34 @@ class MongoClientSpecification extends Specification {
 
         then:
         options == clientOptions
+    }
+
+    def 'should pass the correct options to getDatabase'() {
+        given:
+        def options = MongoClientOptions.builder()
+                                        .readPreference(secondary())
+                                        .writeConcern(WriteConcern.ACKNOWLEDGED)
+                                        .codecRegistry(codecRegistry)
+                                        .build()
+        def client = new MongoClientImpl(options, Stub(Cluster), new TestOperationExecutor([]))
+
+        when:
+            def databaseOptions = customOptions ? client.getDatabase('name', customOptions).getOptions()
+                                                : client.getDatabase('name').getOptions()
+        then:
+        databaseOptions.getReadPreference() == readPreference
+        databaseOptions.getWriteConcern() == writeConcern
+        databaseOptions.getCodecRegistry() == codecRegistry
+
+        where:
+        customOptions                                         | readPreference       | writeConcern              | codecRegistry
+        null                                                  | secondary()          | WriteConcern.ACKNOWLEDGED | new RootCodecRegistry([])
+        OperationOptions.builder().build()                    | secondary()          | WriteConcern.ACKNOWLEDGED | new RootCodecRegistry([])
+        OperationOptions.builder()
+                        .readPreference(secondaryPreferred())
+                        .writeConcern(WriteConcern.MAJORITY)
+                        .build()                              | secondaryPreferred() | WriteConcern.MAJORITY     | new RootCodecRegistry([])
+
     }
 
 }

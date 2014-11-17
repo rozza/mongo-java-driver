@@ -16,8 +16,9 @@
 
 package com.mongodb.async.client
 
-import com.mongodb.client.OperationOptions
+import com.mongodb.WriteConcern
 import com.mongodb.client.model.CreateCollectionOptions
+import com.mongodb.client.options.OperationOptions
 import com.mongodb.operation.CommandReadOperation
 import com.mongodb.operation.CommandWriteOperation
 import com.mongodb.operation.CreateCollectionOperation
@@ -26,11 +27,15 @@ import com.mongodb.operation.ListCollectionNamesOperation
 import org.bson.BsonDocument
 import org.bson.BsonInt32
 import org.bson.Document
+import org.bson.codecs.configuration.RootCodecRegistry
 import spock.lang.Specification
 
 import static com.mongodb.ReadPreference.primary
 import static com.mongodb.ReadPreference.primaryPreferred
 import static com.mongodb.ReadPreference.secondary
+import static com.mongodb.ReadPreference.secondaryPreferred
+import static com.mongodb.async.client.CustomMatchers.isTheSameAs
+import static spock.util.matcher.HamcrestSupport.expect
 
 class MongoDatabaseSpecification extends Specification {
 
@@ -39,7 +44,7 @@ class MongoDatabaseSpecification extends Specification {
 
     def 'should return the correct name from getName'() {
         given:
-        def database = new MongoDatabaseImpl(name, options, new TestOperationExecutor())
+        def database = new MongoDatabaseImpl(name, options, new TestOperationExecutor([]))
 
         expect:
         database.getName() == name
@@ -47,7 +52,7 @@ class MongoDatabaseSpecification extends Specification {
 
     def 'should return the correct options'() {
         given:
-        def database = new MongoDatabaseImpl(name, options, new TestOperationExecutor())
+        def database = new MongoDatabaseImpl(name, options, new TestOperationExecutor([]))
 
         expect:
         database.getOptions() == options
@@ -84,7 +89,7 @@ class MongoDatabaseSpecification extends Specification {
         def operation = executor.getWriteOperation() as DropDatabaseOperation
 
         then:
-        operation.databaseName == name
+        expect operation, isTheSameAs(new DropDatabaseOperation(name))
     }
 
     def 'should use ListCollectionNamesOperation correctly'() {
@@ -96,7 +101,7 @@ class MongoDatabaseSpecification extends Specification {
         def operation = executor.getReadOperation() as ListCollectionNamesOperation
 
         then:
-        operation.databaseName == name
+        expect operation, isTheSameAs(new ListCollectionNamesOperation(name))
         executor.getReadPreference() == primary()
     }
 
@@ -112,12 +117,7 @@ class MongoDatabaseSpecification extends Specification {
         def operation = executor.getWriteOperation() as CreateCollectionOperation
 
         then:
-        operation.databaseName == name
-        operation.isAutoIndex()
-        !operation.isCapped()
-        !operation.isUsePowerOf2Sizes()
-        operation.getMaxDocuments() == 0
-        operation.getSizeInBytes() == 0
+        expect operation, isTheSameAs(new CreateCollectionOperation(name, collectionName))
 
         when:
         createCollectionOptions.autoIndex(false).capped(true).usePowerOf2Sizes(true).maxDocuments(100).sizeInBytes(1000)
@@ -125,12 +125,41 @@ class MongoDatabaseSpecification extends Specification {
         operation = executor.getWriteOperation() as CreateCollectionOperation
 
         then:
-        operation.databaseName == name
-        !operation.isAutoIndex()
-        operation.isCapped()
-        operation.isUsePowerOf2Sizes()
-        operation.getMaxDocuments() == 100
-        operation.getSizeInBytes() == 1000
+        expect operation, isTheSameAs(new CreateCollectionOperation(name, collectionName)
+                                              .autoIndex(false)
+                                              .capped(true)
+                                              .usePowerOf2Sizes(true)
+                                              .maxDocuments(100)
+                                              .sizeInBytes(1000))
+    }
+
+    def 'should pass the correct options to getCollection'() {
+        given:
+        def options = OperationOptions.builder()
+                                        .readPreference(secondary())
+                                        .writeConcern(WriteConcern.ACKNOWLEDGED)
+                                        .codecRegistry(codecRegistry)
+                                        .build()
+        def executor = new TestOperationExecutor([])
+        def database = new MongoDatabaseImpl(name, options, executor)
+
+        when:
+        def collectionOptions = customOptions ? database.getCollection('name', customOptions).getOptions()
+                                              : database.getCollection('name').getOptions()
+        then:
+        collectionOptions.getReadPreference() == readPreference
+        collectionOptions.getWriteConcern() == writeConcern
+        collectionOptions.getCodecRegistry() == codecRegistry
+
+        where:
+        customOptions                                        | readPreference       | writeConcern              | codecRegistry
+        null                                                 | secondary()          | WriteConcern.ACKNOWLEDGED | new RootCodecRegistry([])
+        OperationOptions.builder().build()                   | secondary()          | WriteConcern.ACKNOWLEDGED | new RootCodecRegistry([])
+        OperationOptions.builder()
+                        .readPreference(secondaryPreferred())
+                        .writeConcern(WriteConcern.MAJORITY)
+                        .build()                             | secondaryPreferred() | WriteConcern.MAJORITY     | new RootCodecRegistry([])
+
     }
 
 }

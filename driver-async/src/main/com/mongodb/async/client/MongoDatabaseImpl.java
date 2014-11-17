@@ -19,6 +19,7 @@ package com.mongodb.async.client;
 import com.mongodb.MongoNamespace;
 import com.mongodb.ReadPreference;
 import com.mongodb.async.MongoFuture;
+import com.mongodb.client.options.OperationOptions;
 import com.mongodb.client.model.CreateCollectionOptions;
 import com.mongodb.operation.AsyncOperationExecutor;
 import com.mongodb.operation.CommandReadOperation;
@@ -26,8 +27,6 @@ import com.mongodb.operation.CommandWriteOperation;
 import com.mongodb.operation.CreateCollectionOperation;
 import com.mongodb.operation.DropDatabaseOperation;
 import com.mongodb.operation.ListCollectionNamesOperation;
-import com.mongodb.client.OperationOptions;
-import org.bson.BsonDocument;
 import org.bson.BsonDocumentWrapper;
 import org.bson.Document;
 
@@ -101,14 +100,16 @@ class MongoDatabaseImpl implements MongoDatabase {
 
     @Override
     public MongoFuture<Document> executeCommand(final Object command) {
-        return executor.execute(new CommandWriteOperation<Document>(getName(), asBson(command),
+        return executor.execute(new CommandWriteOperation<Document>(getName(),
+                                                                    BsonDocumentWrapper.asBsonDocument(command, options.getCodecRegistry()),
                                                                     options.getCodecRegistry().get(Document.class)));
     }
 
     @Override
     public MongoFuture<Document> executeCommand(final Object command, final ReadPreference readPreference) {
         notNull("readPreference", readPreference);
-        return executor.execute(new CommandReadOperation<Document>(getName(), asBson(command),
+        return executor.execute(new CommandReadOperation<Document>(getName(),
+                                                                   BsonDocumentWrapper.asBsonDocument(command, options.getCodecRegistry()),
                                                                    options.getCodecRegistry().get(Document.class)),
                                 readPreference);
     }
@@ -118,7 +119,4 @@ class MongoDatabaseImpl implements MongoDatabase {
         return options;
     }
 
-    private BsonDocument asBson(final Object command) {
-        return BsonDocumentWrapper.asBson(command, options.getCodecRegistry());
-    }
 }

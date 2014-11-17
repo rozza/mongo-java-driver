@@ -21,7 +21,7 @@ import com.mongodb.WriteConcernResult;
 import com.mongodb.annotations.ThreadSafe;
 import com.mongodb.async.MongoFuture;
 import com.mongodb.bulk.BulkWriteResult;
-import com.mongodb.client.OperationOptions;
+import com.mongodb.client.options.OperationOptions;
 import com.mongodb.client.model.AggregateOptions;
 import com.mongodb.client.model.BulkWriteOptions;
 import com.mongodb.client.model.CountOptions;

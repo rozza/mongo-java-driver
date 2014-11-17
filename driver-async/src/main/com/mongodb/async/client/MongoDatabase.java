@@ -19,7 +19,7 @@ package com.mongodb.async.client;
 import com.mongodb.ReadPreference;
 import com.mongodb.annotations.ThreadSafe;
 import com.mongodb.async.MongoFuture;
-import com.mongodb.client.OperationOptions;
+import com.mongodb.client.options.OperationOptions;
 import com.mongodb.client.model.CreateCollectionOptions;
 import org.bson.Document;
 

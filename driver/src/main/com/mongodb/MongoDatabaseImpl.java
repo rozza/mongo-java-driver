@@ -119,6 +119,6 @@ class MongoDatabaseImpl implements MongoDatabase {
     }
 
     private BsonDocument asBson(final Object document) {
-        return BsonDocumentWrapper.asBson(document, options.getCodecRegistry());
+        return BsonDocumentWrapper.asBsonDocument(document, options.getCodecRegistry());
     }
 }

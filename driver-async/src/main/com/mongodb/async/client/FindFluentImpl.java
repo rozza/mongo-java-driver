@@ -21,7 +21,7 @@ import com.mongodb.Function;
 import com.mongodb.MongoNamespace;
 import com.mongodb.ReadPreference;
 import com.mongodb.async.MongoFuture;
-import com.mongodb.client.OperationOptions;
+import com.mongodb.client.options.OperationOptions;
 import com.mongodb.client.model.FindOptions;
 import com.mongodb.operation.AsyncOperationExecutor;
 import com.mongodb.operation.FindOperation;
@@ -179,7 +179,7 @@ class FindFluentImpl<T> implements FindFluent<T> {
     }
 
     private BsonDocument asBson(final Object document) {
-        return BsonDocumentWrapper.asBson(document, options.getCodecRegistry());
+        return BsonDocumentWrapper.asBsonDocument(document, options.getCodecRegistry());
     }
 
     private final class FindOperationIterable extends OperationIterable<T> {

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.mongodb.client;
+package com.mongodb.client.options;
 
 import com.mongodb.ReadPreference;
 import com.mongodb.WriteConcern;

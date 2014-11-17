@@ -27,7 +27,7 @@ import com.mongodb.bulk.DeleteRequest;
 import com.mongodb.bulk.InsertRequest;
 import com.mongodb.bulk.UpdateRequest;
 import com.mongodb.bulk.WriteRequest;
-import com.mongodb.client.OperationOptions;
+import com.mongodb.client.options.OperationOptions;
 import com.mongodb.client.model.AggregateOptions;
 import com.mongodb.client.model.BulkWriteOptions;
 import com.mongodb.client.model.CountOptions;
@@ -568,7 +568,7 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
     }
 
     private BsonDocument asBson(final Object document) {
-        return BsonDocumentWrapper.asBson(document, options.getCodecRegistry());
+        return BsonDocumentWrapper.asBsonDocument(document, options.getCodecRegistry());
     }
 
     private <D> List<BsonDocument> createBsonDocumentList(final List<D> pipeline) {

@@ -25,7 +25,6 @@ import com.mongodb.bulk.DeleteRequest
 import com.mongodb.bulk.InsertRequest
 import com.mongodb.bulk.UpdateRequest
 import com.mongodb.bulk.WriteRequest
-import com.mongodb.client.OperationOptions
 import com.mongodb.client.model.BulkWriteOptions
 import com.mongodb.client.model.CountOptions
 import com.mongodb.client.model.CreateIndexOptions
@@ -37,6 +36,7 @@ import com.mongodb.client.model.InsertManyOptions
 import com.mongodb.client.model.InsertOneModel
 import com.mongodb.client.model.MapReduceOptions
 import com.mongodb.client.model.UpdateOptions
+import com.mongodb.client.options.OperationOptions
 import com.mongodb.connection.AcknowledgedWriteConcernResult
 import com.mongodb.operation.AggregateOperation
 import com.mongodb.operation.CountOperation
@@ -68,14 +68,13 @@ import org.bson.codecs.DocumentCodec
 import org.bson.codecs.ValueCodecProvider
 import org.bson.codecs.configuration.CodecConfigurationException
 import org.bson.codecs.configuration.RootCodecRegistry
-import org.hamcrest.BaseMatcher
-import org.hamcrest.Description
 import spock.lang.Specification
 
 import static com.mongodb.ReadPreference.secondary
+import static com.mongodb.async.client.CustomMatchers.isTheSameAs
 import static java.util.Arrays.asList
 import static java.util.concurrent.TimeUnit.MILLISECONDS
-import static spock.util.matcher.HamcrestSupport.that
+import static spock.util.matcher.HamcrestSupport.expect
 
 class MongoCollectionSpecification extends Specification {
 
@@ -113,7 +112,7 @@ class MongoCollectionSpecification extends Specification {
         def operation = executor.getReadOperation() as CountOperation
 
         then:
-        that operation, isTheSameAs(expectedOperation)
+        expect operation, isTheSameAs(expectedOperation)
 
         when:
         filter = new BsonDocument('a', new BsonInt32(1))
@@ -121,7 +120,7 @@ class MongoCollectionSpecification extends Specification {
         operation = executor.getReadOperation() as CountOperation
 
         then:
-        that operation, isTheSameAs(expectedOperation.filter(filter))
+        expect operation, isTheSameAs(expectedOperation.filter(filter))
 
         when:
         def hint = new BsonDocument('hint', new BsonInt32(1))
@@ -129,12 +128,12 @@ class MongoCollectionSpecification extends Specification {
         operation = executor.getReadOperation() as CountOperation
 
         then:
-        that operation, isTheSameAs(expectedOperation.filter(filter).hint(hint).skip(10).limit(100).maxTime(100, MILLISECONDS))
+        expect operation, isTheSameAs(expectedOperation.filter(filter).hint(hint).skip(10).limit(100).maxTime(100, MILLISECONDS))
     }
 
     def 'should use DistinctOperation correctly'() {
         given:
-        def executor = new TestOperationExecutor([new BsonArray([new BsonString('distinct')]), new BsonArray([new BsonString('distinct')])])
+        def executor = new TestOperationExecutor([new BsonArray([new BsonString('a')]), new BsonArray([new BsonString('b')])])
         def filter = new BsonDocument()
         def collection = new MongoCollectionImpl(namespace, Document, options, executor)
 
@@ -143,7 +142,7 @@ class MongoCollectionSpecification extends Specification {
         def operation = executor.getReadOperation() as DistinctOperation
 
         then:
-        that operation, isTheSameAs(new DistinctOperation(namespace, 'test').filter(new BsonDocument()))
+        expect operation, isTheSameAs(new DistinctOperation(namespace, 'test').filter(new BsonDocument()))
 
         when:
         filter = new BsonDocument('a', new BsonInt32(1))
@@ -151,7 +150,7 @@ class MongoCollectionSpecification extends Specification {
         operation = executor.getReadOperation() as DistinctOperation
 
         then:
-        that operation, isTheSameAs(new DistinctOperation(namespace, 'test').filter(filter).maxTime(100, MILLISECONDS))
+        expect operation, isTheSameAs(new DistinctOperation(namespace, 'test').filter(filter).maxTime(100, MILLISECONDS))
     }
 
     def 'should handle exceptions in distinct correctly'() {
@@ -197,28 +196,28 @@ class MongoCollectionSpecification extends Specification {
         def operation = executor.getReadOperation() as FindOperation
 
         then:
-        that operation, isTheSameAs(documentOperation)
+        expect operation, isTheSameAs(documentOperation)
 
         when:
         collection.find(BsonDocument).into([]).get()
         operation = executor.getReadOperation() as FindOperation
 
         then:
-        that operation, isTheSameAs(bsonOperation)
+        expect operation, isTheSameAs(bsonOperation)
 
         when:
         collection.find(new Document('filter', 1)).into([]).get()
         operation = executor.getReadOperation() as FindOperation
 
         then:
-        that operation, isTheSameAs(documentOperation.filter(new BsonDocument('filter', new BsonInt32(1))))
+        expect operation, isTheSameAs(documentOperation.filter(new BsonDocument('filter', new BsonInt32(1))))
 
         when:
         collection.find(new Document('filter', 1), BsonDocument).into([]).get()
         operation = executor.getReadOperation() as FindOperation
 
         then:
-        that operation, isTheSameAs(bsonOperation.filter(new BsonDocument('filter', new BsonInt32(1))))
+        expect operation, isTheSameAs(bsonOperation.filter(new BsonDocument('filter', new BsonInt32(1))))
     }
 
     def 'should use AggregateOperation correctly'() {
@@ -234,14 +233,15 @@ class MongoCollectionSpecification extends Specification {
         def operation = executor.getReadOperation() as AggregateOperation
 
         then:
-        that operation, isTheSameAs(new AggregateOperation(namespace, [new BsonDocument('$match', new BsonInt32(1))], new DocumentCodec()))
+        expect operation, isTheSameAs(new AggregateOperation(namespace, [new BsonDocument('$match', new BsonInt32(1))],
+                                                             new DocumentCodec()))
 
         when:
         collection.aggregate([new Document('$match', 1)], BsonDocument).into([]).get()
         operation = executor.getReadOperation() as AggregateOperation
 
         then:
-        that operation, isTheSameAs(new AggregateOperation(namespace, [new BsonDocument('$match', new BsonInt32(1))],
+        expect operation, isTheSameAs(new AggregateOperation(namespace, [new BsonDocument('$match', new BsonInt32(1))],
                                                            new BsonDocumentCodec()))
     }
 
@@ -282,7 +282,7 @@ class MongoCollectionSpecification extends Specification {
         def operation = executor.getReadOperation() as MapReduceWithInlineResultsOperation
 
         then:
-        that operation, isTheSameAs(documentOperation)
+        expect operation, isTheSameAs(documentOperation)
 
         when:
         def mapReduceOptions = new MapReduceOptions().finalizeFunction('final')
@@ -290,21 +290,21 @@ class MongoCollectionSpecification extends Specification {
         operation = executor.getReadOperation() as MapReduceWithInlineResultsOperation
 
         then:
-        that operation, isTheSameAs(documentOperation.finalizeFunction(new BsonJavaScript('final')))
+        expect operation, isTheSameAs(documentOperation.finalizeFunction(new BsonJavaScript('final')))
 
         when:
         collection.mapReduce('map', 'reduce', BsonDocument).into([]).get()
         operation = executor.getReadOperation() as MapReduceWithInlineResultsOperation
 
         then:
-        that operation, isTheSameAs(bsonOperation)
+        expect operation, isTheSameAs(bsonOperation)
 
         when:
         collection.mapReduce('map', 'reduce', mapReduceOptions, BsonDocument).into([]).get()
         operation = executor.getReadOperation() as MapReduceWithInlineResultsOperation
 
         then:
-        that operation, isTheSameAs(bsonOperation.finalizeFunction(new BsonJavaScript('final')))
+        expect operation, isTheSameAs(bsonOperation.finalizeFunction(new BsonJavaScript('final')))
 
     }
 
@@ -326,13 +326,13 @@ class MongoCollectionSpecification extends Specification {
         def operation = executor.getWriteOperation() as MapReduceToCollectionOperation
 
         then:
-        that operation, isTheSameAs(expectedOperation)
+        expect operation, isTheSameAs(expectedOperation)
 
         when: 'The following read operation'
         operation = executor.getReadOperation() as FindOperation
 
         then:
-        that operation, isTheSameAs(new FindOperation(new MongoNamespace(namespace.databaseName, 'collectionName'), new DocumentCodec())
+        expect operation, isTheSameAs(new FindOperation(new MongoNamespace(namespace.databaseName, 'collectionName'), new DocumentCodec())
                                             .filter(new BsonDocument()))
 
         when:
@@ -340,13 +340,14 @@ class MongoCollectionSpecification extends Specification {
         operation = executor.getWriteOperation() as MapReduceToCollectionOperation
 
         then:
-        that operation, isTheSameAs(expectedOperation)
+        expect operation, isTheSameAs(expectedOperation)
 
         when: 'The following read operation'
         operation = executor.getReadOperation() as FindOperation
 
         then:
-        that operation, isTheSameAs(new FindOperation(new MongoNamespace(namespace.databaseName, 'collectionName'), new BsonDocumentCodec())
+        expect operation, isTheSameAs(new FindOperation(new MongoNamespace(namespace.databaseName, 'collectionName'),
+                                                        new BsonDocumentCodec())
                                             .filter(new BsonDocument()))
     }
 
@@ -384,14 +385,14 @@ class MongoCollectionSpecification extends Specification {
         def operation = executor.getWriteOperation() as MixedBulkWriteOperation
 
         then:
-        that operation, isTheSameAs(expectedOperation(false))
+        expect operation, isTheSameAs(expectedOperation(false))
 
         when:
         collection.bulkWrite([new InsertOneModel(new Document('_id', 1))], new BulkWriteOptions().ordered(true)).get()
         operation = executor.getWriteOperation() as MixedBulkWriteOperation
 
         then:
-        that operation, isTheSameAs(expectedOperation(true))
+        expect operation, isTheSameAs(expectedOperation(true))
     }
 
     def 'should handle exceptions in bulkWrite correctly'() {
@@ -420,7 +421,7 @@ class MongoCollectionSpecification extends Specification {
         def operation = executor.getWriteOperation() as InsertOperation
 
         then:
-        that operation, isTheSameAs(expectedOperation)
+        expect operation, isTheSameAs(expectedOperation)
     }
 
     def 'should use InsertManyOperation correctly'() {
@@ -438,14 +439,14 @@ class MongoCollectionSpecification extends Specification {
         def operation = executor.getWriteOperation() as InsertOperation
 
         then:
-        that operation, isTheSameAs(expectedOperation(false))
+        expect operation, isTheSameAs(expectedOperation(false))
 
         when:
         collection.insertMany([new Document('_id', 1), new Document('_id', 2)], new InsertManyOptions().ordered(true)).get()
         operation = executor.getWriteOperation() as InsertOperation
 
         then:
-        that operation, isTheSameAs(expectedOperation(true))
+        expect operation, isTheSameAs(expectedOperation(true))
     }
 
     def 'should use DeleteOneOperation correctly'() {
@@ -460,7 +461,7 @@ class MongoCollectionSpecification extends Specification {
         def operation = executor.getWriteOperation() as DeleteOperation
 
         then:
-        that operation, isTheSameAs(expectedOperation)
+        expect operation, isTheSameAs(expectedOperation)
     }
 
     def 'should use DeleteManyOperation correctly'() {
@@ -476,7 +477,7 @@ class MongoCollectionSpecification extends Specification {
         def operation = executor.getWriteOperation() as DeleteOperation
 
         then:
-        that operation, isTheSameAs(expectedOperation)
+        expect operation, isTheSameAs(expectedOperation)
     }
 
     def 'should use UpdateOperation correctly for replaceOne'() {
@@ -493,7 +494,7 @@ class MongoCollectionSpecification extends Specification {
         def operation = executor.getWriteOperation() as UpdateOperation
 
         then:
-        that operation, isTheSameAs(expectedOperation)
+        expect operation, isTheSameAs(expectedOperation)
     }
 
     def 'should use UpdateOperation correctly for updateOne'() {
@@ -513,14 +514,14 @@ class MongoCollectionSpecification extends Specification {
         def operation = executor.getWriteOperation() as UpdateOperation
 
         then:
-        that operation, isTheSameAs(expectedOperation(false))
+        expect operation, isTheSameAs(expectedOperation(false))
 
         when:
         collection.updateOne(new Document('a', 1), new Document('a', 10), new UpdateOptions().upsert(true)).get()
         operation = executor.getWriteOperation() as UpdateOperation
 
         then:
-        that operation, isTheSameAs(expectedOperation(true))
+        expect operation, isTheSameAs(expectedOperation(true))
     }
 
     def 'should use UpdateOperation correctly for updateMany'() {
@@ -541,14 +542,14 @@ class MongoCollectionSpecification extends Specification {
         def operation = executor.getWriteOperation() as UpdateOperation
 
         then:
-        that operation, isTheSameAs(expectedOperation(false))
+        expect operation, isTheSameAs(expectedOperation(false))
 
         when:
         collection.updateMany(new Document('a', 1), new Document('a', 10), new UpdateOptions().upsert(true)).get()
         operation = executor.getWriteOperation() as UpdateOperation
 
         then:
-        that operation, isTheSameAs(expectedOperation(true))
+        expect operation, isTheSameAs(expectedOperation(true))
     }
 
     def 'should use FindOneAndDeleteOperation correctly'() {
@@ -563,14 +564,14 @@ class MongoCollectionSpecification extends Specification {
         def operation = executor.getWriteOperation() as FindAndDeleteOperation
 
         then:
-        that operation, isTheSameAs(expectedOperation)
+        expect operation, isTheSameAs(expectedOperation)
 
         when:
         collection.findOneAndDelete(new Document('a', 1), new FindOneAndDeleteOptions().projection(new Document('projection', 1))).get()
         operation = executor.getWriteOperation() as FindAndDeleteOperation
 
         then:
-        that operation, isTheSameAs(expectedOperation.projection(new BsonDocument('projection', new BsonInt32(1))))
+        expect operation, isTheSameAs(expectedOperation.projection(new BsonDocument('projection', new BsonInt32(1))))
     }
 
     def 'should use FindOneAndReplaceOperation correctly'() {
@@ -586,7 +587,7 @@ class MongoCollectionSpecification extends Specification {
         def operation = executor.getWriteOperation() as FindAndReplaceOperation
 
         then:
-        that operation, isTheSameAs(expectedOperation)
+        expect operation, isTheSameAs(expectedOperation)
 
         when:
         collection.findOneAndReplace(new Document('a', 1), new Document('a', 10),
@@ -594,7 +595,7 @@ class MongoCollectionSpecification extends Specification {
         operation = executor.getWriteOperation() as FindAndReplaceOperation
 
         then:
-        that operation, isTheSameAs(expectedOperation.projection(new BsonDocument('projection', new BsonInt32(1))))
+        expect operation, isTheSameAs(expectedOperation.projection(new BsonDocument('projection', new BsonInt32(1))))
     }
 
     def 'should use FindAndUpdateOperation correctly'() {
@@ -610,7 +611,7 @@ class MongoCollectionSpecification extends Specification {
         def operation = executor.getWriteOperation() as FindAndUpdateOperation
 
         then:
-        that operation, isTheSameAs(expectedOperation)
+        expect operation, isTheSameAs(expectedOperation)
 
         when:
         collection.findOneAndUpdate(new Document('a', 1), new Document('a', 10),
@@ -618,7 +619,7 @@ class MongoCollectionSpecification extends Specification {
         operation = executor.getWriteOperation() as FindAndUpdateOperation
 
         then:
-        that operation, isTheSameAs(expectedOperation.projection(new BsonDocument('projection', new BsonInt32(1))))
+        expect operation, isTheSameAs(expectedOperation.projection(new BsonDocument('projection', new BsonInt32(1))))
     }
 
     def 'should use DropCollectionOperation correctly'() {
@@ -632,7 +633,7 @@ class MongoCollectionSpecification extends Specification {
         def operation = executor.getWriteOperation() as DropCollectionOperation
 
         then:
-        that operation, isTheSameAs(expectedOperation)
+        expect operation, isTheSameAs(expectedOperation)
     }
 
     def 'should use CreateIndexOperations correctly'() {
@@ -645,14 +646,14 @@ class MongoCollectionSpecification extends Specification {
         def operation = executor.getWriteOperation() as CreateIndexOperation
 
         then:
-        that operation, isTheSameAs(expectedOperation)
+        expect operation, isTheSameAs(expectedOperation)
 
         when:
         collection.createIndex(new Document('key', 1), new CreateIndexOptions().background(true)).get()
         operation = executor.getWriteOperation() as CreateIndexOperation
 
         then:
-        that operation, isTheSameAs(expectedOperation.background(true))
+        expect operation, isTheSameAs(expectedOperation.background(true))
     }
 
     def 'should use ListIndexesOperations correctly'() {
@@ -666,7 +667,7 @@ class MongoCollectionSpecification extends Specification {
         def operation = executor.getReadOperation() as ListIndexesOperation
 
         then:
-        that operation, isTheSameAs(expectedOperation)
+        expect operation, isTheSameAs(expectedOperation)
     }
 
     def 'should use DropIndexOperation correctly for dropIndex'() {
@@ -680,7 +681,7 @@ class MongoCollectionSpecification extends Specification {
         def operation = executor.getWriteOperation() as DropIndexOperation
 
         then:
-        that operation, isTheSameAs(expectedOperation)
+        expect operation, isTheSameAs(expectedOperation)
     }
 
     def 'should use DropIndexOperation correctly for dropIndexes'() {
@@ -694,7 +695,7 @@ class MongoCollectionSpecification extends Specification {
         def operation = executor.getWriteOperation() as DropIndexOperation
 
         then:
-        that operation, isTheSameAs(expectedOperation)
+        expect operation, isTheSameAs(expectedOperation)
     }
 
     def 'should use RenameCollectionOperation correctly'() {
@@ -709,75 +710,7 @@ class MongoCollectionSpecification extends Specification {
         def operation = executor.getWriteOperation() as RenameCollectionOperation
 
         then:
-        that operation, isTheSameAs(expectedOperation)
-    }
-
-    static isTheSameAs(final Object e) {
-        [
-                matches         : { a -> compare(e, a) },
-                describeTo      : { Description description -> description.appendText("Operation has the same attributes ${e.class.name}")
-                },
-                describeMismatch: { a, description -> describer(e, a, description) }
-        ] as BaseMatcher
-    }
-
-    static compare(expected, actual) {
-        if (expected == actual) {
-            return true
-        }
-        if (expected == null || actual == null) {
-            return false
-        }
-        if (actual.class.name != expected.class.name) {
-            return false
-        }
-        actual.class.declaredFields.findAll { !it.synthetic }*.name.collect { it ->
-            if (it == 'decoder') {
-                return actual.decoder.class == expected.decoder.class
-            } else if (actual."$it" != expected."$it") {
-                def (a1, e1) = [actual."$it", expected."$it"]
-                if (List.isCase(a1) && List.isCase(e1) && (a1.size() == e1.size())) {
-                    def i = -1
-                    return a1.collect { a -> i++; compare(a, e1[i]) }.every { it }
-                }
-                return false
-            }
-            true
-        }.every { it }
-    }
-
-    static describer(expected, actual, description) {
-        if (expected == actual) {
-            return true
-        }
-        if (expected == null || actual == null) {
-            description.appendText("different values: $expected != $actual, ")
-            return false
-        }
-        if (actual.class.name != expected.class.name) {
-            description.appendText("different classes: ${expected.class.name} != ${actual.class.name}, ")
-            return false
-        }
-        actual.class.declaredFields.findAll { !it.synthetic }*.name
-                     .collect { it ->
-            if (it == 'decoder' && actual.decoder.class != expected.decoder.class) {
-                description.appendText("different decoder classes $it : ${expected.decoder.class.name} != ${actual.decoder.class.name}, ")
-                return false
-            } else if (actual."$it" != expected."$it") {
-                def (a1, e1) = [actual."$it", expected."$it"]
-                if (List.isCase(a1) && List.isCase(e1) && (a1.size() == e1.size())) {
-                    def i = -1
-                    a1.each { a ->
-                        i++; if (!compare(a, e1[i])) {
-                            describer(a, e1[i], description)
-                        }
-                    }.every { it }
-                }
-                description.appendText("different values in $it : $e1 != $a1\n")
-                return false
-            }
-            true
-        }
+        expect operation, isTheSameAs(expectedOperation)
     }
 
 }

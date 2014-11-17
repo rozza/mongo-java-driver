@@ -25,7 +25,7 @@ import com.mongodb.binding.AsyncClusterBinding;
 import com.mongodb.binding.AsyncReadBinding;
 import com.mongodb.binding.AsyncReadWriteBinding;
 import com.mongodb.binding.AsyncWriteBinding;
-import com.mongodb.client.OperationOptions;
+import com.mongodb.client.options.OperationOptions;
 import com.mongodb.connection.Cluster;
 import com.mongodb.operation.AsyncOperationExecutor;
 import com.mongodb.operation.AsyncReadOperation;
@@ -91,8 +91,8 @@ class MongoClientImpl implements MongoClient {
     }
 
     @Override
-    public MongoDatabase getDatabase(final String name, final OperationOptions mongoDatabaseOptions) {
-        return new MongoDatabaseImpl(name, mongoDatabaseOptions.withDefaults(operationOptions), executor);
+    public MongoDatabase getDatabase(final String name, final OperationOptions options) {
+        return new MongoDatabaseImpl(name, options.withDefaults(operationOptions), executor);
     }
 
     @Override

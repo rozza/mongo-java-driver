@@ -16,7 +16,6 @@
 
 package org.bson;
 
-import org.bson.codecs.Codec;
 import org.bson.codecs.Encoder;
 import org.bson.codecs.EncoderContext;
 import org.bson.codecs.configuration.CodecConfigurationException;
@@ -25,8 +24,6 @@ import org.bson.codecs.configuration.CodecRegistry;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
-
-import static java.lang.String.format;
 
 /**
  * A {@code BsonDocument} that begins its life as a document of any type and an {@code Encoder} for that document, which lets an instance of
@@ -57,19 +54,14 @@ public class BsonDocumentWrapper<T> extends BsonDocument {
      * @return a BsonDocument
      */
     @SuppressWarnings({"rawtypes", "unchecked"})
-    public static BsonDocument asBson(final Object document, final CodecRegistry codecRegistry) {
+    public static BsonDocument asBsonDocument(final Object document, final CodecRegistry codecRegistry) {
         if (document == null) {
             return null;
         }
         if (document instanceof BsonDocument) {
             return (BsonDocument) document;
         } else {
-            try {
-                Codec<? extends Object> codec = codecRegistry.get(document.getClass());
-                return new BsonDocumentWrapper(document, codec);
-            } catch (CodecConfigurationException e) {
-                throw new CodecConfigurationException(format("%s %s", e.getMessage(), document));
-            }
+            return new BsonDocumentWrapper(document, codecRegistry.get(document.getClass()));
         }
     }
 

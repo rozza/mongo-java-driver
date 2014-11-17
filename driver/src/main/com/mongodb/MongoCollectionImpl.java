@@ -527,7 +527,7 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
     }
 
     private BsonDocument asBson(final Object document) {
-        return BsonDocumentWrapper.asBson(document, options.getCodecRegistry());
+        return BsonDocumentWrapper.asBsonDocument(document, options.getCodecRegistry());
     }
 
     private <D> List<BsonDocument> createBsonDocumentList(final List<D> pipeline) {

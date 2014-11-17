@@ -18,7 +18,7 @@
 
 package com.mongodb
 
-import com.mongodb.client.OperationOptions
+import com.mongodb.client.options.OperationOptions
 import org.bson.codecs.ValueCodecProvider
 import org.bson.codecs.configuration.RootCodecRegistry
 import spock.lang.Specification
