@@ -57,8 +57,8 @@ class MongoDatabaseImpl implements MongoDatabase {
     }
 
     @Override
-    public MongoCollection<Document> getCollection(final String collectionName, final OperationOptions operationOptions) {
-        return getCollection(collectionName, Document.class, operationOptions);
+    public MongoCollection<Document> getCollection(final String collectionName, final OperationOptions options) {
+        return getCollection(collectionName, Document.class, options);
     }
 
     @Override
@@ -68,8 +68,8 @@ class MongoDatabaseImpl implements MongoDatabase {
 
     @Override
     public <T> MongoCollection<T> getCollection(final String collectionName, final Class<T> clazz,
-                                                final OperationOptions operationOptions) {
-        return new MongoCollectionImpl<T>(new MongoNamespace(name, collectionName), clazz, operationOptions.withDefaults(options),
+                                                final OperationOptions options) {
+        return new MongoCollectionImpl<T>(new MongoNamespace(name, collectionName), clazz, options.withDefaults(this.options),
                                           executor);
     }
 
@@ -89,13 +89,13 @@ class MongoDatabaseImpl implements MongoDatabase {
     }
 
     @Override
-    public MongoFuture<Void> createCollection(final String collectionName, final CreateCollectionOptions createCollectionOptions) {
+    public MongoFuture<Void> createCollection(final String collectionName, final CreateCollectionOptions options) {
         return executor.execute(new CreateCollectionOperation(name, collectionName)
-                                .capped(createCollectionOptions.isCapped())
-                                .sizeInBytes(createCollectionOptions.getSizeInBytes())
-                                .autoIndex(createCollectionOptions.isAutoIndex())
-                                .maxDocuments(createCollectionOptions.getMaxDocuments())
-                                .usePowerOf2Sizes(createCollectionOptions.isUsePowerOf2Sizes()));
+                                .capped(options.isCapped())
+                                .sizeInBytes(options.getSizeInBytes())
+                                .autoIndex(options.isAutoIndex())
+                                .maxDocuments(options.getMaxDocuments())
+                                .usePowerOf2Sizes(options.isUsePowerOf2Sizes()));
     }
 
     @Override

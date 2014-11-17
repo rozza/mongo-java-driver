@@ -125,7 +125,7 @@ class MongoCollectionSpecification extends Specification {
 
         when:
         def hint = new BsonDocument('hint', new BsonInt32(1))
-        collection.count(filter, new CountOptions().hint(hint).skip(10).limit(100).maxTime(100, MILLISECONDS))
+        collection.count(filter, new CountOptions().hint(hint).skip(10).limit(100).maxTime(100, MILLISECONDS)).get()
         operation = executor.getReadOperation() as CountOperation
 
         then:
@@ -226,7 +226,7 @@ class MongoCollectionSpecification extends Specification {
         def asyncCursor = Stub(MongoAsyncCursor) {
             forEach(_) >> { new SingleResultFuture<Void>(null) }
         }
-        def executor = new TestOperationExecutor([asyncCursor, asyncCursor])
+        def executor = new TestOperationExecutor([asyncCursor, asyncCursor, asyncCursor])
         def collection = new MongoCollectionImpl(namespace, Document, options, executor)
 
         when:
@@ -667,7 +667,7 @@ class MongoCollectionSpecification extends Specification {
 
     def 'should use ListIndexesOperations correctly'() {
         given:
-        def executor = new TestOperationExecutor([null])
+        def executor = new TestOperationExecutor([[]])
         def collection = new MongoCollectionImpl(namespace, Document, options, executor)
         def expectedOperation = new ListIndexesOperation(namespace, new DocumentCodec())
 

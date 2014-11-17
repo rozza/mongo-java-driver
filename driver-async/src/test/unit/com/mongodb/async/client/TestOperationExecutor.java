@@ -28,7 +28,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @SuppressWarnings("rawtypes")
-class TestOperationExecutor implements AsyncOperationExecutor {
+public class TestOperationExecutor implements AsyncOperationExecutor {
 
     private final List<Object> responses;
     private final List<ReadPreference> readPreferences = new ArrayList<ReadPreference>();
@@ -38,7 +38,6 @@ class TestOperationExecutor implements AsyncOperationExecutor {
     TestOperationExecutor(final List<Object> responses) {
         this.responses = responses;
     }
-
 
     @Override
     public <T> MongoFuture<T> execute(final AsyncReadOperation<T> operation, final ReadPreference readPreference) {

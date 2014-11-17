@@ -79,8 +79,8 @@ public interface MongoDatabase {
     /**
      * Gets a collection, with the specific {@code OperationOptions}.
      *
-     * @param collectionName         the name of the collection to return
-     * @param operationOptions       the options to be used with the {@code MongoCollection}
+     * @param collectionName   the name of the collection to return
+     * @param operationOptions the options to be used with the {@code MongoCollection}
      * @return the collection
      */
     MongoCollection<Document> getCollection(String collectionName, OperationOptions operationOptions);
@@ -98,13 +98,13 @@ public interface MongoDatabase {
     /**
      * Gets a collection, with a specific document class and {@code OperationOptions}.
      *
-     * @param collectionName         the name of the collection to return
-     * @param clazz                  the default class to cast any documents returned from the database into
-     * @param operationOptions       the options to be used with the {@code MongoCollection}
-     * @param <T>                    the type of the class to use instead of {@code Document}
+     * @param collectionName the name of the collection to return
+     * @param clazz          the default class to cast any documents returned from the database into
+     * @param options        the options to be used with the {@code MongoCollection}
+     * @param <T>            the type of the class to use instead of {@code Document}
      * @return the collection
      */
-    <T> MongoCollection<T> getCollection(String collectionName, Class<T> clazz, OperationOptions operationOptions);
+    <T> MongoCollection<T> getCollection(String collectionName, Class<T> clazz, OperationOptions options);
 
     /**
      * Drops this database.
@@ -131,9 +131,9 @@ public interface MongoDatabase {
     /**
      * Create a new collection with the selected options
      *
-     * @param collectionName          the name for the new collection to create
-     * @param createCollectionOptions various options for creating the collection
+     * @param collectionName the name for the new collection to create
+     * @param options        various options for creating the collection
      * @mongodb.driver.manual reference/commands/create Create Command
      */
-    MongoFuture<Void> createCollection(String collectionName, CreateCollectionOptions createCollectionOptions);
+    MongoFuture<Void> createCollection(String collectionName, CreateCollectionOptions options);
 }

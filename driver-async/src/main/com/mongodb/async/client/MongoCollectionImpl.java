@@ -145,14 +145,14 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
     }
 
     @Override
-    public MongoFuture<List<Object>> distinct(final String fieldName, final Object filter, final DistinctOptions distinctOptions) {
+    public MongoFuture<List<Object>> distinct(final String fieldName, final Object filter, final DistinctOptions options) {
 
         DistinctOperation operation = new DistinctOperation(namespace, fieldName)
                                       .filter(asBson(filter))
-                                      .maxTime(distinctOptions.getMaxTime(MILLISECONDS), MILLISECONDS);
+                                      .maxTime(options.getMaxTime(MILLISECONDS), MILLISECONDS);
 
         final SingleResultFuture<List<Object>> future = new SingleResultFuture<List<Object>>();
-        executor.execute(operation, options.getReadPreference()).register(new SingleResultCallback<BsonArray>() {
+        executor.execute(operation, this.options.getReadPreference()).register(new SingleResultCallback<BsonArray>() {
             @Override
             public void onResult(final BsonArray result, final MongoException e) {
                 if (e != null) {
@@ -162,8 +162,9 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
                         List<Object> distinctList = new ArrayList<Object>();
                         for (BsonValue value : result) {
                             BsonDocument bsonDocument = new BsonDocument("value", value);
-                            Document document = options.getCodecRegistry().get(Document.class).decode(new BsonDocumentReader(bsonDocument),
-                                                                                                      DecoderContext.builder().build());
+                            Document document = getOptions().getCodecRegistry().get(Document.class)
+                                                            .decode(new BsonDocumentReader(bsonDocument),
+                                                                    DecoderContext.builder().build());
                             distinctList.add(document.get("value"));
                         }
                         future.init(distinctList, null);
@@ -365,7 +366,7 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
     }
 
     @Override
-    public MongoFuture<WriteConcernResult> insertMany(final List<? extends T> documents, final InsertManyOptions insertManyOptions) {
+    public MongoFuture<WriteConcernResult> insertMany(final List<? extends T> documents, final InsertManyOptions options) {
         List<InsertRequest> requests = new ArrayList<InsertRequest>(documents.size());
         for (T document : documents) {
             if (getCodec() instanceof CollectibleCodec) {
@@ -373,7 +374,7 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
             }
             requests.add(new InsertRequest(asBson(document)));
         }
-        return executor.execute(new InsertOperation(namespace, insertManyOptions.isOrdered(), options.getWriteConcern(), requests));
+        return executor.execute(new InsertOperation(namespace, options.isOrdered(), this.options.getWriteConcern(), requests));
     }
 
     @Override
@@ -392,9 +393,9 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
     }
 
     @Override
-    public MongoFuture<UpdateResult> replaceOne(final Object filter, final T replacement, final UpdateOptions updateOptions) {
+    public MongoFuture<UpdateResult> replaceOne(final Object filter, final T replacement, final UpdateOptions options) {
         List<UpdateRequest> requests = new ArrayList<UpdateRequest>(1);
-        requests.add(new UpdateRequest(asBson(filter), asBson(replacement), WriteRequest.Type.REPLACE).upsert(updateOptions.isUpsert()));
+        requests.add(new UpdateRequest(asBson(filter), asBson(replacement), WriteRequest.Type.REPLACE).upsert(options.isUpsert()));
         return createUpdateResult(executor.execute(new UpdateOperation(namespace, true, this.options.getWriteConcern(), requests)));
     }
 
@@ -404,8 +405,8 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
     }
 
     @Override
-    public MongoFuture<UpdateResult> updateOne(final Object filter, final Object update, final UpdateOptions updateOptions) {
-        return update(filter, update, updateOptions, false);
+    public MongoFuture<UpdateResult> updateOne(final Object filter, final Object update, final UpdateOptions options) {
+        return update(filter, update, options, false);
     }
 
     @Override
@@ -414,8 +415,8 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
     }
 
     @Override
-    public MongoFuture<UpdateResult> updateMany(final Object filter, final Object update, final UpdateOptions updateOptions) {
-        return update(filter, update, updateOptions, true);
+    public MongoFuture<UpdateResult> updateMany(final Object filter, final Object update, final UpdateOptions options) {
+        return update(filter, update, options, true);
     }
 
     @Override
@@ -472,23 +473,23 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
     }
 
     @Override
-    public MongoFuture<Void> createIndex(final Object key, final CreateIndexOptions createIndexOptions) {
+    public MongoFuture<Void> createIndex(final Object key, final CreateIndexOptions options) {
         return executor.execute(new CreateIndexOperation(getNamespace(), asBson(key))
-                                .name(createIndexOptions.getName())
-                                .background(createIndexOptions.isBackground())
-                                .unique(createIndexOptions.isUnique())
-                                .sparse(createIndexOptions.isSparse())
-                                .expireAfterSeconds(createIndexOptions.getExpireAfterSeconds())
-                                .version(createIndexOptions.getVersion())
-                                .weights(asBson(createIndexOptions.getWeights()))
-                                .defaultLanguage(createIndexOptions.getDefaultLanguage())
-                                .languageOverride(createIndexOptions.getLanguageOverride())
-                                .textIndexVersion(createIndexOptions.getTextIndexVersion())
-                                .twoDSphereIndexVersion(createIndexOptions.getTwoDSphereIndexVersion())
-                                .bits(createIndexOptions.getBits())
-                                .min(createIndexOptions.getMin())
-                                .max(createIndexOptions.getMax())
-                                .bucketSize(createIndexOptions.getBucketSize()));
+                                .name(options.getName())
+                                .background(options.isBackground())
+                                .unique(options.isUnique())
+                                .sparse(options.isSparse())
+                                .expireAfterSeconds(options.getExpireAfterSeconds())
+                                .version(options.getVersion())
+                                .weights(asBson(options.getWeights()))
+                                .defaultLanguage(options.getDefaultLanguage())
+                                .languageOverride(options.getLanguageOverride())
+                                .textIndexVersion(options.getTextIndexVersion())
+                                .twoDSphereIndexVersion(options.getTwoDSphereIndexVersion())
+                                .bits(options.getBits())
+                                .min(options.getMin())
+                                .max(options.getMax())
+                                .bucketSize(options.getBucketSize()));
     }
 
     @Override
@@ -513,9 +514,9 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
 
     @Override
     public MongoFuture<Void> renameCollection(final MongoNamespace newCollectionNamespace,
-                                              final RenameCollectionOptions renameCollectionOptions) {
+                                              final RenameCollectionOptions options) {
         return executor.execute(new RenameCollectionOperation(getNamespace(), newCollectionNamespace)
-                                .dropTarget(renameCollectionOptions.isDropTarget()));
+                                .dropTarget(options.isDropTarget()));
     }
 
     private MongoFuture<DeleteResult> delete(final Object filter, final boolean multi) {

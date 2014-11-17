@@ -119,7 +119,12 @@ class MongoDatabaseSpecification extends Specification {
         expect operation, isTheSameAs(new CreateCollectionOperation(name, collectionName))
 
         when:
-        new CreateCollectionOptions().autoIndex(false).capped(true).usePowerOf2Sizes(true).maxDocuments(100).sizeInBytes(1000)
+        def createCollectionOptions = new CreateCollectionOptions()
+                .autoIndex(false)
+                .capped(true)
+                .usePowerOf2Sizes(true)
+                .maxDocuments(100)
+                .sizeInBytes(1000)
         database.createCollection(collectionName, createCollectionOptions).get()
         operation = executor.getWriteOperation() as CreateCollectionOperation
 
