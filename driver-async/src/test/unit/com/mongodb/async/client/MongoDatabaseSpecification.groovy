@@ -108,19 +108,18 @@ class MongoDatabaseSpecification extends Specification {
     def 'should use CreateCollectionOperation correctly'() {
         given:
         def collectionName = 'collectionName'
-        def createCollectionOptions = new CreateCollectionOptions()
         def executor = new TestOperationExecutor([null, null])
         def database = new MongoDatabaseImpl(name, options, executor)
 
         when:
-        database.createCollection(collectionName, createCollectionOptions).get()
+        database.createCollection(collectionName).get()
         def operation = executor.getWriteOperation() as CreateCollectionOperation
 
         then:
         expect operation, isTheSameAs(new CreateCollectionOperation(name, collectionName))
 
         when:
-        createCollectionOptions.autoIndex(false).capped(true).usePowerOf2Sizes(true).maxDocuments(100).sizeInBytes(1000)
+        new CreateCollectionOptions().autoIndex(false).capped(true).usePowerOf2Sizes(true).maxDocuments(100).sizeInBytes(1000)
         database.createCollection(collectionName, createCollectionOptions).get()
         operation = executor.getWriteOperation() as CreateCollectionOperation
 

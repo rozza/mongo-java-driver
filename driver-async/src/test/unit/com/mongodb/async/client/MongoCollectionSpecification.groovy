@@ -25,6 +25,7 @@ import com.mongodb.bulk.DeleteRequest
 import com.mongodb.bulk.InsertRequest
 import com.mongodb.bulk.UpdateRequest
 import com.mongodb.bulk.WriteRequest
+import com.mongodb.client.model.AggregateOptions
 import com.mongodb.client.model.BulkWriteOptions
 import com.mongodb.client.model.CountOptions
 import com.mongodb.client.model.CreateIndexOptions
@@ -235,6 +236,14 @@ class MongoCollectionSpecification extends Specification {
         then:
         expect operation, isTheSameAs(new AggregateOperation(namespace, [new BsonDocument('$match', new BsonInt32(1))],
                                                              new DocumentCodec()))
+
+        when:
+        collection.aggregate([new Document('$match', 1)], new AggregateOptions().maxTime(100, MILLISECONDS)).into([]).get()
+        operation = executor.getReadOperation() as AggregateOperation
+
+        then:
+        expect operation, isTheSameAs(new AggregateOperation(namespace, [new BsonDocument('$match', new BsonInt32(1))],
+                                                             new DocumentCodec()).maxTime(100, MILLISECONDS))
 
         when:
         collection.aggregate([new Document('$match', 1)], BsonDocument).into([]).get()
@@ -691,7 +700,7 @@ class MongoCollectionSpecification extends Specification {
         def expectedOperation = new DropIndexOperation(namespace, '*')
 
         when:
-        collection.dropIndex('*').get()
+        collection.dropIndexes().get()
         def operation = executor.getWriteOperation() as DropIndexOperation
 
         then:
