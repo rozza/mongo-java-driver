@@ -24,6 +24,7 @@ import com.mongodb.ExplainVerbosity
 import com.mongodb.MongoExecutionTimeoutException
 import com.mongodb.OperationFunctionalSpecification
 import com.mongodb.ReadPreference
+import com.mongodb.async.SingleResultFuture
 import com.mongodb.binding.ClusterBinding
 import org.bson.BsonBoolean
 import org.bson.BsonDocument
@@ -271,13 +272,14 @@ class FindOperationSpecification extends OperationFunctionalSpecification {
         when:
         def count = 0;
 
-        def cursor = findOperation.executeAsync(getAsyncBinding())
-        cursor.get().forEach(new Block<Document>() {
-            @Override
-            void apply(final Document document) {
-                count++;
-            }
-        }).get()
+        def cursor = findOperation.executeAsync(getAsyncBinding()).get(1, SECONDS)
+        loopCursor(new SingleResultFuture<Void>(), cursor,
+                   new Block<Document>() {
+                       @Override
+                       void apply(final Document value) {
+                           count++;
+                       }
+                   }).get(1, SECONDS)
 
         then:
         count == 500
