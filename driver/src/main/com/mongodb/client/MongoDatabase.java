@@ -58,6 +58,27 @@ public interface MongoDatabase {
     Document executeCommand(Document command, ReadPreference readPreference);
 
     /**
+     * Executes command in the context of the current database.
+     *
+     * @param command        the command to be run
+     * @param clazz          the default class to cast any documents returned from the database into.
+     * @param <T>            the type of the class to use instead of {@code Document}.
+     * @return the command result
+     */
+    <T> T executeCommand(Document command, Class<T> clazz);
+
+    /**
+     * Executes command in the context of the current database.
+     *
+     * @param command        the command to be run
+     * @param readPreference the {@link ReadPreference} to be used when executing the command
+     * @param clazz          the default class to cast any documents returned from the database into.
+     * @param <T>            the type of the class to use instead of {@code Document}.
+     * @return the command result
+     */
+    <T> T executeCommand(Document command, ReadPreference readPreference, Class<T> clazz);
+
+    /**
      * Gets the options that are used with the database.
      *
      * <p>Note: {@link MongoDatabaseOptions} is immutable.</p>
