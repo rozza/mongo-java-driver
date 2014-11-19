@@ -35,7 +35,7 @@ public final class FindOptions {
     private long maxTimeMS;
     private int skip;
     private Object sort;
-    private boolean awaitData;
+    private boolean awaitData = true;
     private boolean noCursorTimeout;
     private boolean oplogReplay;
     private boolean partial;
@@ -230,16 +230,18 @@ public final class FindOptions {
      * Use with the tailable property. If there are no more matching documents, the server will block for a
      * while rather than returning no documents.
      *
-     * @return whether the cursor will wait for more documents that match the filter
+     * @return true only if the cursor is tailable and if it should wait for more documents that match the filter
      * @see com.mongodb.client.model.FindOptions#isTailable()
      */
     public boolean isAwaitData() {
-        return awaitData;
+        return isTailable() && awaitData;
     }
 
     /**
      * Use with the tailable property. If there are no more matching documents, the server will block for a
      * while rather than returning no documents.
+     *
+     * <p>By default awaitData is true.</p>
      *
      * @param awaitData whether the cursor will wait for more documents that match the filter
      * @return this
@@ -330,7 +332,7 @@ public final class FindOptions {
      * using the cursor later, from where it was located, if more data were
      * received. Like any "latent cursor", the cursor may become invalid at
      * some point - for example if the final document it references is deleted.
-     * *
+     *
      * @param tailable if tailable is enabled
      * @return this
      */
