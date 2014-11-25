@@ -208,6 +208,11 @@ class DefaultServerConnection extends AbstractReferenceCounted implements Connec
     }
 
     private <T> void executeProtocolAsync(final Protocol<T> protocol, final SingleResultCallback<T> callback) {
-        protocolExecutor.executeAsync(protocol, this.wrapped,  wrapCallback(callback));
+        SingleResultCallback<T> wrappedCallback = wrapCallback(callback);
+        try {
+            protocolExecutor.executeAsync(protocol, this.wrapped, wrappedCallback);
+        } catch (Throwable t) {
+            wrappedCallback.onResult(null, t);
+        }
     }
 }
