@@ -14,21 +14,32 @@
  * limitations under the License.
  */
 
-package com.mongodb.connection;
+package com.mongodb.async.client;
 
-import com.mongodb.MongoException;
 import com.mongodb.async.SingleResultCallback;
-import com.mongodb.async.SingleResultFuture;
 
-class SingleResultFutureCallback<T> implements SingleResultCallback<T> {
-    private final SingleResultFuture<T> retVal;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
-    SingleResultFutureCallback(final SingleResultFuture<T> retVal) {
-        this.retVal = retVal;
-    }
+/**
+ * A future that also supports registration of callbacks that are executed on completion of the future.
+ *
+ * @param <T> the type of the future
+ * @since 3.0
+ */
+public interface MongoFuture<T> extends Future<T> {
 
     @Override
-    public void onResult(final T result, final MongoException e) {
-        retVal.init(result, e);
-    }
+    T get();
+
+    @Override
+    T get(long timeout, TimeUnit unit) throws TimeoutException;
+
+    /**
+     * Register a callback to be executed when the future completes.
+     *
+     * @param newCallback the callback
+     */
+    void register(SingleResultCallback<T> newCallback);
 }

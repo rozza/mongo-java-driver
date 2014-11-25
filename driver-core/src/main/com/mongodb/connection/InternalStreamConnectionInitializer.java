@@ -18,8 +18,7 @@ package com.mongodb.connection;
 
 import com.mongodb.MongoCredential;
 import com.mongodb.MongoException;
-import com.mongodb.async.MongoFuture;
-import com.mongodb.async.SingleResultFuture;
+import com.mongodb.async.SingleResultCallback;
 import org.bson.BsonDocument;
 import org.bson.BsonInt32;
 
@@ -66,14 +65,12 @@ class InternalStreamConnectionInitializer implements InternalConnectionInitializ
     }
 
     @Override
-    public MongoFuture<ConnectionDescription> initializeAsync(final InternalConnection internalConnection) {
-        SingleResultFuture<ConnectionDescription> future = new SingleResultFuture<ConnectionDescription>();
+    public void initializeAsync(final InternalConnection internalConnection, final SingleResultCallback<ConnectionDescription> callback) {
         try {
-            future.init(initialize(internalConnection), null);
+            callback.onResult(initialize(internalConnection), null);
         } catch (MongoException e) {
-            future.init(null, e);
+            callback.onResult(null, e);
         }
-        return future;
     }
 
     private ConnectionId initializeConnectionId(final InternalConnection internalConnection) {

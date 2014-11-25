@@ -17,8 +17,7 @@
 package com.mongodb.binding;
 
 import com.mongodb.ReadPreference;
-import com.mongodb.async.MongoFuture;
-import com.mongodb.async.SingleResultFuture;
+import com.mongodb.async.SingleResultCallback;
 import com.mongodb.connection.Cluster;
 import com.mongodb.connection.Connection;
 import com.mongodb.connection.Server;
@@ -72,14 +71,13 @@ public class AsyncClusterBinding extends AbstractReferenceCounted implements Asy
     }
 
     @Override
-    public MongoFuture<AsyncConnectionSource> getReadConnectionSource() {
-        ReadPreferenceServerSelector serverSelector = new ReadPreferenceServerSelector(readPreference);
-        return new SingleResultFuture<AsyncConnectionSource>(new AsyncClusterBindingConnectionSource(serverSelector));
+    public void getReadConnectionSource(final SingleResultCallback<AsyncConnectionSource> callback) {
+        callback.onResult(new AsyncClusterBindingConnectionSource(new ReadPreferenceServerSelector(readPreference)), null);
     }
 
     @Override
-    public MongoFuture<AsyncConnectionSource> getWriteConnectionSource() {
-        return new SingleResultFuture<AsyncConnectionSource>(new AsyncClusterBindingConnectionSource(new PrimaryServerSelector()));
+    public void getWriteConnectionSource(final SingleResultCallback<AsyncConnectionSource> callback) {
+        callback.onResult(new AsyncClusterBindingConnectionSource(new PrimaryServerSelector()), null);
     }
 
     private final class AsyncClusterBindingConnectionSource extends AbstractReferenceCounted implements AsyncConnectionSource {
@@ -96,8 +94,9 @@ public class AsyncClusterBinding extends AbstractReferenceCounted implements Asy
         }
 
         @Override
-        public MongoFuture<Connection> getConnection() {
-            return new SingleResultFuture<Connection>(server.getConnection());
+        public void getConnection(final SingleResultCallback<Connection> callback) {
+            // TODO plumb in getConnectionAsync.
+            callback.onResult(server.getConnection(), null);
         }
 
         public AsyncConnectionSource retain() {

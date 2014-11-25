@@ -16,17 +16,15 @@
 
 package com.mongodb.connection;
 
-import com.mongodb.MongoException;
 import com.mongodb.MongoNamespace;
 import com.mongodb.WriteConcern;
-import com.mongodb.async.MongoFuture;
 import com.mongodb.async.SingleResultCallback;
-import com.mongodb.async.SingleResultFuture;
 import com.mongodb.bulk.BulkWriteResult;
 import com.mongodb.bulk.WriteRequest;
 import org.bson.BsonDocument;
 import org.bson.codecs.BsonDocumentCodec;
 
+import static com.mongodb.async.ErrorHandlingResultCallback.wrapCallback;
 import static com.mongodb.connection.ProtocolHelper.getCommandFailureException;
 import static com.mongodb.connection.ProtocolHelper.getMessageSettings;
 import static com.mongodb.connection.WriteCommandResultHelper.getBulkWriteException;
@@ -35,7 +33,6 @@ import static java.lang.String.format;
 
 /**
  * A base class for implementations of the bulk write commands.
- *
  */
 abstract class WriteCommandProtocol implements Protocol<BulkWriteResult> {
     private final MongoNamespace namespace;
@@ -98,17 +95,15 @@ abstract class WriteCommandProtocol implements Protocol<BulkWriteResult> {
     }
 
     @Override
-    public MongoFuture<BulkWriteResult> executeAsync(final InternalConnection connection) {
-        SingleResultFuture<BulkWriteResult> future = new SingleResultFuture<BulkWriteResult>();
+    public void executeAsync(final InternalConnection connection, final SingleResultCallback<BulkWriteResult> callback) {
         executeBatchesAsync(connection, createRequestMessage(getMessageSettings(connection.getDescription())),
                             new BulkWriteBatchCombiner(connection.getDescription().getServerAddress(), ordered, writeConcern), 0, 0,
-                            future);
-        return future;
+                            wrapCallback(callback, getLogger()));
     }
 
     private void executeBatchesAsync(final InternalConnection connection, final BaseWriteCommandMessage message,
                                      final BulkWriteBatchCombiner bulkWriteBatchCombiner, final int batchNum,
-                                     final int currentRangeStartIndex, final SingleResultFuture<BulkWriteResult> future) {
+                                     final int currentRangeStartIndex, final SingleResultCallback<BulkWriteResult> callback) {
 
         if (message != null && !bulkWriteBatchCombiner.shouldStopSendingMoreBatches()) {
 
@@ -125,12 +120,12 @@ abstract class WriteCommandProtocol implements Protocol<BulkWriteResult> {
                 }
             }
 
-            sendMessageAsync(connection, message.getId(), bsonOutput).register(new SingleResultCallback<BsonDocument>() {
+            sendMessageAsync(connection, message.getId(), bsonOutput, wrapCallback(new SingleResultCallback<BsonDocument>() {
                 @Override
-                public void onResult(final BsonDocument result, final MongoException e) {
+                public void onResult(final BsonDocument result, final Throwable t) {
                     bsonOutput.close();
-                    if (e != null) {
-                        future.init(null, e);
+                    if (t != null) {
+                        callback.onResult(null, t);
                     } else {
 
                         if (nextBatchNum > 1) {
@@ -147,15 +142,15 @@ abstract class WriteCommandProtocol implements Protocol<BulkWriteResult> {
                             bulkWriteBatchCombiner.addResult(getBulkWriteResult(getType(), result), indexMap);
                         }
 
-                        executeBatchesAsync(connection, nextMessage, bulkWriteBatchCombiner, nextBatchNum, nextRangeStartIndex, future);
+                        executeBatchesAsync(connection, nextMessage, bulkWriteBatchCombiner, nextBatchNum, nextRangeStartIndex, callback);
                     }
                 }
-            });
+            }, getLogger()));
         } else {
             if (bulkWriteBatchCombiner.hasErrors()) {
-                future.init(null, bulkWriteBatchCombiner.getError());
+                callback.onResult(null, bulkWriteBatchCombiner.getError());
             } else {
-                future.init(bulkWriteBatchCombiner.getResult(), null);
+                callback.onResult(bulkWriteBatchCombiner.getResult(), null);
             }
         }
     }
@@ -198,17 +193,16 @@ abstract class WriteCommandProtocol implements Protocol<BulkWriteResult> {
         }
     }
 
-    private MongoFuture<BsonDocument> sendMessageAsync(final InternalConnection connection, final int messageId,
-                                                       final ByteBufferBsonOutput buffer) {
-        SingleResultFuture<BsonDocument> future = new SingleResultFuture<BsonDocument>();
-
-        CommandResultCallback<BsonDocument> receiveCallback =
-        new CommandResultCallback<BsonDocument>(new SingleResultFutureCallback<BsonDocument>(future), new BsonDocumentCodec(),
-                                                messageId, connection.getDescription().getServerAddress());
+    private void sendMessageAsync(final InternalConnection connection, final int messageId, final ByteBufferBsonOutput buffer,
+                                  final SingleResultCallback<BsonDocument> callback) {
+        SingleResultCallback<ResponseBuffers> receiveCallback = new CommandResultCallback<BsonDocument>(callback,
+                                                                                                        new BsonDocumentCodec(),
+                                                                                                        messageId,
+                                                                                                        connection.getDescription()
+                                                                                                                  .getServerAddress());
         connection.sendMessageAsync(buffer.getByteBuffers(), messageId,
-                                    new SendMessageCallback<BsonDocument>(connection, buffer, messageId, future, receiveCallback));
-
-        return future;
+                                    new SendMessageCallback<BsonDocument>(connection, buffer, messageId, callback,
+                                                                          receiveCallback));
     }
 
     /**

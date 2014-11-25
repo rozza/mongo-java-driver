@@ -28,7 +28,7 @@ import org.bson.codecs.DocumentCodec
 import org.junit.experimental.categories.Category
 import spock.lang.IgnoreIf
 
-import static com.mongodb.ClusterFixture.getAsyncBinding
+import static com.mongodb.ClusterFixture.executeAsync
 import static com.mongodb.ClusterFixture.getBinding
 import static com.mongodb.ClusterFixture.serverVersionAtLeast
 import static java.util.Arrays.asList
@@ -118,7 +118,7 @@ class CreateIndexSpecification extends OperationFunctionalSpecification {
         def createIndexOperation = new CreateIndexOperation(getNamespace(), keys)
 
         when:
-        createIndexOperation.executeAsync(getAsyncBinding()).get()
+        executeAsync(createIndexOperation)
 
         then:
         getUserCreatedIndexes('key') == [field1Index]
@@ -155,7 +155,7 @@ class CreateIndexSpecification extends OperationFunctionalSpecification {
         def createIndexOperation = new CreateIndexOperation(getNamespace(), new BsonDocument('field', new BsonInt32(1))).unique(true)
 
         when:
-        createIndexOperation.executeAsync(getAsyncBinding()).get()
+        executeAsync(createIndexOperation)
 
         then:
         thrown(DuplicateKeyException)

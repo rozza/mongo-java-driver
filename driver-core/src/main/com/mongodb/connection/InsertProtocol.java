@@ -20,15 +20,14 @@ import com.mongodb.MongoException;
 import com.mongodb.MongoNamespace;
 import com.mongodb.WriteConcern;
 import com.mongodb.WriteConcernResult;
-import com.mongodb.async.MongoFuture;
 import com.mongodb.async.SingleResultCallback;
-import com.mongodb.async.SingleResultFuture;
 import com.mongodb.bulk.InsertRequest;
 import com.mongodb.diagnostics.logging.Logger;
 import com.mongodb.diagnostics.logging.Loggers;
 
 import java.util.List;
 
+import static com.mongodb.async.ErrorHandlingResultCallback.wrapCallback;
 import static java.lang.String.format;
 
 /**
@@ -71,23 +70,23 @@ class InsertProtocol extends WriteProtocol {
     }
 
     @Override
-    public MongoFuture<WriteConcernResult> executeAsync(final InternalConnection connection) {
+    public void executeAsync(final InternalConnection connection, final SingleResultCallback<WriteConcernResult> callback) {
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug(format("Asynchronously inserting %d documents into namespace %s on connection [%s] to server %s",
                                 insertRequestList.size(), getNamespace(), connection.getDescription().getConnectionId(),
                                 connection.getDescription().getServerAddress()));
         }
-        final SingleResultFuture<WriteConcernResult> future = new SingleResultFuture<WriteConcernResult>();
-        super.executeAsync(connection).register(new SingleResultCallback<WriteConcernResult>() {
+        super.executeAsync(connection, wrapCallback(new SingleResultCallback<WriteConcernResult>() {
             @Override
-            public void onResult(final WriteConcernResult result, final MongoException e) {
-                if (e == null) {
+            public void onResult(final WriteConcernResult result, final Throwable t) {
+                if (t != null) {
+                    callback.onResult(null, MongoException.fromThrowable(t));
+                } else {
                     LOGGER.debug("Asynchronous insert completed");
+                    callback.onResult(result, null);
                 }
-                future.init(result, e);
             }
-        });
-        return future;
+        }, LOGGER));
     }
 
     protected RequestMessage createRequestMessage(final MessageSettings settings) {

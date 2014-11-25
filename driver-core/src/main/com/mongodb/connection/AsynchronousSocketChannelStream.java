@@ -16,10 +16,10 @@
 
 package com.mongodb.connection;
 
+import com.mongodb.MongoInternalException;
 import com.mongodb.MongoSocketOpenException;
 import com.mongodb.MongoSocketReadTimeoutException;
 import com.mongodb.ServerAddress;
-import com.mongodb.async.SingleResultFuture;
 import org.bson.ByteBuf;
 
 import java.io.IOException;
@@ -31,6 +31,7 @@ import java.nio.channels.CompletionHandler;
 import java.nio.channels.InterruptedByTimeoutException;
 import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
@@ -55,16 +56,44 @@ final class AsynchronousSocketChannelStream implements Stream {
 
     @Override
     public void write(final List<ByteBuf> buffers) throws IOException {
-        SingleResultFuture<Void> future = new SingleResultFuture<Void>();
-        writeAsync(buffers, new FutureAsyncCompletionHandler<Void>(future));
-        future.get();
+        CountDownLatch latch = new CountDownLatch(1);
+        FutureAsyncCompletionHandler<Void> handler = new FutureAsyncCompletionHandler<Void>(latch);
+        writeAsync(buffers, handler);
+        try {
+            latch.await();
+        } catch (InterruptedException e) {
+            throw new MongoInternalException("Reading from the AsynchronousSocketChannelStream failed", e);
+        }
+        if (handler.hasError()) {
+            Throwable error =  handler.getError();
+            if (error instanceof IOException) {
+                throw (IOException) error;
+            } else {
+                throw new MongoInternalException("Reading from the AsynchronousSocketChannelStream failed", error);
+            }
+        }
     }
 
     @Override
     public ByteBuf read(final int numBytes) throws IOException {
-        SingleResultFuture<ByteBuf> future = new SingleResultFuture<ByteBuf>();
-        readAsync(numBytes, new FutureAsyncCompletionHandler<ByteBuf>(future));
-        return future.get();
+        CountDownLatch latch = new CountDownLatch(1);
+        FutureAsyncCompletionHandler<ByteBuf> handler = new FutureAsyncCompletionHandler<ByteBuf>(latch);
+        readAsync(numBytes, handler);
+        try {
+            latch.await();
+        } catch (InterruptedException e) {
+            throw new MongoInternalException("Reading from the AsynchronousSocketChannelStream failed", e);
+        }
+        if (handler.hasError()) {
+            Throwable error =  handler.getError();
+            if (error instanceof IOException) {
+                throw (IOException) error;
+            } else {
+                throw new MongoInternalException("Reading from the AsynchronousSocketChannelStream failed", error);
+            }
+        } else {
+            return handler.getResult();
+        }
     }
 
     @Override

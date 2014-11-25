@@ -21,7 +21,6 @@ import com.mongodb.MongoInternalException;
 import com.mongodb.MongoSocketException;
 import com.mongodb.MongoSocketReadTimeoutException;
 import com.mongodb.MongoWaitQueueFullException;
-import com.mongodb.async.MongoFuture;
 import com.mongodb.async.SingleResultCallback;
 import com.mongodb.diagnostics.logging.Logger;
 import com.mongodb.diagnostics.logging.Loggers;
@@ -242,9 +241,9 @@ class DefaultConnectionPool implements ConnectionPool {
         }
 
         @Override
-        public MongoFuture<Void> openAsync() {
+        public void openAsync(final SingleResultCallback<Void> callback) {
             isTrue("open", wrapped != null);
-            return wrapped.openAsync();
+            wrapped.openAsync(callback);
         }
 
         @Override

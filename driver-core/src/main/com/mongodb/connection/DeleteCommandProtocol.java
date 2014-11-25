@@ -16,12 +16,9 @@
 
 package com.mongodb.connection;
 
-import com.mongodb.MongoException;
 import com.mongodb.MongoNamespace;
 import com.mongodb.WriteConcern;
-import com.mongodb.async.MongoFuture;
 import com.mongodb.async.SingleResultCallback;
-import com.mongodb.async.SingleResultFuture;
 import com.mongodb.bulk.BulkWriteResult;
 import com.mongodb.bulk.DeleteRequest;
 import com.mongodb.bulk.WriteRequest;
@@ -31,6 +28,7 @@ import com.mongodb.diagnostics.logging.Loggers;
 import java.util.List;
 
 import static com.mongodb.assertions.Assertions.notNull;
+import static com.mongodb.async.ErrorHandlingResultCallback.wrapCallback;
 import static java.lang.String.format;
 
 /**
@@ -70,22 +68,22 @@ class DeleteCommandProtocol extends WriteCommandProtocol {
     }
 
     @Override
-    public MongoFuture<BulkWriteResult> executeAsync(final InternalConnection connection) {
+    public void executeAsync(final InternalConnection connection, final SingleResultCallback<BulkWriteResult> callback) {
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug(format("Asynchronously deleting documents from namespace %s on connection [%s] to server %s", getNamespace(),
                                 connection.getDescription().getConnectionId(), connection.getDescription().getServerAddress()));
         }
-        final SingleResultFuture<BulkWriteResult> future = new SingleResultFuture<BulkWriteResult>();
-        super.executeAsync(connection).register(new SingleResultCallback<BulkWriteResult>() {
+        super.executeAsync(connection, wrapCallback(new SingleResultCallback<BulkWriteResult>() {
             @Override
-            public void onResult(final BulkWriteResult result, final MongoException e) {
-                if (e != null) {
+            public void onResult(final BulkWriteResult result, final Throwable t) {
+                if (t != null) {
+                    callback.onResult(null, t);
+                } else {
                     LOGGER.debug("Asynchronous delete completed");
+                    callback.onResult(result, null);
                 }
-                future.init(result, e);
             }
-        });
-        return future;
+        }, LOGGER));
     }
 
     @Override

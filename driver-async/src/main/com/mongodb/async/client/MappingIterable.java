@@ -18,12 +18,11 @@ package com.mongodb.async.client;
 
 import com.mongodb.Block;
 import com.mongodb.Function;
-import com.mongodb.MongoException;
-import com.mongodb.async.MongoFuture;
 import com.mongodb.async.SingleResultCallback;
-import com.mongodb.async.SingleResultFuture;
 
 import java.util.Collection;
+
+import static com.mongodb.async.ErrorHandlingResultCallback.wrapCallback;
 
 class MappingIterable<T, U> implements MongoIterable<U> {
     private final MongoIterable<T> iterable;
@@ -35,61 +34,58 @@ class MappingIterable<T, U> implements MongoIterable<U> {
     }
 
     @Override
-    public MongoFuture<U> first() {
-        final SingleResultFuture<U> future = new SingleResultFuture<U>();
-        iterable.first().register(new SingleResultCallback<T>() {
+    public void first(final SingleResultCallback<U> callback) {
+        final SingleResultCallback<U> wrappedCallback = wrapCallback(callback);
+        iterable.first(new SingleResultCallback<T>() {
             @Override
-            public void onResult(final T result, final MongoException e) {
-                if (e != null) {
-                    future.init(null, e);
+            public void onResult(final T result, final Throwable t) {
+                if (t != null) {
+                    wrappedCallback.onResult(null, t);
                 } else {
-                    future.init(mapper.apply(result), null);
+                    wrappedCallback.onResult(mapper.apply(result), null);
                 }
             }
         });
-        return future;
     }
 
     @Override
-    public MongoFuture<Void> forEach(final Block<? super U> block) {
-        final SingleResultFuture<Void> future = new SingleResultFuture<Void>();
+    public void forEach(final Block<? super U> block, final SingleResultCallback<Void> callback) {
+        final SingleResultCallback<Void> wrappedCallback = wrapCallback(callback);
         iterable.forEach(new Block<T>() {
             @Override
             public void apply(final T t) {
                 block.apply(mapper.apply(t));
             }
-        }).register(new SingleResultCallback<Void>() {
+        }, new SingleResultCallback<Void>() {
             @Override
-            public void onResult(final Void result, final MongoException e) {
-                if (e != null) {
-                    future.init(null, e);
+            public void onResult(final Void result, final Throwable t) {
+                if (t != null) {
+                    wrappedCallback.onResult(null, t);
                 } else {
-                    future.init(null, null);
+                    wrappedCallback.onResult(null, null);
                 }
             }
         });
-        return future;
     }
 
     @Override
-    public <A extends Collection<? super U>> MongoFuture<A> into(final A target) {
-        final SingleResultFuture<A> future = new SingleResultFuture<A>();
+    public <A extends Collection<? super U>> void into(final A target, final SingleResultCallback<A> callback) {
+        final SingleResultCallback<A> wrappedCallback = wrapCallback(callback);
         iterable.forEach(new Block<T>() {
             @Override
             public void apply(final T t) {
                 target.add(mapper.apply(t));
             }
-        }).register(new SingleResultCallback<Void>() {
+        }, new SingleResultCallback<Void>() {
             @Override
-            public void onResult(final Void result, final MongoException e) {
-                if (e != null) {
-                    future.init(null, e);
+            public void onResult(final Void result, final Throwable t) {
+                if (t != null) {
+                    wrappedCallback.onResult(null, t);
                 } else {
-                    future.init(target, null);
+                    wrappedCallback.onResult(target, null);
                 }
             }
         });
-        return future;
     }
 
     @Override

@@ -21,7 +21,6 @@ import com.mongodb.MongoSecurityException;
 import com.mongodb.MongoServerException;
 import com.mongodb.MongoSocketException;
 import com.mongodb.ServerAddress;
-import com.mongodb.async.MongoFuture;
 import com.mongodb.async.SingleResultCallback;
 
 import java.util.Collections;
@@ -30,6 +29,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import static com.mongodb.assertions.Assertions.isTrue;
 import static com.mongodb.assertions.Assertions.notNull;
+import static com.mongodb.async.ErrorHandlingResultCallback.wrapCallback;
 import static com.mongodb.connection.ServerConnectionState.CONNECTING;
 
 class DefaultServer implements ClusterableServer {
@@ -115,11 +115,11 @@ class DefaultServer implements ClusterableServer {
         return connectionPool;
     }
 
-    private void handleException(final MongoException mongoException) {
-        if (mongoException instanceof MongoSocketException) {
+    private void handleThrowable(final Throwable t) {
+        if (t instanceof MongoSocketException) {
             invalidate();
-        } else if (mongoException instanceof MongoServerException) {
-            MongoServerException serverException = (MongoServerException) mongoException;
+        } else if (t instanceof MongoServerException) {
+            MongoServerException serverException = (MongoServerException) t;
             if (serverException.getErrorMessage().contains("not master")
                 || serverException.getErrorMessage().contains("node is recovering")
                 || serverException.getCode() == 10107) {
@@ -134,25 +134,23 @@ class DefaultServer implements ClusterableServer {
             try {
                 return protocol.execute(connection);
             } catch (MongoException e) {
-                handleException(e);
+                handleThrowable(e);
                 throw e;
             }
         }
 
         @Override
-        public <T> MongoFuture<T> executeAsync(final Protocol<T> protocol, final InternalConnection connection) {
-            MongoFuture<T> future = protocol.executeAsync(connection);
-            future.register(new InvalidServerStateCheckCallback<T>());
-            return future;
-        }
-    }
-
-    private class InvalidServerStateCheckCallback<T> implements SingleResultCallback<T> {
-        @Override
-        public void onResult(final T result, final MongoException e) {
-            if (e != null) {
-                handleException(e);
-            }
+        public <T> void executeAsync(final Protocol<T> protocol, final InternalConnection connection,
+                                     final SingleResultCallback<T> callback) {
+            protocol.executeAsync(connection, wrapCallback(new SingleResultCallback<T>() {
+                @Override
+                public void onResult(final T result, final Throwable t) {
+                    if (t != null) {
+                        handleThrowable(t);
+                    }
+                    callback.onResult(result, t);
+                }
+            }));
         }
     }
 

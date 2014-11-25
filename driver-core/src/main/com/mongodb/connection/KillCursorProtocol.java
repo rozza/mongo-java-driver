@@ -16,15 +16,13 @@
 
 package com.mongodb.connection;
 
-import com.mongodb.MongoException;
-import com.mongodb.async.MongoFuture;
 import com.mongodb.async.SingleResultCallback;
-import com.mongodb.async.SingleResultFuture;
 import com.mongodb.diagnostics.logging.Logger;
 import com.mongodb.diagnostics.logging.Loggers;
 
 import java.util.List;
 
+import static com.mongodb.async.ErrorHandlingResultCallback.wrapCallback;
 import static java.lang.String.format;
 
 /**
@@ -64,23 +62,21 @@ class KillCursorProtocol implements Protocol<Void> {
     }
 
     @Override
-    public MongoFuture<Void> executeAsync(final InternalConnection connection) {
+    public void executeAsync(final InternalConnection connection, final SingleResultCallback<Void> callback) {
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug(format("Asynchronously killing cursors [%s] on connection [%s] to server %s", getCursorIdListAsString(),
                                 connection.getDescription().getConnectionId(), connection.getDescription().getServerAddress()));
         }
-        final SingleResultFuture<Void> retVal = new SingleResultFuture<Void>();
         final ByteBufferBsonOutput bsonOutput = new ByteBufferBsonOutput(connection);
         KillCursorsMessage message = new KillCursorsMessage(cursors);
         message.encode(bsonOutput);
-        connection.sendMessageAsync(bsonOutput.getByteBuffers(), message.getId(), new SingleResultCallback<Void>() {
+        connection.sendMessageAsync(bsonOutput.getByteBuffers(), message.getId(), wrapCallback(new SingleResultCallback<Void>() {
             @Override
-            public void onResult(final Void result, final MongoException e) {
+            public void onResult(final Void result, final Throwable t) {
                 bsonOutput.close();
-                retVal.init(result, e);
+                callback.onResult(result, t);
             }
-        });
-        return retVal;
+        }, LOGGER));
     }
 
     private String getCursorIdListAsString() {

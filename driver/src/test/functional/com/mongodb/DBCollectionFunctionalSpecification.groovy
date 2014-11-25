@@ -522,7 +522,7 @@ class DBCollectionFunctionalSpecification extends FunctionalSpecification {
         result == collection.findOne(criteria, projection)
 
         where:
-        criteria                | projection              | result
+        criteria                | projection              | onResult
         123                     | [x: 1] as BasicDBObject | [_id: 123, x: 2]
         [x: 1] as BasicDBObject | [y: 1] as BasicDBObject | [_id: 100, y: 2]
     }

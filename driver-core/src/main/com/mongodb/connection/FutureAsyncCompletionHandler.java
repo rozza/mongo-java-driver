@@ -16,28 +16,38 @@
 
 package com.mongodb.connection;
 
-import com.mongodb.MongoException;
-import com.mongodb.MongoInternalException;
-import com.mongodb.async.SingleResultFuture;
+import java.util.concurrent.CountDownLatch;
 
 class FutureAsyncCompletionHandler<T> implements AsyncCompletionHandler<T> {
-    private final SingleResultFuture<T> future;
+    private final CountDownLatch latch;
+    private T result = null;
+    private Throwable error = null;
 
-    public FutureAsyncCompletionHandler(final SingleResultFuture<T> future) {
-        this.future = future;
+    public FutureAsyncCompletionHandler(final CountDownLatch latch) {
+        this.latch = latch;
     }
 
     @Override
-    public void completed(final T t) {
-        future.init(t, null);
+    public void completed(final T result) {
+        latch.countDown();
+        this.result = result;
     }
 
     @Override
     public void failed(final Throwable t) {
-        if (t instanceof MongoException) {
-            future.init(null, (MongoException) t);
-        } else {
-            future.init(null, new MongoInternalException("Unexpected exception", t));
-        }
+        latch.countDown();
+        this.error = t;
+    }
+
+    public T getResult() {
+        return result;
+    }
+
+    public boolean hasError() {
+        return error != null;
+    }
+
+    public Throwable getError() {
+        return error;
     }
 }

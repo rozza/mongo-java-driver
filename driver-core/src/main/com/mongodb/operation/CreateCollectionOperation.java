@@ -16,7 +16,7 @@
 
 package com.mongodb.operation;
 
-import com.mongodb.async.MongoFuture;
+import com.mongodb.async.SingleResultCallback;
 import com.mongodb.binding.AsyncWriteBinding;
 import com.mongodb.binding.WriteBinding;
 import org.bson.BsonBoolean;
@@ -28,7 +28,6 @@ import static com.mongodb.assertions.Assertions.notNull;
 import static com.mongodb.operation.CommandOperationHelper.executeWrappedCommandProtocol;
 import static com.mongodb.operation.CommandOperationHelper.executeWrappedCommandProtocolAsync;
 import static com.mongodb.operation.DocumentHelper.putIfNotZero;
-import static com.mongodb.operation.OperationHelper.ignoreResult;
 
 /**
  * An operation to create a collection
@@ -181,8 +180,9 @@ public class CreateCollectionOperation implements AsyncWriteOperation<Void>, Wri
     }
 
     @Override
-    public MongoFuture<Void> executeAsync(final AsyncWriteBinding binding) {
-        return ignoreResult(executeWrappedCommandProtocolAsync(databaseName, asDocument(), new BsonDocumentCodec(), binding));
+    public void executeAsync(final AsyncWriteBinding binding, final SingleResultCallback<Void> callback) {
+        executeWrappedCommandProtocolAsync(databaseName, asDocument(), new BsonDocumentCodec(), binding,
+                                           new OperationHelper.VoidTransformer<BsonDocument>(), callback);
     }
 
     private BsonDocument asDocument() {

@@ -20,7 +20,7 @@ import com.mongodb.Block;
 import com.mongodb.Function;
 import com.mongodb.MongoNamespace;
 import com.mongodb.ReadPreference;
-import com.mongodb.async.MongoFuture;
+import com.mongodb.async.SingleResultCallback;
 import com.mongodb.client.options.OperationOptions;
 import com.mongodb.client.model.FindOptions;
 import com.mongodb.operation.AsyncOperationExecutor;
@@ -133,18 +133,18 @@ class FindFluentImpl<T> implements FindFluent<T> {
     }
 
     @Override
-    public MongoFuture<T> first() {
-        return execute().first();
+    public void first(final SingleResultCallback<T> callback) {
+        execute().first(callback);
     }
 
     @Override
-    public MongoFuture<Void> forEach(final Block<? super T> block) {
-        return execute().forEach(block);
+    public void forEach(final Block<? super T> block, final SingleResultCallback<Void> callback) {
+        execute().forEach(block, callback);
     }
 
     @Override
-    public <A extends Collection<? super T>> MongoFuture<A> into(final A target) {
-        return execute().into(target);
+    public <A extends Collection<? super T>> void into(final A target, final SingleResultCallback<A> callback) {
+        execute().into(target, callback);
     }
 
     @Override
@@ -187,16 +187,16 @@ class FindFluentImpl<T> implements FindFluent<T> {
         private final AsyncOperationExecutor executor;
 
         FindOperationIterable(final FindOperation<T> operation, final ReadPreference readPreference,
-                               final AsyncOperationExecutor executor) {
+                              final AsyncOperationExecutor executor) {
             super(operation, readPreference, executor);
             this.readPreference = readPreference;
             this.executor = executor;
         }
 
         @Override
-        public MongoFuture<T> first() {
+        public void first(final SingleResultCallback<T> callback) {
             FindOperation<T> findFirstOperation = createQueryOperation().batchSize(0).limit(-1);
-            return new OperationIterable<T>(findFirstOperation, readPreference, executor).first();
+            new OperationIterable<T>(findFirstOperation, readPreference, executor).first(callback);
         }
     }
 }
