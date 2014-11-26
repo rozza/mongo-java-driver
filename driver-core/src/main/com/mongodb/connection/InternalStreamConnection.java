@@ -462,8 +462,8 @@ class InternalStreamConnection implements InternalConnection {
                 try {
                     while (!writeQueue.isEmpty()) {
                         SendMessageAsync message = writeQueue.poll();
-                        wrapCallback(message.getCallback(), LOGGER)
-                        .onResult(null, new MongoSocketClosedException("Cannot write to a closed stream", getServerAddress()));
+                        wrapCallback(message.getCallback(), LOGGER).onResult(null,
+                                  new MongoSocketClosedException("Cannot write to a closed stream", getServerAddress()));
                     }
                 } finally {
                     writing.release();

@@ -72,19 +72,33 @@ public class AsyncClusterBinding extends AbstractReferenceCounted implements Asy
 
     @Override
     public void getReadConnectionSource(final SingleResultCallback<AsyncConnectionSource> callback) {
-        callback.onResult(new AsyncClusterBindingConnectionSource(new ReadPreferenceServerSelector(readPreference)), null);
+        getAsyncClusterBindingConnectionSource(new ReadPreferenceServerSelector(readPreference), callback);
     }
 
     @Override
     public void getWriteConnectionSource(final SingleResultCallback<AsyncConnectionSource> callback) {
-        callback.onResult(new AsyncClusterBindingConnectionSource(new PrimaryServerSelector()), null);
+        getAsyncClusterBindingConnectionSource(new PrimaryServerSelector(), callback);
+    }
+
+    private void getAsyncClusterBindingConnectionSource(final ServerSelector serverSelector,
+                                                        final SingleResultCallback<AsyncConnectionSource> callback) {
+        cluster.selectServerAsync(serverSelector, new SingleResultCallback<Server>() {
+            @Override
+            public void onResult(final Server result, final Throwable t) {
+                if (t != null) {
+                    callback.onResult(null, t);
+                } else {
+                    callback.onResult(new AsyncClusterBindingConnectionSource(result), null);
+                }
+            }
+        });
     }
 
     private final class AsyncClusterBindingConnectionSource extends AbstractReferenceCounted implements AsyncConnectionSource {
         private final Server server;
 
-        private AsyncClusterBindingConnectionSource(final ServerSelector serverSelector) {
-            this.server = cluster.selectServer(serverSelector, maxWaitTimeMS, MILLISECONDS);
+        private AsyncClusterBindingConnectionSource(final Server server) {
+            this.server = server;
             AsyncClusterBinding.this.retain();
         }
 

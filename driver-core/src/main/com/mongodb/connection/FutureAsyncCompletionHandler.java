@@ -25,7 +25,7 @@ import java.util.concurrent.CountDownLatch;
 class FutureAsyncCompletionHandler<T> implements AsyncCompletionHandler<T> {
     private final CountDownLatch latch = new CountDownLatch(1);;
     private T result;
-    private Throwable error = null;
+    private Throwable error;
 
     @Override
     public void completed(final T result) {
