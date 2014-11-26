@@ -32,13 +32,55 @@ import org.bson.BsonString
 import spock.lang.Specification
 
 import java.util.concurrent.CountDownLatch
-import java.util.concurrent.TimeUnit
 
+import static java.util.concurrent.TimeUnit.SECONDS
 import static com.mongodb.MongoCredential.createCredential
 import static com.mongodb.WriteConcern.ACKNOWLEDGED
 import static java.util.Arrays.asList
 
 class DefaultServerSpecification extends Specification {
+
+    def 'should get a connection'() {
+        given:
+        def connectionPool = Stub(ConnectionPool)
+        def connectionFactory = Stub(ConnectionFactory)
+        def serverMonitorFactory = Stub(ServerMonitorFactory)
+        def serverMonitor = Stub(ServerMonitor)
+        def internalConnection = Stub(InternalConnection)
+        def connection = Stub(Connection)
+
+        serverMonitorFactory.create(_) >> { serverMonitor }
+        connectionPool.get() >> { internalConnection }
+        connectionFactory.create(_, _) >> connection
+        def server = new DefaultServer(new ServerAddress(), connectionPool, connectionFactory, serverMonitorFactory)
+
+        expect:
+        server.getConnection()
+    }
+
+    def 'should get a connection asynchronously'() {
+        given:
+        def connectionFactory = Stub(ConnectionFactory)
+        def serverMonitorFactory = Stub(ServerMonitorFactory)
+        def serverMonitor = Stub(ServerMonitor)
+        def connection = Stub(Connection)
+
+        serverMonitorFactory.create(_) >> { serverMonitor }
+        connectionFactory.create(_, _) >> connection
+
+        def server = new DefaultServer(new ServerAddress(), new TestConnectionPool(), connectionFactory, serverMonitorFactory)
+
+        when:
+        def latch = new CountDownLatch(1)
+        def receivedConnection
+        def receivedThrowable
+        server.getConnectionAsync { result, throwable -> receivedConnection = result; receivedThrowable = throwable; latch.countDown() }
+        latch.await()
+
+        then:
+        receivedConnection
+        !receivedThrowable
+    }
 
     def 'invalidate should invoke change listeners'() {
         given:
@@ -84,6 +126,32 @@ class DefaultServerSpecification extends Specification {
         1 * serverMonitor.invalidate()
     }
 
+    def 'failed open should invalidate the server asychronously'() {
+        given:
+        def connectionFactory = Mock(ConnectionFactory)
+        def serverMonitorFactory = Stub(ServerMonitorFactory)
+        def serverMonitor = Mock(ServerMonitor)
+        serverMonitorFactory.create(_) >> { serverMonitor }
+
+        def exceptionToThrow = new MongoSecurityException(createCredential('jeff', 'admin',
+                                                                           '123'.toCharArray()),
+                                                          'Auth failed')
+        def server = new DefaultServer(new ServerAddress(), new TestConnectionPool(exceptionToThrow), connectionFactory,
+                                       serverMonitorFactory)
+
+        when:
+        def latch = new CountDownLatch(1)
+        def receivedConnection
+        def receivedThrowable
+        server.getConnectionAsync { result, throwable -> receivedConnection = result; receivedThrowable = throwable; latch.countDown() }
+        latch.await()
+
+        then:
+        !receivedConnection
+        receivedThrowable.is(exceptionToThrow)
+        1 * serverMonitor.invalidate()
+    }
+
     def 'should invalidate on not master errors'() {
         given:
         def connectionPool = Mock(ConnectionPool)
@@ -112,23 +180,22 @@ class DefaultServerSpecification extends Specification {
         1 * serverMonitor.invalidate()
 
         when:
-        def latch = new CountDownLatch(1)
+        def futureResultCallback = new FutureResultCallback()
         testConnection.insertAsync(new MongoNamespace('test', 'test'), true, ACKNOWLEDGED, asList(new InsertRequest(new BsonDocument())),
-                                   callback(latch))
+                                   futureResultCallback);
 
         then:
-        latch.await(10, TimeUnit.SECONDS)
-        //thrown(WriteConcernException)
+        futureResultCallback.get(10, SECONDS).wasAcknowledged()
         1 * connectionPool.invalidate()
         1 * serverMonitor.invalidate()
 
         when:
-        latch = new CountDownLatch(1)
+        futureResultCallback = new FutureResultCallback()
         testConnection.insertAsync(new MongoNamespace('test', 'test'), true, ACKNOWLEDGED, asList(new InsertRequest(new BsonDocument())),
-                                   callback(latch));
+                                   futureResultCallback);
 
         then:
-        latch.await(10, TimeUnit.SECONDS)
+        futureResultCallback.get(10, SECONDS).wasAcknowledged()
         1 * connectionPool.invalidate()
         1 * serverMonitor.invalidate()
     }
@@ -190,12 +257,12 @@ class DefaultServerSpecification extends Specification {
         1 * serverMonitor.invalidate()
 
         when:
-        def latch = new CountDownLatch(1)
+        def futureResultCallback = new FutureResultCallback()
         testConnection.insertAsync(new MongoNamespace('test', 'test'), true, ACKNOWLEDGED, asList(new InsertRequest(new BsonDocument())),
-                                   callback(latch))
+                                   futureResultCallback)
 
         then:
-        latch.await(10, TimeUnit.SECONDS)
+        futureResultCallback.get(10, SECONDS).wasAcknowledged()
         1 * connectionPool.invalidate()
         1 * serverMonitor.invalidate()
     }
@@ -228,24 +295,12 @@ class DefaultServerSpecification extends Specification {
         def futureResultCallback = new FutureResultCallback<WriteConcernResult>()
         testConnection.insertAsync(new MongoNamespace('test', 'test'), true, ACKNOWLEDGED, asList(new InsertRequest(new BsonDocument())),
                                    futureResultCallback)
-        futureResultCallback.get(10, TimeUnit.SECONDS)
+        futureResultCallback.get(10, SECONDS)
 
         then:
         thrown(MongoSocketException)
         1 * connectionPool.invalidate()
         1 * serverMonitor.invalidate()
-    }
-
-    def callback(CountDownLatch latch) {
-        new SingleResultCallback<WriteConcernResult>() {
-            @Override
-            void onResult(final WriteConcernResult result, final Throwable t) {
-                latch.countDown()
-                if (t != null) {
-                    throw t;
-                }
-            }
-        }
     }
 
     class ThrowingProtocol implements Protocol {

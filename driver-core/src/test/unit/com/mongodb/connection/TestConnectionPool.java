@@ -16,6 +16,7 @@
 
 package com.mongodb.connection;
 
+import com.mongodb.MongoException;
 import com.mongodb.async.SingleResultCallback;
 import org.bson.ByteBuf;
 
@@ -23,6 +24,16 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 public class TestConnectionPool implements ConnectionPool {
+
+    private final MongoException exceptionToThrow;
+
+    public TestConnectionPool() {
+        exceptionToThrow = null;
+    }
+
+    public TestConnectionPool(final MongoException exceptionToThrow) {
+        this.exceptionToThrow = exceptionToThrow;
+    }
 
     @Override
     public InternalConnection get() {
@@ -87,7 +98,19 @@ public class TestConnectionPool implements ConnectionPool {
 
     @Override
     public InternalConnection get(final long timeout, final TimeUnit timeUnit) {
+        if (exceptionToThrow != null) {
+            throw exceptionToThrow;
+        }
         return get();
+    }
+
+    @Override
+    public void getAsync(final SingleResultCallback<InternalConnection> callback) {
+        if (exceptionToThrow != null) {
+            callback.onResult(null, exceptionToThrow);
+        } else {
+            callback.onResult(get(), null);
+        }
     }
 
     @Override
