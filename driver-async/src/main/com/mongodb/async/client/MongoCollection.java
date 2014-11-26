@@ -153,31 +153,31 @@ public interface MongoCollection<T> {
      * Aggregates documents according to the specified aggregation pipeline.
      *
      * @param pipeline the aggregate pipeline
-     * @param callback a callback that is passed an iterable containing the result of the aggregation operation
+     * @return an iterable containing the result of the aggregation operation
      * @mongodb.driver.manual aggregation/ Aggregation
      */
-    void aggregate(List<?> pipeline, SingleResultCallback<MongoIterable<Document>> callback);
+    MongoIterable<Document> aggregate(List<?> pipeline);
 
     /**
      * Aggregates documents according to the specified aggregation pipeline.
      *
      * @param pipeline the aggregate pipeline
      * @param clazz    the class to decode each document into
-     * @param callback a callback that is passed an iterable containing the result of the aggregation operation
      * @param <C>      the target document type of the iterable.
+     * @return an iterable containing the result of the aggregation operation
      * @mongodb.driver.manual aggregation/ Aggregation
      */
-    <C> void aggregate(List<?> pipeline, Class<C> clazz, SingleResultCallback<MongoIterable<C>> callback);
+    <C> MongoIterable<C> aggregate(List<?> pipeline, Class<C> clazz);
 
     /**
      * Aggregates documents according to the specified aggregation pipeline.
      *
      * @param pipeline the aggregate pipeline
      * @param options  the options to apply to the aggregation operation
-     * @param callback a callback that is passed an iterable containing the result of the aggregation operation
+     * @return an iterable containing the result of the aggregation operation
      * @mongodb.driver.manual aggregation/ Aggregation
      */
-    void aggregate(List<?> pipeline, AggregateOptions options, SingleResultCallback<MongoIterable<Document>> callback);
+    MongoIterable<Document> aggregate(List<?> pipeline, AggregateOptions options);
 
     /**
      * Aggregates documents according to the specified aggregation pipeline.
@@ -185,21 +185,21 @@ public interface MongoCollection<T> {
      * @param pipeline the aggregate pipeline
      * @param options  the options to apply to the aggregation operation
      * @param clazz    the class to decode each document into
-     * @param callback a callback that is passed an iterable containing the result of the aggregation operation
      * @param <C>      the target document type of the iterable.
+     * @return an iterable containing the result of the aggregation operation
      * @mongodb.driver.manual aggregation/ Aggregation
      */
-    <C> void aggregate(List<?> pipeline, AggregateOptions options, Class<C> clazz, SingleResultCallback<MongoIterable<C>> callback);
+    <C> MongoIterable<C> aggregate(List<?> pipeline, AggregateOptions options, Class<C> clazz);
 
     /**
      * Aggregates documents according to the specified map-reduce function.
      *
      * @param mapFunction    A JavaScript function that associates or "maps" a value with a key and emits the key and value pair.
      * @param reduceFunction A JavaScript function that "reduces" to a single object all the values associated with a particular key.
-     * @param callback a callback that is passed an iterable containing the result of the map-reduce operation
+     * @return an iterable containing the result of the map-reduce operation
      * @mongodb.driver.manual reference/command/mapReduce/ map-reduce
      */
-    void mapReduce(String mapFunction, String reduceFunction, SingleResultCallback<MongoIterable<Document>> callback);
+    MongoIterable<Document> mapReduce(String mapFunction, String reduceFunction);
 
     /**
      * Aggregates documents according to the specified map-reduce function.
@@ -207,11 +207,10 @@ public interface MongoCollection<T> {
      * @param mapFunction    A JavaScript function that associates or "maps" a value with a key and emits the key and value pair.
      * @param reduceFunction A JavaScript function that "reduces" to a single object all the values associated with a particular key.
      * @param options        The specific options for the map-reduce command.
-     * @param callback a callback that is passed an iterable containing the result of the map-reduce operation
+     * @return an iterable containing the result of the map-reduce operation
      * @mongodb.driver.manual reference/command/mapReduce/ map-reduce
      */
-    void mapReduce(String mapFunction, String reduceFunction, MapReduceOptions options,
-                   SingleResultCallback<MongoIterable<Document>> callback);
+    MongoIterable<Document> mapReduce(String mapFunction, String reduceFunction, MapReduceOptions options);
 
     /**
      * Aggregates documents according to the specified map-reduce function.
@@ -219,11 +218,11 @@ public interface MongoCollection<T> {
      * @param mapFunction    A JavaScript function that associates or "maps" a value with a key and emits the key and value pair.
      * @param reduceFunction A JavaScript function that "reduces" to a single object all the values associated with a particular key.
      * @param clazz          the class to decode each resulting document into.
-     * @param callback a callback that is passed an iterable containing the result of the map-reduce operation
      * @param <C>            the target document type of the iterable.
+     * @return an iterable containing the result of the map-reduce operation
      * @mongodb.driver.manual reference/command/mapReduce/ map-reduce
      */
-    <C> void mapReduce(String mapFunction, String reduceFunction, Class<C> clazz, SingleResultCallback<MongoIterable<C>> callback);
+    <C> MongoIterable<C> mapReduce(String mapFunction, String reduceFunction, Class<C> clazz);
 
     /**
      * Aggregates documents according to the specified map-reduce function.
@@ -232,12 +231,11 @@ public interface MongoCollection<T> {
      * @param reduceFunction A JavaScript function that "reduces" to a single object all the values associated with a particular key.
      * @param options        The specific options for the map-reduce command.
      * @param clazz          the class to decode each resulting document into.
-     * @param callback a callback that is passed an iterable containing the result of the map-reduce operation
      * @param <C>            the target document type of the iterable.
+     * @return an iterable containing the result of the map-reduce operation
      * @mongodb.driver.manual reference/command/mapReduce/ map-reduce
      */
-    <C> void mapReduce(String mapFunction, String reduceFunction, MapReduceOptions options, Class<C> clazz,
-                       SingleResultCallback<MongoIterable<C>> callback);
+    <C> MongoIterable<C> mapReduce(String mapFunction, String reduceFunction, MapReduceOptions options, Class<C> clazz);
 
     /**
      * Executes a mix of inserts, updates, replaces, and deletes.

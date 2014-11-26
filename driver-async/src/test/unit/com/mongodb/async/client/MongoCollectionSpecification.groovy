@@ -55,7 +55,6 @@ import com.mongodb.operation.FindAndUpdateOperation
 import com.mongodb.operation.FindOperation
 import com.mongodb.operation.InsertOperation
 import com.mongodb.operation.ListIndexesOperation
-import com.mongodb.operation.MapReduceAsyncBatchCursor
 import com.mongodb.operation.MapReduceStatistics
 import com.mongodb.operation.MapReduceToCollectionOperation
 import com.mongodb.operation.MapReduceWithInlineResultsOperation
@@ -259,13 +258,11 @@ class MongoCollectionSpecification extends Specification {
         }
         def executor = new TestOperationExecutor([asyncCursor, asyncCursor, asyncCursor])
         def collection = new MongoCollectionImpl(namespace, Document, options, executor)
-        def aggregateCallback = new FutureResultCallback<MongoIterable<Document>>()
-        def intoCallback = new FutureResultCallback<List<Document>>()
+        def futureResultCallback = new FutureResultCallback<List<Document>>()
 
         when:
-        collection.aggregate([new Document('$match', 1)], aggregateCallback)
-        aggregateCallback.get().into([], intoCallback)
-        intoCallback.get()
+        collection.aggregate([new Document('$match', 1)]).into([], futureResultCallback)
+        futureResultCallback.get()
         def operation = executor.getReadOperation() as AggregateOperation
 
         then:
@@ -273,11 +270,9 @@ class MongoCollectionSpecification extends Specification {
                                                              new DocumentCodec()))
 
         when:
-        aggregateCallback = new FutureResultCallback<MongoIterable<Document>>()
-        intoCallback = new FutureResultCallback<List<Document>>()
-        collection.aggregate([new Document('$match', 1)], new AggregateOptions().maxTime(100, MILLISECONDS), aggregateCallback)
-        aggregateCallback.get().into([], intoCallback)
-        intoCallback.get()
+        futureResultCallback = new FutureResultCallback<List<Document>>()
+        collection.aggregate([new Document('$match', 1)], new AggregateOptions().maxTime(100, MILLISECONDS)).into([], futureResultCallback)
+        futureResultCallback.get()
         operation = executor.getReadOperation() as AggregateOperation
 
         then:
@@ -285,11 +280,9 @@ class MongoCollectionSpecification extends Specification {
                                                              new DocumentCodec()).maxTime(100, MILLISECONDS))
 
         when:
-        aggregateCallback = new FutureResultCallback<MongoIterable<BsonDocument>>()
-        intoCallback = new FutureResultCallback<List<BsonDocument>>()
-        collection.aggregate([new Document('$match', 1)], BsonDocument, aggregateCallback)
-        aggregateCallback.get().into([], intoCallback)
-        intoCallback.get()
+        futureResultCallback = new FutureResultCallback<List<Document>>()
+        collection.aggregate([new Document('$match', 1)], BsonDocument).into([], futureResultCallback)
+        futureResultCallback.get()
         operation = executor.getReadOperation() as AggregateOperation
 
         then:
@@ -299,55 +292,29 @@ class MongoCollectionSpecification extends Specification {
 
     def 'should handle exceptions in aggregate correctly'() {
         given:
-        def asyncCursor = Stub(AsyncBatchCursor) {
-            next(_) >> { args -> args[0].onResult(null, null) }
-        }
         def options = OperationOptions.builder().codecRegistry(new RootCodecRegistry(asList(new ValueCodecProvider(),
                                                                                             new BsonValueCodecProvider()))).build()
-        def executor = new TestOperationExecutor([asyncCursor, new MongoException('failure')])
+        def executor = new TestOperationExecutor([new MongoException('failure')])
         def collection = new MongoCollectionImpl(namespace, Document, options, executor)
-        def aggregateCallback = new FutureResultCallback<MongoIterable<BsonDocument>>()
-        def intoCallback = new FutureResultCallback<List<BsonDocument>>()
-        def intoCallback1 = new FutureResultCallback<List<BsonDocument>>()
-
-        when: 'Using the callback multiple times'
-        collection.aggregate([new BsonDocument('$match', new BsonInt32(1))], BsonDocument, aggregateCallback)
-        aggregateCallback.get().into([], intoCallback)
-        aggregateCallback.get().into([], intoCallback1)
-        intoCallback1.get()
-
-        then: 'the callback should handle the exception'
-        def ex = thrown(MongoException)
-        ex.getCause() instanceof IllegalStateException
+        def futureResultCallback = new FutureResultCallback<List<BsonDocument>>()
 
         when: 'The operation fails with an exception'
-        aggregateCallback = new FutureResultCallback<MongoIterable<BsonDocument>>()
-        intoCallback = new FutureResultCallback<List<BsonDocument>>()
-        collection.aggregate([new BsonDocument('$match', new BsonInt32(1))], BsonDocument, aggregateCallback)
-        aggregateCallback.get().into([], intoCallback)
-        intoCallback.get()
+        collection.aggregate([new BsonDocument('$match', new BsonInt32(1))], BsonDocument).into([], futureResultCallback)
+        futureResultCallback.get()
 
-        then: 'the callback should handle the exception'
+        then: 'the future should handle the exception'
         thrown(MongoException)
 
-        when: 'a codec is missing throw the exception in the callback'
-        aggregateCallback = new FutureResultCallback<MongoIterable<Document>>()
-        collection.aggregate([new Document('$match', 1)], aggregateCallback)
+        when: 'a codec is missing its acceptable to immediately throw'
+        collection.aggregate([new Document('$match', 1)])
 
         then:
-        notThrown(Exception)
-
-        when:
-        aggregateCallback.get()
-
-        then:
-        ex = thrown(MongoException)
-        ex.getCause() instanceof CodecConfigurationException
+        thrown(CodecConfigurationException)
     }
 
     def 'should use MapReduceWithInlineResultsOperation correctly'() {
         given:
-        def asyncCursor = Stub(MapReduceAsyncBatchCursor) {
+        def asyncCursor = Stub(AsyncBatchCursor) {
             next(_) >> { args -> args[0].onResult(null, null) }
         }
         def executor = new TestOperationExecutor([asyncCursor, asyncCursor, asyncCursor, asyncCursor])
@@ -356,13 +323,11 @@ class MongoCollectionSpecification extends Specification {
                                                                         new DocumentCodec()).verbose(true)
         def bsonOperation = new MapReduceWithInlineResultsOperation(namespace, new BsonJavaScript('map'), new BsonJavaScript('reduce'),
                                                                     new BsonDocumentCodec()).verbose(true)
-        def mapReduceCallback = new FutureResultCallback<MongoIterable<Document>>()
-        def intoCallback = new FutureResultCallback<List<Document>>()
+        def futureResultCallback = new FutureResultCallback<List<Document>>()
 
         when:
-        collection.mapReduce('map', 'reduce', mapReduceCallback)
-        mapReduceCallback.get().into([], intoCallback)
-        intoCallback.get()
+        collection.mapReduce('map', 'reduce').into([], futureResultCallback)
+        futureResultCallback.get()
         def operation = executor.getReadOperation() as MapReduceWithInlineResultsOperation
 
         then:
@@ -370,33 +335,27 @@ class MongoCollectionSpecification extends Specification {
 
         when:
         def mapReduceOptions = new MapReduceOptions().finalizeFunction('final')
-        mapReduceCallback = new FutureResultCallback<MongoIterable<Document>>()
-        intoCallback = new FutureResultCallback<List<Document>>()
-        collection.mapReduce('map', 'reduce', mapReduceOptions, mapReduceCallback)
-        mapReduceCallback.get().into([], intoCallback)
-        intoCallback.get()
+        futureResultCallback = new FutureResultCallback<List<Document>>()
+        collection.mapReduce('map', 'reduce', mapReduceOptions).into([], futureResultCallback)
+        futureResultCallback.get()
         operation = executor.getReadOperation() as MapReduceWithInlineResultsOperation
 
         then:
         expect operation, isTheSameAs(documentOperation.finalizeFunction(new BsonJavaScript('final')))
 
         when:
-        mapReduceCallback = new FutureResultCallback<MongoIterable<BsonDocument>>()
-        intoCallback = new FutureResultCallback<List<BsonDocument>>()
-        collection.mapReduce('map', 'reduce', BsonDocument, mapReduceCallback)
-        mapReduceCallback.get().into([], intoCallback)
-        intoCallback.get()
+        futureResultCallback = new FutureResultCallback<List<BsonDocument>>()
+        collection.mapReduce('map', 'reduce', BsonDocument).into([], futureResultCallback)
+        futureResultCallback.get()
         operation = executor.getReadOperation() as MapReduceWithInlineResultsOperation
 
         then:
         expect operation, isTheSameAs(bsonOperation)
 
         when:
-        mapReduceCallback = new FutureResultCallback<MongoIterable<BsonDocument>>()
-        intoCallback = new FutureResultCallback<List<BsonDocument>>()
-        collection.mapReduce('map', 'reduce', mapReduceOptions, BsonDocument, mapReduceCallback)
-        mapReduceCallback.get().into([], intoCallback)
-        intoCallback.get()
+        futureResultCallback = new FutureResultCallback<List<BsonDocument>>()
+        collection.mapReduce('map', 'reduce', mapReduceOptions, BsonDocument).into([], futureResultCallback)
+        futureResultCallback.get()
         operation = executor.getReadOperation() as MapReduceWithInlineResultsOperation
 
         then:
@@ -416,20 +375,17 @@ class MongoCollectionSpecification extends Specification {
                                                                                     .finalizeFunction(new BsonJavaScript('final'))
                                                                                     .verbose(true)
         def mapReduceOptions = new MapReduceOptions('collectionName').filter(new Document('filter', 1)).finalizeFunction('final')
-        def mapReduceCallback = new FutureResultCallback<MongoIterable<Document>>()
-        def intoCallback = new FutureResultCallback<List<Document>>()
+        def futureResultCallback = new FutureResultCallback<List<Document>>()
 
         when:
-        collection.mapReduce('map', 'reduce', mapReduceOptions, mapReduceCallback)
-        mapReduceCallback.get()
+        collection.mapReduce('map', 'reduce', mapReduceOptions).into([], futureResultCallback)
+        futureResultCallback.get()
         def operation = executor.getWriteOperation() as MapReduceToCollectionOperation
 
         then:
         expect operation, isTheSameAs(expectedOperation)
 
         when: 'The following read operation'
-        mapReduceCallback.get().into([], intoCallback)
-        intoCallback.get()
         operation = executor.getReadOperation() as FindOperation
 
         then:
@@ -437,18 +393,15 @@ class MongoCollectionSpecification extends Specification {
                                               .filter(new BsonDocument()))
 
         when:
-        mapReduceCallback = new FutureResultCallback<MongoIterable<BsonDocument>>()
-        intoCallback = new FutureResultCallback<List<BsonDocument>>()
-        collection.mapReduce('map', 'reduce', mapReduceOptions, BsonDocument, mapReduceCallback)
-        mapReduceCallback.get()
+        futureResultCallback = new FutureResultCallback<List<BsonDocument>>()
+        collection.mapReduce('map', 'reduce', mapReduceOptions, BsonDocument).into([], futureResultCallback)
+        futureResultCallback.get()
         operation = executor.getWriteOperation() as MapReduceToCollectionOperation
 
         then:
         expect operation, isTheSameAs(expectedOperation)
 
         when: 'The following read operation'
-        mapReduceCallback.get().into([], intoCallback)
-        intoCallback.get()
         operation = executor.getReadOperation() as FindOperation
 
         then:
@@ -459,48 +412,25 @@ class MongoCollectionSpecification extends Specification {
 
     def 'should handle exceptions in mapReduce correctly'() {
         given:
-        def asyncCursor = Stub(MapReduceAsyncBatchCursor) {
-            next(_) >> { args -> args[0].onResult(null, null) }
-        }
         def options = OperationOptions.builder().codecRegistry(new RootCodecRegistry(asList(new ValueCodecProvider(),
                                                                                             new BsonValueCodecProvider()))).build()
-        def executor = new TestOperationExecutor([asyncCursor, new MongoException('failure')])
+        def executor = new TestOperationExecutor([new MongoException('failure')])
         def collection = new MongoCollectionImpl(namespace, Document, options, executor)
-        def mapReduceCallback = new FutureResultCallback<MongoIterable<BsonDocument>>()
-        def intoCallback = new FutureResultCallback<List<BsonDocument>>()
-        def intoCallback1 = new FutureResultCallback<List<BsonDocument>>()
-
-        when: 'Using the callback multiple times'
-        collection.aggregate([new BsonDocument('$match', new BsonInt32(1))], BsonDocument, mapReduceCallback)
-        mapReduceCallback.get().into([], intoCallback)
-        mapReduceCallback.get().into([], intoCallback1)
-        intoCallback1.get()
-
-        then: 'the callback should handle the exception'
-        def ex = thrown(MongoException)
-        ex.getCause() instanceof IllegalStateException
+        def futureResultCallback = new FutureResultCallback<List<BsonDocument>>()
 
         when: 'The operation fails with an exception'
-        mapReduceCallback = new FutureResultCallback<MongoIterable<BsonDocument>>()
-        collection.mapReduce('map', 'reduce', BsonDocument, mapReduceCallback)
-        mapReduceCallback.get()
+        collection.mapReduce('map', 'reduce', BsonDocument).into([], futureResultCallback)
+        futureResultCallback.get()
 
         then: 'the future should handle the exception'
         thrown(MongoException)
 
-        when: 'a codec is missing throw the exception in the callback'
-        mapReduceCallback = new FutureResultCallback<MongoIterable<BsonDocument>>()
-        collection.mapReduce('map', 'reduce', mapReduceCallback)
+        when: 'a codec is missing its acceptable to immediately throw'
+        futureResultCallback = new FutureResultCallback<List<BsonDocument>>()
+        collection.mapReduce('map', 'reduce').into([], futureResultCallback)
 
         then:
-        notThrown(Exception)
-
-        when:
-        mapReduceCallback.get()
-
-        then:
-        ex = thrown(MongoException)
-        ex.getCause() instanceof CodecConfigurationException
+        thrown(CodecConfigurationException)
     }
 
     def 'should use MixedBulkWriteOperation correctly'() {
@@ -598,7 +528,7 @@ class MongoCollectionSpecification extends Specification {
         when:
         futureResultCallback = new FutureResultCallback<WriteConcernResult>()
         collection.insertMany([new Document('_id', 1), new Document('_id', 2)], new InsertManyOptions().ordered(true),
-                               futureResultCallback)
+                              futureResultCallback)
         result = futureResultCallback.get()
         operation = executor.getWriteOperation() as InsertOperation
 
