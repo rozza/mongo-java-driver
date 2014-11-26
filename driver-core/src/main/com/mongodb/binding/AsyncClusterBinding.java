@@ -95,8 +95,7 @@ public class AsyncClusterBinding extends AbstractReferenceCounted implements Asy
 
         @Override
         public void getConnection(final SingleResultCallback<Connection> callback) {
-            // TODO plumb in getConnectionAsync.
-            callback.onResult(server.getConnection(), null);
+            server.getConnectionAsync(callback);
         }
 
         public AsyncConnectionSource retain() {
