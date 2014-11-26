@@ -24,7 +24,6 @@ import com.mongodb.bulk.WriteRequest;
 import org.bson.BsonDocument;
 import org.bson.codecs.BsonDocumentCodec;
 
-import static com.mongodb.async.ErrorHandlingResultCallback.wrapCallback;
 import static com.mongodb.connection.ProtocolHelper.getCommandFailureException;
 import static com.mongodb.connection.ProtocolHelper.getMessageSettings;
 import static com.mongodb.connection.WriteCommandResultHelper.getBulkWriteException;
@@ -96,66 +95,66 @@ abstract class WriteCommandProtocol implements Protocol<BulkWriteResult> {
 
     @Override
     public void executeAsync(final InternalConnection connection, final SingleResultCallback<BulkWriteResult> callback) {
-        try {
-            executeBatchesAsync(connection, createRequestMessage(getMessageSettings(connection.getDescription())),
-                                new BulkWriteBatchCombiner(connection.getDescription().getServerAddress(), ordered, writeConcern), 0, 0,
-                                callback);
-        } catch (Throwable t) {
-            callback.onResult(null, t);
-        }
+        executeBatchesAsync(connection, createRequestMessage(getMessageSettings(connection.getDescription())),
+                            new BulkWriteBatchCombiner(connection.getDescription().getServerAddress(), ordered, writeConcern), 0, 0,
+                            callback);
     }
 
     private void executeBatchesAsync(final InternalConnection connection, final BaseWriteCommandMessage message,
                                      final BulkWriteBatchCombiner bulkWriteBatchCombiner, final int batchNum,
                                      final int currentRangeStartIndex, final SingleResultCallback<BulkWriteResult> callback) {
+        try {
+            if (message != null && !bulkWriteBatchCombiner.shouldStopSendingMoreBatches()) {
 
-        if (message != null && !bulkWriteBatchCombiner.shouldStopSendingMoreBatches()) {
+                final ByteBufferBsonOutput bsonOutput = new ByteBufferBsonOutput(connection);
+                final BaseWriteCommandMessage nextMessage = message.encode(bsonOutput);
+                final int itemCount = nextMessage != null ? message.getItemCount() - nextMessage.getItemCount() : message.getItemCount();
+                final IndexMap indexMap = IndexMap.create(currentRangeStartIndex, itemCount);
+                final int nextBatchNum = batchNum + 1;
+                final int nextRangeStartIndex = currentRangeStartIndex + itemCount;
 
-            final ByteBufferBsonOutput bsonOutput = new ByteBufferBsonOutput(connection);
-            final BaseWriteCommandMessage nextMessage = message.encode(bsonOutput);
-            final int itemCount = nextMessage != null ? message.getItemCount() - nextMessage.getItemCount() : message.getItemCount();
-            final IndexMap indexMap = IndexMap.create(currentRangeStartIndex, itemCount);
-            final int nextBatchNum = batchNum + 1;
-            final int nextRangeStartIndex = currentRangeStartIndex + itemCount;
-
-            if (nextBatchNum > 1) {
-                if (getLogger().isDebugEnabled()) {
-                    getLogger().debug(format("Asynchronously sending batch %d", batchNum));
-                }
-            }
-
-            sendMessageAsync(connection, message.getId(), bsonOutput, wrapCallback(new SingleResultCallback<BsonDocument>() {
-                @Override
-                public void onResult(final BsonDocument result, final Throwable t) {
-                    bsonOutput.close();
-                    if (t != null) {
-                        callback.onResult(null, t);
-                    } else {
-
-                        if (nextBatchNum > 1) {
-                            if (getLogger().isDebugEnabled()) {
-                                getLogger().debug(format("Asynchronously received response for batch %d", batchNum));
-                            }
-                        }
-
-                        if (WriteCommandResultHelper.hasError(result)) {
-                            bulkWriteBatchCombiner.addErrorResult(getBulkWriteException(getType(), result,
-                                                                                        connection.getDescription().getServerAddress()),
-                                                                  indexMap);
-                        } else {
-                            bulkWriteBatchCombiner.addResult(getBulkWriteResult(getType(), result), indexMap);
-                        }
-
-                        executeBatchesAsync(connection, nextMessage, bulkWriteBatchCombiner, nextBatchNum, nextRangeStartIndex, callback);
+                if (nextBatchNum > 1) {
+                    if (getLogger().isDebugEnabled()) {
+                        getLogger().debug(format("Asynchronously sending batch %d", batchNum));
                     }
                 }
-            }, getLogger()));
-        } else {
-            if (bulkWriteBatchCombiner.hasErrors()) {
-                callback.onResult(null, bulkWriteBatchCombiner.getError());
+
+                sendMessageAsync(connection, message.getId(), bsonOutput, new SingleResultCallback<BsonDocument>() {
+                    @Override
+                    public void onResult(final BsonDocument result, final Throwable t) {
+                        bsonOutput.close();
+                        if (t != null) {
+                            callback.onResult(null, t);
+                        } else {
+
+                            if (nextBatchNum > 1) {
+                                if (getLogger().isDebugEnabled()) {
+                                    getLogger().debug(format("Asynchronously received response for batch %d", batchNum));
+                                }
+                            }
+
+                            if (WriteCommandResultHelper.hasError(result)) {
+                                bulkWriteBatchCombiner.addErrorResult(getBulkWriteException(getType(), result,
+                                                                                            connection.getDescription().getServerAddress()),
+                                                                      indexMap);
+                            } else {
+                                bulkWriteBatchCombiner.addResult(getBulkWriteResult(getType(), result), indexMap);
+                            }
+
+                            executeBatchesAsync(connection, nextMessage, bulkWriteBatchCombiner, nextBatchNum, nextRangeStartIndex,
+                                                callback);
+                        }
+                    }
+                });
             } else {
-                callback.onResult(bulkWriteBatchCombiner.getResult(), null);
+                if (bulkWriteBatchCombiner.hasErrors()) {
+                    callback.onResult(null, bulkWriteBatchCombiner.getError());
+                } else {
+                    callback.onResult(bulkWriteBatchCombiner.getResult(), null);
+                }
             }
+        } catch (Throwable t) {
+            callback.onResult(null, t);
         }
     }
 

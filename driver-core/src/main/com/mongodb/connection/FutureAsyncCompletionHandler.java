@@ -17,18 +17,15 @@
 package com.mongodb.connection;
 
 import com.mongodb.MongoInternalException;
+import com.mongodb.MongoInterruptedException;
 
 import java.io.IOException;
 import java.util.concurrent.CountDownLatch;
 
 class FutureAsyncCompletionHandler<T> implements AsyncCompletionHandler<T> {
-    private final CountDownLatch latch;
-    private T result = null;
+    private final CountDownLatch latch = new CountDownLatch(1);;
+    private T result;
     private Throwable error = null;
-
-    public FutureAsyncCompletionHandler() {
-        this.latch = new CountDownLatch(1);
-    }
 
     @Override
     public void completed(final T result) {
@@ -55,7 +52,7 @@ class FutureAsyncCompletionHandler<T> implements AsyncCompletionHandler<T> {
         try {
             latch.await();
         } catch (InterruptedException e) {
-            throw new MongoInternalException(prefix + " the AsynchronousSocketChannelStream failed", e);
+            throw new MongoInterruptedException(prefix + " the AsynchronousSocketChannelStream failed", e);
 
         }
         if (error != null) {
