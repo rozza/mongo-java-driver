@@ -16,7 +16,6 @@
 
 package com.mongodb.connection;
 
-import com.mongodb.MongoException;
 import com.mongodb.async.SingleResultCallback;
 import org.bson.BsonDocument;
 import org.bson.BsonInt32;

@@ -183,9 +183,10 @@ class DefaultServerSpecification extends Specification {
         def futureResultCallback = new FutureResultCallback()
         testConnection.insertAsync(new MongoNamespace('test', 'test'), true, ACKNOWLEDGED, asList(new InsertRequest(new BsonDocument())),
                                    futureResultCallback);
+        futureResultCallback.get(10, SECONDS)
 
         then:
-        futureResultCallback.get(10, SECONDS).wasAcknowledged()
+        thrown(WriteConcernException)
         1 * connectionPool.invalidate()
         1 * serverMonitor.invalidate()
 
@@ -193,9 +194,10 @@ class DefaultServerSpecification extends Specification {
         futureResultCallback = new FutureResultCallback()
         testConnection.insertAsync(new MongoNamespace('test', 'test'), true, ACKNOWLEDGED, asList(new InsertRequest(new BsonDocument())),
                                    futureResultCallback);
+        futureResultCallback.get(10, SECONDS)
 
         then:
-        futureResultCallback.get(10, SECONDS).wasAcknowledged()
+        thrown(WriteConcernException)
         1 * connectionPool.invalidate()
         1 * serverMonitor.invalidate()
     }
@@ -260,9 +262,10 @@ class DefaultServerSpecification extends Specification {
         def futureResultCallback = new FutureResultCallback()
         testConnection.insertAsync(new MongoNamespace('test', 'test'), true, ACKNOWLEDGED, asList(new InsertRequest(new BsonDocument())),
                                    futureResultCallback)
+        futureResultCallback.get(10, SECONDS)
 
         then:
-        futureResultCallback.get(10, SECONDS).wasAcknowledged()
+        thrown(WriteConcernException)
         1 * connectionPool.invalidate()
         1 * serverMonitor.invalidate()
     }
