@@ -156,7 +156,7 @@ public abstract class BaseWriteOperation implements AsyncWriteOperation<WriteCon
      * @param connection the connection
      * @return the write protocol
      */
-    protected abstract WriteConcernResult executeProtocol(final Connection connection);
+    protected abstract WriteConcernResult executeProtocol(Connection connection);
 
     /**
      * Asynchronously executes the write protocol
@@ -164,8 +164,7 @@ public abstract class BaseWriteOperation implements AsyncWriteOperation<WriteCon
      * @param connection the connection
      * @param callback   the callback to be passed the WriteConcernResult
      */
-    protected abstract void executeProtocolAsync(final Connection connection,
-                                                 final SingleResultCallback<WriteConcernResult> callback);
+    protected abstract void executeProtocolAsync(Connection connection, SingleResultCallback<WriteConcernResult> callback);
 
     /**
      * Executes the write command protocol.
@@ -173,7 +172,7 @@ public abstract class BaseWriteOperation implements AsyncWriteOperation<WriteCon
      * @param connection the connection
      * @return the result
      */
-    protected abstract BulkWriteResult executeCommandProtocol(final Connection connection);
+    protected abstract BulkWriteResult executeCommandProtocol(Connection connection);
 
     /**
      * Asynchronously executes the write command protocol.
@@ -181,8 +180,7 @@ public abstract class BaseWriteOperation implements AsyncWriteOperation<WriteCon
      * @param connection the connection
      * @param callback   the callback to be passed the BulkWriteResult
      */
-    protected abstract void executeCommandProtocolAsync(final Connection connection,
-                                                        final SingleResultCallback<BulkWriteResult> callback);
+    protected abstract void executeCommandProtocolAsync(Connection connection, SingleResultCallback<BulkWriteResult> callback);
 
     private MongoException translateException(final Throwable t) {
         MongoException checkedError = MongoException.fromThrowable(t);

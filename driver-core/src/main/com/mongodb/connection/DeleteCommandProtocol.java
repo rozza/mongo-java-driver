@@ -28,7 +28,6 @@ import com.mongodb.diagnostics.logging.Loggers;
 import java.util.List;
 
 import static com.mongodb.assertions.Assertions.notNull;
-import static com.mongodb.async.ErrorHandlingResultCallback.wrapCallback;
 import static java.lang.String.format;
 
 /**
@@ -69,21 +68,25 @@ class DeleteCommandProtocol extends WriteCommandProtocol {
 
     @Override
     public void executeAsync(final InternalConnection connection, final SingleResultCallback<BulkWriteResult> callback) {
-        if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug(format("Asynchronously deleting documents from namespace %s on connection [%s] to server %s", getNamespace(),
-                                connection.getDescription().getConnectionId(), connection.getDescription().getServerAddress()));
-        }
-        super.executeAsync(connection, wrapCallback(new SingleResultCallback<BulkWriteResult>() {
-            @Override
-            public void onResult(final BulkWriteResult result, final Throwable t) {
-                if (t != null) {
-                    callback.onResult(null, t);
-                } else {
-                    LOGGER.debug("Asynchronous delete completed");
-                    callback.onResult(result, null);
-                }
+        try {
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug(format("Asynchronously deleting documents from namespace %s on connection [%s] to server %s", getNamespace(),
+                                    connection.getDescription().getConnectionId(), connection.getDescription().getServerAddress()));
             }
-        }, LOGGER));
+            super.executeAsync(connection, new SingleResultCallback<BulkWriteResult>() {
+                @Override
+                public void onResult(final BulkWriteResult result, final Throwable t) {
+                    if (t != null) {
+                        callback.onResult(null, t);
+                    } else {
+                        LOGGER.debug("Asynchronous delete completed");
+                        callback.onResult(result, null);
+                    }
+                }
+            });
+        } catch (Throwable t) {
+            callback.onResult(null, t);
+        }
     }
 
     @Override

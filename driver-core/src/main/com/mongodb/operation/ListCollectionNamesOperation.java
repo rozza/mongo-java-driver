@@ -118,12 +118,8 @@ public class ListCollectionNamesOperation implements AsyncReadOperation<List<Str
                                           new BsonDocumentCodec(), new SingleResultCallback<QueryResult<BsonDocument>>() {
                         @Override
                         public void onResult(final QueryResult<BsonDocument> result, final Throwable t) {
-                            if (t != null) {
-                                if (isNamespaceError(t)) {
-                                    callback.onResult(new ArrayList<String>(), null);
-                                } else {
-                                    callback.onResult(null, t);
-                                }
+                            if (t != null && !isNamespaceError(t)) {
+                                 callback.onResult(null, t);
                             } else {
                                 queryResultToListAsync(getNamespace(), result, new BsonDocumentCodec(), source, queryResultTransformer(),
                                                        callback);

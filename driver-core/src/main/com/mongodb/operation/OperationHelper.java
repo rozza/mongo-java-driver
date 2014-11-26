@@ -131,11 +131,11 @@ final class OperationHelper {
     }
 
 
-    static void  withConnection(final AsyncReadBinding binding, final AsyncCallableWithConnection callable) {
+    static void withConnection(final AsyncReadBinding binding, final AsyncCallableWithConnection callable) {
         binding.getReadConnectionSource(wrapCallback(new AsyncCallableWithConnectionCallback(callable)));
     }
 
-    static void  withConnection(final AsyncReadBinding binding, final AsyncCallableWithConnectionAndSource callable) {
+    static void withConnection(final AsyncReadBinding binding, final AsyncCallableWithConnectionAndSource callable) {
         binding.getReadConnectionSource(wrapCallback(new AsyncCallableWithConnectionAndSourceCallback(callable)));
     }
 
@@ -147,9 +147,6 @@ final class OperationHelper {
         @Override
         public void onResult(final AsyncConnectionSource source, final Throwable t) {
             if (t != null) {
-                if (source != null) {
-                    source.release();
-                }
                 callable.call(null, t);
             } else {
                 withConnectionSource(source, callable);
@@ -161,13 +158,10 @@ final class OperationHelper {
         source.getConnection(new SingleResultCallback<Connection>() {
             @Override
             public void onResult(final Connection connection, final Throwable t) {
+                if (source != null) {
+                    source.release();
+                }
                 if (t != null) {
-                    if (connection != null) {
-                        connection.release();
-                    }
-                    if (source != null) {
-                        source.release();
-                    }
                     callable.call(null, t);
                 } else {
                     callable.call(connection, null);

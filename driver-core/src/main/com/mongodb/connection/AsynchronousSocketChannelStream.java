@@ -16,7 +16,6 @@
 
 package com.mongodb.connection;
 
-import com.mongodb.MongoInternalException;
 import com.mongodb.MongoSocketOpenException;
 import com.mongodb.MongoSocketReadTimeoutException;
 import com.mongodb.ServerAddress;
@@ -31,7 +30,6 @@ import java.nio.channels.CompletionHandler;
 import java.nio.channels.InterruptedByTimeoutException;
 import java.util.Iterator;
 import java.util.List;
-import java.util.concurrent.CountDownLatch;
 
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
@@ -56,44 +54,16 @@ final class AsynchronousSocketChannelStream implements Stream {
 
     @Override
     public void write(final List<ByteBuf> buffers) throws IOException {
-        CountDownLatch latch = new CountDownLatch(1);
-        FutureAsyncCompletionHandler<Void> handler = new FutureAsyncCompletionHandler<Void>(latch);
+        FutureAsyncCompletionHandler<Void> handler = new FutureAsyncCompletionHandler<Void>();
         writeAsync(buffers, handler);
-        try {
-            latch.await();
-        } catch (InterruptedException e) {
-            throw new MongoInternalException("Reading from the AsynchronousSocketChannelStream failed", e);
-        }
-        if (handler.hasError()) {
-            Throwable error =  handler.getError();
-            if (error instanceof IOException) {
-                throw (IOException) error;
-            } else {
-                throw new MongoInternalException("Reading from the AsynchronousSocketChannelStream failed", error);
-            }
-        }
+        handler.getWrite();
     }
 
     @Override
     public ByteBuf read(final int numBytes) throws IOException {
-        CountDownLatch latch = new CountDownLatch(1);
-        FutureAsyncCompletionHandler<ByteBuf> handler = new FutureAsyncCompletionHandler<ByteBuf>(latch);
+        FutureAsyncCompletionHandler<ByteBuf> handler = new FutureAsyncCompletionHandler<ByteBuf>();
         readAsync(numBytes, handler);
-        try {
-            latch.await();
-        } catch (InterruptedException e) {
-            throw new MongoInternalException("Reading from the AsynchronousSocketChannelStream failed", e);
-        }
-        if (handler.hasError()) {
-            Throwable error =  handler.getError();
-            if (error instanceof IOException) {
-                throw (IOException) error;
-            } else {
-                throw new MongoInternalException("Reading from the AsynchronousSocketChannelStream failed", error);
-            }
-        } else {
-            return handler.getResult();
-        }
+        return handler.getRead();
     }
 
     @Override

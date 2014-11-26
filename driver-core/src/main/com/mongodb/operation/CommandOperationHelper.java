@@ -293,19 +293,15 @@ final class CommandOperationHelper {
                                 readPreference.isSlaveOk(), new NoOpFieldNameValidator(), decoder, new SingleResultCallback<D>() {
             @Override
             public void onResult(final D result, final Throwable t) {
-                try {
-                    if (t != null) {
-                        wrappedCallback.onResult(null, t);
-                    } else {
-                        try {
-                            T transformedResult = transformer.apply(result);
-                            wrappedCallback.onResult(transformedResult, null);
-                        } catch (Exception e) {
-                            wrappedCallback.onResult(null, e);
-                        }
+                if (t != null) {
+                    wrappedCallback.onResult(null, t);
+                } else {
+                    try {
+                        T transformedResult = transformer.apply(result);
+                        wrappedCallback.onResult(transformedResult, null);
+                    } catch (Exception e) {
+                        wrappedCallback.onResult(null, e);
                     }
-                } finally {
-                    connection.release();
                 }
             }
         });

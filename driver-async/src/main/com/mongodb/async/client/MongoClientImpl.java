@@ -133,13 +133,12 @@ class MongoClientImpl implements MongoClient {
 
             @Override
             public <T> void execute(final AsyncWriteOperation<T> operation, final SingleResultCallback<T> callback) {
-                final SingleResultCallback<T> wrappedCallback = wrapCallback(callback);
                 final AsyncWriteBinding binding = getReadWriteBinding(ReadPreference.primary(), options, cluster);
                 operation.executeAsync(binding, new SingleResultCallback<T>() {
                     @Override
                     public void onResult(final T result, final Throwable t) {
                         try {
-                            wrappedCallback.onResult(result, t);
+                            callback.onResult(result, t);
                         } finally {
                             binding.release();
                         }

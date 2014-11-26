@@ -26,7 +26,6 @@ import com.mongodb.diagnostics.logging.Loggers;
 
 import java.util.List;
 
-import static com.mongodb.async.ErrorHandlingResultCallback.wrapCallback;
 import static java.lang.String.format;
 
 /**
@@ -66,21 +65,25 @@ class UpdateProtocol extends WriteProtocol {
 
     @Override
     public void executeAsync(final InternalConnection connection, final SingleResultCallback<WriteConcernResult> callback) {
-        if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug(format("Asynchronously updating documents in namespace %s on connection [%s] to server %s", getNamespace(),
-                                connection.getDescription().getConnectionId(), connection.getDescription().getServerAddress()));
-        }
-        super.executeAsync(connection, wrapCallback(new SingleResultCallback<WriteConcernResult>() {
-            @Override
-            public void onResult(final WriteConcernResult result, final Throwable t) {
-                if (t != null) {
-                    callback.onResult(null, t);
-                } else {
-                    LOGGER.debug("Asynchronous update completed");
-                    callback.onResult(result, null);
-                }
+        try {
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug(format("Asynchronously updating documents in namespace %s on connection [%s] to server %s", getNamespace(),
+                                    connection.getDescription().getConnectionId(), connection.getDescription().getServerAddress()));
             }
-        }, LOGGER));
+            super.executeAsync(connection, new SingleResultCallback<WriteConcernResult>() {
+                @Override
+                public void onResult(final WriteConcernResult result, final Throwable t) {
+                    if (t != null) {
+                        callback.onResult(null, t);
+                    } else {
+                        LOGGER.debug("Asynchronous update completed");
+                        callback.onResult(result, null);
+                    }
+                }
+            });
+        } catch (Throwable t) {
+            callback.onResult(null, t);
+        }
     }
 
 

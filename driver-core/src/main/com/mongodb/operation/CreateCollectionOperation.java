@@ -28,6 +28,7 @@ import static com.mongodb.assertions.Assertions.notNull;
 import static com.mongodb.operation.CommandOperationHelper.executeWrappedCommandProtocol;
 import static com.mongodb.operation.CommandOperationHelper.executeWrappedCommandProtocolAsync;
 import static com.mongodb.operation.DocumentHelper.putIfNotZero;
+import static com.mongodb.operation.OperationHelper.VoidTransformer;
 
 /**
  * An operation to create a collection
@@ -46,7 +47,7 @@ public class CreateCollectionOperation implements AsyncWriteOperation<Void>, Wri
     /**
      * Construct a new instance.
      *
-     * @param databaseName the name of the database for the operation.
+     * @param databaseName   the name of the database for the operation.
      * @param collectionName the name of the collection to be created.
      */
     public CreateCollectionOperation(final String databaseName, final String collectionName) {
@@ -150,7 +151,7 @@ public class CreateCollectionOperation implements AsyncWriteOperation<Void>, Wri
      *
      * <p>Note: {@code }usePowerOf2Sizes} became the default allocation strategy in mongodb 2.6</p>
      *
-     * @return  usePowerOf2Sizes became the default allocation strategy
+     * @return usePowerOf2Sizes became the default allocation strategy
      * @mongodb.driver.manual reference/command/collMod/#usePowerOf2Sizes usePowerOf2Sizes
      * @mongodb.server.release 2.6
      */
@@ -182,7 +183,7 @@ public class CreateCollectionOperation implements AsyncWriteOperation<Void>, Wri
     @Override
     public void executeAsync(final AsyncWriteBinding binding, final SingleResultCallback<Void> callback) {
         executeWrappedCommandProtocolAsync(databaseName, asDocument(), new BsonDocumentCodec(), binding,
-                                           new OperationHelper.VoidTransformer<BsonDocument>(), callback);
+                                           new VoidTransformer<BsonDocument>(), callback);
     }
 
     private BsonDocument asDocument() {

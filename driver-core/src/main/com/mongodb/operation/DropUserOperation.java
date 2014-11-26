@@ -79,7 +79,6 @@ public class DropUserOperation implements AsyncWriteOperation<Void>, WriteOperat
             @Override
             public void call(final Connection connection, final Throwable t) {
                 if (t != null) {
-                    connection.release();
                     wrapCallback(callback).onResult(null, t);
                 } else {
                     if (serverIsAtLeastVersionTwoDotSix(connection)) {

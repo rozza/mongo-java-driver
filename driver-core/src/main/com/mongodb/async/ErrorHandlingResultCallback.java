@@ -20,6 +20,12 @@ import com.mongodb.diagnostics.logging.Logger;
 
 import static com.mongodb.assertions.Assertions.notNull;
 
+/**
+ * This class is not part of the public API and may be removed or changed at any time.
+ *
+ * @param <T> the result type
+ * @since 3.0
+ */
 public class ErrorHandlingResultCallback<T> implements SingleResultCallback<T> {
     private final SingleResultCallback<T> wrapped;
     private final Logger logger;

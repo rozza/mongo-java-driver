@@ -81,23 +81,27 @@ class CommandProtocol<T> implements Protocol<T> {
 
     @Override
     public void executeAsync(final InternalConnection connection, final SingleResultCallback<T> callback) {
-        if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug(format("Asynchronously sending command {%s : %s} to database %s on connection [%s] to server %s",
-                                command.keySet().iterator().next(), command.values().iterator().next(),
-                                namespace.getDatabaseName(), connection.getDescription().getConnectionId(),
-                                connection.getDescription().getServerAddress()));
-        }
-        ByteBufferBsonOutput bsonOutput = new ByteBufferBsonOutput(connection);
-        CommandMessage message = new CommandMessage(namespace.getFullName(), command, slaveOk, fieldNameValidator,
-                                                    ProtocolHelper.getMessageSettings(connection.getDescription()));
-        ProtocolHelper.encodeMessage(message, bsonOutput);
+        try {
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug(format("Asynchronously sending command {%s : %s} to database %s on connection [%s] to server %s",
+                                    command.keySet().iterator().next(), command.values().iterator().next(),
+                                    namespace.getDatabaseName(), connection.getDescription().getConnectionId(),
+                                    connection.getDescription().getServerAddress()));
+            }
+            ByteBufferBsonOutput bsonOutput = new ByteBufferBsonOutput(connection);
+            CommandMessage message = new CommandMessage(namespace.getFullName(), command, slaveOk, fieldNameValidator,
+                                                        ProtocolHelper.getMessageSettings(connection.getDescription()));
+            ProtocolHelper.encodeMessage(message, bsonOutput);
 
-        SingleResultCallback<ResponseBuffers> receiveCallback = new CommandResultCallback<T>(callback, commandResultDecoder,
-                                                                                             message.getId(),
-                                                                                             connection.getDescription()
-                                                                                                       .getServerAddress());
-        connection.sendMessageAsync(bsonOutput.getByteBuffers(), message.getId(),
-                                    new SendMessageCallback<T>(connection, bsonOutput, message.getId(), callback, receiveCallback));
+            SingleResultCallback<ResponseBuffers> receiveCallback = new CommandResultCallback<T>(callback, commandResultDecoder,
+                                                                                                 message.getId(),
+                                                                                                 connection.getDescription()
+                                                                                                           .getServerAddress());
+            connection.sendMessageAsync(bsonOutput.getByteBuffers(), message.getId(),
+                                        new SendMessageCallback<T>(connection, bsonOutput, message.getId(), callback, receiveCallback));
+        } catch (Throwable t) {
+            callback.onResult(null, t);
+        }
     }
 
     private CommandMessage sendMessage(final InternalConnection connection) {

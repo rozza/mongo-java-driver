@@ -16,6 +16,9 @@
 
 package com.mongodb.connection;
 
+import com.mongodb.MongoInternalException;
+
+import java.io.IOException;
 import java.util.concurrent.CountDownLatch;
 
 class FutureAsyncCompletionHandler<T> implements AsyncCompletionHandler<T> {
@@ -23,8 +26,8 @@ class FutureAsyncCompletionHandler<T> implements AsyncCompletionHandler<T> {
     private T result = null;
     private Throwable error = null;
 
-    public FutureAsyncCompletionHandler(final CountDownLatch latch) {
-        this.latch = latch;
+    public FutureAsyncCompletionHandler() {
+        this.latch = new CountDownLatch(1);
     }
 
     @Override
@@ -39,15 +42,30 @@ class FutureAsyncCompletionHandler<T> implements AsyncCompletionHandler<T> {
         this.error = t;
     }
 
-    public T getResult() {
+    public void getWrite() throws IOException {
+        get(false);
+    }
+
+    public T getRead() throws IOException {
+        return get(true);
+    }
+
+    private T get(final boolean reading) throws IOException {
+        String prefix = reading ? "Reading from" : "Writing to";
+        try {
+            latch.await();
+        } catch (InterruptedException e) {
+            throw new MongoInternalException(prefix + " the AsynchronousSocketChannelStream failed", e);
+
+        }
+        if (error != null) {
+            if (error instanceof IOException) {
+                throw (IOException) error;
+            } else {
+                throw new MongoInternalException(prefix + " the AsynchronousSocketChannelStream failed", error);
+            }
+        }
         return result;
     }
 
-    public boolean hasError() {
-        return error != null;
-    }
-
-    public Throwable getError() {
-        return error;
-    }
 }

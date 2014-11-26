@@ -450,19 +450,23 @@ public class FindOperation<T> implements AsyncReadOperation<AsyncBatchCursor<T>>
         withConnection(binding, new AsyncCallableWithConnectionAndSource() {
             @Override
             public void call(final AsyncConnectionSource source, final Connection connection, final Throwable t) {
-                connection.queryAsync(namespace, asDocument(connection.getDescription(), binding.getReadPreference()), projection,
-                                      getNumberToReturn(), skip, isSlaveOk() || binding.getReadPreference().isSlaveOk(),
-                                      isTailableCursor(), isAwaitData(), isNoCursorTimeout(), isPartial(), isOplogReplay(),
-                                      decoder, new SingleResultCallback<QueryResult<T>>() {
-                    @Override
-                    public void onResult(final QueryResult<T> result, final Throwable t) {
-                        if (t != null) {
-                            callback.onResult(null, t);
-                        } else {
-                            callback.onResult(new AsyncQueryBatchCursor<T>(namespace, result, limit, batchSize, decoder, source), null);
+                if (t != null) {
+                    callback.onResult(null, t);
+                } else {
+                    connection.queryAsync(namespace, asDocument(connection.getDescription(), binding.getReadPreference()), projection,
+                                          getNumberToReturn(), skip, isSlaveOk() || binding.getReadPreference().isSlaveOk(),
+                                          isTailableCursor(), isAwaitData(), isNoCursorTimeout(), isPartial(), isOplogReplay(),
+                                          decoder, new SingleResultCallback<QueryResult<T>>() {
+                        @Override
+                        public void onResult(final QueryResult<T> result, final Throwable t) {
+                            if (t != null) {
+                                callback.onResult(null, t);
+                            } else {
+                                callback.onResult(new AsyncQueryBatchCursor<T>(namespace, result, limit, batchSize, decoder, source), null);
+                            }
                         }
-                    }
-                });
+                    });
+                }
             }
         });
     }

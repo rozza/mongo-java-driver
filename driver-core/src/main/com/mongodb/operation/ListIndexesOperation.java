@@ -118,18 +118,14 @@ public class ListIndexesOperation<T> implements AsyncReadOperation<List<T>>, Rea
                                                                                      null);
                                                                }
                                                            }
-                                                                              });
+                                                       });
                 } else {
                     connection.queryAsync(getIndexNamespace(), new BsonDocument(), null, 0, 0, binding.getReadPreference().isSlaveOk(),
                                           false, false, false, false, false, decoder, new SingleResultCallback<QueryResult<T>>() {
                         @Override
                         public void onResult(final QueryResult<T> result, final Throwable t) {
-                            if (t != null) {
-                                if (isNamespaceError(t)) {
-                                    callback.onResult(new ArrayList<T>(), null);
-                                } else {
-                                    callback.onResult(null, t);
-                                }
+                            if (t != null && !isNamespaceError(t)) {
+                                callback.onResult(null, t);
                             } else {
                                 queryResultToListAsync(getIndexNamespace(), result, decoder, source, new IdentityTransformer<T>(),
                                                        callback);

@@ -476,8 +476,7 @@ public class CreateIndexOperation implements AsyncWriteOperation<Void>, WriteOpe
                         executeWrappedCommandProtocolAsync(namespace.getDatabaseName(), getCommand(), connection,
                                                            new SingleResultCallback<BsonDocument>() {
                                                                @Override
-                                                               public void onResult(final BsonDocument result,
-                                                                                    final Throwable t) {
+                                                               public void onResult(final BsonDocument result, final Throwable t) {
                                                                    callback.onResult(null, translateException(t));
                                                                }});
                     } else {

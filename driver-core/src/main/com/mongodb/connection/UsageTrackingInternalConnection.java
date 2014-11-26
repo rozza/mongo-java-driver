@@ -51,7 +51,7 @@ class UsageTrackingInternalConnection implements InternalConnection {
     @Override
     public void openAsync(final SingleResultCallback<Void> callback) {
         isTrue("open", wrapped != null);
-        wrapped.openAsync(wrapCallback(new SingleResultCallback<Void>() {
+        wrapped.openAsync(new SingleResultCallback<Void>() {
             @Override
             public void onResult(final Void result, final Throwable t) {
                 if (t != null) {
@@ -62,7 +62,7 @@ class UsageTrackingInternalConnection implements InternalConnection {
                     callback.onResult(null, null);
                 }
             }
-        }));
+        });
     }
 
     @Override

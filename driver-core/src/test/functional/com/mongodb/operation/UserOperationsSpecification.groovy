@@ -117,8 +117,8 @@ class UserOperationsSpecification extends OperationFunctionalSpecification {
 
         cleanup:
         connection?.release()
-        executeAsync(new DropUserOperation(databaseName, credential.userName))
         cluster?.close()
+        executeAsync(new DropUserOperation(databaseName, credential.userName))
     }
 
     def 'a removed user should not authenticate'() {
@@ -193,8 +193,8 @@ class UserOperationsSpecification extends OperationFunctionalSpecification {
 
         cleanup:
         connection?.release()
-        executeAsync(new DropUserOperation(databaseName, credential.userName), getAsyncBinding(cluster))
         cluster?.close()
+        executeAsync(new DropUserOperation(databaseName, credential.userName))
     }
 
     def 'a read write user should be able to write'() {
@@ -226,8 +226,8 @@ class UserOperationsSpecification extends OperationFunctionalSpecification {
         result.getCount() == 0
 
         cleanup:
-        cluster?.close()
         executeAsync(new DropUserOperation(databaseName, credential.userName))
+        cluster?.close()
     }
 
     @IgnoreIf({ !isAuthenticated() })

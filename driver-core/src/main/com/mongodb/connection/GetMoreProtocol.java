@@ -71,23 +71,27 @@ class GetMoreProtocol<T> implements Protocol<QueryResult<T>> {
 
     @Override
     public void executeAsync(final InternalConnection connection, final SingleResultCallback<QueryResult<T>> callback) {
-        if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug(format("Asynchronously getting more documents from namespace %s with cursor %d on connection [%s] to server %s",
-                                namespace, cursorId, connection.getDescription().getConnectionId(),
-                                connection.getDescription().getServerAddress()));
+        try {
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug(format("Asynchronously getting more documents from namespace %s with cursor %d on connection [%s] to server "
+                                    + "%s", namespace, cursorId, connection.getDescription().getConnectionId(),
+                                    connection.getDescription().getServerAddress()));
+            }
+            ByteBufferBsonOutput bsonOutput = new ByteBufferBsonOutput(connection);
+            GetMoreMessage message = new GetMoreMessage(namespace.getFullName(), cursorId, numberToReturn);
+            ProtocolHelper.encodeMessage(message, bsonOutput);
+            SingleResultCallback<ResponseBuffers> receiveCallback = new GetMoreResultCallback<T>(callback,
+                                                                                                 resultDecoder,
+                                                                                                 cursorId,
+                                                                                                 message.getId(),
+                                                                                                 connection.getDescription()
+                                                                                                           .getServerAddress());
+            connection.sendMessageAsync(bsonOutput.getByteBuffers(), message.getId(),
+                                        new SendMessageCallback<QueryResult<T>>(connection, bsonOutput, message.getId(), callback,
+                                                                                receiveCallback));
+        } catch (Throwable t) {
+            callback.onResult(null, t);
         }
-        ByteBufferBsonOutput bsonOutput = new ByteBufferBsonOutput(connection);
-        GetMoreMessage message = new GetMoreMessage(namespace.getFullName(), cursorId, numberToReturn);
-        ProtocolHelper.encodeMessage(message, bsonOutput);
-        SingleResultCallback<ResponseBuffers> receiveCallback = new GetMoreResultCallback<T>(callback,
-                                                                                             resultDecoder,
-                                                                                             cursorId,
-                                                                                             message.getId(),
-                                                                                             connection.getDescription()
-                                                                                                       .getServerAddress());
-        connection.sendMessageAsync(bsonOutput.getByteBuffers(), message.getId(),
-                                    new SendMessageCallback<QueryResult<T>>(connection, bsonOutput, message.getId(), callback,
-                                                                            receiveCallback));
     }
 
     private GetMoreMessage sendMessage(final InternalConnection connection) {

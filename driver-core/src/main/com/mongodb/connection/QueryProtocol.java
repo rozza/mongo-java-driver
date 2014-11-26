@@ -234,21 +234,25 @@ class QueryProtocol<T> implements Protocol<QueryResult<T>> {
 
     @Override
     public void executeAsync(final InternalConnection connection, final SingleResultCallback<QueryResult<T>> callback) {
-        if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug(format("Asynchronously sending query of namespace %s on connection [%s] to server %s", namespace,
-                                connection.getDescription().getConnectionId(), connection.getDescription().getServerAddress()));
+        try {
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug(format("Asynchronously sending query of namespace %s on connection [%s] to server %s", namespace,
+                                    connection.getDescription().getConnectionId(), connection.getDescription().getServerAddress()));
+            }
+            ByteBufferBsonOutput bsonOutput = new ByteBufferBsonOutput(connection);
+            QueryMessage message = createQueryMessage(connection.getDescription());
+            encodeMessage(message, bsonOutput);
+            SingleResultCallback<ResponseBuffers> receiveCallback = new QueryResultCallback<T>(callback,
+                                                                                               resultDecoder,
+                                                                                               message.getId(),
+                                                                                               connection.getDescription()
+                                                                                                         .getServerAddress());
+            connection.sendMessageAsync(bsonOutput.getByteBuffers(), message.getId(),
+                                        new SendMessageCallback<QueryResult<T>>(connection, bsonOutput, message.getId(), callback,
+                                                                                receiveCallback));
+        } catch (Throwable t) {
+            callback.onResult(null, t);
         }
-        ByteBufferBsonOutput bsonOutput = new ByteBufferBsonOutput(connection);
-        QueryMessage message = createQueryMessage(connection.getDescription());
-        encodeMessage(message, bsonOutput);
-        SingleResultCallback<ResponseBuffers> receiveCallback = new QueryResultCallback<T>(callback,
-                                                                                           resultDecoder,
-                                                                                           message.getId(),
-                                                                                           connection.getDescription()
-                                                                                                     .getServerAddress());
-        connection.sendMessageAsync(bsonOutput.getByteBuffers(), message.getId(),
-                                    new SendMessageCallback<QueryResult<T>>(connection, bsonOutput, message.getId(), callback,
-                                                                            receiveCallback));
     }
 
     private QueryMessage createQueryMessage(final ConnectionDescription connectionDescription) {

@@ -96,9 +96,13 @@ abstract class WriteCommandProtocol implements Protocol<BulkWriteResult> {
 
     @Override
     public void executeAsync(final InternalConnection connection, final SingleResultCallback<BulkWriteResult> callback) {
-        executeBatchesAsync(connection, createRequestMessage(getMessageSettings(connection.getDescription())),
-                            new BulkWriteBatchCombiner(connection.getDescription().getServerAddress(), ordered, writeConcern), 0, 0,
-                            wrapCallback(callback, getLogger()));
+        try {
+            executeBatchesAsync(connection, createRequestMessage(getMessageSettings(connection.getDescription())),
+                                new BulkWriteBatchCombiner(connection.getDescription().getServerAddress(), ordered, writeConcern), 0, 0,
+                                callback);
+        } catch (Throwable t) {
+            callback.onResult(null, t);
+        }
     }
 
     private void executeBatchesAsync(final InternalConnection connection, final BaseWriteCommandMessage message,

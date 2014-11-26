@@ -33,7 +33,7 @@ import static com.mongodb.ClusterFixture.getBinding
 import static com.mongodb.ClusterFixture.serverVersionAtLeast
 import static java.util.Arrays.asList
 
-class CreateIndexSpecification extends OperationFunctionalSpecification {
+class CreateIndexOperationSpecification extends OperationFunctionalSpecification {
     def x1 = ['x': 1] as Document
     def field1Index = ['field': 1]
     def field2Index = ['field2': 1]
@@ -180,7 +180,7 @@ class CreateIndexSpecification extends OperationFunctionalSpecification {
         def createIndexOperation = new CreateIndexOperation(getNamespace(), new BsonDocument())
 
         when:
-        createIndexOperation.execute(getBinding())
+        executeAsync(createIndexOperation)
 
         then:
         thrown(CommandFailureException)

@@ -25,9 +25,6 @@ import com.mongodb.operation.AsyncOperationExecutor;
 import com.mongodb.operation.AsyncReadOperation;
 
 import java.util.Collection;
-import java.util.List;
-
-import static com.mongodb.async.ErrorHandlingResultCallback.wrapCallback;
 
 class OperationIterable<T> implements MongoIterable<T> {
     private final AsyncReadOperation<? extends AsyncBatchCursor<T>> operation;
@@ -43,14 +40,13 @@ class OperationIterable<T> implements MongoIterable<T> {
 
     @Override
     public void forEach(final Block<? super T> block, final SingleResultCallback<Void> callback) {
-        final SingleResultCallback<Void> wrappedCursor = wrapCallback(callback);
         execute(new SingleResultCallback<AsyncBatchCursor<T>>() {
             @Override
-            public void onResult(final AsyncBatchCursor<T> batchCursor, final Throwable t) {
+            public void onResult(final AsyncBatchCursor<T> result, final Throwable t) {
                 if (t != null) {
-                    wrappedCursor.onResult(null, t);
+                    callback.onResult(null, t);
                 } else {
-                    loopCursor(batchCursor, block, wrappedCursor);
+                    new AsyncBatchCursorIterable<T>(result).forEach(block, callback);
                 }
             }
         });
@@ -58,19 +54,13 @@ class OperationIterable<T> implements MongoIterable<T> {
 
     @Override
     public <A extends Collection<? super T>> void into(final A target, final SingleResultCallback<A> callback) {
-        final SingleResultCallback<A> wrappedCursor = wrapCallback(callback);
-        forEach(new Block<T>() {
+        execute(new SingleResultCallback<AsyncBatchCursor<T>>() {
             @Override
-            public void apply(final T t) {
-                target.add(t);
-            }
-        }, new SingleResultCallback<Void>() {
-            @Override
-            public void onResult(final Void result, final Throwable t) {
+            public void onResult(final AsyncBatchCursor<T> result, final Throwable t) {
                 if (t != null) {
-                    wrappedCursor.onResult(null, t);
+                    callback.onResult(null, t);
                 } else {
-                    wrappedCursor.onResult(target, null);
+                    new AsyncBatchCursorIterable<T>(result).into(target, callback);
                 }
             }
         });
@@ -78,27 +68,13 @@ class OperationIterable<T> implements MongoIterable<T> {
 
     @Override
     public void first(final SingleResultCallback<T> callback) {
-        final SingleResultCallback<T> wrappedCallback = wrapCallback(callback);
         execute(new SingleResultCallback<AsyncBatchCursor<T>>() {
             @Override
-            public void onResult(final AsyncBatchCursor<T> batchCursor, final Throwable t) {
+            public void onResult(final AsyncBatchCursor<T> result, final Throwable t) {
                 if (t != null) {
-                    wrappedCallback.onResult(null, t);
+                    callback.onResult(null, t);
                 } else {
-                    batchCursor.setBatchSize(1);
-                    batchCursor.next(new SingleResultCallback<List<T>>() {
-                        @Override
-                        public void onResult(final List<T> results, final Throwable t) {
-                            batchCursor.close();
-                            if (t != null) {
-                                wrappedCallback.onResult(null, t);
-                            } else if (results == null) {
-                                wrappedCallback.onResult(null, null);
-                            } else {
-                                wrappedCallback.onResult(results.get(0), null);
-                            }
-                        }
-                    });
+                    new AsyncBatchCursorIterable<T>(result).first(callback);
                 }
             }
         });
@@ -114,26 +90,4 @@ class OperationIterable<T> implements MongoIterable<T> {
         executor.execute((AsyncReadOperation<AsyncBatchCursor<T>>) operation, readPreference, callback);
     }
 
-    private void loopCursor(final AsyncBatchCursor<T> batchCursor, final Block<? super T> block,
-                            final SingleResultCallback<Void> callback) {
-        batchCursor.next(new SingleResultCallback<List<T>>() {
-            @Override
-            public void onResult(final List<T> results, final Throwable t) {
-                if (t != null || results == null) {
-                    batchCursor.close();
-                    callback.onResult(null, t);
-                } else {
-                    try {
-                        for (T result : results) {
-                            block.apply(result);
-                        }
-                        loopCursor(batchCursor, block, callback);
-                    } catch (Throwable tr) {
-                        batchCursor.close();
-                        callback.onResult(null, tr);
-                    }
-                }
-            }
-        });
-    }
 }

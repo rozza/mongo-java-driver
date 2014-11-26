@@ -26,7 +26,6 @@ import org.bson.BsonInt32;
 import org.bson.codecs.BsonDocumentCodec;
 
 import static com.mongodb.MongoNamespace.COMMAND_COLLECTION_NAME;
-import static com.mongodb.async.ErrorHandlingResultCallback.wrapCallback;
 import static com.mongodb.connection.ProtocolHelper.encodeMessage;
 import static com.mongodb.connection.ProtocolHelper.getMessageSettings;
 import static java.lang.String.format;
@@ -62,33 +61,41 @@ abstract class WriteProtocol implements Protocol<WriteConcernResult> {
 
     @Override
     public void executeAsync(final InternalConnection connection, final SingleResultCallback<WriteConcernResult> callback) {
-        ByteBufferBsonOutput bsonOutput = new ByteBufferBsonOutput(connection);
-        RequestMessage requestMessage = createRequestMessage(getMessageSettings(connection.getDescription()));
-        RequestMessage nextMessage = encodeMessage(requestMessage, bsonOutput);
-        if (writeConcern.isAcknowledged()) {
-            CommandMessage getLastErrorMessage = new CommandMessage(new MongoNamespace(getNamespace().getDatabaseName(),
-                                                                                       COMMAND_COLLECTION_NAME).getFullName(),
-                                                                    createGetLastErrorCommandDocument(), false,
-                                                                    getMessageSettings(connection.getDescription()));
-            encodeMessage(getLastErrorMessage, bsonOutput);
-            SingleResultCallback<ResponseBuffers> recieveCallback = new WriteResultCallback(callback,
-                                                                                            new BsonDocumentCodec(),
-                                                                                            getNamespace(),
-                                                                                            nextMessage,
-                                                                                            ordered,
-                                                                                            writeConcern,
-                                                                                            getLastErrorMessage.getId(),
-                                                                                            connection);
-            connection.sendMessageAsync(bsonOutput.getByteBuffers(), getLastErrorMessage.getId(),
-                                        new SendMessageCallback<WriteConcernResult>(connection,
-                                                                                    bsonOutput,
-                                                                                    getLastErrorMessage.getId(),
-                                                                                    callback,
-                                                                                    recieveCallback));
-        } else {
-            connection.sendMessageAsync(bsonOutput.getByteBuffers(), requestMessage.getId(),
-                                        wrapCallback(new UnacknowledgedWriteResultCallback(callback, getNamespace(), nextMessage, ordered,
-                                                                                           bsonOutput, connection), getLogger()));
+        try {
+            ByteBufferBsonOutput bsonOutput = new ByteBufferBsonOutput(connection);
+            RequestMessage requestMessage = createRequestMessage(getMessageSettings(connection.getDescription()));
+            RequestMessage nextMessage = encodeMessage(requestMessage, bsonOutput);
+            if (writeConcern.isAcknowledged()) {
+                CommandMessage getLastErrorMessage = new CommandMessage(new MongoNamespace(getNamespace().getDatabaseName(),
+                                                                                           COMMAND_COLLECTION_NAME).getFullName(),
+                                                                        createGetLastErrorCommandDocument(), false,
+                                                                        getMessageSettings(connection.getDescription()));
+                encodeMessage(getLastErrorMessage, bsonOutput);
+                SingleResultCallback<ResponseBuffers> recieveCallback = new WriteResultCallback(callback,
+                                                                                                new BsonDocumentCodec(),
+                                                                                                getNamespace(),
+                                                                                                nextMessage,
+                                                                                                ordered,
+                                                                                                writeConcern,
+                                                                                                getLastErrorMessage.getId(),
+                                                                                                connection);
+                connection.sendMessageAsync(bsonOutput.getByteBuffers(), getLastErrorMessage.getId(),
+                                            new SendMessageCallback<WriteConcernResult>(connection,
+                                                                                        bsonOutput,
+                                                                                        getLastErrorMessage.getId(),
+                                                                                        callback,
+                                                                                        recieveCallback));
+            } else {
+                connection.sendMessageAsync(bsonOutput.getByteBuffers(), requestMessage.getId(),
+                                            new UnacknowledgedWriteResultCallback(callback,
+                                                                                  getNamespace(),
+                                                                                  nextMessage,
+                                                                                  ordered,
+                                                                                  bsonOutput,
+                                                                                  connection));
+            }
+        } catch (Throwable t) {
+            callback.onResult(null, t);
         }
     }
 

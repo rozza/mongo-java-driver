@@ -22,8 +22,6 @@ import com.mongodb.async.SingleResultCallback;
 
 import java.util.Collection;
 
-import static com.mongodb.async.ErrorHandlingResultCallback.wrapCallback;
-
 class MappingIterable<T, U> implements MongoIterable<U> {
     private final MongoIterable<T> iterable;
     private final Function<T, U> mapper;
@@ -35,14 +33,13 @@ class MappingIterable<T, U> implements MongoIterable<U> {
 
     @Override
     public void first(final SingleResultCallback<U> callback) {
-        final SingleResultCallback<U> wrappedCallback = wrapCallback(callback);
         iterable.first(new SingleResultCallback<T>() {
             @Override
             public void onResult(final T result, final Throwable t) {
                 if (t != null) {
-                    wrappedCallback.onResult(null, t);
+                    callback.onResult(null, t);
                 } else {
-                    wrappedCallback.onResult(mapper.apply(result), null);
+                    callback.onResult(mapper.apply(result), null);
                 }
             }
         });
@@ -50,7 +47,6 @@ class MappingIterable<T, U> implements MongoIterable<U> {
 
     @Override
     public void forEach(final Block<? super U> block, final SingleResultCallback<Void> callback) {
-        final SingleResultCallback<Void> wrappedCallback = wrapCallback(callback);
         iterable.forEach(new Block<T>() {
             @Override
             public void apply(final T t) {
@@ -60,9 +56,9 @@ class MappingIterable<T, U> implements MongoIterable<U> {
             @Override
             public void onResult(final Void result, final Throwable t) {
                 if (t != null) {
-                    wrappedCallback.onResult(null, t);
+                    callback.onResult(null, t);
                 } else {
-                    wrappedCallback.onResult(null, null);
+                    callback.onResult(null, null);
                 }
             }
         });
@@ -70,7 +66,6 @@ class MappingIterable<T, U> implements MongoIterable<U> {
 
     @Override
     public <A extends Collection<? super U>> void into(final A target, final SingleResultCallback<A> callback) {
-        final SingleResultCallback<A> wrappedCallback = wrapCallback(callback);
         iterable.forEach(new Block<T>() {
             @Override
             public void apply(final T t) {
@@ -80,9 +75,9 @@ class MappingIterable<T, U> implements MongoIterable<U> {
             @Override
             public void onResult(final Void result, final Throwable t) {
                 if (t != null) {
-                    wrappedCallback.onResult(null, t);
+                    callback.onResult(null, t);
                 } else {
-                    wrappedCallback.onResult(target, null);
+                    callback.onResult(target, null);
                 }
             }
         });
