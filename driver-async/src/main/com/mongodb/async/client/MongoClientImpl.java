@@ -34,7 +34,6 @@ import org.bson.codecs.ValueCodecProvider;
 import org.bson.codecs.configuration.RootCodecRegistry;
 
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 import static com.mongodb.ReadPreference.primary;
 import static com.mongodb.assertions.Assertions.notNull;
@@ -151,7 +150,6 @@ class MongoClientImpl implements MongoClient {
     private static AsyncReadWriteBinding getReadWriteBinding(final ReadPreference readPreference, final MongoClientOptions options,
                                                              final Cluster cluster) {
         notNull("readPreference", readPreference);
-        return new AsyncClusterBinding(cluster, readPreference, options.getConnectionPoolSettings().getMaxWaitTime(TimeUnit.MILLISECONDS),
-                                       TimeUnit.MILLISECONDS);
+        return new AsyncClusterBinding(cluster, readPreference);
     }
 }

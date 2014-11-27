@@ -158,7 +158,7 @@ public final class ClusterFixture {
     }
 
     public static AsyncReadWriteBinding getAsyncBinding(final Cluster cluster) {
-        return new AsyncClusterBinding(cluster, ReadPreference.primary(), 10, SECONDS);
+        return new AsyncClusterBinding(cluster, ReadPreference.primary());
     }
 
     public static Cluster getCluster() {
