@@ -46,9 +46,9 @@ import com.mongodb.client.model.InsertManyOptions
 import com.mongodb.client.model.InsertOneModel
 import com.mongodb.client.model.MapReduceOptions
 import com.mongodb.client.model.UpdateOptions
-import com.mongodb.client.options.OperationOptions
 import com.mongodb.client.result.DeleteResult
 import com.mongodb.client.result.UpdateResult
+import com.mongodb.client.test.Worker
 import com.mongodb.operation.AggregateOperation
 import com.mongodb.operation.AggregateToCollectionOperation
 import com.mongodb.operation.AsyncBatchCursor
@@ -82,6 +82,7 @@ import org.bson.codecs.configuration.RootCodecRegistry
 import spock.lang.Specification
 
 import static com.mongodb.CustomMatchers.isTheSameAs
+import static com.mongodb.ReadPreference.primary
 import static com.mongodb.ReadPreference.secondary
 import static com.mongodb.bulk.BulkWriteResult.acknowledged
 import static com.mongodb.bulk.BulkWriteResult.unacknowledged
@@ -93,38 +94,85 @@ import static java.util.Arrays.asList
 import static java.util.concurrent.TimeUnit.MILLISECONDS
 import static spock.util.matcher.HamcrestSupport.expect
 
+
+@SuppressWarnings('ClassSize')
 class MongoCollectionSpecification extends Specification {
 
     def namespace = new MongoNamespace('databaseName', 'collectionName')
-    def options = OperationOptions.builder()
-                                  .writeConcern(WriteConcern.ACKNOWLEDGED)
-                                  .readPreference(secondary())
-                                  .codecRegistry(MongoClientImpl.getDefaultCodecRegistry()).build()
-    def getOptions = { WriteConcern writeConcern ->
-        OperationOptions.builder().writeConcern(writeConcern).build().withDefaults(options)
-    }
+    def codecRegistry = MongoClientImpl.getDefaultCodecRegistry()
+    def readPreference = secondary()
+    def writeConcern = WriteConcern.ACKNOWLEDGED
 
     def 'should return the correct name from getName'() {
         given:
-        def collection = new MongoCollectionImpl(namespace, Document, options, new TestOperationExecutor([null]))
+        def collection = new MongoCollectionImpl(namespace, Document, codecRegistry, readPreference, writeConcern,
+                new TestOperationExecutor([null]))
 
         expect:
         collection.getNamespace() == namespace
     }
 
-    def 'should return the correct options'() {
+    def 'should behave correctly when using withClass'() {
         given:
-        def collection = new MongoCollectionImpl(namespace, Document, options, new TestOperationExecutor([null]))
+        def newClass = Worker
+        def executor = new TestOperationExecutor([])
 
-        expect:
-        collection.getOptions() == options
+        when:
+        def collection = new MongoCollectionImpl(namespace, Document, codecRegistry, readPreference, writeConcern,
+                executor).withClass(newClass)
+
+        then:
+        expect collection, isTheSameAs(new MongoCollectionImpl(namespace, newClass, codecRegistry, readPreference, writeConcern,
+                executor))
+    }
+
+    def 'should behave correctly when using withCodecRegistry'() {
+        given:
+        def newCodecRegistry = new RootCodecRegistry([])
+        def executor = new TestOperationExecutor([])
+
+        when:
+        def collection = new MongoCollectionImpl(namespace, Document, codecRegistry, readPreference, writeConcern,
+                executor).withCodecRegistry(newCodecRegistry)
+
+        then:
+        expect collection, isTheSameAs(new MongoCollectionImpl(namespace, Document, newCodecRegistry, readPreference, writeConcern,
+                executor))
+    }
+
+    def 'should behave correctly when using withReadPreference'() {
+        given:
+        def newReadPreference = primary()
+        def executor = new TestOperationExecutor([])
+
+        when:
+        def collection = new MongoCollectionImpl(namespace, Document, codecRegistry, readPreference, writeConcern,
+                executor).withReadPreference(newReadPreference)
+
+        then:
+        expect collection, isTheSameAs(new MongoCollectionImpl(namespace, Document, codecRegistry, newReadPreference, writeConcern,
+                executor))
+    }
+
+    def 'should behave correctly when using withWriteConcern'() {
+        given:
+        def newWriteConcern = WriteConcern.MAJORITY
+        def executor = new TestOperationExecutor([])
+
+        when:
+        def collection = new MongoCollectionImpl(namespace, Document, codecRegistry, readPreference, writeConcern,
+                executor).withWriteConcern(newWriteConcern)
+
+        then:
+        expect collection, isTheSameAs(new MongoCollectionImpl(namespace, Document, codecRegistry, readPreference, newWriteConcern,
+                executor))
     }
 
     def 'should use CountOperation correctly'() {
         given:
         def executor = new TestOperationExecutor([1L, 2L, 3L])
         def filter = new BsonDocument()
-        def collection = new MongoCollectionImpl(namespace, Document, options, executor)
+        def collection = new MongoCollectionImpl(namespace, Document, codecRegistry, readPreference, writeConcern, executor)
         def expectedOperation = new CountOperation(namespace).filter(filter)
         def futureResultCallback = new FutureResultCallback<Long>()
 
@@ -161,7 +209,7 @@ class MongoCollectionSpecification extends Specification {
         given:
         def executor = new TestOperationExecutor([new BsonArray([new BsonString('a')]), new BsonArray([new BsonString('b')])])
         def filter = new BsonDocument()
-        def collection = new MongoCollectionImpl(namespace, Document, options, executor)
+        def collection = new MongoCollectionImpl(namespace, Document, codecRegistry, readPreference, writeConcern, executor)
         def futureResultCallback = new FutureResultCallback<List<Object>>()
 
         when:
@@ -185,12 +233,11 @@ class MongoCollectionSpecification extends Specification {
 
     def 'should handle exceptions in distinct correctly'() {
         given:
-        def options = OperationOptions.builder().codecRegistry(new RootCodecRegistry(asList(new ValueCodecProvider(),
-                                                                                            new BsonValueCodecProvider()))).build()
+        def codecRegistry = new RootCodecRegistry(asList(new ValueCodecProvider(), new BsonValueCodecProvider()))
         def executor = new TestOperationExecutor([new MongoException('failure'),
                                                   new BsonArray([new BsonString('no document codec')])])
         def filter = new BsonDocument()
-        def collection = new MongoCollectionImpl(namespace, Document, options, executor)
+        def collection = new MongoCollectionImpl(namespace, Document, codecRegistry, readPreference, writeConcern, executor)
         def futureResultCallback = new FutureResultCallback<List<Object>>()
 
         when: 'A failed operation'
@@ -222,7 +269,7 @@ class MongoCollectionSpecification extends Specification {
             next(_) >> { args -> args[0].onResult(null, null) }
         }
         def executor = new TestOperationExecutor([asyncCursor, asyncCursor, asyncCursor, asyncCursor])
-        def collection = new MongoCollectionImpl(namespace, Document, options, executor)
+        def collection = new MongoCollectionImpl(namespace, Document, codecRegistry, readPreference, writeConcern, executor)
         def documentOperation = new FindOperation(namespace, new DocumentCodec()).filter(new BsonDocument()).slaveOk(true)
         def bsonOperation = new FindOperation(namespace, new BsonDocumentCodec()).filter(new BsonDocument()).slaveOk(true)
         def futureResultCallback = new FutureResultCallback<List<Document>>()
@@ -269,7 +316,7 @@ class MongoCollectionSpecification extends Specification {
             next(_) >> { args -> args[0].onResult(null, null) }
         }
         def executor = new TestOperationExecutor([asyncCursor, asyncCursor, asyncCursor])
-        def collection = new MongoCollectionImpl(namespace, Document, options, executor)
+        def collection = new MongoCollectionImpl(namespace, Document, codecRegistry, readPreference, writeConcern, executor)
         def futureResultCallback = new FutureResultCallback<List<Document>>()
 
         when:
@@ -308,7 +355,7 @@ class MongoCollectionSpecification extends Specification {
             next(_) >> { args -> args[0].onResult(null, null) }
         }
         def executor = new TestOperationExecutor([null, asyncCursor])
-        def collection = new MongoCollectionImpl(namespace, Document, options, executor)
+        def collection = new MongoCollectionImpl(namespace, Document, codecRegistry, readPreference, writeConcern, executor)
         def outCollectionName = 'outColl'
         def futureResultCallback = new FutureResultCallback<List<Document>>()
         def pipeline = [new Document('$match', 1), new Document('$out', outCollectionName)]
@@ -323,14 +370,14 @@ class MongoCollectionSpecification extends Specification {
         then:
         expect aggregateOperation, isTheSameAs(new AggregateToCollectionOperation(namespace, bsonPipeline))
         expect findOperation, isTheSameAs(new FindOperation(new MongoNamespace(namespace.getDatabaseName(), outCollectionName),
-                                                            options.codecRegistry.get(Document))
+                                                            codecRegistry.get(Document))
                                                   .filter(new BsonDocument()))
     }
 
     def 'aggregateToCollection should use AggregateToCollectionOperation correctly'() {
         given:
         def executor = new TestOperationExecutor([null, null])
-        def collection = new MongoCollectionImpl(namespace, Document, options, executor)
+        def collection = new MongoCollectionImpl(namespace, Document, codecRegistry, readPreference, writeConcern, executor)
         def outCollectionName = 'outColl'
         def pipeline = [new Document('$match', 1), new Document('$out', outCollectionName)]
         def bsonPipeline = new BsonArray([new BsonDocument('$match', new BsonInt32(1)),
@@ -357,7 +404,7 @@ class MongoCollectionSpecification extends Specification {
     def 'aggregateToCollection should throw IllegalArgumentException when last state is not $out'() {
         given:
         def executor = new TestOperationExecutor([])
-        def collection = new MongoCollectionImpl(namespace, Document, options, executor)
+        def collection = new MongoCollectionImpl(namespace, Document, codecRegistry, readPreference, writeConcern, executor)
 
         when:
         def futureResultCallback = new FutureResultCallback<List<Document>>()
@@ -369,10 +416,9 @@ class MongoCollectionSpecification extends Specification {
 
     def 'should handle exceptions in aggregate correctly'() {
         given:
-        def options = OperationOptions.builder().codecRegistry(new RootCodecRegistry(asList(new ValueCodecProvider(),
-                                                                                            new BsonValueCodecProvider()))).build()
+        def codecRegistry = new RootCodecRegistry(asList(new ValueCodecProvider(), new BsonValueCodecProvider()))
         def executor = new TestOperationExecutor([new MongoException('failure')])
-        def collection = new MongoCollectionImpl(namespace, Document, options, executor)
+        def collection = new MongoCollectionImpl(namespace, Document, codecRegistry, readPreference, writeConcern, executor)
         def futureResultCallback = new FutureResultCallback<List<BsonDocument>>()
 
         when: 'The operation fails with an exception'
@@ -395,7 +441,7 @@ class MongoCollectionSpecification extends Specification {
             next(_) >> { args -> args[0].onResult(null, null) }
         }
         def executor = new TestOperationExecutor([asyncCursor, asyncCursor, asyncCursor, asyncCursor])
-        def collection = new MongoCollectionImpl(namespace, Document, options, executor)
+        def collection = new MongoCollectionImpl(namespace, Document, codecRegistry, readPreference, writeConcern, executor)
         def documentOperation = new MapReduceWithInlineResultsOperation(namespace, new BsonJavaScript('map'), new BsonJavaScript('reduce'),
                                                                         new DocumentCodec()).verbose(true)
         def bsonOperation = new MapReduceWithInlineResultsOperation(namespace, new BsonJavaScript('map'), new BsonJavaScript('reduce'),
@@ -446,7 +492,7 @@ class MongoCollectionSpecification extends Specification {
             next(_) >> { args -> args[0].onResult(null, null) }
         }
         def executor = new TestOperationExecutor([stats, asyncCursor])
-        def collection = new MongoCollectionImpl(namespace, Document, options, executor)
+        def collection = new MongoCollectionImpl(namespace, Document, codecRegistry, readPreference, writeConcern, executor)
         def expectedAggregateOperation = new MapReduceToCollectionOperation(namespace, new BsonJavaScript('map'),
                                                                             new BsonJavaScript('reduce'), 'collectionName')
                 .filter(new BsonDocument('filter', new BsonInt32(1)))
@@ -475,7 +521,7 @@ class MongoCollectionSpecification extends Specification {
         given:
         def stats = Stub(MapReduceStatistics)
         def executor = new TestOperationExecutor([stats])
-        def collection = new MongoCollectionImpl(namespace, Document, options, executor)
+        def collection = new MongoCollectionImpl(namespace, Document, codecRegistry, readPreference, writeConcern, executor)
         def mapReduceOptions = new MapReduceOptions('collectionName').filter(new Document('filter', 1)).finalizeFunction('final')
         def futureResultCallback = new FutureResultCallback<List<Document>>()
 
@@ -495,7 +541,7 @@ class MongoCollectionSpecification extends Specification {
     def 'mapReduceToCollection should throw IllegalArgumentException if inline'() {
         given:
         def executor = new TestOperationExecutor([])
-        def collection = new MongoCollectionImpl(namespace, Document, options, executor)
+        def collection = new MongoCollectionImpl(namespace, Document, codecRegistry, readPreference, writeConcern, executor)
 
         when:
         collection.mapReduceToCollection('map', 'reduce', new MapReduceOptions(), new FutureResultCallback<List<Document>>())
@@ -506,10 +552,9 @@ class MongoCollectionSpecification extends Specification {
 
     def 'should handle exceptions in mapReduce correctly'() {
         given:
-        def options = OperationOptions.builder().codecRegistry(new RootCodecRegistry(asList(new ValueCodecProvider(),
-                                                                                            new BsonValueCodecProvider()))).build()
+        def codecRegistry = new RootCodecRegistry(asList(new ValueCodecProvider(), new BsonValueCodecProvider()))
         def executor = new TestOperationExecutor([new MongoException('failure')])
-        def collection = new MongoCollectionImpl(namespace, Document, options, executor)
+        def collection = new MongoCollectionImpl(namespace, Document, codecRegistry, readPreference, writeConcern, executor)
         def futureResultCallback = new FutureResultCallback<List<BsonDocument>>()
 
         when: 'The operation fails with an exception'
@@ -529,10 +574,10 @@ class MongoCollectionSpecification extends Specification {
 
     def 'bulkWrite should use MixedBulkWriteOperation correctly'() {
         given:
-        def collection = new MongoCollectionImpl(namespace, Document, getOptions(writeConcern), executor)
-        def expectedOperation = { boolean ordered ->
+        def collection = new MongoCollectionImpl(namespace, Document, codecRegistry, readPreference, writeConcern, executor)
+        def expectedOperation = { boolean ordered, WriteConcern wc ->
             new MixedBulkWriteOperation(namespace, [new InsertRequest(new BsonDocument('_id', new BsonInt32(1)))],
-                                        ordered, writeConcern)
+                                        ordered, wc)
         }
         def futureResultCallback = new FutureResultCallback<BulkWriteResult>()
 
@@ -543,7 +588,8 @@ class MongoCollectionSpecification extends Specification {
 
         then:
         result.wasAcknowledged() == writeConcern.isAcknowledged()
-        expect operation, isTheSameAs(expectedOperation(true))
+        def expected = expectedOperation(true, writeConcern)
+        expect operation, isTheSameAs(expected)
 
         when:
         futureResultCallback = new FutureResultCallback<BulkWriteResult>()
@@ -553,7 +599,7 @@ class MongoCollectionSpecification extends Specification {
 
         then:
         result.wasAcknowledged() == writeConcern.isAcknowledged()
-        expect operation, isTheSameAs(expectedOperation(true))
+        expect operation, isTheSameAs(expectedOperation(true, writeConcern))
 
         when:
         futureResultCallback = new FutureResultCallback<BulkWriteResult>()
@@ -563,9 +609,10 @@ class MongoCollectionSpecification extends Specification {
 
         then:
         result.wasAcknowledged() == writeConcern.isAcknowledged()
-        expect operation, isTheSameAs(expectedOperation(false))
+        expect operation, isTheSameAs(expectedOperation(false, writeConcern))
 
         where:
+
         writeConcern                | executor
         WriteConcern.ACKNOWLEDGED   | new TestOperationExecutor([acknowledged(INSERT, 0, []),
                                                                  acknowledged(INSERT, 0, []),
@@ -575,10 +622,9 @@ class MongoCollectionSpecification extends Specification {
 
     def 'should handle exceptions in bulkWrite correctly'() {
         given:
-        def options = OperationOptions.builder().codecRegistry(new RootCodecRegistry(asList(new ValueCodecProvider(),
-                                                                                            new BsonValueCodecProvider()))).build()
+        def codecRegistry = new RootCodecRegistry(asList(new ValueCodecProvider(), new BsonValueCodecProvider()))
         def executor = new TestOperationExecutor([new MongoException('failure')])
-        def collection = new MongoCollectionImpl(namespace, Document, options, executor)
+        def collection = new MongoCollectionImpl(namespace, Document, codecRegistry, readPreference, writeConcern, executor)
 
         when: 'a codec is missing its acceptable to immediately throw'
         collection.bulkWrite([new InsertOneModel(new Document('_id', 1))], new FutureResultCallback<BulkWriteResult>())
@@ -589,7 +635,7 @@ class MongoCollectionSpecification extends Specification {
 
     def 'insertOne should use MixedBulkWriteOperation correctly'() {
         given:
-        def collection = new MongoCollectionImpl(namespace, Document, getOptions(writeConcern), executor)
+        def collection = new MongoCollectionImpl(namespace, Document, codecRegistry, readPreference, writeConcern, executor)
         def expectedOperation = new MixedBulkWriteOperation(namespace, [new InsertRequest(new BsonDocument('_id', new BsonInt32(1)))],
                                                             true, writeConcern)
         def futureResultCallback = new FutureResultCallback<WriteConcernResult>()
@@ -610,12 +656,12 @@ class MongoCollectionSpecification extends Specification {
 
     def 'insertMany should use MixedBulkWriteOperation correctly'() {
         given:
-        def collection = new MongoCollectionImpl(namespace, Document, getOptions(writeConcern), executor)
-        def expectedOperation = { ordered ->
+        def collection = new MongoCollectionImpl(namespace, Document, codecRegistry, readPreference, writeConcern, executor)
+        def expectedOperation = { boolean ordered, WriteConcern wc ->
             new MixedBulkWriteOperation(namespace,
                                 [new InsertRequest(new BsonDocument('_id', new BsonInt32(1))),
                                  new InsertRequest(new BsonDocument('_id', new BsonInt32(2)))],
-                                ordered, writeConcern)
+                                ordered, wc)
         }
         def futureResultCallback = new FutureResultCallback<WriteConcernResult>()
 
@@ -625,7 +671,7 @@ class MongoCollectionSpecification extends Specification {
         def operation = executor.getWriteOperation() as MixedBulkWriteOperation
 
         then:
-        expect operation, isTheSameAs(expectedOperation(true))
+        expect operation, isTheSameAs(expectedOperation(true, writeConcern))
 
         when:
         futureResultCallback = new FutureResultCallback<WriteConcernResult>()
@@ -635,7 +681,7 @@ class MongoCollectionSpecification extends Specification {
         operation = executor.getWriteOperation() as MixedBulkWriteOperation
 
         then:
-        expect operation, isTheSameAs(expectedOperation(true))
+        expect operation, isTheSameAs(expectedOperation(true, writeConcern))
 
         when:
         futureResultCallback = new FutureResultCallback<WriteConcernResult>()
@@ -645,7 +691,7 @@ class MongoCollectionSpecification extends Specification {
         operation = executor.getWriteOperation() as MixedBulkWriteOperation
 
         then:
-        expect operation, isTheSameAs(expectedOperation(false))
+        expect operation, isTheSameAs(expectedOperation(false, writeConcern))
 
         where:
         writeConcern                | executor
@@ -657,7 +703,7 @@ class MongoCollectionSpecification extends Specification {
 
     def 'deleteOne should use MixedBulkWriteOperationperation correctly'() {
         given:
-        def collection = new MongoCollectionImpl(namespace, Document, getOptions(writeConcern), executor)
+        def collection = new MongoCollectionImpl(namespace, Document, codecRegistry, readPreference, writeConcern, executor)
         def futureResultCallback = new FutureResultCallback<DeleteResult>()
 
         when:
@@ -680,7 +726,7 @@ class MongoCollectionSpecification extends Specification {
 
     def 'deleteMany should use MixedBulkWriteOperation correctly'() {
         given:
-        def collection = new MongoCollectionImpl(namespace, Document, getOptions(writeConcern), executor)
+        def collection = new MongoCollectionImpl(namespace, Document, codecRegistry, readPreference, writeConcern, executor)
         def futureResultCallback = new FutureResultCallback<DeleteResult>()
 
         when:
@@ -703,7 +749,7 @@ class MongoCollectionSpecification extends Specification {
     @SuppressWarnings('LineLength')
     def 'replaceOne should use MixedBulkWriteOperationperation correctly'() {
         given:
-        def collection = new MongoCollectionImpl(namespace, Document, getOptions(writeConcern), executor)
+        def collection = new MongoCollectionImpl(namespace, Document, codecRegistry, readPreference, writeConcern, executor)
         def futureResultCallback = new FutureResultCallback<UpdateResult>()
 
         when:
@@ -729,12 +775,12 @@ class MongoCollectionSpecification extends Specification {
 
     def 'updateOne should use MixedBulkWriteOperationOperation correctly'() {
         given:
-        def collection = new MongoCollectionImpl(namespace, Document, getOptions(writeConcern), executor)
-        def expectedOperation = { boolean upsert ->
+        def collection = new MongoCollectionImpl(namespace, Document, codecRegistry, readPreference, writeConcern, executor)
+        def expectedOperation = { boolean upsert, WriteConcern wc ->
             new MixedBulkWriteOperation(namespace, [new UpdateRequest(new BsonDocument('a', new BsonInt32(1)),
                                                                       new BsonDocument('a', new BsonInt32(10)),
                                                                       UPDATE).multi(false).upsert(upsert)],
-                                        true, writeConcern)
+                                        true, wc)
         }
         def futureResultCallback = new FutureResultCallback<UpdateResult>()
 
@@ -744,7 +790,7 @@ class MongoCollectionSpecification extends Specification {
         def operation = executor.getWriteOperation() as MixedBulkWriteOperation
 
         then:
-        expect operation, isTheSameAs(expectedOperation(false))
+        expect operation, isTheSameAs(expectedOperation(false, writeConcern))
         result == expectedResult
 
         when:
@@ -754,7 +800,7 @@ class MongoCollectionSpecification extends Specification {
         operation = executor.getWriteOperation() as MixedBulkWriteOperation
 
         then:
-        expect operation, isTheSameAs(expectedOperation(true))
+        expect operation, isTheSameAs(expectedOperation(true, writeConcern))
         result == expectedResult
 
         where:
@@ -767,13 +813,13 @@ class MongoCollectionSpecification extends Specification {
 
     def 'should use UpdateOperation correctly for updateMany'() {
         given:
-        def collection = new MongoCollectionImpl(namespace, Document, getOptions(writeConcern), executor)
-        def expectedOperation = { boolean upsert ->
+        def collection = new MongoCollectionImpl(namespace, Document, codecRegistry, readPreference, writeConcern, executor)
+        def expectedOperation = { boolean upsert, WriteConcern wc ->
             new MixedBulkWriteOperation(namespace, [new UpdateRequest(new BsonDocument('a', new BsonInt32(1)),
                                                                       new BsonDocument('a', new BsonInt32(10)),
                                                                       UPDATE)
                                                             .multi(true).upsert(upsert)],
-                                        true, writeConcern)
+                                        true, wc)
         }
         def futureResultCallback = new FutureResultCallback<UpdateResult>()
 
@@ -783,7 +829,7 @@ class MongoCollectionSpecification extends Specification {
         def operation = executor.getWriteOperation() as MixedBulkWriteOperation
 
         then:
-        expect operation, isTheSameAs(expectedOperation(false))
+        expect operation, isTheSameAs(expectedOperation(false, writeConcern))
         result == expectedResult
 
         when:
@@ -793,7 +839,7 @@ class MongoCollectionSpecification extends Specification {
         operation = executor.getWriteOperation() as MixedBulkWriteOperation
 
         then:
-        expect operation, isTheSameAs(expectedOperation(true))
+        expect operation, isTheSameAs(expectedOperation(true, writeConcern))
         result == expectedResult
 
         where:
@@ -806,7 +852,7 @@ class MongoCollectionSpecification extends Specification {
 
     def 'write operation should translate MongoBulkWriteException to MongoWriteException'() {
         given:
-        def collection = new MongoCollectionImpl(namespace, Document, options, executor)
+        def collection = new MongoCollectionImpl(namespace, Document, codecRegistry, readPreference, writeConcern, executor)
         def futureResultCallback = new FutureResultCallback<Void>()
         collection.insertOne(new Document('_id', 1), futureResultCallback)
 
@@ -828,7 +874,7 @@ class MongoCollectionSpecification extends Specification {
         def executor = new TestOperationExecutor([new MongoBulkWriteException(acknowledged(INSERT, 1, []), [],
                                                                               new WriteConcernError(42, 'oops', new BsonDocument()),
                                                                               new ServerAddress())])
-        def collection = new MongoCollectionImpl(namespace, Document, options, executor)
+        def collection = new MongoCollectionImpl(namespace, Document, codecRegistry, readPreference, writeConcern, executor)
         def futureResultCallback = new FutureResultCallback<Void>()
         collection.insertOne(new Document('_id', 1), futureResultCallback)
 
@@ -844,7 +890,7 @@ class MongoCollectionSpecification extends Specification {
         given:
         def exception = new MongoSocketReadException('oops', new ServerAddress())
         def executor = new TestOperationExecutor([exception]);
-        def collection = new MongoCollectionImpl(namespace, Document, options, executor)
+        def collection = new MongoCollectionImpl(namespace, Document, codecRegistry, readPreference, writeConcern, executor)
         def futureResultCallback = new FutureResultCallback<Void>()
         collection.insertOne(new Document('_id', 1), futureResultCallback)
 
@@ -858,7 +904,7 @@ class MongoCollectionSpecification extends Specification {
 
     def 'should use FindOneAndDeleteOperation correctly'() {
         given:
-        def collection = new MongoCollectionImpl(namespace, Document, getOptions(writeConcern), executor)
+        def collection = new MongoCollectionImpl(namespace, Document, codecRegistry, readPreference, writeConcern, executor)
         def expectedOperation = new FindAndDeleteOperation(namespace, new DocumentCodec()).filter(new BsonDocument('a', new BsonInt32(1)))
         def futureResultCallback = new FutureResultCallback<Document>()
 
@@ -890,7 +936,7 @@ class MongoCollectionSpecification extends Specification {
 
     def 'should use FindOneAndReplaceOperation correctly'() {
         given:
-        def collection = new MongoCollectionImpl(namespace, Document, getOptions(writeConcern), executor)
+        def collection = new MongoCollectionImpl(namespace, Document, codecRegistry, readPreference, writeConcern, executor)
         def expectedOperation = new FindAndReplaceOperation(namespace, new DocumentCodec(), new BsonDocument('a', new BsonInt32(10)))
                 .filter(new BsonDocument('a', new BsonInt32(1)))
         def futureResultCallback = new FutureResultCallback<Document>()
@@ -923,7 +969,7 @@ class MongoCollectionSpecification extends Specification {
 
     def 'should use FindAndUpdateOperation correctly'() {
         given:
-        def collection = new MongoCollectionImpl(namespace, Document, getOptions(writeConcern), executor)
+        def collection = new MongoCollectionImpl(namespace, Document, codecRegistry, readPreference, writeConcern, executor)
         def expectedOperation = new FindAndUpdateOperation(namespace, new DocumentCodec(), new BsonDocument('a', new BsonInt32(10)))
                 .filter(new BsonDocument('a', new BsonInt32(1)))
         def futureResultCallback = new FutureResultCallback<Document>()
@@ -957,7 +1003,7 @@ class MongoCollectionSpecification extends Specification {
     def 'should use DropCollectionOperation correctly'() {
         given:
         def executor = new TestOperationExecutor([null])
-        def collection = new MongoCollectionImpl(namespace, Document, options, executor)
+        def collection = new MongoCollectionImpl(namespace, Document, codecRegistry, readPreference, writeConcern, executor)
         def expectedOperation = new DropCollectionOperation(namespace)
         def futureResultCallback = new FutureResultCallback<Void>()
 
@@ -973,7 +1019,7 @@ class MongoCollectionSpecification extends Specification {
     def 'should use CreateIndexOperations correctly'() {
         given:
         def executor = new TestOperationExecutor([null, null])
-        def collection = new MongoCollectionImpl(namespace, Document, options, executor)
+        def collection = new MongoCollectionImpl(namespace, Document, codecRegistry, readPreference, writeConcern, executor)
         def expectedOperation = new CreateIndexOperation(namespace, new BsonDocument('key', new BsonInt32(1)))
         def futureResultCallback = new FutureResultCallback<Void>()
 
@@ -1001,7 +1047,7 @@ class MongoCollectionSpecification extends Specification {
             next(_) >> { args -> args[0].onResult(null, null) }
         }
         def executor = new TestOperationExecutor([asyncCursor, asyncCursor])
-        def collection = new MongoCollectionImpl(namespace, Document, options, executor)
+        def collection = new MongoCollectionImpl(namespace, Document, codecRegistry, readPreference, writeConcern, executor)
         def futureResultCallback = new FutureResultCallback<List<Document>>()
 
         when:
@@ -1025,7 +1071,7 @@ class MongoCollectionSpecification extends Specification {
     def 'should use DropIndexOperation correctly for dropIndex'() {
         given:
         def executor = new TestOperationExecutor([null])
-        def collection = new MongoCollectionImpl(namespace, Document, options, executor)
+        def collection = new MongoCollectionImpl(namespace, Document, codecRegistry, readPreference, writeConcern, executor)
         def expectedOperation = new DropIndexOperation(namespace, 'indexName')
         def futureResultCallback = new FutureResultCallback<Void>()
 
@@ -1041,7 +1087,7 @@ class MongoCollectionSpecification extends Specification {
     def 'should use DropIndexOperation correctly for dropIndexes'() {
         given:
         def executor = new TestOperationExecutor([null])
-        def collection = new MongoCollectionImpl(namespace, Document, options, executor)
+        def collection = new MongoCollectionImpl(namespace, Document, codecRegistry, readPreference, writeConcern, executor)
         def expectedOperation = new DropIndexOperation(namespace, '*')
         def futureResultCallback = new FutureResultCallback<Void>()
 
@@ -1057,7 +1103,7 @@ class MongoCollectionSpecification extends Specification {
     def 'should use RenameCollectionOperation correctly'() {
         given:
         def executor = new TestOperationExecutor([null])
-        def collection = new MongoCollectionImpl(namespace, Document, options, executor)
+        def collection = new MongoCollectionImpl(namespace, Document, codecRegistry, readPreference, writeConcern, executor)
         def newNamespace = new MongoNamespace(namespace.getDatabaseName(), 'newName')
         def expectedOperation = new RenameCollectionOperation(namespace, newNamespace)
         def futureResultCallback = new FutureResultCallback<Void>()
