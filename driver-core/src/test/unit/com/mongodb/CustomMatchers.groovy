@@ -41,8 +41,8 @@ class CustomMatchers {
             return false
         }
         getFieldNames(actual.class).collect { it ->
-            if (it == 'decoder') {
-                return actual.decoder.class == expected.decoder.class
+            if (nominallyTheSame(it)) {
+                return actual."$it".class == expected."$it".class
             } else if (actual."$it" != expected."$it") {
                 def (a1, e1) = [actual."$it", expected."$it"]
                 if (List.isCase(a1) && List.isCase(e1) && (a1.size() == e1.size())) {
@@ -69,10 +69,10 @@ class CustomMatchers {
         }
 
         getFieldNames(actual.class).collect { it ->
-            if (it == 'decoder') {
-                if (actual.decoder.class != expected.decoder.class) {
-                    description.appendText("different decoder classes $it :" +
-                            " ${expected.decoder.class.name} != ${actual.decoder.class.name}, ")
+            if (nominallyTheSame(it)) {
+                if (actual."$it".class != expected."$it".class) {
+                    description.appendText("different classes $it :" +
+                            " ${expected."$it".class.name} != ${actual."$it".class.name}, ")
                     return false
                 }
             } else if (actual."$it" != expected."$it") {
@@ -102,4 +102,9 @@ class CustomMatchers {
         }
         names
     }
+
+    static nominallyTheSame(String className ) {
+        className in ['decoder', 'executor']
+    }
+
 }

@@ -17,7 +17,6 @@
 package com.mongodb;
 
 import com.mongodb.client.MongoDatabase;
-import com.mongodb.client.options.OperationOptions;
 import org.bson.codecs.BsonValueCodecProvider;
 import org.bson.codecs.DocumentCodecProvider;
 import org.bson.codecs.ValueCodecProvider;
@@ -302,21 +301,9 @@ public class MongoClient extends Mongo implements Closeable {
      * @return a {@code MongoDatabase} representing the specified database
      */
     public MongoDatabase getDatabase(final String databaseName) {
-        return getDatabase(databaseName, OperationOptions.builder().build());
+        MongoClientOptions clientOptions = getMongoClientOptions();
+        return new MongoDatabaseImpl(databaseName, clientOptions.getCodecRegistry(), clientOptions.getReadPreference(),
+                clientOptions.getWriteConcern(), createOperationExecutor());
     }
 
-    /**
-     * @param databaseName     the name of the database to retrieve
-     * @param operationOptions the operation options
-     * @return a {@code MongoDatabase} representing the specified database
-     */
-    public MongoDatabase getDatabase(final String databaseName, final OperationOptions operationOptions) {
-        MongoClientOptions clientOptions = getMongoClientOptions();
-        OperationOptions defaultOptions = OperationOptions.builder()
-                .codecRegistry(clientOptions.getCodecRegistry())
-                .readPreference(clientOptions.getReadPreference())
-                .writeConcern(clientOptions.getWriteConcern())
-                .build();
-        return new MongoDatabaseImpl(databaseName, operationOptions.withDefaults(defaultOptions), createOperationExecutor());
-    }
 }
