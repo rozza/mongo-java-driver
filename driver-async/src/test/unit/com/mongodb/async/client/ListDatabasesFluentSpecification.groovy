@@ -86,10 +86,10 @@ class ListDatabasesFluentSpecification extends Specification {
                 next(_) >> {
                     it[0].onResult(getResult(), null)
                 }
-
+                isClosed() >> { count >= 1 }
             }
         }
-        def executor = new TestOperationExecutor([cursor(), cursor(), cursor(), cursor()]);
+        def executor = new TestOperationExecutor([cursor(), cursor(), cursor(), cursor(), cursor()]);
         def mongoIterable = new ListDatabasesFluentImpl<Document>(Document, codecRegistry, readPreference, executor)
 
         when:
@@ -132,6 +132,22 @@ class ListDatabasesFluentSpecification extends Specification {
         }).into(target, results)
         then:
         results.get() == [1, 1, 1]
+
+        when:
+        results = new FutureResultCallback()
+        mongoIterable.batchCursor(results)
+        def batchCursor = results.get()
+
+        then:
+        !batchCursor.isClosed()
+
+        when:
+        results = new FutureResultCallback()
+        batchCursor.next(results)
+
+        then:
+        results.get() == cannedResults
+        batchCursor.isClosed()
     }
 
 }

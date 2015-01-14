@@ -170,10 +170,10 @@ class FindFluentSpecification extends Specification {
                 next(_) >> {
                     it[0].onResult(getResult(), null)
                 }
-
+                isClosed() >> { count >= 1 }
             }
         }
-        def executor = new TestOperationExecutor([cursor(), cursor(), cursor(), cursor()]);
+        def executor = new TestOperationExecutor([cursor(), cursor(), cursor(), cursor(), cursor()]);
         def findOptions = new FindOptions()
         def mongoIterable = new FindFluentImpl<Document>(new MongoNamespace('db', 'coll'),  Document, codecRegistry, readPreference,
                 executor, new Document(), findOptions)
@@ -218,6 +218,22 @@ class FindFluentSpecification extends Specification {
         }).into(target, results)
         then:
         results.get() == [1, 1, 1]
+
+        when:
+        results = new FutureResultCallback()
+        mongoIterable.batchCursor(results)
+        def batchCursor = results.get()
+
+        then:
+        !batchCursor.isClosed()
+
+        when:
+        results = new FutureResultCallback()
+        batchCursor.next(results)
+
+        then:
+        results.get() == cannedResults
+        batchCursor.isClosed()
     }
 
 }
