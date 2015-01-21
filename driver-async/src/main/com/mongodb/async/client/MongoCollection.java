@@ -150,10 +150,10 @@ public interface MongoCollection<T> {
      *
      * @param fieldName the field name
      * @param filter    the query filter
-     * @param callback  the callback passed a non-null list of distinct values
+     * @return an iterable containing  distinct values
      * @mongodb.driver.manual reference/command/distinct/ Distinct
      */
-    void distinct(String fieldName, Object filter, SingleResultCallback<List<Object>> callback);
+    MongoIterable<Object> distinct(String fieldName, Object filter);
 
     /**
      * Gets the distinct values of the specified field name.
@@ -161,10 +161,10 @@ public interface MongoCollection<T> {
      * @param fieldName the field name
      * @param filter    the query filter
      * @param options   the options to apply to the distinct operation
-     * @param callback  the callback passed a non-null list of distinct values
+     * @return an iterable containing  distinct values
      * @mongodb.driver.manual reference/command/distinct/ Distinct
      */
-    void distinct(String fieldName, Object filter, DistinctOptions options, SingleResultCallback<List<Object>> callback);
+    MongoIterable<Object> distinct(String fieldName, Object filter, DistinctOptions options);
 
     /**
      * Finds all documents in the collection.

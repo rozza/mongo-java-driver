@@ -67,6 +67,16 @@ class SmokeTestSpecification extends FunctionalSpecification {
 
         then: 'The count is zero'
         run(collection.&count) == 0
+
+        then: 'InsertMany documents'
+        run(collection.&insertMany, [new Document('id', 'a'), new Document('id', 1),
+                                     new Document('id', new Document('b', 'c')),
+                                     new Document('id', new Document('list', [2, 'd', new Document('e', 3)]))]) == null
+
+        then: 'Distinct'
+        run(collection.distinct('id', new Document()).&into, []) == ['a', 1, new Document('b', 'c'),
+                                                                     new Document('list', [2,  'd', new Document('e', 3)])]
+
     }
 
     @IgnoreIf({ !serverVersionAtLeast(asList(2, 6, 0)) })

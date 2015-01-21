@@ -281,6 +281,22 @@ public class CollectionAcceptanceTest extends DatabaseTestCase {
                      grouped);
     }
 
+    @Test
+    public void shouldDistinctDocumentsOfVaryingTypes() {
+        List<Object> mixedList = new ArrayList<Object>();
+        mixedList.add(2);
+        mixedList.add("d");
+        mixedList.add(new Document("e", 3));
+
+        collection.dropCollection();
+        collection.insertMany(asList(new Document("id", "a"), new Document("id", 1),
+                                     new Document("id", new Document("b", "c")),
+                                     new Document("id", new Document("list", mixedList))));
+
+        List<Object> distinct = collection.distinct("id", new Document()).into(new ArrayList<Object>());
+        assertTrue(distinct.containsAll(asList("a", 1, new Document("b", "c"), new Document("list", mixedList))));
+    }
+
     private void initialiseCollectionWithDocuments(final int numberOfDocuments) {
         MongoCollection<Document> collection = database.getCollection(getCollectionName()).withWriteConcern(WriteConcern.ACKNOWLEDGED);
         for (int i = 0; i < numberOfDocuments; i++) {
