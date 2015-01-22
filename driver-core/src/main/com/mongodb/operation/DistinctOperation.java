@@ -27,17 +27,11 @@ import com.mongodb.binding.ReadBinding;
 import com.mongodb.connection.Connection;
 import com.mongodb.connection.QueryResult;
 import org.bson.BsonDocument;
-import org.bson.BsonDocumentReader;
-import org.bson.BsonDocumentWrapper;
 import org.bson.BsonString;
 import org.bson.BsonValue;
-import org.bson.Document;
+import org.bson.codecs.BsonDocumentCodec;
 import org.bson.codecs.Decoder;
-import org.bson.codecs.DecoderContext;
-import org.bson.codecs.DocumentCodec;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import static com.mongodb.assertions.Assertions.notNull;
@@ -57,10 +51,9 @@ import static com.mongodb.operation.OperationHelper.withConnection;
  * @mongodb.driver.manual reference/command/distinct Distinct Command
  * @since 3.0
  */
-public class DistinctOperation implements AsyncReadOperation<AsyncBatchCursor<Object>>, ReadOperation<BatchCursor<Object>> {
+public class DistinctOperation implements AsyncReadOperation<AsyncBatchCursor<BsonValue>>, ReadOperation<BatchCursor<BsonValue>> {
     private static final String VALUES = "values";
-    private static final Decoder<Document> DECODER = new DocumentCodec();
-
+    private static final Decoder<BsonDocument> DECODER = new BsonDocumentCodec();
 
     private final MongoNamespace namespace;
     private final String fieldName;
@@ -125,27 +118,25 @@ public class DistinctOperation implements AsyncReadOperation<AsyncBatchCursor<Ob
     }
 
     @Override
-    public BatchCursor<Object> execute(final ReadBinding binding) {
-        return withConnection(binding, new OperationHelper.CallableWithConnectionAndSource<BatchCursor<Object>>() {
+    public BatchCursor<BsonValue> execute(final ReadBinding binding) {
+        return withConnection(binding, new OperationHelper.CallableWithConnectionAndSource<BatchCursor<BsonValue>>() {
             @Override
-            public BatchCursor<Object> call(final ConnectionSource source, final Connection connection) {
-                return executeWrappedCommandProtocol(namespace.getDatabaseName(), getCommand(),
-                        CommandResultDocumentCodec.create(DECODER, VALUES),
+            public BatchCursor<BsonValue> call(final ConnectionSource source, final Connection connection) {
+                return executeWrappedCommandProtocol(namespace.getDatabaseName(), getCommand(), DECODER,
                         connection, binding.getReadPreference(), transformer(source, connection));
             }
         });
     }
 
     @Override
-    public void executeAsync(final AsyncReadBinding binding, final SingleResultCallback<AsyncBatchCursor<Object>> callback) {
+    public void executeAsync(final AsyncReadBinding binding, final SingleResultCallback<AsyncBatchCursor<BsonValue>> callback) {
         withConnection(binding, new OperationHelper.AsyncCallableWithConnectionAndSource() {
             @Override
             public void call(final AsyncConnectionSource source, final Connection connection, final Throwable t) {
                 if (t != null) {
                     errorHandlingCallback(callback).onResult(null, t);
                 } else {
-                    executeWrappedCommandProtocolAsync(namespace.getDatabaseName(), getCommand(),
-                            CommandResultDocumentCodec.create(DECODER, VALUES),
+                    executeWrappedCommandProtocolAsync(namespace.getDatabaseName(), getCommand(), DECODER,
                             connection, binding.getReadPreference(), asyncTransformer(source, connection),
                             releasingCallback(errorHandlingCallback(callback), source, connection));
                 }
@@ -153,41 +144,28 @@ public class DistinctOperation implements AsyncReadOperation<AsyncBatchCursor<Ob
         });
     }
 
-    @SuppressWarnings("unchecked")
-    private QueryResult<Object> createQueryResult(final BsonDocument result, final Connection connection) {
-        List<Object> results = new ArrayList<Object>();
-        if (result != null && result.containsKey(VALUES)) {
-            for (BsonValue value : result.getArray(VALUES)) {
-                if (value instanceof BsonDocumentWrapper) {
-                    results.add(((BsonDocumentWrapper) value).getWrappedDocument());
-                } else {
-                    BsonDocument bsonDocument = new BsonDocument("value", value);
-                    Document document = DECODER.decode(new BsonDocumentReader(bsonDocument), DecoderContext.builder().build());
-                    results.add(document.get("value"));
-                }
-            }
-        }
-
-        return new QueryResult<Object>(namespace, results, 0L, connection.getDescription().getServerAddress());
+    private QueryResult<BsonValue> createQueryResult(final BsonDocument result, final Connection connection) {
+        return new QueryResult<BsonValue>(namespace, result.getArray(VALUES).getValues(), 0L,
+                connection.getDescription().getServerAddress());
     }
 
-    private Function<BsonDocument, BatchCursor<Object>> transformer(final ConnectionSource source, final Connection connection) {
-        return new Function<BsonDocument, BatchCursor<Object>>() {
+    private Function<BsonDocument, BatchCursor<BsonValue>> transformer(final ConnectionSource source, final Connection connection) {
+        return new Function<BsonDocument, BatchCursor<BsonValue>>() {
             @Override
-            public BatchCursor<Object> apply(final BsonDocument result) {
-                QueryResult<Object> queryResult = createQueryResult(result, connection);
-                return new QueryBatchCursor<Object>(queryResult, 0, 0, null, source);
+            public BatchCursor<BsonValue> apply(final BsonDocument result) {
+                QueryResult<BsonValue> queryResult = createQueryResult(result, connection);
+                return new QueryBatchCursor<BsonValue>(queryResult, 0, 0, null, source);
             }
         };
     }
 
-    private Function<BsonDocument, AsyncBatchCursor<Object>> asyncTransformer(final AsyncConnectionSource source, final Connection
+    private Function<BsonDocument, AsyncBatchCursor<BsonValue>> asyncTransformer(final AsyncConnectionSource source, final Connection
             connection) {
-        return new Function<BsonDocument, AsyncBatchCursor<Object>>() {
+        return new Function<BsonDocument, AsyncBatchCursor<BsonValue>>() {
             @Override
-            public AsyncBatchCursor<Object> apply(final BsonDocument result) {
-                QueryResult<Object> queryResult = createQueryResult(result, connection);
-                return new AsyncQueryBatchCursor<Object>(queryResult, 0, 0, null, source);
+            public AsyncBatchCursor<BsonValue> apply(final BsonDocument result) {
+                QueryResult<BsonValue> queryResult = createQueryResult(result, connection);
+                return new AsyncQueryBatchCursor<BsonValue>(queryResult, 0, 0, null, source);
             }
         };
     }

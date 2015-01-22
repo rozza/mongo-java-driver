@@ -57,6 +57,7 @@ import org.bson.Document
 import org.bson.codecs.BsonDocumentCodec
 import org.bson.codecs.BsonValueCodecProvider
 import org.bson.codecs.DocumentCodec
+import org.bson.codecs.DocumentCodecProvider
 import org.bson.codecs.ValueCodecProvider
 import org.bson.codecs.configuration.CodecConfigurationException
 import org.bson.codecs.configuration.RootCodecRegistry
@@ -207,7 +208,8 @@ class MongoCollectionSpecification extends Specification {
 
     def 'should handle exceptions in distinct correctly'() {
         given:
-        def codecRegistry = new RootCodecRegistry(asList(new ValueCodecProvider(),  new BsonValueCodecProvider()))
+        def codecRegistry = new RootCodecRegistry(asList(new ValueCodecProvider(),  new BsonValueCodecProvider(),
+                new DocumentCodecProvider()))
         def executor = new TestOperationExecutor([new MongoException('failure')])
         def filter = new BsonDocument()
         def collection = new MongoCollectionImpl(namespace, Document, codecRegistry, readPreference, writeConcern, executor)

@@ -1066,8 +1066,16 @@ public class DBCollection {
      */
     @SuppressWarnings("unchecked")
     public List distinct(final String fieldName, final DBObject query, final ReadPreference readPreference) {
-        return new OperationIterable<Object>(new DistinctOperation(getNamespace(), fieldName).filter(wrap(query)),
-                readPreference, executor).into(new ArrayList<Object>());
+        final Decoder<DBObject> decoder = getObjectCodec();
+        return new OperationIterable<BsonValue>(new DistinctOperation(getNamespace(), fieldName).filter(wrap(query)),
+                                                readPreference, executor).map(new Function<BsonValue, Object>() {
+            @Override
+            public Object apply(final BsonValue bsonValue) {
+                BsonDocument bsonDocument = new BsonDocument("value", bsonValue);
+                DBObject document = decoder.decode(new BsonDocumentReader(bsonDocument), DecoderContext.builder().build());
+                return document.get("value");
+            }
+        }).into(new ArrayList<Object>());
     }
 
     /**

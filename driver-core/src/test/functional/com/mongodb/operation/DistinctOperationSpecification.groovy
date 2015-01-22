@@ -22,6 +22,7 @@ import com.mongodb.OperationFunctionalSpecification
 import com.mongodb.async.FutureResultCallback
 import org.bson.BsonDocument
 import org.bson.BsonInt32
+import org.bson.BsonString
 import org.bson.Document
 import org.bson.codecs.DocumentCodec
 import org.junit.experimental.categories.Category
@@ -46,10 +47,10 @@ class DistinctOperationSpecification extends OperationFunctionalSpecification {
 
         when:
         DistinctOperation op = new DistinctOperation(getNamespace(), 'name')
-        def result = op.execute(getBinding());
+        def result = op.execute(getBinding()).next();
 
         then:
-        result.next().sort() == ['Pete', 'Sam']
+        result == [new BsonString('Pete'), new BsonString('Sam')]
     }
 
     @Category(Async)
@@ -67,7 +68,7 @@ class DistinctOperationSpecification extends OperationFunctionalSpecification {
         def result = futureResult.get(1, SECONDS)
 
         then:
-        result.sort() == ['Pete', 'Sam']
+        result == [new BsonString('Pete'), new BsonString('Sam')]
     }
 
     def 'should be able to distinct by name with find'() {
@@ -83,7 +84,7 @@ class DistinctOperationSpecification extends OperationFunctionalSpecification {
         def result = op.execute(getBinding());
 
         then:
-        result.next() == ['Pete']
+        result.next() == [new BsonString('Pete')]
     }
 
     @Category(Async)
@@ -102,7 +103,7 @@ class DistinctOperationSpecification extends OperationFunctionalSpecification {
         def result = futureResult.get(1, SECONDS)
 
         then:
-        result == ['Pete']
+        result == [new BsonString('Pete')]
     }
 
     @IgnoreIf({ !serverVersionAtLeast(asList(2, 6, 0)) })

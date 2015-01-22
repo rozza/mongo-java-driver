@@ -63,6 +63,7 @@ import com.mongodb.operation.MixedBulkWriteOperation;
 import com.mongodb.operation.OperationExecutor;
 import com.mongodb.operation.RenameCollectionOperation;
 import org.bson.BsonDocument;
+import org.bson.BsonDocumentReader;
 import org.bson.BsonDocumentWrapper;
 import org.bson.BsonJavaScript;
 import org.bson.BsonString;
@@ -70,6 +71,8 @@ import org.bson.BsonValue;
 import org.bson.Document;
 import org.bson.codecs.Codec;
 import org.bson.codecs.CollectibleCodec;
+import org.bson.codecs.Decoder;
+import org.bson.codecs.DecoderContext;
 import org.bson.codecs.configuration.CodecRegistry;
 
 import java.util.ArrayList;
@@ -179,7 +182,16 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
         DistinctOperation operation = new DistinctOperation(namespace, fieldName)
                                           .filter(asBson(filter))
                                           .maxTime(distinctOptions.getMaxTime(MILLISECONDS), MILLISECONDS);
-        return new OperationIterable<Object>(operation, readPreference, executor);
+        final Decoder<Document> decoder = getCodec(Document.class);
+        return new OperationIterable<BsonValue>(operation, readPreference, executor).map(new Function<BsonValue,
+                Object>() {
+            @Override
+            public Object apply(final BsonValue bsonValue) {
+                BsonDocument bsonDocument = new BsonDocument("value", bsonValue);
+                Document document = decoder.decode(new BsonDocumentReader(bsonDocument), DecoderContext.builder().build());
+                return document.get("value");
+            }
+        });
     }
 
     @Override
