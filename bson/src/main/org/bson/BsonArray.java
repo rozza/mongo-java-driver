@@ -29,7 +29,7 @@ import java.util.ListIterator;
  *
  * @since 3.0
  */
-public final class BsonArray extends BsonValue implements List<BsonValue>, Serializable {
+public class BsonArray extends BsonValue implements List<BsonValue>, Serializable {
 
     private static final long serialVersionUID = -6848772175446898432L;
     private final List<BsonValue> values;
