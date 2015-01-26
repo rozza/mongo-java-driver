@@ -58,7 +58,7 @@ class QueryBatchCursor<T> implements BatchCursor<T> {
         this.namespace = firstQueryResult.getNamespace();
         this.limit = limit;
         this.batchSize = batchSize;
-        this.decoder = notNull("decoder", decoder);
+        this.decoder = decoder;
         this.serverAddress = notNull("serverAddress", serverAddress);
         if (firstQueryResult.getCursor() != null) {
             notNull("connectionSource", connectionSource);

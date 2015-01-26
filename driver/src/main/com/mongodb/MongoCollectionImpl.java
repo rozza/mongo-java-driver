@@ -62,7 +62,6 @@ import com.mongodb.operation.MapReduceWithInlineResultsOperation;
 import com.mongodb.operation.MixedBulkWriteOperation;
 import com.mongodb.operation.OperationExecutor;
 import com.mongodb.operation.RenameCollectionOperation;
-import org.bson.BsonArray;
 import org.bson.BsonDocument;
 import org.bson.BsonDocumentReader;
 import org.bson.BsonDocumentWrapper;
@@ -72,6 +71,7 @@ import org.bson.BsonValue;
 import org.bson.Document;
 import org.bson.codecs.Codec;
 import org.bson.codecs.CollectibleCodec;
+import org.bson.codecs.Decoder;
 import org.bson.codecs.DecoderContext;
 import org.bson.codecs.configuration.CodecRegistry;
 
@@ -173,25 +173,25 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
     }
 
     @Override
-    public List<Object> distinct(final String fieldName, final Object filter) {
+    public MongoIterable<Object> distinct(final String fieldName, final Object filter) {
         return distinct(fieldName, filter, new DistinctOptions());
     }
 
     @Override
-    public List<Object> distinct(final String fieldName, final Object filter, final DistinctOptions distinctOptions) {
+    public MongoIterable<Object> distinct(final String fieldName, final Object filter, final DistinctOptions distinctOptions) {
         DistinctOperation operation = new DistinctOperation(namespace, fieldName)
                                           .filter(asBson(filter))
                                           .maxTime(distinctOptions.getMaxTime(MILLISECONDS), MILLISECONDS);
-        BsonArray distinctArray = executor.execute(operation, readPreference);
-        List<Object> distinctList = new ArrayList<Object>();
-        for (BsonValue value : distinctArray) {
-            BsonDocument bsonDocument = new BsonDocument("value", value);
-            Document document = getCodec(Document.class).decode(new BsonDocumentReader(bsonDocument),
-                                                                                      DecoderContext.builder().build());
-            distinctList.add(document.get("value"));
-        }
-
-        return distinctList;
+        final Decoder<Document> decoder = getCodec(Document.class);
+        return new OperationIterable<BsonValue>(operation, readPreference, executor).map(new Function<BsonValue,
+                Object>() {
+            @Override
+            public Object apply(final BsonValue bsonValue) {
+                BsonDocument bsonDocument = new BsonDocument("value", bsonValue);
+                Document document = decoder.decode(new BsonDocumentReader(bsonDocument), DecoderContext.builder().build());
+                return document.get("value");
+            }
+        });
     }
 
     @Override

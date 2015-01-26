@@ -19,7 +19,7 @@ package com.mongodb.operation
 import category.Async
 import com.mongodb.MongoExecutionTimeoutException
 import com.mongodb.OperationFunctionalSpecification
-import org.bson.BsonArray
+import com.mongodb.async.FutureResultCallback
 import org.bson.BsonDocument
 import org.bson.BsonInt32
 import org.bson.BsonString
@@ -47,10 +47,10 @@ class DistinctOperationSpecification extends OperationFunctionalSpecification {
 
         when:
         DistinctOperation op = new DistinctOperation(getNamespace(), 'name')
-        def result = op.execute(getBinding());
+        def result = op.execute(getBinding()).next();
 
         then:
-        result.toList().sort() == new BsonArray([new BsonString('Pete'), new BsonString('Sam')])
+        result == [new BsonString('Pete'), new BsonString('Sam')]
     }
 
     @Category(Async)
@@ -63,10 +63,12 @@ class DistinctOperationSpecification extends OperationFunctionalSpecification {
 
         when:
         DistinctOperation op = new DistinctOperation(getNamespace(), 'name')
-        def result = executeAsync(op)
+        def futureResult = new FutureResultCallback()
+        executeAsync(op).next(futureResult)
+        def result = futureResult.get(1, SECONDS)
 
         then:
-        result.sort() == new BsonArray([new BsonString('Pete'), new BsonString('Sam')])
+        result == [new BsonString('Pete'), new BsonString('Sam')]
     }
 
     def 'should be able to distinct by name with find'() {
@@ -82,7 +84,7 @@ class DistinctOperationSpecification extends OperationFunctionalSpecification {
         def result = op.execute(getBinding());
 
         then:
-        result == new BsonArray([new BsonString('Pete')])
+        result.next() == [new BsonString('Pete')]
     }
 
     @Category(Async)
@@ -96,10 +98,12 @@ class DistinctOperationSpecification extends OperationFunctionalSpecification {
         when:
         DistinctOperation op = new DistinctOperation(getNamespace(), 'name')
         op.filter(new BsonDocument('age', new BsonInt32(25)))
-        def result = executeAsync(op)
+        def futureResult = new FutureResultCallback()
+        executeAsync(op).next(futureResult)
+        def result = futureResult.get(1, SECONDS)
 
         then:
-        result == new BsonArray([new BsonString('Pete')])
+        result == [new BsonString('Pete')]
     }
 
     @IgnoreIf({ !serverVersionAtLeast(asList(2, 6, 0)) })

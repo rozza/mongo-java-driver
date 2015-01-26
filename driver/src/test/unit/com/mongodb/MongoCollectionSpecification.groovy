@@ -50,15 +50,14 @@ import com.mongodb.operation.MapReduceToCollectionOperation
 import com.mongodb.operation.MapReduceWithInlineResultsOperation
 import com.mongodb.operation.MixedBulkWriteOperation
 import com.mongodb.operation.RenameCollectionOperation
-import org.bson.BsonArray
 import org.bson.BsonDocument
 import org.bson.BsonInt32
 import org.bson.BsonJavaScript
-import org.bson.BsonString
 import org.bson.Document
 import org.bson.codecs.BsonDocumentCodec
 import org.bson.codecs.BsonValueCodecProvider
 import org.bson.codecs.DocumentCodec
+import org.bson.codecs.DocumentCodecProvider
 import org.bson.codecs.ValueCodecProvider
 import org.bson.codecs.configuration.CodecConfigurationException
 import org.bson.codecs.configuration.RootCodecRegistry
@@ -186,12 +185,12 @@ class MongoCollectionSpecification extends Specification {
 
     def 'should use DistinctOperation correctly'() {
         given:
-        def executor = new TestOperationExecutor([new BsonArray([new BsonString('a')]), new BsonArray([new BsonString('b')])])
+        def executor = new TestOperationExecutor([null, null])
         def filter = new BsonDocument()
         def collection = new MongoCollectionImpl(namespace, Document, codecRegistry, readPreference, writeConcern, executor)
 
         when:
-        collection.distinct('test', filter)
+        collection.distinct('test', filter).iterator()
         def operation = executor.getReadOperation() as DistinctOperation
 
         then:
@@ -199,31 +198,27 @@ class MongoCollectionSpecification extends Specification {
 
         when:
         filter = new BsonDocument('a', new BsonInt32(1))
-        collection.distinct('test', filter, new DistinctOptions().maxTime(100, MILLISECONDS))
+        collection.distinct('test', filter, new DistinctOptions().maxTime(100, MILLISECONDS)).iterator()
         operation = executor.getReadOperation() as DistinctOperation
 
         then:
-        expect operation, isTheSameAs(new DistinctOperation(namespace, 'test').filter(filter).maxTime(100, MILLISECONDS))
+        expect operation, isTheSameAs(new DistinctOperation(namespace, 'test')
+                .filter(filter).maxTime(100, MILLISECONDS))
     }
 
     def 'should handle exceptions in distinct correctly'() {
         given:
-        def codecRegistry = new RootCodecRegistry(asList(new ValueCodecProvider(),  new BsonValueCodecProvider()))
+        def codecRegistry = new RootCodecRegistry(asList(new ValueCodecProvider(),  new BsonValueCodecProvider(),
+                new DocumentCodecProvider()))
         def executor = new TestOperationExecutor([new MongoException('failure')])
         def filter = new BsonDocument()
         def collection = new MongoCollectionImpl(namespace, Document, codecRegistry, readPreference, writeConcern, executor)
 
         when: 'A failed operation'
-        collection.distinct('test', filter)
+        collection.distinct('test', filter).iterator()
 
         then:
         thrown(MongoException)
-
-        when: 'A missing codec'
-        collection.distinct('test', new Document())
-
-        then:
-        thrown(CodecConfigurationException)
     }
 
     def 'should use FindOperation correctly'() {

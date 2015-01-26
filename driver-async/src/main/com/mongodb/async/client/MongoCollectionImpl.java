@@ -16,8 +16,8 @@
 
 package com.mongodb.async.client;
 
+import com.mongodb.Function;
 import com.mongodb.MongoBulkWriteException;
-import com.mongodb.MongoException;
 import com.mongodb.MongoNamespace;
 import com.mongodb.MongoWriteConcernException;
 import com.mongodb.MongoWriteException;
@@ -68,7 +68,6 @@ import com.mongodb.operation.MapReduceToCollectionOperation;
 import com.mongodb.operation.MapReduceWithInlineResultsOperation;
 import com.mongodb.operation.MixedBulkWriteOperation;
 import com.mongodb.operation.RenameCollectionOperation;
-import org.bson.BsonArray;
 import org.bson.BsonDocument;
 import org.bson.BsonDocumentReader;
 import org.bson.BsonDocumentWrapper;
@@ -78,6 +77,7 @@ import org.bson.BsonValue;
 import org.bson.Document;
 import org.bson.codecs.Codec;
 import org.bson.codecs.CollectibleCodec;
+import org.bson.codecs.Decoder;
 import org.bson.codecs.DecoderContext;
 import org.bson.codecs.configuration.CodecRegistry;
 
@@ -180,37 +180,25 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
     }
 
     @Override
-    public void distinct(final String fieldName, final Object filter, final SingleResultCallback<List<Object>> callback) {
-        distinct(fieldName, filter, new DistinctOptions(), callback);
+    public MongoIterable<Object> distinct(final String fieldName, final Object filter) {
+        return distinct(fieldName, filter, new DistinctOptions());
     }
 
     @Override
-    public void distinct(final String fieldName, final Object filter, final DistinctOptions options,
-                         final SingleResultCallback<List<Object>> callback) {
+    public MongoIterable<Object> distinct(final String fieldName, final Object filter, final DistinctOptions options) {
         DistinctOperation operation = new DistinctOperation(namespace, fieldName)
                                       .filter(asBson(filter))
                                       .maxTime(options.getMaxTime(MILLISECONDS), MILLISECONDS);
-        executor.execute(operation, readPreference, errorHandlingCallback(new SingleResultCallback<BsonArray>() {
+        final Decoder<Document> decoder = getCodec(Document.class);
+        return new OperationIterable<BsonValue>(operation, readPreference, executor).map(new Function<BsonValue,
+                Object>() {
             @Override
-            public void onResult(final BsonArray result, final Throwable t) {
-                if (t != null) {
-                    callback.onResult(null, MongoException.fromThrowable(t));
-                } else {
-                    try {
-                        List<Object> distinctList = new ArrayList<Object>();
-                        for (BsonValue value : result) {
-                            BsonDocument bsonDocument = new BsonDocument("value", value);
-                            Document document = getCodec(Document.class).decode(new BsonDocumentReader(bsonDocument),
-                                    DecoderContext.builder().build());
-                            distinctList.add(document.get("value"));
-                        }
-                        callback.onResult(distinctList, null);
-                    } catch (Throwable tr) {
-                        callback.onResult(null, new MongoException("Error when decoding distinct results", tr));
-                    }
-                }
+            public Object apply(final BsonValue bsonValue) {
+                BsonDocument bsonDocument = new BsonDocument("value", bsonValue);
+                Document document = decoder.decode(new BsonDocumentReader(bsonDocument), DecoderContext.builder().build());
+                return document.get("value");
             }
-        }));
+        });
     }
 
     @Override

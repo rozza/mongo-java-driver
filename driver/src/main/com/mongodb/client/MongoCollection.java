@@ -152,7 +152,7 @@ public interface MongoCollection<T> {
      * @return a non-null list of distinct values
      * @mongodb.driver.manual reference/command/distinct/ Distinct
      */
-    List<Object> distinct(String fieldName, Object filter);
+    MongoIterable<Object> distinct(String fieldName, Object filter);
 
     /**
      * Gets the distinct values of the specified field name.
@@ -163,7 +163,7 @@ public interface MongoCollection<T> {
      * @return a non-null list of distinct values
      * @mongodb.driver.manual reference/command/distinct/ Distinct
      */
-    List<Object> distinct(String fieldName, Object filter, DistinctOptions distinctOptions);
+    MongoIterable<Object> distinct(String fieldName, Object filter, DistinctOptions distinctOptions);
 
     /**
      * Finds all documents in the collection.

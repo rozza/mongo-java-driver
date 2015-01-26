@@ -211,13 +211,16 @@ class MongoCollectionSpecification extends Specification {
 
     def 'should use DistinctOperation correctly'() {
         given:
-        def executor = new TestOperationExecutor([new BsonArray([new BsonString('a')]), new BsonArray([new BsonString('b')])])
-        def filter = new BsonDocument()
+        def asyncCursor = Stub(AsyncBatchCursor) {
+            next(_) >> { args -> args[0].onResult(null, null) }
+        }
+        def executor = new TestOperationExecutor([asyncCursor, asyncCursor])
         def collection = new MongoCollectionImpl(namespace, Document, codecRegistry, readPreference, writeConcern, executor)
+        def filter = new BsonDocument()
         def futureResultCallback = new FutureResultCallback<List<Object>>()
 
         when:
-        collection.distinct('test', filter, futureResultCallback)
+        collection.distinct('test', filter).into([], futureResultCallback)
         futureResultCallback.get()
         def operation = executor.getReadOperation() as DistinctOperation
 
@@ -227,7 +230,7 @@ class MongoCollectionSpecification extends Specification {
         when:
         futureResultCallback = new FutureResultCallback<List<Object>>()
         filter = new BsonDocument('a', new BsonInt32(1))
-        collection.distinct('test', filter, new DistinctOptions().maxTime(100, MILLISECONDS), futureResultCallback)
+        collection.distinct('test', filter, new DistinctOptions().maxTime(100, MILLISECONDS)).into([], futureResultCallback)
         futureResultCallback.get()
         operation = executor.getReadOperation() as DistinctOperation
 
@@ -237,34 +240,21 @@ class MongoCollectionSpecification extends Specification {
 
     def 'should handle exceptions in distinct correctly'() {
         given:
-        def codecRegistry = new RootCodecRegistry(asList(new ValueCodecProvider(), new BsonValueCodecProvider()))
-        def executor = new TestOperationExecutor([new MongoException('failure'),
-                                                  new BsonArray([new BsonString('no document codec')])])
+        def asyncCursor = Stub(AsyncBatchCursor) {
+            next(_) >> { args ->  args[0].onResult(null, new MongoException('failure'))
+            }
+        }
+        def executor = new TestOperationExecutor([asyncCursor, asyncCursor])
         def filter = new BsonDocument()
         def collection = new MongoCollectionImpl(namespace, Document, codecRegistry, readPreference, writeConcern, executor)
         def futureResultCallback = new FutureResultCallback<List<Object>>()
 
         when: 'A failed operation'
-        collection.distinct('test', filter, futureResultCallback)
+        collection.distinct('test', filter).into([], futureResultCallback)
         futureResultCallback.get()
 
         then:
         thrown(MongoException)
-
-        when: 'An unexpected result'
-        futureResultCallback = new FutureResultCallback<List<Object>>()
-        collection.distinct('test', filter, futureResultCallback)
-        futureResultCallback.get()
-
-        then:
-        thrown(MongoException)
-
-        when: 'A missing codec should throw immediately'
-        futureResultCallback = new FutureResultCallback<List<Object>>()
-        collection.distinct('test', new Document(), futureResultCallback)
-
-        then:
-        thrown(CodecConfigurationException)
     }
 
     def 'should use FindOperation correctly'() {
