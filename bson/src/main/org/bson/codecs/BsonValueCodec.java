@@ -19,7 +19,11 @@ package org.bson.codecs;
 import org.bson.BsonReader;
 import org.bson.BsonValue;
 import org.bson.BsonWriter;
+import org.bson.codecs.configuration.CodecProvider;
 import org.bson.codecs.configuration.CodecRegistry;
+import org.bson.codecs.configuration.RootCodecRegistry;
+
+import java.util.Arrays;
 
 /**
  * A codec for unknown BsonValues.
@@ -30,13 +34,13 @@ import org.bson.codecs.configuration.CodecRegistry;
  */
 public class BsonValueCodec implements Codec<BsonValue> {
 
-    private final BsonDocumentCodec delegate;
+    private final CodecRegistry codecRegistry;
 
     /**
      * Creates a new instance with a default {@link org.bson.codecs.configuration.RootCodecRegistry}
      */
     public BsonValueCodec() {
-        delegate = new BsonDocumentCodec();
+        this(new RootCodecRegistry(Arrays.<CodecProvider>asList(new BsonValueCodecProvider())));
     }
 
     /**
@@ -45,18 +49,18 @@ public class BsonValueCodec implements Codec<BsonValue> {
      * @param codecRegistry the {@code CodecRegistry} to use to look up the codecs for encoding and decoding to/from BSON
      */
     public BsonValueCodec(final CodecRegistry codecRegistry) {
-        delegate = new BsonDocumentCodec(codecRegistry);
+        this.codecRegistry = codecRegistry;
     }
 
     @Override
     public BsonValue decode(final BsonReader reader, final DecoderContext decoderContext) {
-        return delegate.readValue(reader, decoderContext);
+        return codecRegistry.get(BsonValueCodecProvider.getClassForBsonType(reader.getCurrentBsonType())).decode(reader, decoderContext);
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     @Override
     public void encode(final BsonWriter writer, final BsonValue value, final EncoderContext encoderContext) {
-        Codec codec = delegate.getCodecRegistry().get(value.getClass());
+        Codec codec = codecRegistry.get(value.getClass());
         encoderContext.encodeWithChildContext(codec, writer, value);
     }
 
