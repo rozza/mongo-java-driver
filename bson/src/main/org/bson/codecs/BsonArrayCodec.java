@@ -21,12 +21,9 @@ import org.bson.BsonReader;
 import org.bson.BsonType;
 import org.bson.BsonValue;
 import org.bson.BsonWriter;
-import org.bson.codecs.configuration.CodecProvider;
 import org.bson.codecs.configuration.CodecRegistry;
-import org.bson.codecs.configuration.RootCodecRegistry;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import static org.bson.assertions.Assertions.notNull;
@@ -37,17 +34,7 @@ import static org.bson.assertions.Assertions.notNull;
  * @since 3.0
  */
 public class BsonArrayCodec implements Codec<BsonArray> {
-    private static final CodecRegistry DEFAULT_REGISTRY = new RootCodecRegistry(Arrays.<CodecProvider>asList(new BsonValueCodecProvider()));
-
     private final CodecRegistry codecRegistry;
-
-    /**
-     * Creates a new instance with a default {@link org.bson.codecs.configuration.RootCodecRegistry}
-     */
-    public BsonArrayCodec() {
-        codecRegistry = DEFAULT_REGISTRY;
-    }
-
 
     /**
      * Construct an instance with the given registry

@@ -16,7 +16,6 @@
 
 package com.mongodb.operation;
 
-import org.bson.BsonArray;
 import org.bson.BsonDocument;
 import org.bson.BsonDocumentWrapper;
 
@@ -25,8 +24,8 @@ import java.util.List;
 final class BsonDocumentWrapperHelper {
 
     @SuppressWarnings("unchecked")
-    static <T> List<T> toList(final BsonArray array) {
-        return ((BsonArrayWrapper) array).getWrappedArray();
+    static <T> List<T> toList(final BsonDocument result, final String fieldContainingWrappedArray) {
+        return ((BsonArrayWrapper<T>) result.getArray(fieldContainingWrappedArray)).getWrappedArray();
     }
 
     @SuppressWarnings("unchecked")

@@ -49,7 +49,7 @@ class CommandResultArrayCodec<T> extends BsonArrayCodec {
         }
         reader.readEndArray();
 
-        return new BsonArrayWrapper<T>(list, null);
+        return new BsonArrayWrapper<T>(list);
     }
 
     @Override

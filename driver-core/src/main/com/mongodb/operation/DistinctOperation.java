@@ -151,7 +151,7 @@ public class DistinctOperation<T> implements AsyncReadOperation<AsyncBatchCursor
     }
 
     private QueryResult<T> createQueryResult(final BsonDocument result, final Connection connection) {
-        return new QueryResult<T>(namespace, BsonDocumentWrapperHelper.<T>toList(result.getArray(VALUES)), 0L,
+        return new QueryResult<T>(namespace, BsonDocumentWrapperHelper.<T>toList(result, VALUES), 0L,
                 connection.getDescription().getServerAddress());
     }
 
