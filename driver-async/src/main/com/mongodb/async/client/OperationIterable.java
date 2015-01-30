@@ -119,8 +119,7 @@ class OperationIterable<T> implements MongoIterable<T> {
 
     @Override
     public OperationIterable<T> batchSize(final int batchSize) {
-        // Noop - not supported by OperationIterable
-        return this;
+        throw new UnsupportedOperationException();
     }
 
     @SuppressWarnings("unchecked")
