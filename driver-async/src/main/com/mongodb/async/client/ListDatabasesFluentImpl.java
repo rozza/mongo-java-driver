@@ -76,6 +76,12 @@ final class ListDatabasesFluentImpl<T> implements ListDatabasesFluent<T> {
     }
 
     @Override
+    public ListDatabasesFluentImpl<T> batchSize(final int batchSize) {
+        // Noop - not supported by ListDatabasesFluent
+        return this;
+    }
+
+    @Override
     public void batchCursor(final SingleResultCallback<AsyncBatchCursor<T>> callback) {
         execute().batchCursor(callback);
     }
