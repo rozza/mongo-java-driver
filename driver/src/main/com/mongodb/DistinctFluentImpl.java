@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *   http://www.apache.org/licenses/LICENSE-2.0
+ *  http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -13,16 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package com.mongodb;
 
-import com.mongodb.client.ListDatabasesFluent;
+import com.mongodb.client.DistinctFluent;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoIterable;
-import com.mongodb.operation.ListDatabasesOperation;
+import com.mongodb.operation.DistinctOperation;
 import com.mongodb.operation.OperationExecutor;
-import org.bson.BsonDocument;
 import org.bson.BsonDocumentWrapper;
-import org.bson.codecs.Codec;
 import org.bson.codecs.configuration.CodecRegistry;
 
 import java.util.Collection;
@@ -31,27 +30,44 @@ import java.util.concurrent.TimeUnit;
 import static com.mongodb.assertions.Assertions.notNull;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
-
-final class ListDatabasesFluentImpl<T> implements ListDatabasesFluent<T> {
+class DistinctFluentImpl<T> implements DistinctFluent<T> {
+    private final MongoNamespace namespace;
     private final Class<T> clazz;
     private final ReadPreference readPreference;
     private final CodecRegistry codecRegistry;
     private final OperationExecutor executor;
+    private final String fieldName;
 
+    private Object filter;
     private long maxTimeMS;
 
-    ListDatabasesFluentImpl(final Class<T> clazz, final CodecRegistry codecRegistry,
-                            final ReadPreference readPreference, final OperationExecutor executor) {
+
+    DistinctFluentImpl(final MongoNamespace namespace, final Class<T> clazz, final CodecRegistry codecRegistry,
+                        final ReadPreference readPreference, final OperationExecutor executor, final String fieldName) {
+        this.namespace = notNull("namespace", namespace);
         this.clazz = notNull("clazz", clazz);
         this.codecRegistry = notNull("codecRegistry", codecRegistry);
         this.readPreference = notNull("readPreference", readPreference);
         this.executor = notNull("executor", executor);
+        this.fieldName = notNull("mapFunction", fieldName);
     }
 
     @Override
-    public ListDatabasesFluentImpl<T> maxTime(final long maxTime, final TimeUnit timeUnit) {
+    public DistinctFluent<T> filter(final Object filter) {
+        this.filter = filter;
+        return this;
+    }
+
+    @Override
+    public DistinctFluent<T> maxTime(final long maxTime, final TimeUnit timeUnit) {
         notNull("timeUnit", timeUnit);
-        this.maxTimeMS = MILLISECONDS.convert(maxTime, timeUnit);
+        this.maxTimeMS = TimeUnit.MILLISECONDS.convert(maxTime, timeUnit);
+        return this;
+    }
+
+    @Override
+    public DistinctFluent<T> batchSize(final int batchSize) {
+        // Noop - not supported by DistinctFluent
         return this;
     }
 
@@ -80,26 +96,10 @@ final class ListDatabasesFluentImpl<T> implements ListDatabasesFluent<T> {
         return execute().into(target);
     }
 
-    @Override
-    public ListDatabasesFluent<T> batchSize(final int batchSize) {
-        // Noop - not supported by ListDatabasesFluent
-        return this;
-    }
-
     private MongoIterable<T> execute() {
-        return new OperationIterable<T>(createListCollectionsOperation(), readPreference, executor);
+        DistinctOperation<T> operation = new DistinctOperation<T>(namespace, fieldName, codecRegistry.get(clazz))
+                .filter(BsonDocumentWrapper.asBsonDocument(filter, codecRegistry))
+                .maxTime(maxTimeMS, MILLISECONDS);
+        return new OperationIterable<T>(operation, readPreference, executor);
     }
-
-    private <C> Codec<C> getCodec(final Class<C> clazz) {
-        return codecRegistry.get(clazz);
-    }
-
-    private ListDatabasesOperation<T> createListCollectionsOperation() {
-        return new ListDatabasesOperation<T>(getCodec(clazz)).maxTime(maxTimeMS, MILLISECONDS);
-    }
-
-    private BsonDocument asBson(final Object document) {
-        return BsonDocumentWrapper.asBsonDocument(document, codecRegistry);
-    }
-
 }

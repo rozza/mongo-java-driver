@@ -36,4 +36,12 @@ public interface ListIndexesFluent<T> extends MongoIterable<T> {
      */
     ListIndexesFluent<T> maxTime(long maxTime, TimeUnit timeUnit);
 
+    /**
+     * Sets the number of documents to return per batch.
+     *
+     * @param batchSize the batch size
+     * @return this
+     * @mongodb.driver.manual reference/method/cursor.batchSize/#cursor.batchSize Batch Size
+     */
+    ListIndexesFluent<T> batchSize(int batchSize);
 }

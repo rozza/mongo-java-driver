@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *   http://www.apache.org/licenses/LICENSE-2.0
+ *  http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -19,12 +19,21 @@ package com.mongodb.client;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Fluent interface for ListIndexes.
+ * Fluent interface for distinct.
  *
  * @param <T> The type of the result.
  * @since 3.0
  */
-public interface ListIndexesFluent<T> extends MongoIterable<T> {
+public interface DistinctFluent<T> extends MongoIterable<T> {
+
+    /**
+     * Sets the query filter to apply to the query.
+     *
+     * @param filter the filter, which may be null.
+     * @return this
+     * @mongodb.driver.manual reference/method/db.collection.find/ Filter
+     */
+    DistinctFluent<T> filter(Object filter);
 
     /**
      * Sets the maximum execution time on the server for this operation.
@@ -32,9 +41,8 @@ public interface ListIndexesFluent<T> extends MongoIterable<T> {
      * @param maxTime  the max time
      * @param timeUnit the time unit, which may not be null
      * @return this
-     * @mongodb.driver.manual reference/operator/meta/maxTimeMS/ Max Time
      */
-    ListIndexesFluent<T> maxTime(long maxTime, TimeUnit timeUnit);
+    DistinctFluent<T> maxTime(final long maxTime, final TimeUnit timeUnit);
 
     /**
      * Sets the number of documents to return per batch.
@@ -43,5 +51,5 @@ public interface ListIndexesFluent<T> extends MongoIterable<T> {
      * @return this
      * @mongodb.driver.manual reference/method/cursor.batchSize/#cursor.batchSize Batch Size
      */
-    ListIndexesFluent<T> batchSize(int batchSize);
+    DistinctFluent<T> batchSize(final int batchSize);
 }

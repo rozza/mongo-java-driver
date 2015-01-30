@@ -36,4 +36,12 @@ public interface ListDatabasesFluent<T> extends MongoIterable<T> {
      */
     ListDatabasesFluent<T> maxTime(long maxTime, TimeUnit timeUnit);
 
+    /**
+     * Sets the number of documents to return per batch.
+     *
+     * @param batchSize the batch size
+     * @return this
+     * @mongodb.driver.manual reference/method/cursor.batchSize/#cursor.batchSize Batch Size
+     */
+    ListDatabasesFluent<T> batchSize(int batchSize);
 }

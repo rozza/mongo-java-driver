@@ -122,4 +122,13 @@ public interface FindFluent<T> extends MongoIterable<T> {
      * @return this
      */
     FindFluent<T> cursorType(CursorType cursorType);
+
+    /**
+     * Sets the number of documents to return per batch.
+     *
+     * @param batchSize the batch size
+     * @return this
+     * @mongodb.driver.manual reference/method/cursor.batchSize/#cursor.batchSize Batch Size
+     */
+    FindFluent<T> batchSize(int batchSize);
 }
