@@ -165,48 +165,48 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
     }
 
     @Override
-    public <C> DistinctFluent<C> distinct(final String fieldName, final Class<C> clazz) {
-        return new DistinctFluentImpl<C>(namespace, clazz, codecRegistry, readPreference, executor, fieldName);
+    public <C> DistinctIterable<C> distinct(final String fieldName, final Class<C> clazz) {
+        return new DistinctIterableImpl<C>(namespace, clazz, codecRegistry, readPreference, executor, fieldName);
     }
 
     @Override
-    public FindFluent<T> find() {
+    public FindIterable<T> find() {
         return find(new BsonDocument(), clazz);
     }
 
     @Override
-    public <C> FindFluent<C> find(final Class<C> clazz) {
+    public <C> FindIterable<C> find(final Class<C> clazz) {
         return find(new BsonDocument(), clazz);
     }
 
     @Override
-    public FindFluent<T> find(final Object filter) {
+    public FindIterable<T> find(final Object filter) {
         return find(filter, clazz);
     }
 
     @Override
-    public <C> FindFluent<C> find(final Object filter, final Class<C> clazz) {
-        return new FindFluentImpl<C>(namespace, clazz, codecRegistry, readPreference, executor, filter, new FindOptions());
+    public <C> FindIterable<C> find(final Object filter, final Class<C> clazz) {
+        return new FindIterableImpl<C>(namespace, clazz, codecRegistry, readPreference, executor, filter, new FindOptions());
     }
 
     @Override
-    public AggregateFluent<Document> aggregate(final List<?> pipeline) {
+    public AggregateIterable<Document> aggregate(final List<?> pipeline) {
         return aggregate(pipeline, Document.class);
     }
 
     @Override
-    public <C> AggregateFluent<C> aggregate(final List<?> pipeline, final Class<C> clazz) {
-        return new AggregateFluentImpl<C>(namespace, clazz, codecRegistry, readPreference, executor, pipeline);
+    public <C> AggregateIterable<C> aggregate(final List<?> pipeline, final Class<C> clazz) {
+        return new AggregateIterableImpl<C>(namespace, clazz, codecRegistry, readPreference, executor, pipeline);
     }
 
     @Override
-    public MapReduceFluent<Document> mapReduce(final String mapFunction, final String reduceFunction) {
+    public MapReduceIterable<Document> mapReduce(final String mapFunction, final String reduceFunction) {
         return mapReduce(mapFunction, reduceFunction, Document.class);
     }
 
     @Override
-    public <C> MapReduceFluent<C> mapReduce(final String mapFunction, final String reduceFunction, final Class<C> clazz) {
-        return new MapReduceFluentImpl<C>(namespace, clazz, codecRegistry, readPreference, executor, mapFunction, reduceFunction);
+    public <C> MapReduceIterable<C> mapReduce(final String mapFunction, final String reduceFunction, final Class<C> clazz) {
+        return new MapReduceIterableImpl<C>(namespace, clazz, codecRegistry, readPreference, executor, mapFunction, reduceFunction);
     }
 
     @Override
@@ -427,13 +427,13 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
     }
 
     @Override
-    public ListIndexesFluent<Document> listIndexes() {
+    public ListIndexesIterable<Document> listIndexes() {
         return listIndexes(Document.class);
     }
 
     @Override
-    public <C> ListIndexesFluent<C> listIndexes(final Class<C> clazz) {
-        return new ListIndexesFluentImpl<C>(namespace, clazz, codecRegistry, readPreference, executor);
+    public <C> ListIndexesIterable<C> listIndexes(final Class<C> clazz) {
+        return new ListIndexesIterableImpl<C>(namespace, clazz, codecRegistry, readPreference, executor);
     }
 
     @Override

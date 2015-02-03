@@ -174,82 +174,82 @@ class MongoCollectionSpecification extends Specification {
         expect operation, isTheSameAs(expectedOperation.filter(filter).hint(hint).skip(10).limit(100).maxTime(100, MILLISECONDS))
     }
 
-    def 'should create DistinctFluent correctly'() {
+    def 'should create DistinctIterable correctly'() {
         given:
         def executor = new TestOperationExecutor([])
         def collection = new MongoCollectionImpl(namespace, Document, codecRegistry, readPreference, writeConcern, executor)
 
         when:
-        def fluentDistinct = collection.distinct('field', String)
+        def distinctIterable = collection.distinct('field', String)
 
         then:
-        expect fluentDistinct, isTheSameAs(new DistinctFluentImpl(namespace, String, codecRegistry, readPreference, executor, 'field'))
+        expect distinctIterable, isTheSameAs(new DistinctIterableImpl(namespace, String, codecRegistry, readPreference, executor, 'field'))
     }
 
-    def 'should create FindFluent correctly'() {
+    def 'should create FindIterable correctly'() {
         given:
         def executor = new TestOperationExecutor([])
         def collection = new MongoCollectionImpl(namespace, Document, codecRegistry, readPreference, writeConcern, executor)
 
         when:
-        def fluentFind = collection.find()
+        def findIterable = collection.find()
 
         then:
-        expect fluentFind, isTheSameAs(new FindFluentImpl(namespace, Document, codecRegistry, readPreference, executor, new BsonDocument(),
+        expect findIterable, isTheSameAs(new FindIterableImpl(namespace, Document, codecRegistry, readPreference, executor, new BsonDocument(),
                 new FindOptions()))
 
         when:
-        fluentFind = collection.find(BsonDocument)
+        findIterable = collection.find(BsonDocument)
 
         then:
-        expect fluentFind, isTheSameAs(new FindFluentImpl(namespace, BsonDocument, codecRegistry, readPreference, executor,
+        expect findIterable, isTheSameAs(new FindIterableImpl(namespace, BsonDocument, codecRegistry, readPreference, executor,
                 new BsonDocument(), new FindOptions()))
 
         when:
-        fluentFind = collection.find(new Document())
+        findIterable = collection.find(new Document())
 
         then:
-        expect fluentFind, isTheSameAs(new FindFluentImpl(namespace, Document, codecRegistry, readPreference, executor, new Document(),
+        expect findIterable, isTheSameAs(new FindIterableImpl(namespace, Document, codecRegistry, readPreference, executor, new Document(),
                 new FindOptions()))
 
         when:
-        fluentFind = collection.find(new Document(), BsonDocument)
+        findIterable = collection.find(new Document(), BsonDocument)
 
         then:
-        expect fluentFind, isTheSameAs(new FindFluentImpl(namespace, BsonDocument, codecRegistry, readPreference, executor, new Document(),
+        expect findIterable, isTheSameAs(new FindIterableImpl(namespace, BsonDocument, codecRegistry, readPreference, executor, new Document(),
                 new FindOptions()))
     }
 
-    def 'should create AggregateFluent correctly'() {
+    def 'should create AggregateIterable correctly'() {
         given:
         def executor = new TestOperationExecutor([])
         def collection = new MongoCollectionImpl(namespace, Document, codecRegistry, readPreference, writeConcern, executor)
 
         when:
-        def fluentAggregate = collection.aggregate([new Document('$match', 1)])
+        def aggregateIterable = collection.aggregate([new Document('$match', 1)])
 
         then:
-        expect fluentAggregate, isTheSameAs(new AggregateFluentImpl(namespace, Document, codecRegistry, readPreference, executor,
+        expect aggregateIterable, isTheSameAs(new AggregateIterableImpl(namespace, Document, codecRegistry, readPreference, executor,
                 [new Document('$match', 1)]))
 
         when:
-        fluentAggregate = collection.aggregate([new Document('$match', 1)], BsonDocument)
+        aggregateIterable = collection.aggregate([new Document('$match', 1)], BsonDocument)
 
         then:
-        expect fluentAggregate, isTheSameAs(new AggregateFluentImpl(namespace, BsonDocument, codecRegistry, readPreference, executor,
+        expect aggregateIterable, isTheSameAs(new AggregateIterableImpl(namespace, BsonDocument, codecRegistry, readPreference, executor,
                 [new Document('$match', 1)]))
     }
 
-    def 'should create MapReduceFluent correctly'() {
+    def 'should create MapReduceIterable correctly'() {
         given:
         def executor = new TestOperationExecutor([])
         def collection = new MongoCollectionImpl(namespace, Document, codecRegistry, readPreference, writeConcern, executor)
 
         when:
-        def fluentMapReduce = collection.mapReduce('map', 'reduce')
+        def mapReduceIterable = collection.mapReduce('map', 'reduce')
 
         then:
-        expect fluentMapReduce, isTheSameAs(new MapReduceFluentImpl(namespace, Document, codecRegistry, readPreference, executor, 'map',
+        expect mapReduceIterable, isTheSameAs(new MapReduceIterableImpl(namespace, Document, codecRegistry, readPreference, executor, 'map',
                 'reduce'))
     }
 

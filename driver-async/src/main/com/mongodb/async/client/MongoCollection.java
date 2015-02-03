@@ -151,34 +151,34 @@ public interface MongoCollection<T> {
      * @return an iterable of distinct values
      * @mongodb.driver.manual reference/command/distinct/ Distinct
      */
-    <C> DistinctFluent<C> distinct(String fieldName, Class<C> clazz);
+    <C> DistinctIterable<C> distinct(String fieldName, Class<C> clazz);
 
     /**
      * Finds all documents in the collection.
      *
-     * @return the fluent find interface
+     * @return the find iterable interface
      * @mongodb.driver.manual tutorial/query-documents/ Find
      */
-    FindFluent<T> find();
+    FindIterable<T> find();
 
     /**
      * Finds all documents in the collection.
      *
      * @param clazz the class to decode each document into
      * @param <C>   the target document type of the iterable.
-     * @return the fluent find interface
+     * @return the find iterable interface
      * @mongodb.driver.manual tutorial/query-documents/ Find
      */
-    <C> FindFluent<C> find(Class<C> clazz);
+    <C> FindIterable<C> find(Class<C> clazz);
 
     /**
      * Finds all documents in the collection.
      *
      * @param filter the query filter
-     * @return the fluent find interface
+     * @return the find iterable interface
      * @mongodb.driver.manual tutorial/query-documents/ Find
      */
-    FindFluent<T> find(Object filter);
+    FindIterable<T> find(Object filter);
 
     /**
      * Finds all documents in the collection.
@@ -186,10 +186,10 @@ public interface MongoCollection<T> {
      * @param filter the query filter
      * @param clazz  the class to decode each document into
      * @param <C>    the target document type of the iterable.
-     * @return the fluent find interface
+     * @return the find iterable interface
      * @mongodb.driver.manual tutorial/query-documents/ Find
      */
-    <C> FindFluent<C> find(Object filter, Class<C> clazz);
+    <C> FindIterable<C> find(Object filter, Class<C> clazz);
 
     /**
      * Aggregates documents according to the specified aggregation pipeline.  If the pipeline ends with a $out stage, the returned
@@ -200,7 +200,7 @@ public interface MongoCollection<T> {
      * @return an iterable containing the result of the aggregation operation
      * @mongodb.driver.manual aggregation/ Aggregation
      */
-    AggregateFluent<Document> aggregate(List<?> pipeline);
+    AggregateIterable<Document> aggregate(List<?> pipeline);
 
     /**
      * Aggregates documents according to the specified aggregation pipeline.  If the pipeline ends with a $out stage, the returned
@@ -213,7 +213,7 @@ public interface MongoCollection<T> {
      * @return an iterable containing the result of the aggregation operation
      * @mongodb.driver.manual aggregation/ Aggregation
      */
-    <C> AggregateFluent<C> aggregate(List<?> pipeline, Class<C> clazz);
+    <C> AggregateIterable<C> aggregate(List<?> pipeline, Class<C> clazz);
 
     /**
      * Aggregates documents according to the specified map-reduce function.
@@ -223,7 +223,7 @@ public interface MongoCollection<T> {
      * @return an iterable containing the result of the map-reduce operation
      * @mongodb.driver.manual reference/command/mapReduce/ map-reduce
      */
-    MapReduceFluent<Document> mapReduce(String mapFunction, String reduceFunction);
+    MapReduceIterable<Document> mapReduce(String mapFunction, String reduceFunction);
 
     /**
      * Aggregates documents according to the specified map-reduce function.
@@ -235,7 +235,7 @@ public interface MongoCollection<T> {
      * @return an iterable containing the result of the map-reduce operation
      * @mongodb.driver.manual reference/command/mapReduce/ map-reduce
      */
-    <C> MapReduceFluent<C> mapReduce(String mapFunction, String reduceFunction, Class<C> clazz);
+    <C> MapReduceIterable<C> mapReduce(String mapFunction, String reduceFunction, Class<C> clazz);
 
     /**
      * Executes a mix of inserts, updates, replaces, and deletes.
@@ -501,20 +501,20 @@ public interface MongoCollection<T> {
     /**
      * Get all the indexes in this collection.
      *
-     * @return the fluent list indexes interface
+     * @return the list indexes iterable interface
      * @mongodb.driver.manual reference/command/listIndexes/ listIndexes
      */
-    ListIndexesFluent<Document> listIndexes();
+    ListIndexesIterable<Document> listIndexes();
 
     /**
      * Get all the indexes in this collection.
      *
      * @param clazz    the class to decode each document into
      * @param <C>      the target document type of the iterable.
-     * @return the fluent list indexes interface
+     * @return the list indexes iterable interface
      * @mongodb.driver.manual reference/command/listIndexes/ listIndexes
      */
-    <C> ListIndexesFluent<C> listIndexes(Class<C> clazz);
+    <C> ListIndexesIterable<C> listIndexes(Class<C> clazz);
 
     /**
      * Drops the given index.

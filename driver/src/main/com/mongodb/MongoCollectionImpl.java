@@ -21,11 +21,11 @@ import com.mongodb.bulk.DeleteRequest;
 import com.mongodb.bulk.InsertRequest;
 import com.mongodb.bulk.UpdateRequest;
 import com.mongodb.bulk.WriteRequest;
-import com.mongodb.client.AggregateFluent;
-import com.mongodb.client.DistinctFluent;
-import com.mongodb.client.FindFluent;
-import com.mongodb.client.ListIndexesFluent;
-import com.mongodb.client.MapReduceFluent;
+import com.mongodb.client.AggregateIterable;
+import com.mongodb.client.DistinctIterable;
+import com.mongodb.client.FindIterable;
+import com.mongodb.client.ListIndexesIterable;
+import com.mongodb.client.MapReduceIterable;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.model.BulkWriteOptions;
 import com.mongodb.client.model.CountOptions;
@@ -162,48 +162,48 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
     }
 
     @Override
-    public <C> DistinctFluent<C> distinct(final String fieldName, final Class<C> clazz) {
-        return new DistinctFluentImpl<C>(namespace, clazz, codecRegistry, readPreference, executor, fieldName);
+    public <C> DistinctIterable<C> distinct(final String fieldName, final Class<C> clazz) {
+        return new DistinctIterableImpl<C>(namespace, clazz, codecRegistry, readPreference, executor, fieldName);
     }
 
     @Override
-    public FindFluent<T> find() {
+    public FindIterable<T> find() {
         return find(new BsonDocument(), clazz);
     }
 
     @Override
-    public <C> FindFluent<C> find(final Class<C> clazz) {
+    public <C> FindIterable<C> find(final Class<C> clazz) {
         return find(new BsonDocument(), clazz);
     }
 
     @Override
-    public FindFluent<T> find(final Object filter) {
+    public FindIterable<T> find(final Object filter) {
         return find(filter, clazz);
     }
 
     @Override
-    public <C> FindFluent<C> find(final Object filter, final Class<C> clazz) {
-        return new FindFluentImpl<C>(namespace, clazz, codecRegistry, readPreference, executor, filter, new FindOptions());
+    public <C> FindIterable<C> find(final Object filter, final Class<C> clazz) {
+        return new FindIterableImpl<C>(namespace, clazz, codecRegistry, readPreference, executor, filter, new FindOptions());
     }
 
     @Override
-    public AggregateFluent<Document> aggregate(final List<?> pipeline) {
+    public AggregateIterable<Document> aggregate(final List<?> pipeline) {
         return aggregate(pipeline, Document.class);
     }
 
     @Override
-    public <C> AggregateFluent<C> aggregate(final List<?> pipeline, final Class<C> clazz) {
-        return new AggregateFluentImpl<C>(namespace, clazz, codecRegistry, readPreference, executor, pipeline);
+    public <C> AggregateIterable<C> aggregate(final List<?> pipeline, final Class<C> clazz) {
+        return new AggregateIterableImpl<C>(namespace, clazz, codecRegistry, readPreference, executor, pipeline);
     }
 
     @Override
-    public MapReduceFluent<Document> mapReduce(final String mapFunction, final String reduceFunction) {
+    public MapReduceIterable<Document> mapReduce(final String mapFunction, final String reduceFunction) {
         return mapReduce(mapFunction, reduceFunction, Document.class);
     }
 
     @Override
-    public <C> MapReduceFluent<C> mapReduce(final String mapFunction, final String reduceFunction, final Class<C> clazz) {
-        return new MapReduceFluentImpl<C>(namespace, clazz, codecRegistry, readPreference, executor, mapFunction, reduceFunction);
+    public <C> MapReduceIterable<C> mapReduce(final String mapFunction, final String reduceFunction, final Class<C> clazz) {
+        return new MapReduceIterableImpl<C>(namespace, clazz, codecRegistry, readPreference, executor, mapFunction, reduceFunction);
     }
 
     @Override
@@ -254,7 +254,7 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
         }
 
         return executor.execute(new MixedBulkWriteOperation(namespace, writeRequests, options.isOrdered(),
-                                                            this.writeConcern));
+                this.writeConcern));
     }
 
     @Override
@@ -332,9 +332,9 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
     @Override
     public T findOneAndDelete(final Object filter, final FindOneAndDeleteOptions options) {
         return executor.execute(new FindAndDeleteOperation<T>(namespace, getCodec())
-                                .filter(asBson(filter))
-                                .projection(asBson(options.getProjection()))
-                                .sort(asBson(options.getSort())));
+                .filter(asBson(filter))
+                .projection(asBson(options.getProjection()))
+                .sort(asBson(options.getSort())));
     }
 
     @Override
@@ -345,11 +345,11 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
     @Override
     public T findOneAndReplace(final Object filter, final T replacement, final FindOneAndReplaceOptions options) {
         return executor.execute(new FindAndReplaceOperation<T>(namespace, getCodec(), asBson(replacement))
-                                .filter(asBson(filter))
-                                .projection(asBson(options.getProjection()))
-                                .sort(asBson(options.getSort()))
-                                .returnOriginal(options.getReturnOriginal())
-                                .upsert(options.isUpsert()));
+                .filter(asBson(filter))
+                .projection(asBson(options.getProjection()))
+                .sort(asBson(options.getSort()))
+                .returnOriginal(options.getReturnOriginal())
+                .upsert(options.isUpsert()));
     }
 
     @Override
@@ -360,11 +360,11 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
     @Override
     public T findOneAndUpdate(final Object filter, final Object update, final FindOneAndUpdateOptions options) {
         return executor.execute(new FindAndUpdateOperation<T>(namespace, getCodec(), asBson(update))
-                                .filter(asBson(filter))
-                                .projection(asBson(options.getProjection()))
-                                .sort(asBson(options.getSort()))
-                                .returnOriginal(options.getReturnOriginal())
-                                .upsert(options.isUpsert()));
+                .filter(asBson(filter))
+                .projection(asBson(options.getProjection()))
+                .sort(asBson(options.getSort()))
+                .returnOriginal(options.getReturnOriginal())
+                .upsert(options.isUpsert()));
     }
 
     @Override
@@ -398,13 +398,13 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
     }
 
     @Override
-    public ListIndexesFluent<Document> listIndexes() {
+    public ListIndexesIterable<Document> listIndexes() {
         return listIndexes(Document.class);
     }
 
     @Override
-    public <C> ListIndexesFluent<C> listIndexes(final Class<C> clazz) {
-        return new ListIndexesFluentImpl<C>(getNamespace(), clazz, codecRegistry, ReadPreference.primary(), executor);
+    public <C> ListIndexesIterable<C> listIndexes(final Class<C> clazz) {
+        return new ListIndexesIterableImpl<C>(getNamespace(), clazz, codecRegistry, ReadPreference.primary(), executor);
     }
 
     @Override
