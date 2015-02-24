@@ -23,13 +23,13 @@ import com.mongodb.ReadPreference;
 import com.mongodb.async.AsyncBatchCursor;
 import com.mongodb.async.SingleResultCallback;
 import com.mongodb.client.model.FindOptions;
+import com.mongodb.internal.codecs.RootCodecRegistry;
 import com.mongodb.operation.AggregateOperation;
 import com.mongodb.operation.AggregateToCollectionOperation;
 import com.mongodb.operation.AsyncOperationExecutor;
 import org.bson.BsonDocument;
 import org.bson.BsonDocumentWrapper;
 import org.bson.BsonValue;
-import org.bson.codecs.configuration.CodecRegistry;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -45,7 +45,7 @@ class AggregateIterableImpl<T> implements AggregateIterable<T> {
     private final MongoNamespace namespace;
     private final Class<T> clazz;
     private final ReadPreference readPreference;
-    private final CodecRegistry codecRegistry;
+    private final RootCodecRegistry codecRegistry;
     private final AsyncOperationExecutor executor;
     private final List<?> pipeline;
 
@@ -54,7 +54,7 @@ class AggregateIterableImpl<T> implements AggregateIterable<T> {
     private long maxTimeMS;
     private Boolean useCursor;
 
-    AggregateIterableImpl(final MongoNamespace namespace, final Class<T> clazz, final CodecRegistry codecRegistry,
+    AggregateIterableImpl(final MongoNamespace namespace, final Class<T> clazz, final RootCodecRegistry codecRegistry,
                           final ReadPreference readPreference, final AsyncOperationExecutor executor, final List<?> pipeline) {
         this.namespace = notNull("namespace", namespace);
         this.clazz = notNull("clazz", clazz);

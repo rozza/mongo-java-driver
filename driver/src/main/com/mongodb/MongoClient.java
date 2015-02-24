@@ -22,12 +22,14 @@ import org.bson.Document;
 import org.bson.codecs.BsonValueCodecProvider;
 import org.bson.codecs.DocumentCodecProvider;
 import org.bson.codecs.ValueCodecProvider;
-import org.bson.codecs.configuration.RootCodecRegistry;
+import org.bson.codecs.configuration.CodecRegistry;
 
 import java.io.Closeable;
 import java.util.List;
 
+import static com.mongodb.internal.codecs.RootCodecRegistry.createRootRegistry;
 import static java.util.Arrays.asList;
+import static org.bson.codecs.configuration.CodecRegistryHelper.fromProviders;
 
 /**
  * <p>A MongoDB client with internal connection pooling. For most applications, you should have one MongoClient instance for the entire
@@ -76,12 +78,12 @@ import static java.util.Arrays.asList;
  */
 public class MongoClient extends Mongo implements Closeable {
 
-    private static final RootCodecRegistry DEFAULT_CODEC_REGISTRY =
-    new RootCodecRegistry(asList(new ValueCodecProvider(),
-                                 new DBRefCodecProvider(),
-                                 new DocumentCodecProvider(new DocumentToDBRefTransformer()),
-                                 new DBObjectCodecProvider(),
-                                 new BsonValueCodecProvider()));
+    private static final CodecRegistry DEFAULT_CODEC_REGISTRY =
+            fromProviders(asList(new ValueCodecProvider(),
+                    new DBRefCodecProvider(),
+                    new DocumentCodecProvider(new DocumentToDBRefTransformer()),
+                    new DBObjectCodecProvider(),
+                    new BsonValueCodecProvider()));
 
     /**
      * Gets the default codec registry.  It includes the following providers:
@@ -97,7 +99,7 @@ public class MongoClient extends Mongo implements Closeable {
      * @see MongoClientOptions#getCodecRegistry()
      * @since 3.0
      */
-    public static RootCodecRegistry getDefaultCodecRegistry() {
+    public static CodecRegistry getDefaultCodecRegistry() {
         return DEFAULT_CODEC_REGISTRY;
     }
 
@@ -305,7 +307,7 @@ public class MongoClient extends Mongo implements Closeable {
      * @since 3.0
      */
     public <T> ListDatabasesIterable<T> listDatabases(final Class<T> clazz) {
-        return new ListDatabasesIterableImpl<T>(clazz, getMongoClientOptions().getCodecRegistry(),
+        return new ListDatabasesIterableImpl<T>(clazz, createRootRegistry(getMongoClientOptions().getCodecRegistry()),
                 ReadPreference.primary(), createOperationExecutor());
     }
 

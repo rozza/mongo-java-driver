@@ -24,6 +24,7 @@ import com.mongodb.async.AsyncBatchCursor;
 import com.mongodb.async.SingleResultCallback;
 import com.mongodb.client.model.FindOptions;
 import com.mongodb.client.model.MapReduceAction;
+import com.mongodb.internal.codecs.RootCodecRegistry;
 import com.mongodb.operation.AsyncOperationExecutor;
 import com.mongodb.operation.MapReduceStatistics;
 import com.mongodb.operation.MapReduceToCollectionOperation;
@@ -31,7 +32,6 @@ import com.mongodb.operation.MapReduceWithInlineResultsOperation;
 import org.bson.BsonDocument;
 import org.bson.BsonDocumentWrapper;
 import org.bson.BsonJavaScript;
-import org.bson.codecs.configuration.CodecRegistry;
 
 import java.util.Collection;
 import java.util.concurrent.TimeUnit;
@@ -44,7 +44,7 @@ class MapReduceIterableImpl<T> implements MapReduceIterable<T> {
     private final MongoNamespace namespace;
     private final Class<T> clazz;
     private final ReadPreference readPreference;
-    private final CodecRegistry codecRegistry;
+    private final RootCodecRegistry codecRegistry;
     private final AsyncOperationExecutor executor;
     private final String mapFunction;
     private final String reduceFunction;
@@ -65,7 +65,7 @@ class MapReduceIterableImpl<T> implements MapReduceIterable<T> {
     private boolean nonAtomic;
     private int batchSize;
 
-    MapReduceIterableImpl(final MongoNamespace namespace, final Class<T> clazz, final CodecRegistry codecRegistry,
+    MapReduceIterableImpl(final MongoNamespace namespace, final Class<T> clazz, final RootCodecRegistry codecRegistry,
                           final ReadPreference readPreference, final AsyncOperationExecutor executor, final String mapFunction,
                           final String reduceFunction) {
         this.namespace = notNull("namespace", namespace);

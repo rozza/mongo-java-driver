@@ -19,12 +19,12 @@ package com.mongodb.async.client;
 import com.mongodb.Block;
 import com.mongodb.Function;
 import com.mongodb.ReadPreference;
-import com.mongodb.async.SingleResultCallback;
 import com.mongodb.async.AsyncBatchCursor;
+import com.mongodb.async.SingleResultCallback;
+import com.mongodb.internal.codecs.RootCodecRegistry;
 import com.mongodb.operation.AsyncOperationExecutor;
 import com.mongodb.operation.ListDatabasesOperation;
 import org.bson.codecs.Codec;
-import org.bson.codecs.configuration.CodecRegistry;
 
 import java.util.Collection;
 import java.util.concurrent.TimeUnit;
@@ -35,12 +35,12 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 final class ListDatabasesIterableImpl<T> implements ListDatabasesIterable<T> {
     private final Class<T> clazz;
     private final ReadPreference readPreference;
-    private final CodecRegistry codecRegistry;
+    private final RootCodecRegistry codecRegistry;
     private final AsyncOperationExecutor executor;
 
     private long maxTimeMS;
 
-    ListDatabasesIterableImpl(final Class<T> clazz, final CodecRegistry codecRegistry,
+    ListDatabasesIterableImpl(final Class<T> clazz, final RootCodecRegistry codecRegistry,
                               final ReadPreference readPreference, final AsyncOperationExecutor executor) {
         this.clazz = notNull("clazz", clazz);
         this.codecRegistry = notNull("codecRegistry", codecRegistry);

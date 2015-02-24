@@ -67,7 +67,7 @@ import org.bson.codecs.BsonValueCodecProvider
 import org.bson.codecs.DocumentCodec
 import org.bson.codecs.ValueCodecProvider
 import org.bson.codecs.configuration.CodecConfigurationException
-import org.bson.codecs.configuration.RootCodecRegistry
+import org.bson.codecs.configuration.CodecRegistry
 import spock.lang.Specification
 
 import static com.mongodb.CustomMatchers.isTheSameAs
@@ -79,8 +79,9 @@ import static com.mongodb.bulk.WriteRequest.Type.DELETE
 import static com.mongodb.bulk.WriteRequest.Type.INSERT
 import static com.mongodb.bulk.WriteRequest.Type.REPLACE
 import static com.mongodb.bulk.WriteRequest.Type.UPDATE
-import static java.util.Arrays.asList
+import static com.mongodb.internal.codecs.RootCodecRegistry.createRootRegistry
 import static java.util.concurrent.TimeUnit.MILLISECONDS
+import static org.bson.codecs.configuration.CodecRegistryHelper.fromProviders
 import static spock.util.matcher.HamcrestSupport.expect
 
 @SuppressWarnings('ClassSize')
@@ -88,6 +89,7 @@ class MongoCollectionSpecification extends Specification {
 
     def namespace = new MongoNamespace('databaseName', 'collectionName')
     def codecRegistry = MongoClientImpl.getDefaultCodecRegistry()
+    def rootRegistry = createRootRegistry(codecRegistry)
     def readPreference = secondary()
     def writeConcern = WriteConcern.ACKNOWLEDGED
 
@@ -117,7 +119,7 @@ class MongoCollectionSpecification extends Specification {
 
     def 'should behave correctly when using withCodecRegistry'() {
         given:
-        def newCodecRegistry = new RootCodecRegistry([])
+        def newCodecRegistry = Stub(CodecRegistry)
         def executor = new TestOperationExecutor([])
 
         when:
@@ -236,7 +238,7 @@ class MongoCollectionSpecification extends Specification {
         def distinctIterable = collection.distinct('field', String)
 
         then:
-        expect distinctIterable, isTheSameAs(new DistinctIterableImpl(namespace, String, codecRegistry, readPreference, executor, 'field'))
+        expect distinctIterable, isTheSameAs(new DistinctIterableImpl(namespace, String, rootRegistry, readPreference, executor, 'field'))
     }
 
     def 'should create FindIterable correctly'() {
@@ -248,28 +250,28 @@ class MongoCollectionSpecification extends Specification {
         def findIterable = collection.find()
 
         then:
-        expect findIterable, isTheSameAs(new FindIterableImpl(namespace, Document, codecRegistry, readPreference, executor,
+        expect findIterable, isTheSameAs(new FindIterableImpl(namespace, Document, rootRegistry, readPreference, executor,
                 new BsonDocument(), new FindOptions()))
 
         when:
         findIterable = collection.find(BsonDocument)
 
         then:
-        expect findIterable, isTheSameAs(new FindIterableImpl(namespace, BsonDocument, codecRegistry, readPreference, executor,
+        expect findIterable, isTheSameAs(new FindIterableImpl(namespace, BsonDocument, rootRegistry, readPreference, executor,
                 new BsonDocument(), new FindOptions()))
 
         when:
         findIterable = collection.find(new Document())
 
         then:
-        expect findIterable, isTheSameAs(new FindIterableImpl(namespace, Document, codecRegistry, readPreference, executor, new Document(),
+        expect findIterable, isTheSameAs(new FindIterableImpl(namespace, Document, rootRegistry, readPreference, executor, new Document(),
                 new FindOptions()))
 
         when:
         findIterable = collection.find(new Document(), BsonDocument)
 
         then:
-        expect findIterable, isTheSameAs(new FindIterableImpl(namespace, BsonDocument, codecRegistry, readPreference, executor,
+        expect findIterable, isTheSameAs(new FindIterableImpl(namespace, BsonDocument, rootRegistry, readPreference, executor,
                 new Document(), new FindOptions()))
     }
 
@@ -282,14 +284,14 @@ class MongoCollectionSpecification extends Specification {
         def aggregateIterable = collection.aggregate([new Document('$match', 1)])
 
         then:
-        expect aggregateIterable, isTheSameAs(new AggregateIterableImpl<Document>(namespace, Document, codecRegistry, readPreference,
+        expect aggregateIterable, isTheSameAs(new AggregateIterableImpl<Document>(namespace, Document, rootRegistry, readPreference,
                 executor, [new Document('$match', 1)]))
 
         when:
         aggregateIterable = collection.aggregate([new Document('$match', 1)], BsonDocument)
 
         then:
-        expect aggregateIterable, isTheSameAs(new AggregateIterableImpl<BsonDocument>(namespace, BsonDocument, codecRegistry,
+        expect aggregateIterable, isTheSameAs(new AggregateIterableImpl<BsonDocument>(namespace, BsonDocument, rootRegistry,
                 readPreference, executor, [new Document('$match', 1)]))
     }
 
@@ -302,7 +304,7 @@ class MongoCollectionSpecification extends Specification {
         def mapReduceIterable = collection.mapReduce('map', 'reduce')
 
         then:
-        expect mapReduceIterable, isTheSameAs(new MapReduceIterableImpl(namespace, Document, codecRegistry, readPreference, executor,
+        expect mapReduceIterable, isTheSameAs(new MapReduceIterableImpl(namespace, Document, rootRegistry, readPreference, executor,
                 'map', 'reduce'))
     }
 
@@ -356,7 +358,7 @@ class MongoCollectionSpecification extends Specification {
 
     def 'should handle exceptions in bulkWrite correctly'() {
         given:
-        def codecRegistry = new RootCodecRegistry(asList(new ValueCodecProvider(), new BsonValueCodecProvider()))
+        def codecRegistry = fromProviders([new ValueCodecProvider(), new BsonValueCodecProvider()])
         def executor = new TestOperationExecutor([new MongoException('failure')])
         def collection = new MongoCollectionImpl(namespace, Document, codecRegistry, readPreference, writeConcern, executor)
 

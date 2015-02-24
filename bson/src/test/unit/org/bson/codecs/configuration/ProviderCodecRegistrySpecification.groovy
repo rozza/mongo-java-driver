@@ -25,7 +25,6 @@ import org.bson.ByteBufNIO
 import org.bson.codecs.Codec
 import org.bson.codecs.DecoderContext
 import org.bson.codecs.EncoderContext
-import org.bson.codecs.MaxKeyCodec
 import org.bson.codecs.MinKeyCodec
 import org.bson.io.BasicOutputBuffer
 import org.bson.io.ByteBufferBsonInput
@@ -36,42 +35,36 @@ import spock.lang.Specification
 import java.nio.ByteBuffer
 
 import static java.util.Arrays.asList
+import static org.bson.assertions.Assertions.notNull
 
-class CodecRegistrySpecification extends Specification {
+class ProviderCodecRegistrySpecification extends Specification {
 
-    def 'get should throw for unregistered codec'() {
+    def 'should throw if supplied codecProviders is null or an empty list'() {
         when:
-        new RootCodecRegistry([]).get(MinKey) == null
+        new ProviderCodecRegistry(null)
 
         then:
-        thrown(CodecConfigurationException)
+        thrown(IllegalArgumentException)
+
+        when:
+        new ProviderCodecRegistry([])
+
+        then:
+        thrown(IllegalArgumentException)
     }
 
-    def 'should get codec added via withCodec'() {
+    def 'should return null if codec not found'() {
         when:
-        def minKeyCodec = new MinKeyCodec()
-        def providedMaxKeyCodec = new MaxKeyCodec()
-        def registry = new RootCodecRegistry([new SimpleCodecProvider(new MinKeyCodec()),
-                                              new SimpleCodecProvider(providedMaxKeyCodec)])
-                .withCodec(minKeyCodec)
+        def registry = new ProviderCodecRegistry([new SimpleCodecProvider(new MinKeyCodec())])
 
         then:
-        registry.get(MinKey).is(minKeyCodec)
-        registry.get(MaxKey).is(providedMaxKeyCodec)
-
-        when:
-        def maxKeyCodec = new MaxKeyCodec()
-        def newRegistry = registry.withCodec(maxKeyCodec)
-
-        then:
-        newRegistry.get(MaxKey).is(maxKeyCodec)
-        registry.get(MaxKey).is(providedMaxKeyCodec)
+        registry.get(MaxKey) == null
     }
 
     def 'get should return registered codec'() {
         given:
         def minKeyCodec = new MinKeyCodec()
-        def registry = new RootCodecRegistry([new SimpleCodecProvider(minKeyCodec)])
+        def registry = new ProviderCodecRegistry([new SimpleCodecProvider(minKeyCodec)])
 
         expect:
         registry.get(MinKey).is(minKeyCodec)
@@ -81,7 +74,7 @@ class CodecRegistrySpecification extends Specification {
         given:
         def minKeyCodec1 = new MinKeyCodec()
         def minKeyCodec2 = new MinKeyCodec()
-        def registry = new RootCodecRegistry([new SimpleCodecProvider(minKeyCodec1), new SimpleCodecProvider(minKeyCodec2)])
+        def registry = new ProviderCodecRegistry([new SimpleCodecProvider(minKeyCodec1), new SimpleCodecProvider(minKeyCodec2)])
 
         expect:
         registry.get(MinKey).is(minKeyCodec1)
@@ -89,7 +82,7 @@ class CodecRegistrySpecification extends Specification {
 
     def 'should handle cycles'() {
         given:
-        def registry = new RootCodecRegistry([new ClassModelCodecProvider()])
+        def registry = new ProviderCodecRegistry([new ClassModelCodecProvider()])
 
         when:
         Codec<Top> topCodec = registry.get(Top)
@@ -112,15 +105,19 @@ class CodecRegistrySpecification extends Specification {
                         DecoderContext.builder().build()) == top
     }
 
-    def 'should throw CodecConfigurationException when a codec requires another codec that can not be found'() {
-        given:
-        def registry = new RootCodecRegistry([new ClassModelCodecProvider([Top])]);
-
+    def 'should ignore provider exceptions when calling get as another provider may fulfill the requirement'() {
         when:
-        registry.get(Top)
+        def registry = new ProviderCodecRegistry([new ClassModelCodecProvider([Top])])
 
         then:
-        thrown(CodecConfigurationException)
+        registry.get(Top) == null
+
+        when:
+        registry = new ProviderCodecRegistry([new ClassModelCodecProvider([Top]), new ClassModelCodecProvider()])
+        Codec<Top> topCodec = registry.get(Top)
+
+        then:
+        topCodec instanceof TopCodec
     }
 }
 
@@ -156,13 +153,14 @@ class ClassModelCodecProvider implements CodecProvider {
     @Override
     def <T> Codec<T> get(final Class<T> clazz, final CodecRegistry registry) {
         if (!supportedClasses.contains(clazz)) {
-            return null;
+            null;
         } else if (clazz == Top) {
-            return new TopCodec(registry)
+            new TopCodec(registry)
         } else if (clazz == Nested) {
-            return new NestedCodec(registry)
+            new NestedCodec(registry)
+        } else {
+            null
         }
-        null
     }
 }
 
@@ -171,8 +169,8 @@ class TopCodec implements Codec<Top> {
     Codec<Nested> codecForNested
 
     TopCodec(final CodecRegistry registry) {
-        codecForOther = registry.get(Top)
-        codecForNested = registry.get(Nested)
+        codecForOther = notNull('top codec missing in registry', registry.get(Top))
+        codecForNested = notNull('nested codec missing in registry', registry.get(Nested))
     }
 
     @Override

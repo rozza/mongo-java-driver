@@ -22,6 +22,7 @@ import com.mongodb.ReadPreference;
 import com.mongodb.WriteConcern;
 import com.mongodb.async.SingleResultCallback;
 import com.mongodb.client.model.CreateCollectionOptions;
+import com.mongodb.internal.codecs.RootCodecRegistry;
 import com.mongodb.operation.AsyncOperationExecutor;
 import com.mongodb.operation.CommandReadOperation;
 import com.mongodb.operation.CommandWriteOperation;
@@ -32,19 +33,20 @@ import org.bson.Document;
 import org.bson.codecs.configuration.CodecRegistry;
 
 import static com.mongodb.assertions.Assertions.notNull;
+import static com.mongodb.internal.codecs.RootCodecRegistry.createRootRegistry;
 import static org.bson.BsonDocumentWrapper.asBsonDocument;
 
 class MongoDatabaseImpl implements MongoDatabase {
     private final String name;
     private final ReadPreference readPreference;
-    private final CodecRegistry codecRegistry;
+    private final RootCodecRegistry codecRegistry;
     private final WriteConcern writeConcern;
     private final AsyncOperationExecutor executor;
 
     MongoDatabaseImpl(final String name, final CodecRegistry codecRegistry, final ReadPreference readPreference,
                       final WriteConcern writeConcern, final AsyncOperationExecutor executor) {
         this.name = notNull("name", name);
-        this.codecRegistry = notNull("codecRegistry", codecRegistry);
+        this.codecRegistry = createRootRegistry(notNull("codecRegistry", codecRegistry));
         this.readPreference = notNull("readPreference", readPreference);
         this.writeConcern = notNull("writeConcern", writeConcern);
         this.executor = notNull("executor", executor);
@@ -57,7 +59,7 @@ class MongoDatabaseImpl implements MongoDatabase {
 
     @Override
     public CodecRegistry getCodecRegistry() {
-        return codecRegistry;
+        return codecRegistry.getCodecRegistry();
     }
 
     @Override

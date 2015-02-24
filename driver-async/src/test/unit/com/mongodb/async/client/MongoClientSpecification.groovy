@@ -20,12 +20,14 @@ import com.mongodb.WriteConcern
 import com.mongodb.connection.Cluster
 import org.bson.BsonDocument
 import org.bson.Document
-import org.bson.codecs.configuration.RootCodecRegistry
+import org.bson.codecs.BsonValueCodecProvider
 import spock.lang.Specification
 
 import static com.mongodb.CustomMatchers.isTheSameAs
 import static com.mongodb.ReadPreference.primary
 import static com.mongodb.ReadPreference.secondary
+import static com.mongodb.internal.codecs.RootCodecRegistry.createRootRegistry
+import static org.bson.codecs.configuration.CodecRegistryHelper.fromProviders
 import static spock.util.matcher.HamcrestSupport.expect
 
 class MongoClientSpecification extends Specification {
@@ -37,19 +39,20 @@ class MongoClientSpecification extends Specification {
         def executor = new TestOperationExecutor([null, null, null])
         def client = new MongoClientImpl(options, cluster, executor)
         def codecRegistry = client.getDefaultCodecRegistry()
+        def rootCodecRegistry = createRootRegistry(codecRegistry)
 
         when:
         def listDatabasesIterable = client.listDatabases()
 
         then:
-        expect listDatabasesIterable, isTheSameAs(new ListDatabasesIterableImpl<Document>(Document, codecRegistry, primary(),
+        expect listDatabasesIterable, isTheSameAs(new ListDatabasesIterableImpl<Document>(Document, rootCodecRegistry, primary(),
                 executor))
 
         when:
         listDatabasesIterable = client.listDatabases(BsonDocument)
 
         then:
-        expect listDatabasesIterable, isTheSameAs(new ListDatabasesIterableImpl<BsonDocument>(BsonDocument, codecRegistry, primary(),
+        expect listDatabasesIterable, isTheSameAs(new ListDatabasesIterableImpl<BsonDocument>(BsonDocument, rootCodecRegistry, primary(),
                 executor))
     }
 
@@ -66,11 +69,12 @@ class MongoClientSpecification extends Specification {
 
     def 'should pass the correct options to getDatabase'() {
         given:
+        def codecRegistry = fromProviders([new BsonValueCodecProvider()])
         def options = MongoClientOptions.builder()
-                                        .readPreference(secondary())
-                                        .writeConcern(WriteConcern.MAJORITY)
-                                        .codecRegistry(new RootCodecRegistry([]))
-                                        .build()
+                .readPreference(secondary())
+                .writeConcern(WriteConcern.MAJORITY)
+                .codecRegistry(codecRegistry)
+                .build()
         def client = new MongoClientImpl(options, Stub(Cluster), new TestOperationExecutor([]))
 
         when:
@@ -80,8 +84,8 @@ class MongoClientSpecification extends Specification {
         expect database, isTheSameAs(expectedDatabase)
 
         where:
-        expectedDatabase << new MongoDatabaseImpl('name', new RootCodecRegistry([]), secondary(), WriteConcern.MAJORITY,
-                new TestOperationExecutor([]))
+        expectedDatabase << new MongoDatabaseImpl('name', fromProviders([new BsonValueCodecProvider()]), secondary(),
+                WriteConcern.MAJORITY, new TestOperationExecutor([]))
     }
 
 }
