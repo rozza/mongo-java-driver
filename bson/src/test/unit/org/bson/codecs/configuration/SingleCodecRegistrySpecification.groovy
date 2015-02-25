@@ -21,11 +21,11 @@ import org.bson.types.MaxKey
 import org.bson.types.MinKey
 import spock.lang.Specification
 
-class SimpleCodecRegistrySpecification extends Specification {
+class SingleCodecRegistrySpecification extends Specification {
 
     def 'should throw if supplied codec is null'() {
         when:
-        new SimpleCodecRegistry(null)
+        new SingleCodecRegistry(null)
 
         then:
         thrown(IllegalArgumentException)
@@ -34,7 +34,7 @@ class SimpleCodecRegistrySpecification extends Specification {
     def 'should return the supplied codec for the codecs clazz'() {
         when:
         def codec = new MinKeyCodec()
-        def registry = new SimpleCodecRegistry(codec)
+        def registry = new SingleCodecRegistry(codec)
 
         then:
         registry.get(MinKey) == codec
@@ -42,7 +42,7 @@ class SimpleCodecRegistrySpecification extends Specification {
 
     def 'should return null if codec not found'() {
         when:
-        def registry =  new SimpleCodecRegistry(new MinKeyCodec())
+        def registry =  new SingleCodecRegistry(new MinKeyCodec())
 
         then:
         registry.get(MaxKey) == null

@@ -23,10 +23,10 @@ import java.util.List;
 
 import static org.bson.assertions.Assertions.isTrueArgument;
 
-final class ProviderCodecRegistry implements CodecRegistry {
+final class ProvidersCodecRegistry implements CodecRegistry {
     private final List<CodecProvider> codecProviders;
 
-    ProviderCodecRegistry(final List<? extends CodecProvider> codecProviders) {
+    ProvidersCodecRegistry(final List<? extends CodecProvider> codecProviders) {
         isTrueArgument("codecProviders must not be null or empty", codecProviders != null && codecProviders.size() > 0);
         this.codecProviders = new ArrayList<CodecProvider>(codecProviders);
     }
@@ -60,7 +60,7 @@ final class ProviderCodecRegistry implements CodecRegistry {
             return false;
         }
 
-        ProviderCodecRegistry that = (ProviderCodecRegistry) o;
+        ProvidersCodecRegistry that = (ProvidersCodecRegistry) o;
         if (codecProviders.size() != that.codecProviders.size()) {
             return false;
         }

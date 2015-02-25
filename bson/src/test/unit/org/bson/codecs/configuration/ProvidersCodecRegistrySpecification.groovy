@@ -37,17 +37,17 @@ import java.nio.ByteBuffer
 import static java.util.Arrays.asList
 import static org.bson.assertions.Assertions.notNull
 
-class ProviderCodecRegistrySpecification extends Specification {
+class ProvidersCodecRegistrySpecification extends Specification {
 
     def 'should throw if supplied codecProviders is null or an empty list'() {
         when:
-        new ProviderCodecRegistry(null)
+        new ProvidersCodecRegistry(null)
 
         then:
         thrown(IllegalArgumentException)
 
         when:
-        new ProviderCodecRegistry([])
+        new ProvidersCodecRegistry([])
 
         then:
         thrown(IllegalArgumentException)
@@ -55,7 +55,7 @@ class ProviderCodecRegistrySpecification extends Specification {
 
     def 'should return null if codec not found'() {
         when:
-        def registry = new ProviderCodecRegistry([new SimpleCodecProvider(new MinKeyCodec())])
+        def registry = new ProvidersCodecRegistry([new SingleCodecProvider(new MinKeyCodec())])
 
         then:
         registry.get(MaxKey) == null
@@ -64,7 +64,7 @@ class ProviderCodecRegistrySpecification extends Specification {
     def 'get should return registered codec'() {
         given:
         def minKeyCodec = new MinKeyCodec()
-        def registry = new ProviderCodecRegistry([new SimpleCodecProvider(minKeyCodec)])
+        def registry = new ProvidersCodecRegistry([new SingleCodecProvider(minKeyCodec)])
 
         expect:
         registry.get(MinKey).is(minKeyCodec)
@@ -74,7 +74,7 @@ class ProviderCodecRegistrySpecification extends Specification {
         given:
         def minKeyCodec1 = new MinKeyCodec()
         def minKeyCodec2 = new MinKeyCodec()
-        def registry = new ProviderCodecRegistry([new SimpleCodecProvider(minKeyCodec1), new SimpleCodecProvider(minKeyCodec2)])
+        def registry = new ProvidersCodecRegistry([new SingleCodecProvider(minKeyCodec1), new SingleCodecProvider(minKeyCodec2)])
 
         expect:
         registry.get(MinKey).is(minKeyCodec1)
@@ -82,7 +82,7 @@ class ProviderCodecRegistrySpecification extends Specification {
 
     def 'should handle cycles'() {
         given:
-        def registry = new ProviderCodecRegistry([new ClassModelCodecProvider()])
+        def registry = new ProvidersCodecRegistry([new ClassModelCodecProvider()])
 
         when:
         Codec<Top> topCodec = registry.get(Top)
@@ -107,13 +107,13 @@ class ProviderCodecRegistrySpecification extends Specification {
 
     def 'should ignore provider exceptions when calling get as another provider may fulfill the requirement'() {
         when:
-        def registry = new ProviderCodecRegistry([new ClassModelCodecProvider([Top])])
+        def registry = new ProvidersCodecRegistry([new ClassModelCodecProvider([Top])])
 
         then:
         registry.get(Top) == null
 
         when:
-        registry = new ProviderCodecRegistry([new ClassModelCodecProvider([Top]), new ClassModelCodecProvider()])
+        registry = new ProvidersCodecRegistry([new ClassModelCodecProvider([Top]), new ClassModelCodecProvider()])
         Codec<Top> topCodec = registry.get(Top)
 
         then:
@@ -121,11 +121,11 @@ class ProviderCodecRegistrySpecification extends Specification {
     }
 }
 
-class SimpleCodecProvider implements CodecProvider {
+class SingleCodecProvider implements CodecProvider {
 
     private final Codec<?> codec
 
-    SimpleCodecProvider(final Codec<?> codec) {
+    SingleCodecProvider(final Codec<?> codec) {
         this.codec = codec
     }
 

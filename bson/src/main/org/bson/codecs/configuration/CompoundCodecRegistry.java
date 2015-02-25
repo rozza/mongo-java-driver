@@ -20,25 +20,25 @@ import org.bson.codecs.Codec;
 
 import static org.bson.assertions.Assertions.notNull;
 
+final class CompoundCodecRegistry implements CodecRegistry {
+    private final CodecRegistry firstCodecRegistry;
+    private final CodecRegistry secondCodecRegistry;
 
-final class SimpleCodecRegistry<T> implements CodecRegistry {
-    private final Codec<T> codec;
-
-    SimpleCodecRegistry(final Codec<T> codec) {
-        this.codec = notNull("codec", codec);
+    CompoundCodecRegistry(final CodecRegistry firstCodecRegistry, final CodecRegistry secondCodecRegistry) {
+        this.firstCodecRegistry = notNull("firstCodecRegistry", firstCodecRegistry);
+        this.secondCodecRegistry = notNull("secondCodecRegistry", secondCodecRegistry);
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public <T> Codec<T> get(final Class<T> clazz) {
-        if (codec.getEncoderClass() == clazz) {
-            return (Codec<T>) codec;
+        Codec<T> codec = firstCodecRegistry.get(clazz);
+        if (codec == null) {
+            codec = secondCodecRegistry.get(clazz);
         }
-        return null;
+        return codec;
     }
 
     @Override
-    @SuppressWarnings("rawtypes")
     public boolean equals(final Object o) {
         if (this == o) {
             return true;
@@ -47,16 +47,20 @@ final class SimpleCodecRegistry<T> implements CodecRegistry {
             return false;
         }
 
-        SimpleCodecRegistry that = (SimpleCodecRegistry) o;
-        if (!codec.equals(that.codec)) {
+        CompoundCodecRegistry that = (CompoundCodecRegistry) o;
+
+        if (!secondCodecRegistry.equals(that.secondCodecRegistry)) {
+            return false;
+        } else if (!firstCodecRegistry.equals(that.firstCodecRegistry)) {
             return false;
         }
-
         return true;
     }
 
     @Override
     public int hashCode() {
-        return codec.hashCode();
+        int result = firstCodecRegistry.hashCode();
+        result = 31 * result + secondCodecRegistry.hashCode();
+        return result;
     }
 }

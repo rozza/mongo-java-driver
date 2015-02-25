@@ -24,26 +24,26 @@ import spock.lang.Specification
 
 import static org.bson.codecs.configuration.CodecRegistryHelper.fromCodec
 
-class PreferredCodecRegistrySpecification extends Specification {
+class CompoundCodecRegistrySpecification extends Specification {
 
     def 'should throw if supplied codec is null'() {
         given:
         def registry = fromCodec(new MinKeyCodec())
 
         when:
-        new PreferredCodecRegistry(null, null)
+        new CompoundCodecRegistry(null, null)
 
         then:
         thrown(IllegalArgumentException)
 
         when:
-        new PreferredCodecRegistry(registry, null)
+        new CompoundCodecRegistry(registry, null)
 
         then:
         thrown(IllegalArgumentException)
 
         when:
-        new PreferredCodecRegistry(null, registry)
+        new CompoundCodecRegistry(null, registry)
 
         then:
         thrown(IllegalArgumentException)
@@ -51,7 +51,7 @@ class PreferredCodecRegistrySpecification extends Specification {
 
     def 'should return null if codec not found'() {
         when:
-        def registry = new PreferredCodecRegistry(fromCodec(new MinKeyCodec()), fromCodec(new MinKeyCodec()))
+        def registry = new CompoundCodecRegistry(fromCodec(new MinKeyCodec()), fromCodec(new MinKeyCodec()))
 
         then:
         registry.get(MaxKey) == null
@@ -63,13 +63,13 @@ class PreferredCodecRegistrySpecification extends Specification {
         def codec1 = new MinKeyCodec()
         def codec2 = new MinKeyCodec()
         def codec3 = new MaxKeyCodec()
-        def registry = new PreferredCodecRegistry(fromCodec(codec1), fromCodec(codec2))
+        def registry = new CompoundCodecRegistry(fromCodec(codec1), fromCodec(codec2))
 
         then:
         registry.get(MinKey) == codec1
 
         when:
-        registry =  new PreferredCodecRegistry(fromCodec(codec3), fromCodec(codec2))
+        registry =  new CompoundCodecRegistry(fromCodec(codec3), fromCodec(codec2))
 
         then:
         registry.get(MinKey) == codec2

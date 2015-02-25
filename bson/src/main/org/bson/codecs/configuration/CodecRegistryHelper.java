@@ -24,6 +24,8 @@ import static java.util.Arrays.asList;
 
 /**
  * A helper class for creating and combining codec registries
+ *
+ * @since 3.0
  */
 public final class CodecRegistryHelper {
 
@@ -31,18 +33,18 @@ public final class CodecRegistryHelper {
      * Creates a codec registry from the provided codec
      *
      * <p>This registry can then be used alongside other registries.  Typically used when adding extra codecs to existing codecs with the
-     * {@link this#preferredRegistry} helper.</p>
+     * {@link this#compoundRegistry} helper.</p>
      *
      * @param codec the codec to create a registry for
      * @param <T> the value type of the codec
      * @return a codec registry for the given codec.
      */
     public static <T> CodecRegistry fromCodec(final Codec<T> codec) {
-        return new SimpleCodecRegistry<T>(codec);
+        return new SingleCodecRegistry<T>(codec);
     }
 
     /**
-     *  A codec registry that uses a codec provider to look up codecs for {@see fromProviders}
+     *  A codec registry that uses a single codec provider when looking for codecs. {@see fromProviders}
      *
      * @param codecProvider the codec provider
      * @return a codec registry that uses a codec provider to find codecs
@@ -52,7 +54,7 @@ public final class CodecRegistryHelper {
     }
 
     /**
-     * A codec registry that contains a list of providers to look up codecs for.
+     * A codec registry that contains a list of providers to use when looking for codecs.
      *
      * This class can handle cycles of Codec dependencies, i.e when the construction of a Codec for class A requires the construction of a
      * Codec for class B, and vice versa.
@@ -61,23 +63,22 @@ public final class CodecRegistryHelper {
      * @return a codec registry that has an ordered list of codec providers.
      */
     public static CodecRegistry fromProviders(final List<CodecProvider> codecProviders) {
-        return new ProviderCodecRegistry(codecProviders);
+        return new ProvidersCodecRegistry(codecProviders);
     }
 
     /**
-     * A codec registry that contains two possible registries when looking for codecs.
+     * A codec registry that compounds two registries.
      *
-     * <p>The preferred registry is always checked first when looking up codecs and if that returns null it falls back to the alternative
-     * registry. Typically used when extending existing codec registries with new registries.</p>
+     * <p>The first registry is checked first then if that returns null the second registry is checked.</p>
      *
      *
-     * @param preferredRegistry the preferred registry for codec lookups
-     * @param alternativeRegistry the fallback registry for codec lookups.
+     * @param firstRegistry the preferred registry for codec lookups
+     * @param secondRegistry the fallback registry for codec lookups.
      *
      * @return a codec registry that has a preferred registry when looking for codecs.
      */
-    public static CodecRegistry preferredRegistry(final CodecRegistry preferredRegistry, final CodecRegistry alternativeRegistry) {
-        return new PreferredCodecRegistry(preferredRegistry, alternativeRegistry);
+    public static CodecRegistry compoundRegistry(final CodecRegistry firstRegistry, final CodecRegistry secondRegistry) {
+        return new CompoundCodecRegistry(firstRegistry, secondRegistry);
     }
 
     private CodecRegistryHelper() {

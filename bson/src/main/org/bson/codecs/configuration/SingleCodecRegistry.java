@@ -20,27 +20,25 @@ import org.bson.codecs.Codec;
 
 import static org.bson.assertions.Assertions.notNull;
 
-final class PreferredCodecRegistry implements CodecRegistry {
-    private final CodecRegistry preferredCodecRegistry;
-    private final CodecRegistry alternativeCodecRegistry;
 
-    PreferredCodecRegistry(final CodecRegistry preferredCodecRegistry, final CodecRegistry alternativeCodecRegistry) {
-        this.preferredCodecRegistry = notNull("preferredCodecRegistry", preferredCodecRegistry);
-        this.alternativeCodecRegistry = notNull("alternativeCodecRegistry", alternativeCodecRegistry);
+final class SingleCodecRegistry<T> implements CodecRegistry {
+    private final Codec<T> codec;
+
+    SingleCodecRegistry(final Codec<T> codec) {
+        this.codec = notNull("codec", codec);
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public <T> Codec<T> get(final Class<T> clazz) {
-
-        Codec<T> codec = preferredCodecRegistry.get(clazz);
-        if (codec == null) {
-            codec = alternativeCodecRegistry.get(clazz);
+        if (codec.getEncoderClass() == clazz) {
+            return (Codec<T>) codec;
         }
-
-        return codec;
+        return null;
     }
 
     @Override
+    @SuppressWarnings("rawtypes")
     public boolean equals(final Object o) {
         if (this == o) {
             return true;
@@ -49,20 +47,16 @@ final class PreferredCodecRegistry implements CodecRegistry {
             return false;
         }
 
-        PreferredCodecRegistry that = (PreferredCodecRegistry) o;
-
-        if (!alternativeCodecRegistry.equals(that.alternativeCodecRegistry)) {
-            return false;
-        } else if (!preferredCodecRegistry.equals(that.preferredCodecRegistry)) {
+        SingleCodecRegistry that = (SingleCodecRegistry) o;
+        if (!codec.equals(that.codec)) {
             return false;
         }
+
         return true;
     }
 
     @Override
     public int hashCode() {
-        int result = preferredCodecRegistry.hashCode();
-        result = 31 * result + alternativeCodecRegistry.hashCode();
-        return result;
+        return codec.hashCode();
     }
 }
