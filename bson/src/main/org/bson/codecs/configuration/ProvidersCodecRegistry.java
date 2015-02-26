@@ -21,15 +21,21 @@ import org.bson.codecs.Codec;
 import java.util.ArrayList;
 import java.util.List;
 
-import static java.lang.String.format;
 import static org.bson.assertions.Assertions.isTrueArgument;
+import static org.bson.assertions.Assertions.notNull;
 
 final class ProvidersCodecRegistry implements CodecRegistry {
     private final List<CodecProvider> codecProviders;
+    private final CodecCache codecCache;
 
     ProvidersCodecRegistry(final List<? extends CodecProvider> codecProviders) {
+        this(codecProviders, new CodecCache());
+    }
+
+    ProvidersCodecRegistry(final List<? extends CodecProvider> codecProviders, final CodecCache codecCache) {
         isTrueArgument("codecProviders must not be null or empty", codecProviders != null && codecProviders.size() > 0);
         this.codecProviders = new ArrayList<CodecProvider>(codecProviders);
+        this.codecCache = notNull("codecCache", codecCache);
     }
 
     @Override
@@ -39,13 +45,17 @@ final class ProvidersCodecRegistry implements CodecRegistry {
 
     @SuppressWarnings({ "unchecked", "rawtypes" })
     <T> Codec<T> get(final ChildCodecRegistry context) {
-        for (CodecProvider provider : codecProviders) {
-            Codec<T> codec = provider.get(context.getCodecClass(), context);
-            if (codec != null) {
-                return codec;
+        if (!codecCache.containsKey(context.getCodecClass())) {
+            for (CodecProvider provider : codecProviders) {
+                Codec<T> codec = provider.get(context.getCodecClass(), context);
+                if (codec != null) {
+                    codecCache.put(context.getCodecClass(), codec);
+                    return codec;
+                }
             }
+            codecCache.put(context.getCodecClass(), null);
         }
-        throw new CodecConfigurationException(format("Can't find a codec for %s.", context.getCodecClass()));
+        return codecCache.getOrThrow(context.getCodecClass());
     }
 
     @Override

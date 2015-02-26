@@ -74,4 +74,24 @@ class CompoundCodecRegistrySpecification extends Specification {
         registry.get(MinKey) == codec2
     }
 
+    def 'get should use the codecCache'() {
+        given:
+        def minKeyCodecCached = new MinKeyCodec()
+        def codecCache = new CodecCache()
+        codecCache.put(MinKey, minKeyCodecCached)
+        codecCache.put(MaxKey, null)
+
+        when:
+        def registry = new CompoundCodecRegistry(fromCodec(new MinKeyCodec()), fromCodec(new MinKeyCodec()), codecCache)
+
+        then:
+        registry.get(MinKey).is(minKeyCodecCached)
+
+        when:
+        registry.get(MaxKey)
+
+        then:
+        thrown(CodecConfigurationException)
+    }
+
 }

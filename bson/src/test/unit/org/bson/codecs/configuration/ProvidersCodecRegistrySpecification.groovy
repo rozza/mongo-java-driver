@@ -25,6 +25,7 @@ import org.bson.ByteBufNIO
 import org.bson.codecs.Codec
 import org.bson.codecs.DecoderContext
 import org.bson.codecs.EncoderContext
+import org.bson.codecs.MaxKeyCodec
 import org.bson.codecs.MinKeyCodec
 import org.bson.io.BasicOutputBuffer
 import org.bson.io.ByteBufferBsonInput
@@ -102,6 +103,27 @@ class ProvidersCodecRegistrySpecification extends Specification {
         then:
         topCodec.decode(new BsonBinaryReader(new ByteBufferBsonInput(new ByteBufNIO(ByteBuffer.wrap(os.toByteArray()))), false),
                         DecoderContext.builder().build()) == top
+    }
+
+    def 'get should use the codecCache'() {
+        given:
+        def minKeyCodecCached = new MinKeyCodec()
+        def codecCache = new CodecCache()
+        codecCache.put(MinKey, minKeyCodecCached)
+        codecCache.put(MaxKey, null)
+
+        when:
+        def registry = new ProvidersCodecRegistry([new SingleCodecProvider(new MinKeyCodec()),
+                                                   new SingleCodecProvider(new MaxKeyCodec())], codecCache)
+
+        then:
+        registry.get(MinKey).is(minKeyCodecCached)
+
+        when:
+        registry.get(MaxKey)
+
+        then:
+        thrown(CodecConfigurationException)
     }
 }
 

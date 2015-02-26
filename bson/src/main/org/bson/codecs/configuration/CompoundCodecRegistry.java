@@ -23,19 +23,37 @@ import static org.bson.assertions.Assertions.notNull;
 final class CompoundCodecRegistry implements CodecRegistry {
     private final CodecRegistry firstCodecRegistry;
     private final CodecRegistry secondCodecRegistry;
+    private final CodecCache codecCache;
+
 
     CompoundCodecRegistry(final CodecRegistry firstCodecRegistry, final CodecRegistry secondCodecRegistry) {
-        this.firstCodecRegistry = notNull("firstCodecRegistry", firstCodecRegistry);
-        this.secondCodecRegistry = notNull("secondCodecRegistry", secondCodecRegistry);
+        this(firstCodecRegistry, secondCodecRegistry, new CodecCache());
     }
 
+    CompoundCodecRegistry(final CodecRegistry firstCodecRegistry, final CodecRegistry secondCodecRegistry, final CodecCache codecCache) {
+        this.firstCodecRegistry = notNull("firstCodecRegistry", firstCodecRegistry);
+        this.secondCodecRegistry = notNull("secondCodecRegistry", secondCodecRegistry);
+        this.codecCache = notNull("codecCache", codecCache);
+    }
+
+
     @Override
+    @SuppressWarnings("unchecked")
     public <T> Codec<T> get(final Class<T> clazz) {
-        try {
-            return firstCodecRegistry.get(clazz);
-        } catch (CodecConfigurationException e) {
-            return secondCodecRegistry.get(clazz);
+        if (!codecCache.containsKey(clazz)) {
+            try {
+                Codec<T> codec = firstCodecRegistry.get(clazz);
+                codecCache.put(clazz, codec);
+            } catch (CodecConfigurationException e) {
+                try {
+                    Codec<T> codec = secondCodecRegistry.get(clazz);
+                    codecCache.put(clazz, codec);
+                } catch (CodecConfigurationException e1) {
+                    codecCache.put(clazz, null);
+                }
+            }
         }
+        return codecCache.getOrThrow(clazz);
     }
 
     @Override

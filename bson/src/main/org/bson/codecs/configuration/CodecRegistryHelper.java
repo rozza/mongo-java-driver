@@ -33,7 +33,7 @@ public final class CodecRegistryHelper {
      * Creates a codec registry from the provided codec
      *
      * <p>This registry can then be used alongside other registries.  Typically used when adding extra codecs to existing codecs with the
-     * {@link this#compoundRegistry} helper.</p>
+     * {@link this#fromRegistries} helper.</p>
      *
      * @param codec the codec to create a registry for
      * @param <T> the value type of the codec
@@ -77,7 +77,7 @@ public final class CodecRegistryHelper {
      *
      * @return a codec registry that has a preferred registry when looking for codecs.
      */
-    public static CodecRegistry compoundRegistry(final CodecRegistry firstRegistry, final CodecRegistry secondRegistry) {
+    public static CodecRegistry fromRegistries(final CodecRegistry firstRegistry, final CodecRegistry secondRegistry) {
         return new CompoundCodecRegistry(firstRegistry, secondRegistry);
     }
 
