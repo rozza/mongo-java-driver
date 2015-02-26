@@ -135,13 +135,22 @@ class ClassModelCodecProvider implements CodecProvider {
     }
 
     @Override
+    @SuppressWarnings('ReturnNullFromCatchBlock')
     def <T> Codec<T> get(final Class<T> clazz, final CodecRegistry registry) {
         if (!supportedClasses.contains(clazz)) {
-            null;
+            null
         } else if (clazz == Top) {
-            new TopCodec(registry)
+            try {
+                new TopCodec(registry)
+            } catch (CodecConfigurationException e) {
+                null
+            }
         } else if (clazz == Nested) {
-            new NestedCodec(registry)
+            try {
+                new NestedCodec(registry)
+            } catch (CodecConfigurationException e) {
+                null
+            }
         } else {
             null
         }
