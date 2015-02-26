@@ -25,7 +25,6 @@ import org.bson.ByteBufNIO
 import org.bson.codecs.Codec
 import org.bson.codecs.DecoderContext
 import org.bson.codecs.EncoderContext
-import org.bson.codecs.MaxKeyCodec
 import org.bson.codecs.MinKeyCodec
 import org.bson.io.BasicOutputBuffer
 import org.bson.io.ByteBufferBsonInput
@@ -107,23 +106,22 @@ class ProvidersCodecRegistrySpecification extends Specification {
 
     def 'get should use the codecCache'() {
         given:
-        def minKeyCodecCached = new MinKeyCodec()
-        def codecCache = new CodecCache()
-        codecCache.put(MinKey, minKeyCodecCached)
-        codecCache.put(MaxKey, null)
+        def provider = Mock(CodecProvider)
 
         when:
-        def registry = new ProvidersCodecRegistry([new SingleCodecProvider(new MinKeyCodec()),
-                                                   new SingleCodecProvider(new MaxKeyCodec())], codecCache)
-
-        then:
-        registry.get(MinKey).is(minKeyCodecCached)
-
-        when:
-        registry.get(MaxKey)
+        def registry = new ProvidersCodecRegistry([provider])
+        registry.get(MinKey)
 
         then:
         thrown(CodecConfigurationException)
+        1 * provider.get(MinKey, _)
+
+        when:
+        registry.get(MinKey)
+
+        then:
+        thrown(CodecConfigurationException)
+        0 * provider.get(MinKey, _)
     }
 }
 

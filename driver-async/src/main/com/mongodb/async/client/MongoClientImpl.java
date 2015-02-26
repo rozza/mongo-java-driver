@@ -92,7 +92,8 @@ class MongoClientImpl implements MongoClient {
 
     @Override
     public MongoIterable<String> listDatabaseNames() {
-        return listDatabases(BsonDocument.class).map(new Function<BsonDocument, String>() {
+        return new ListDatabasesIterableImpl<BsonDocument>(BsonDocument.class, getDefaultCodecRegistry(), ReadPreference.primary(),
+                executor).map(new Function<BsonDocument, String>() {
             @Override
             public String apply(final BsonDocument document) {
                 return document.getString("name").getValue();

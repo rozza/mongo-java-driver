@@ -22,20 +22,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.bson.assertions.Assertions.isTrueArgument;
-import static org.bson.assertions.Assertions.notNull;
 
 final class ProvidersCodecRegistry implements CodecRegistry {
     private final List<CodecProvider> codecProviders;
-    private final CodecCache codecCache;
+    private final CodecCache codecCache = new CodecCache();
 
     ProvidersCodecRegistry(final List<? extends CodecProvider> codecProviders) {
-        this(codecProviders, new CodecCache());
-    }
-
-    ProvidersCodecRegistry(final List<? extends CodecProvider> codecProviders, final CodecCache codecCache) {
         isTrueArgument("codecProviders must not be null or empty", codecProviders != null && codecProviders.size() > 0);
         this.codecProviders = new ArrayList<CodecProvider>(codecProviders);
-        this.codecCache = notNull("codecCache", codecCache);
     }
 
     @Override

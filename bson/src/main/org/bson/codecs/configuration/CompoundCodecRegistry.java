@@ -23,19 +23,13 @@ import static org.bson.assertions.Assertions.notNull;
 final class CompoundCodecRegistry implements CodecRegistry {
     private final CodecRegistry firstCodecRegistry;
     private final CodecRegistry secondCodecRegistry;
-    private final CodecCache codecCache;
+    private final CodecCache codecCache = new CodecCache();
 
 
     CompoundCodecRegistry(final CodecRegistry firstCodecRegistry, final CodecRegistry secondCodecRegistry) {
-        this(firstCodecRegistry, secondCodecRegistry, new CodecCache());
-    }
-
-    CompoundCodecRegistry(final CodecRegistry firstCodecRegistry, final CodecRegistry secondCodecRegistry, final CodecCache codecCache) {
         this.firstCodecRegistry = notNull("firstCodecRegistry", firstCodecRegistry);
         this.secondCodecRegistry = notNull("secondCodecRegistry", secondCodecRegistry);
-        this.codecCache = notNull("codecCache", codecCache);
     }
-
 
     @Override
     @SuppressWarnings("unchecked")
