@@ -19,10 +19,10 @@ package com.mongodb;
 import com.mongodb.client.DistinctIterable;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoIterable;
-import com.mongodb.internal.codecs.RootCodecRegistry;
 import com.mongodb.operation.DistinctOperation;
 import com.mongodb.operation.OperationExecutor;
 import org.bson.BsonDocumentWrapper;
+import org.bson.codecs.configuration.CodecRegistry;
 
 import java.util.Collection;
 import java.util.concurrent.TimeUnit;
@@ -34,7 +34,7 @@ class DistinctIterableImpl<T> implements DistinctIterable<T> {
     private final MongoNamespace namespace;
     private final Class<T> clazz;
     private final ReadPreference readPreference;
-    private final RootCodecRegistry codecRegistry;
+    private final CodecRegistry codecRegistry;
     private final OperationExecutor executor;
     private final String fieldName;
 
@@ -42,7 +42,7 @@ class DistinctIterableImpl<T> implements DistinctIterable<T> {
     private long maxTimeMS;
 
 
-    DistinctIterableImpl(final MongoNamespace namespace, final Class<T> clazz, final RootCodecRegistry codecRegistry,
+    DistinctIterableImpl(final MongoNamespace namespace, final Class<T> clazz, final CodecRegistry codecRegistry,
                          final ReadPreference readPreference, final OperationExecutor executor, final String fieldName) {
         this.namespace = notNull("namespace", namespace);
         this.clazz = notNull("clazz", clazz);

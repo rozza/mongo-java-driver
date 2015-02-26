@@ -36,7 +36,6 @@ import org.bson.codecs.configuration.CodecRegistry;
 
 import static com.mongodb.assertions.Assertions.notNull;
 import static com.mongodb.internal.async.ErrorHandlingResultCallback.errorHandlingCallback;
-import static com.mongodb.internal.codecs.RootCodecRegistry.createRootRegistry;
 import static java.util.Arrays.asList;
 import static org.bson.codecs.configuration.CodecRegistryHelper.fromProviders;
 
@@ -108,7 +107,7 @@ class MongoClientImpl implements MongoClient {
 
     @Override
     public <T> ListDatabasesIterable<T> listDatabases(final Class<T> clazz) {
-        return new ListDatabasesIterableImpl<T>(clazz, createRootRegistry(options.getCodecRegistry()), ReadPreference.primary(), executor);
+        return new ListDatabasesIterableImpl<T>(clazz, options.getCodecRegistry(), ReadPreference.primary(), executor);
     }
 
     Cluster getCluster() {

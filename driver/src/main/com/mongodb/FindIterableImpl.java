@@ -20,13 +20,13 @@ import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoIterable;
 import com.mongodb.client.model.FindOptions;
-import com.mongodb.internal.codecs.RootCodecRegistry;
 import com.mongodb.operation.BatchCursor;
 import com.mongodb.operation.FindOperation;
 import com.mongodb.operation.OperationExecutor;
 import org.bson.BsonDocument;
 import org.bson.BsonDocumentWrapper;
 import org.bson.codecs.Codec;
+import org.bson.codecs.configuration.CodecRegistry;
 
 import java.util.Collection;
 import java.util.concurrent.TimeUnit;
@@ -38,12 +38,12 @@ final class FindIterableImpl<T> implements FindIterable<T> {
     private final MongoNamespace namespace;
     private final Class<T> clazz;
     private final ReadPreference readPreference;
-    private final RootCodecRegistry codecRegistry;
+    private final CodecRegistry codecRegistry;
     private final OperationExecutor executor;
     private final FindOptions findOptions;
     private Object filter;
 
-    FindIterableImpl(final MongoNamespace namespace, final Class<T> clazz, final RootCodecRegistry codecRegistry,
+    FindIterableImpl(final MongoNamespace namespace, final Class<T> clazz, final CodecRegistry codecRegistry,
                      final ReadPreference readPreference, final OperationExecutor executor,
                      final Object filter, final FindOptions findOptions) {
         this.namespace = notNull("namespace", namespace);

@@ -21,7 +21,6 @@ import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.MongoIterable;
 import com.mongodb.client.model.CreateCollectionOptions;
-import com.mongodb.internal.codecs.RootCodecRegistry;
 import com.mongodb.operation.CommandReadOperation;
 import com.mongodb.operation.CommandWriteOperation;
 import com.mongodb.operation.CreateCollectionOperation;
@@ -33,19 +32,18 @@ import org.bson.Document;
 import org.bson.codecs.configuration.CodecRegistry;
 
 import static com.mongodb.assertions.Assertions.notNull;
-import static com.mongodb.internal.codecs.RootCodecRegistry.createRootRegistry;
 
 class MongoDatabaseImpl implements MongoDatabase {
     private final String name;
     private final ReadPreference readPreference;
-    private final RootCodecRegistry codecRegistry;
+    private final CodecRegistry codecRegistry;
     private final WriteConcern writeConcern;
     private final OperationExecutor executor;
 
     MongoDatabaseImpl(final String name, final CodecRegistry codecRegistry, final ReadPreference readPreference,
                       final WriteConcern writeConcern, final OperationExecutor executor) {
         this.name = notNull("name", name);
-        this.codecRegistry = createRootRegistry(notNull("codecRegistry", codecRegistry));
+        this.codecRegistry = notNull("codecRegistry", codecRegistry);
         this.readPreference = notNull("readPreference", readPreference);
         this.writeConcern = notNull("writeConcern", writeConcern);
         this.executor = notNull("executor", executor);
@@ -58,7 +56,7 @@ class MongoDatabaseImpl implements MongoDatabase {
 
     @Override
     public CodecRegistry getCodecRegistry() {
-        return codecRegistry.getCodecRegistry();
+        return codecRegistry;
     }
 
     @Override

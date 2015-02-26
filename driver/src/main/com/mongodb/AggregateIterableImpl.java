@@ -20,13 +20,13 @@ import com.mongodb.client.AggregateIterable;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoIterable;
 import com.mongodb.client.model.FindOptions;
-import com.mongodb.internal.codecs.RootCodecRegistry;
 import com.mongodb.operation.AggregateOperation;
 import com.mongodb.operation.AggregateToCollectionOperation;
 import com.mongodb.operation.OperationExecutor;
 import org.bson.BsonDocument;
 import org.bson.BsonDocumentWrapper;
 import org.bson.BsonValue;
+import org.bson.codecs.configuration.CodecRegistry;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -40,7 +40,7 @@ class AggregateIterableImpl<T> implements AggregateIterable<T> {
     private final MongoNamespace namespace;
     private final Class<T> clazz;
     private final ReadPreference readPreference;
-    private final RootCodecRegistry codecRegistry;
+    private final CodecRegistry codecRegistry;
     private final OperationExecutor executor;
     private final List<?> pipeline;
 
@@ -49,14 +49,14 @@ class AggregateIterableImpl<T> implements AggregateIterable<T> {
     private long maxTimeMS;
     private Boolean useCursor;
 
-    AggregateIterableImpl(final MongoNamespace namespace, final Class<T> clazz, final RootCodecRegistry codecRegistry,
+    AggregateIterableImpl(final MongoNamespace namespace, final Class<T> clazz, final CodecRegistry codecRegistry,
                           final ReadPreference readPreference, final OperationExecutor executor, final List<?> pipeline) {
-        this.namespace = notNull("namespace", namespace);
-        this.clazz = notNull("clazz", clazz);
-        this.readPreference = notNull("readPreference", readPreference);
-        this.codecRegistry = notNull("codecRegistry", codecRegistry);
-        this.executor = notNull("executor", executor);
-        this.pipeline = notNull("pipeline", pipeline);
+            this.namespace = notNull("namespace", namespace);
+            this.clazz = notNull("clazz", clazz);
+            this.codecRegistry = notNull("codecRegistry", codecRegistry);
+            this.readPreference = notNull("readPreference", readPreference);
+            this.executor = notNull("executor", executor);
+            this.pipeline = notNull("pipeline", pipeline);
     }
 
     @Override

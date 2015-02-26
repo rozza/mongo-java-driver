@@ -46,7 +46,6 @@ import com.mongodb.client.model.UpdateOptions;
 import com.mongodb.client.model.WriteModel;
 import com.mongodb.client.result.DeleteResult;
 import com.mongodb.client.result.UpdateResult;
-import com.mongodb.internal.codecs.RootCodecRegistry;
 import com.mongodb.operation.CountOperation;
 import com.mongodb.operation.CreateIndexOperation;
 import com.mongodb.operation.DropCollectionOperation;
@@ -70,7 +69,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static com.mongodb.assertions.Assertions.notNull;
-import static com.mongodb.internal.codecs.RootCodecRegistry.createRootRegistry;
 import static java.lang.String.format;
 import static java.util.Arrays.asList;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
@@ -79,7 +77,7 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
     private final MongoNamespace namespace;
     private final Class<T> clazz;
     private final ReadPreference readPreference;
-    private final RootCodecRegistry codecRegistry;
+    private final CodecRegistry codecRegistry;
     private final WriteConcern writeConcern;
     private final OperationExecutor executor;
 
@@ -87,7 +85,7 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
                         final ReadPreference readPreference, final WriteConcern writeConcern, final OperationExecutor executor) {
         this.namespace = notNull("namespace", namespace);
         this.clazz = notNull("clazz", clazz);
-        this.codecRegistry = createRootRegistry(notNull("codecRegistry", codecRegistry));
+        this.codecRegistry = notNull("codecRegistry", codecRegistry);
         this.readPreference = notNull("readPreference", readPreference);
         this.writeConcern = notNull("writeConcern", writeConcern);
         this.executor = notNull("executor", executor);
@@ -105,7 +103,7 @@ class MongoCollectionImpl<T> implements MongoCollection<T> {
 
     @Override
     public CodecRegistry getCodecRegistry() {
-        return codecRegistry.getCodecRegistry();
+        return codecRegistry;
     }
 
     @Override

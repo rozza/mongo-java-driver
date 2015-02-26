@@ -18,6 +18,7 @@ package org.bson.codecs.configuration;
 
 import org.bson.codecs.Codec;
 
+import static java.lang.String.format;
 import static org.bson.assertions.Assertions.notNull;
 
 
@@ -34,7 +35,7 @@ final class SingleCodecRegistry<T> implements CodecRegistry {
         if (codec.getEncoderClass() == clazz) {
             return (Codec<T>) codec;
         }
-        return null;
+        throw new CodecConfigurationException(format("Can't find a codec for %s.", clazz));
     }
 
     @Override

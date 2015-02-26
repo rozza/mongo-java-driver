@@ -35,7 +35,6 @@ import static com.mongodb.CustomMatchers.isTheSameAs
 import static com.mongodb.ReadPreference.primary
 import static com.mongodb.ReadPreference.primaryPreferred
 import static com.mongodb.ReadPreference.secondary
-import static com.mongodb.internal.codecs.RootCodecRegistry.createRootRegistry
 import static org.bson.codecs.configuration.CodecRegistryHelper.fromProviders
 import static spock.util.matcher.HamcrestSupport.expect
 
@@ -43,7 +42,6 @@ class MongoDatabaseSpecification extends Specification {
 
     def name = 'databaseName'
     def codecRegistry = MongoClientImpl.getDefaultCodecRegistry()
-    def rootRegistry = createRootRegistry(codecRegistry)
     def readPreference = secondary()
     def writeConcern = WriteConcern.ACKNOWLEDGED
 
@@ -167,14 +165,14 @@ class MongoDatabaseSpecification extends Specification {
         def listCollectionIterable = database.listCollections()
 
         then:
-        expect listCollectionIterable, isTheSameAs(new ListCollectionsIterableImpl<Document>(name, Document, rootRegistry, primary(),
+        expect listCollectionIterable, isTheSameAs(new ListCollectionsIterableImpl<Document>(name, Document, codecRegistry, primary(),
                 executor))
 
         when:
         listCollectionIterable = database.listCollections(BsonDocument)
 
         then:
-        expect listCollectionIterable, isTheSameAs(new ListCollectionsIterableImpl<BsonDocument>(name, BsonDocument, rootRegistry,
+        expect listCollectionIterable, isTheSameAs(new ListCollectionsIterableImpl<BsonDocument>(name, BsonDocument, codecRegistry,
                 primary(), executor))
     }
 

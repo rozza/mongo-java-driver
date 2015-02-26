@@ -21,6 +21,7 @@ import org.bson.codecs.Codec;
 import java.util.ArrayList;
 import java.util.List;
 
+import static java.lang.String.format;
 import static org.bson.assertions.Assertions.isTrueArgument;
 
 final class ProvidersCodecRegistry implements CodecRegistry {
@@ -39,16 +40,12 @@ final class ProvidersCodecRegistry implements CodecRegistry {
     @SuppressWarnings({ "unchecked", "rawtypes" })
     <T> Codec<T> get(final ChildCodecRegistry context) {
         for (CodecProvider provider : codecProviders) {
-            try {
-                Codec<T> codec = provider.get(context.getCodecClass(), context);
-                if (codec != null) {
-                    return codec;
-                }
-            } catch (Throwable t) {
-                // The provider threw an exception - ignore as another provider may fulfill the requirement
+            Codec<T> codec = provider.get(context.getCodecClass(), context);
+            if (codec != null) {
+                return codec;
             }
         }
-        return null;
+        throw new CodecConfigurationException(format("Can't find a codec for %s.", context.getCodecClass()));
     }
 
     @Override

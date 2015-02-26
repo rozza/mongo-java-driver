@@ -26,7 +26,6 @@ import spock.lang.Specification
 import static com.mongodb.CustomMatchers.isTheSameAs
 import static com.mongodb.ReadPreference.primary
 import static com.mongodb.ReadPreference.secondary
-import static com.mongodb.internal.codecs.RootCodecRegistry.createRootRegistry
 import static org.bson.codecs.configuration.CodecRegistryHelper.fromProviders
 import static spock.util.matcher.HamcrestSupport.expect
 
@@ -39,20 +38,19 @@ class MongoClientSpecification extends Specification {
         def executor = new TestOperationExecutor([null, null, null])
         def client = new MongoClientImpl(options, cluster, executor)
         def codecRegistry = client.getDefaultCodecRegistry()
-        def rootCodecRegistry = createRootRegistry(codecRegistry)
 
         when:
         def listDatabasesIterable = client.listDatabases()
 
         then:
-        expect listDatabasesIterable, isTheSameAs(new ListDatabasesIterableImpl<Document>(Document, rootCodecRegistry, primary(),
+        expect listDatabasesIterable, isTheSameAs(new ListDatabasesIterableImpl<Document>(Document, codecRegistry, primary(),
                 executor))
 
         when:
         listDatabasesIterable = client.listDatabases(BsonDocument)
 
         then:
-        expect listDatabasesIterable, isTheSameAs(new ListDatabasesIterableImpl<BsonDocument>(BsonDocument, rootCodecRegistry, primary(),
+        expect listDatabasesIterable, isTheSameAs(new ListDatabasesIterableImpl<BsonDocument>(BsonDocument, codecRegistry, primary(),
                 executor))
     }
 

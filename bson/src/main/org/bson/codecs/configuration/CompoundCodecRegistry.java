@@ -31,11 +31,11 @@ final class CompoundCodecRegistry implements CodecRegistry {
 
     @Override
     public <T> Codec<T> get(final Class<T> clazz) {
-        Codec<T> codec = firstCodecRegistry.get(clazz);
-        if (codec == null) {
-            codec = secondCodecRegistry.get(clazz);
+        try {
+            return firstCodecRegistry.get(clazz);
+        } catch (CodecConfigurationException e) {
+            return secondCodecRegistry.get(clazz);
         }
-        return codec;
     }
 
     @Override

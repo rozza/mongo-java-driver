@@ -27,7 +27,6 @@ import spock.lang.Specification
 
 import static com.mongodb.CustomMatchers.isTheSameAs
 import static com.mongodb.ReadPreference.secondary
-import static com.mongodb.internal.codecs.RootCodecRegistry.createRootRegistry
 import static java.util.concurrent.TimeUnit.MILLISECONDS
 import static org.bson.codecs.configuration.CodecRegistryHelper.fromProviders
 import static spock.util.matcher.HamcrestSupport.expect
@@ -35,10 +34,8 @@ import static spock.util.matcher.HamcrestSupport.expect
 class ListIndexesIterableSpecification extends Specification {
 
     def namespace = new MongoNamespace('db', 'coll')
-    def codecRegistry = createRootRegistry(fromProviders([new ValueCodecProvider(),
-                                                          new DocumentCodecProvider(),
-                                                          new DBObjectCodecProvider(),
-                                                          new BsonValueCodecProvider()]))
+    def codecRegistry = fromProviders([new ValueCodecProvider(), new DocumentCodecProvider(),
+                                       new DBObjectCodecProvider(), new BsonValueCodecProvider()])
     def readPreference = secondary()
 
     def 'should build the expected listIndexesOperation'() {

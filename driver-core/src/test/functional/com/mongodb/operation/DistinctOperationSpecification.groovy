@@ -46,9 +46,7 @@ import static org.bson.codecs.configuration.CodecRegistryHelper.fromProviders
 
 class DistinctOperationSpecification extends OperationFunctionalSpecification {
 
-    def codecRegistry = fromProviders([new ValueCodecProvider(),
-                                       new DocumentCodecProvider(),
-                                       new BsonValueCodecProvider()])
+    def codecRegistry = fromProviders([new ValueCodecProvider(), new DocumentCodecProvider(), new BsonValueCodecProvider()])
 
     def getCodec(final Class clazz) {
         codecRegistry.get(clazz);

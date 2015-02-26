@@ -18,12 +18,12 @@ package com.mongodb;
 import com.mongodb.client.ListDatabasesIterable;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoIterable;
-import com.mongodb.internal.codecs.RootCodecRegistry;
 import com.mongodb.operation.ListDatabasesOperation;
 import com.mongodb.operation.OperationExecutor;
 import org.bson.BsonDocument;
 import org.bson.BsonDocumentWrapper;
 import org.bson.codecs.Codec;
+import org.bson.codecs.configuration.CodecRegistry;
 
 import java.util.Collection;
 import java.util.concurrent.TimeUnit;
@@ -35,12 +35,12 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 final class ListDatabasesIterableImpl<T> implements ListDatabasesIterable<T> {
     private final Class<T> clazz;
     private final ReadPreference readPreference;
-    private final RootCodecRegistry codecRegistry;
+    private final CodecRegistry codecRegistry;
     private final OperationExecutor executor;
 
     private long maxTimeMS;
 
-    ListDatabasesIterableImpl(final Class<T> clazz, final RootCodecRegistry codecRegistry,
+    ListDatabasesIterableImpl(final Class<T> clazz, final CodecRegistry codecRegistry,
                               final ReadPreference readPreference, final OperationExecutor executor) {
         this.clazz = notNull("clazz", clazz);
         this.codecRegistry = notNull("codecRegistry", codecRegistry);

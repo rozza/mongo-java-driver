@@ -33,7 +33,6 @@ import spock.lang.Specification
 
 import static com.mongodb.CustomMatchers.isTheSameAs
 import static com.mongodb.ReadPreference.secondary
-import static com.mongodb.internal.codecs.RootCodecRegistry.createRootRegistry
 import static java.util.concurrent.TimeUnit.MILLISECONDS
 import static org.bson.codecs.configuration.CodecRegistryHelper.fromProviders
 import static spock.util.matcher.HamcrestSupport.expect
@@ -41,9 +40,7 @@ import static spock.util.matcher.HamcrestSupport.expect
 class AggregateIterableSpecification extends Specification {
 
     def namespace = new MongoNamespace('db', 'coll')
-    def codecRegistry = createRootRegistry(fromProviders([new ValueCodecProvider(),
-                                                          new DocumentCodecProvider(),
-                                                          new BsonValueCodecProvider()]))
+    def codecRegistry = fromProviders([new ValueCodecProvider(), new DocumentCodecProvider(), new BsonValueCodecProvider()])
     def readPreference = secondary()
 
     def 'should build the expected AggregationOperation'() {
@@ -110,7 +107,7 @@ class AggregateIterableSpecification extends Specification {
 
     def 'should handle exceptions correctly'() {
         given:
-        def codecRegistry = createRootRegistry(fromProviders([new ValueCodecProvider(), new BsonValueCodecProvider()]))
+        def codecRegistry = fromProviders([new ValueCodecProvider(), new BsonValueCodecProvider()])
         def executor = new TestOperationExecutor([new MongoException('failure')])
         def pipeline = [new BsonDocument('$match', new BsonInt32(1))]
         def aggregationIterable = new AggregateIterableImpl<BsonDocument>(namespace, BsonDocument, codecRegistry, readPreference, executor,

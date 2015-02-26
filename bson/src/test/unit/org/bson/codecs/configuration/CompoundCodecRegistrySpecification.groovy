@@ -49,13 +49,12 @@ class CompoundCodecRegistrySpecification extends Specification {
         thrown(IllegalArgumentException)
     }
 
-    def 'should return null if codec not found'() {
+    def 'should throw a CodecConfigurationException if codec not found'() {
         when:
-        def registry = new CompoundCodecRegistry(fromCodec(new MinKeyCodec()), fromCodec(new MinKeyCodec()))
+        new CompoundCodecRegistry(fromCodec(new MinKeyCodec()), fromCodec(new MinKeyCodec())).get(MaxKey)
 
         then:
-        registry.get(MaxKey) == null
-
+        thrown(CodecConfigurationException)
     }
 
     def 'should prefer the preferred codec registry'() {

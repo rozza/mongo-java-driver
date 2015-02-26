@@ -19,10 +19,10 @@ package com.mongodb;
 import com.mongodb.client.ListIndexesIterable;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoIterable;
-import com.mongodb.internal.codecs.RootCodecRegistry;
 import com.mongodb.operation.ListIndexesOperation;
 import com.mongodb.operation.OperationExecutor;
 import org.bson.codecs.Codec;
+import org.bson.codecs.configuration.CodecRegistry;
 
 import java.util.Collection;
 import java.util.concurrent.TimeUnit;
@@ -34,13 +34,13 @@ final class ListIndexesIterableImpl<T> implements ListIndexesIterable<T> {
     private final MongoNamespace namespace;
     private final Class<T> clazz;
     private final ReadPreference readPreference;
-    private final RootCodecRegistry codecRegistry;
+    private final CodecRegistry codecRegistry;
     private final OperationExecutor executor;
 
     private int batchSize;
     private long maxTimeMS;
 
-    ListIndexesIterableImpl(final MongoNamespace namespace, final Class<T> clazz, final RootCodecRegistry codecRegistry,
+    ListIndexesIterableImpl(final MongoNamespace namespace, final Class<T> clazz, final CodecRegistry codecRegistry,
                             final ReadPreference readPreference, final OperationExecutor executor) {
         this.namespace = notNull("namespace", namespace);
         this.clazz = notNull("clazz", clazz);

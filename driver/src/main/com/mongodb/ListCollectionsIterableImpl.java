@@ -19,12 +19,12 @@ package com.mongodb;
 import com.mongodb.client.ListCollectionsIterable;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoIterable;
-import com.mongodb.internal.codecs.RootCodecRegistry;
 import com.mongodb.operation.ListCollectionsOperation;
 import com.mongodb.operation.OperationExecutor;
 import org.bson.BsonDocument;
 import org.bson.BsonDocumentWrapper;
 import org.bson.codecs.Codec;
+import org.bson.codecs.configuration.CodecRegistry;
 
 import java.util.Collection;
 import java.util.concurrent.TimeUnit;
@@ -36,14 +36,14 @@ final class ListCollectionsIterableImpl<T> implements ListCollectionsIterable<T>
     private final String databaseName;
     private final Class<T> clazz;
     private final ReadPreference readPreference;
-    private final RootCodecRegistry codecRegistry;
+    private final CodecRegistry codecRegistry;
     private final OperationExecutor executor;
 
     private Object filter;
     private int batchSize;
     private long maxTimeMS;
 
-    ListCollectionsIterableImpl(final String databaseName, final Class<T> clazz, final RootCodecRegistry codecRegistry,
+    ListCollectionsIterableImpl(final String databaseName, final Class<T> clazz, final CodecRegistry codecRegistry,
                                 final ReadPreference readPreference, final OperationExecutor executor) {
         this.databaseName = notNull("databaseName", databaseName);
         this.clazz = notNull("clazz", clazz);

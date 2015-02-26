@@ -35,7 +35,6 @@ import spock.lang.Specification
 import java.nio.ByteBuffer
 
 import static java.util.Arrays.asList
-import static org.bson.assertions.Assertions.notNull
 
 class ProvidersCodecRegistrySpecification extends Specification {
 
@@ -53,12 +52,12 @@ class ProvidersCodecRegistrySpecification extends Specification {
         thrown(IllegalArgumentException)
     }
 
-    def 'should return null if codec not found'() {
+    def 'should throw a CodecConfigurationException if codec not found'() {
         when:
-        def registry = new ProvidersCodecRegistry([new SingleCodecProvider(new MinKeyCodec())])
+        new ProvidersCodecRegistry([new SingleCodecProvider(new MinKeyCodec())]).get(MaxKey)
 
         then:
-        registry.get(MaxKey) == null
+        thrown(CodecConfigurationException)
     }
 
     def 'get should return registered codec'() {
@@ -103,21 +102,6 @@ class ProvidersCodecRegistrySpecification extends Specification {
         then:
         topCodec.decode(new BsonBinaryReader(new ByteBufferBsonInput(new ByteBufNIO(ByteBuffer.wrap(os.toByteArray()))), false),
                         DecoderContext.builder().build()) == top
-    }
-
-    def 'should ignore provider exceptions when calling get as another provider may fulfill the requirement'() {
-        when:
-        def registry = new ProvidersCodecRegistry([new ClassModelCodecProvider([Top])])
-
-        then:
-        registry.get(Top) == null
-
-        when:
-        registry = new ProvidersCodecRegistry([new ClassModelCodecProvider([Top]), new ClassModelCodecProvider()])
-        Codec<Top> topCodec = registry.get(Top)
-
-        then:
-        topCodec instanceof TopCodec
     }
 }
 
@@ -169,8 +153,8 @@ class TopCodec implements Codec<Top> {
     Codec<Nested> codecForNested
 
     TopCodec(final CodecRegistry registry) {
-        codecForOther = notNull('top codec missing in registry', registry.get(Top))
-        codecForNested = notNull('nested codec missing in registry', registry.get(Nested))
+        codecForOther = registry.get(Top)
+        codecForNested = registry.get(Nested)
     }
 
     @Override

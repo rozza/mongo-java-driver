@@ -19,7 +19,7 @@ package org.bson.codecs.configuration;
 import org.bson.codecs.Codec;
 
 /**
- * A registry of Codec instances searchable by the class that the Codec can encode and decode.
+ * A registry of Codec instances searchable by the class that the Codec can encode and decode. 
  *
  * <p>While the {@code CodecRegistry} interface adds no stipulations to the general contract for the Object.equals,
  * programmers who implement the {@code CodecRegistry} interface "directly" must exercise care if they choose to override the
@@ -29,15 +29,13 @@ import org.bson.codecs.Codec;
  * @since 3.0
  */
 public interface CodecRegistry {
-
     /**
      * Gets a {@code Codec} for the given Class.
-     *
-     * <p>Implementations should return null if no Codec is found</p>
      *
      * @param clazz the class
      * @param <T> the class type
      * @return a codec for the given class
+     * @throws CodecConfigurationException if the registry does not contain a codec for the given class.
      */
     <T> Codec<T> get(Class<T> clazz);
 }

@@ -40,11 +40,11 @@ class SingleCodecRegistrySpecification extends Specification {
         registry.get(MinKey) == codec
     }
 
-    def 'should return null if codec not found'() {
+    def 'should throw a CodecConfigurationException if codec not found'() {
         when:
-        def registry =  new SingleCodecRegistry(new MinKeyCodec())
+        new SingleCodecRegistry(new MinKeyCodec()).get(MaxKey)
 
         then:
-        registry.get(MaxKey) == null
+        thrown(CodecConfigurationException)
     }
 }
