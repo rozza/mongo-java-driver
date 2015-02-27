@@ -45,8 +45,7 @@ final class FindIterableImpl<TDocument, TResult> implements FindIterable<TResult
     private Bson filter;
 
     FindIterableImpl(final MongoNamespace namespace, final Class<TDocument> documentClass, final Class<TResult> resultClass,
-                     final CodecRegistry codecRegistry,
-                     final ReadPreference readPreference, final OperationExecutor executor,
+                     final CodecRegistry codecRegistry, final ReadPreference readPreference, final OperationExecutor executor,
                      final Bson filter, final FindOptions findOptions) {
         this.namespace = notNull("namespace", namespace);
         this.documentClass = notNull("documentClass", documentClass);
@@ -87,6 +86,12 @@ final class FindIterableImpl<TDocument, TResult> implements FindIterable<TResult
     public FindIterable<TResult> batchSize(final int batchSize) {
         findOptions.batchSize(batchSize);
         return this;
+    }
+
+    @Override
+    public <NewTResult> FindIterable<NewTResult> toResultType(final Class<NewTResult> newResultClass) {
+        return new FindIterableImpl<TDocument, NewTResult>(namespace, documentClass, newResultClass, codecRegistry, readPreference, executor,
+                                                           filter, findOptions);
     }
 
     @Override
@@ -157,7 +162,7 @@ final class FindIterableImpl<TDocument, TResult> implements FindIterable<TResult
     }
 
     private MongoIterable<TResult> execute() {
-        return new FindOperationIterable(createQueryOperation(), this.readPreference, executor);
+        return new FindOperationIterable(createQueryOperation(), readPreference, executor);
     }
 
     private <C> Codec<C> getCodec(final Class<C> clazz) {
@@ -207,6 +212,11 @@ final class FindIterableImpl<TDocument, TResult> implements FindIterable<TResult
         public FindOperationIterable batchSize(final int batchSize) {
             batchSize(batchSize);
             return this;
+        }
+
+        @Override
+        public <NewTResult> MongoIterable<NewTResult> toResultType(final Class<NewTResult> newResultClass) {
+            throw new UnsupportedOperationException();
         }
     }
 }

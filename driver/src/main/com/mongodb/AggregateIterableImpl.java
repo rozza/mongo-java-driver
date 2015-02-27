@@ -88,6 +88,12 @@ class AggregateIterableImpl<TDocument, TResult> implements AggregateIterable<TRe
     }
 
     @Override
+    public <NewTResult> AggregateIterable<NewTResult> toResultType(final Class<NewTResult> newResultClass) {
+        return new AggregateIterableImpl<TDocument, NewTResult>(namespace, documentClass, newResultClass, codecRegistry, readPreference,
+                executor, pipeline).allowDiskUse(allowDiskUse).batchSize(batchSize).maxTime(maxTimeMS, MILLISECONDS).useCursor(useCursor);
+    }
+
+    @Override
     public MongoCursor<TResult> iterator() {
         return execute().iterator();
     }

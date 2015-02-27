@@ -65,4 +65,13 @@ public interface AggregateIterable<TResult> extends MongoIterable<TResult> {
      */
     AggregateIterable<TResult> useCursor(final Boolean useCursor);
 
+    /**
+     * Change the result type to a new type.
+     *
+     * @param newResultClass the that this iterable will decode documents to
+     * @param <NewTResult>   the new type of the result.
+     * @return a iterable of NewTResult
+     */
+    <NewTResult> AggregateIterable<NewTResult> toResultType(Class<NewTResult> newResultClass);
+
 }

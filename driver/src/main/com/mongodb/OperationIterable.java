@@ -85,4 +85,9 @@ class OperationIterable<T> implements MongoIterable<T> {
         throw new UnsupportedOperationException();
     }
 
+    @Override
+    public <NewTResult> MongoIterable<NewTResult> toResultType(final Class<NewTResult> newResultClass) {
+        throw new UnsupportedOperationException("Change the result types of the OperationIterable is not supported");
+    }
+
 }

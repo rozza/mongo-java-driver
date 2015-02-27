@@ -133,4 +133,13 @@ public interface FindIterable<TResult> extends MongoIterable<TResult> {
      */
     @Override
     FindIterable<TResult> batchSize(int batchSize);
+
+    /**
+     * Change the result type to a new type.
+     *
+     * @param newResultClass the that this iterable will decode documents to
+     * @param <NewTResult>   the new type of the result.
+     * @return a iterable of NewTResult
+     */
+    <NewTResult> FindIterable<NewTResult> toResultType(Class<NewTResult> newResultClass);
 }
