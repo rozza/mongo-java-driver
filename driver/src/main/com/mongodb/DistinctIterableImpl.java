@@ -46,9 +46,9 @@ class DistinctIterableImpl<TDocument, TResult> implements DistinctIterable<TResu
     DistinctIterableImpl(final MongoNamespace namespace, final Class<TDocument> documentClass, final Class<TResult> resultClass,
                          final CodecRegistry codecRegistry, final ReadPreference readPreference, final OperationExecutor executor,
                          final String fieldName) {
-        this.documentClass = documentClass;
         this.namespace = notNull("namespace", namespace);
-        this.resultClass = notNull("clazz", resultClass);
+        this.documentClass = notNull("documentClass", documentClass);
+        this.resultClass = notNull("resultClass", resultClass);
         this.codecRegistry = notNull("codecRegistry", codecRegistry);
         this.readPreference = notNull("readPreference", readPreference);
         this.executor = notNull("executor", executor);

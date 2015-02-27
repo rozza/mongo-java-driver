@@ -48,8 +48,7 @@ class AggregateIterableSpecification extends Specification {
         def executor = new TestOperationExecutor([null, null, null, null, null]);
         def pipeline = [new Document('$match', 1)]
         def aggregationIterable = new AggregateIterableImpl(namespace, Document, Document, codecRegistry, readPreference,
-                                                            executor,
-                                                            pipeline)
+                                                            executor, pipeline)
 
         when: 'default input should be as expected'
         aggregationIterable.iterator()
@@ -112,8 +111,7 @@ class AggregateIterableSpecification extends Specification {
         def executor = new TestOperationExecutor([new MongoException('failure')])
         def pipeline = [new BsonDocument('$match', new BsonInt32(1))]
         def aggregationIterable = new AggregateIterableImpl(namespace, BsonDocument, BsonDocument, codecRegistry,
-                                                            readPreference, executor,
-                                                            pipeline)
+                                                            readPreference, executor, pipeline)
 
         when: 'The operation fails with an exception'
         aggregationIterable.iterator()

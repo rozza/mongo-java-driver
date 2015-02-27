@@ -66,8 +66,8 @@ class MapReduceIterableImpl<TDocument, TResult> implements MapReduceIterable<TRe
                           final CodecRegistry codecRegistry, final ReadPreference readPreference, final OperationExecutor executor,
                           final String mapFunction, final String reduceFunction) {
         this.namespace = notNull("namespace", namespace);
-        this.documentClass = notNull("collectionClass", documentClass);
-        this.resultClass = notNull("clazz", resultClass);
+        this.documentClass = notNull("documentClass", documentClass);
+        this.resultClass = notNull("resultClass", resultClass);
         this.codecRegistry = notNull("codecRegistry", codecRegistry);
         this.readPreference = notNull("readPreference", readPreference);
         this.executor = notNull("executor", executor);

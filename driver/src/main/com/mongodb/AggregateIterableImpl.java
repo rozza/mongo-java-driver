@@ -54,7 +54,7 @@ class AggregateIterableImpl<TDocument, TResult> implements AggregateIterable<TRe
                           final CodecRegistry codecRegistry, final ReadPreference readPreference, final OperationExecutor executor,
                           final List<? extends Bson> pipeline) {
         this.namespace = notNull("namespace", namespace);
-        this.documentClass = notNull("collectionClass", documentClass);
+        this.documentClass = notNull("documentClass", documentClass);
         this.resultClass = notNull("resultClass", resultClass);
         this.codecRegistry = notNull("codecRegistry", codecRegistry);
         this.readPreference = notNull("readPreference", readPreference);

@@ -142,8 +142,7 @@ class MapReduceIterableSpecification extends Specification {
         def codecRegistry = fromProviders([new ValueCodecProvider(), new BsonValueCodecProvider()])
         def executor = new TestOperationExecutor([new MongoException('failure')])
         def mapReduceIterable = new MapReduceIterableImpl(namespace, BsonDocument, BsonDocument, codecRegistry,
-                                                          readPreference, executor,
-                                                          'map', 'reduce')
+                                                          readPreference, executor, 'map', 'reduce')
 
 
         when: 'The operation fails with an exception'
@@ -184,8 +183,7 @@ class MapReduceIterableSpecification extends Specification {
         }
         def executor = new TestOperationExecutor([cursor(), cursor(), cursor(), cursor()]);
         def mongoIterable = new MapReduceIterableImpl(namespace, BsonDocument, BsonDocument, codecRegistry, readPreference,
-                                                      executor,
-                                                      'map', 'reduce')
+                                                      executor, 'map', 'reduce')
 
         when:
         def results = mongoIterable.first()
