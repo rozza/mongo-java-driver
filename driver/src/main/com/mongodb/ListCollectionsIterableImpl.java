@@ -73,6 +73,12 @@ final class ListCollectionsIterableImpl<TResult> implements ListCollectionsItera
     }
 
     @Override
+    public <NewTResult> ListCollectionsIterable<NewTResult> toResultType(final Class<NewTResult> newResultClass) {
+        return new ListCollectionsIterableImpl<NewTResult>(databaseName, newResultClass, codecRegistry, readPreference, executor)
+                .filter(filter).batchSize(batchSize).maxTime(maxTimeMS, MILLISECONDS);
+    }
+
+    @Override
     public MongoCursor<TResult> iterator() {
         return execute().iterator();
     }

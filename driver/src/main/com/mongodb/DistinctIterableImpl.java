@@ -75,6 +75,12 @@ class DistinctIterableImpl<TDocument, TResult> implements DistinctIterable<TResu
     }
 
     @Override
+    public <NewTResult> DistinctIterable<NewTResult> toResultType(final Class<NewTResult> newResultClass) {
+        return new DistinctIterableImpl<TDocument, NewTResult>(namespace, documentClass, newResultClass, codecRegistry, readPreference, executor,
+                fieldName).filter(filter).maxTime(maxTimeMS, MILLISECONDS);
+    }
+
+    @Override
     public MongoCursor<TResult> iterator() {
         return execute().iterator();
     }

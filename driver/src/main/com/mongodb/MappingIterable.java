@@ -73,6 +73,11 @@ class MappingIterable<U, V> implements MongoIterable<V> {
     }
 
     @Override
+    public <NewTResult> MongoIterable<NewTResult> toResultType(final Class<NewTResult> newResultClass) {
+        throw new UnsupportedOperationException("The mapping iterable cannot change the underlying result type");
+    }
+
+    @Override
     public <W> MongoIterable<W> map(final Function<V, W> newMap) {
         return new MappingIterable<V, W>(this, newMap);
     }

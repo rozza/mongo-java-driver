@@ -54,4 +54,13 @@ public interface DistinctIterable<TResult> extends MongoIterable<TResult> {
      * @mongodb.driver.manual reference/method/cursor.batchSize/#cursor.batchSize Batch Size
      */
     DistinctIterable<TResult> batchSize(final int batchSize);
+
+    /**
+     * Change the result type to a new type.
+     *
+     * @param newResultClass the that this iterable will decode documents to
+     * @param <NewTResult>   the new type of the result.
+     * @return a iterable of NewTResult
+     */
+    <NewTResult> DistinctIterable<NewTResult> toResultType(Class<NewTResult> newResultClass);
 }

@@ -162,6 +162,29 @@ class MapReduceIterableImpl<TDocument, TResult> implements MapReduceIterable<TRe
     }
 
     @Override
+    public <NewTResult> MapReduceIterable<NewTResult> toResultType(final Class<NewTResult> newResultClass) {
+        MapReduceIterable<NewTResult>  mapReduceIterable = new MapReduceIterableImpl<TDocument, NewTResult>(namespace, documentClass,
+                newResultClass, codecRegistry, readPreference, executor, mapFunction, reduceFunction)
+                .finalizeFunction(finalizeFunction)
+                .scope(scope)
+                .filter(filter)
+                .sort(sort)
+                .limit(limit)
+                .jsMode(jsMode)
+                .verbose(verbose)
+                .maxTime(maxTimeMS, MILLISECONDS)
+                .action(action)
+                .sharded(sharded)
+                .databaseName(databaseName)
+                .nonAtomic(nonAtomic);
+
+        if (collectionName != null) {
+            mapReduceIterable.collectionName(collectionName);
+        }
+        return mapReduceIterable;
+    }
+
+    @Override
     public MongoCursor<TResult> iterator() {
         return execute().iterator();
     }
