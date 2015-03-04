@@ -286,7 +286,7 @@ class MongoCollectionImpl<TDocument> implements MongoCollection<TDocument> {
             }
             requests.add(new InsertRequest(documentToBsonDocument(document)));
         }
-        executor.execute(new MixedBulkWriteOperation(namespace, requests, options.isOrdered(), writeConcern));
+        BulkWriteResult test = executor.execute(new MixedBulkWriteOperation(namespace, requests, options.isOrdered(), writeConcern));
     }
 
     @Override
