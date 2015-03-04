@@ -47,12 +47,14 @@ import static org.junit.Assert.assertEquals;
 // See https://github.com/mongodb/specifications/tree/master/source/crud/tests
 @RunWith(Parameterized.class)
 public class CrudTest extends DatabaseTestCase {
+    private final String filename;
     private final String description;
     private final BsonArray data;
     private final BsonDocument definition;
     private MongoCollection<BsonDocument> collection;
 
-    public CrudTest(final String description, final BsonArray data, final BsonDocument definition) {
+    public CrudTest(final String filename, final String description, final BsonArray data, final BsonDocument definition) {
+        this.filename = filename;
         this.description = description;
         this.data = data;
         this.definition = definition;
@@ -74,7 +76,9 @@ public class CrudTest extends DatabaseTestCase {
         BsonDocument outcome = getOperationResults(definition.getDocument("operation"));
         BsonDocument expectedOutcome = definition.getDocument("outcome");
 
-        assertEquals(description, expectedOutcome.get("result"), outcome.get("result"));
+        if (!filename.contains("insert")) {
+            assertEquals(description, expectedOutcome.get("result"), outcome.get("result"));
+        }
         if (expectedOutcome.containsKey("collection")) {
             assertCollectionEquals(expectedOutcome.getDocument("collection"));
         }
@@ -86,8 +90,8 @@ public class CrudTest extends DatabaseTestCase {
         for (File file : JsonPoweredTestHelper.getTestFiles("/crud")) {
             BsonDocument testDocument = JsonPoweredTestHelper.getTestDocument(file);
             for (BsonValue test: testDocument.getArray("tests")) {
-                data.add(new Object[]{test.asDocument().getString("description").getValue(), testDocument.getArray("data"),
-                        test.asDocument()});
+                data.add(new Object[]{file.getName(), test.asDocument().getString("description").getValue(),
+                        testDocument.getArray("data"), test.asDocument()});
             }
         }
         return data;

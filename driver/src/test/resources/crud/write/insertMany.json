@@ -24,7 +24,12 @@
         }
       },
       "outcome": {
-        "result": null,
+        "result": {
+          "insertedIds": [
+            2,
+            3
+          ]
+        },
         "collection": {
           "data": [
             {
