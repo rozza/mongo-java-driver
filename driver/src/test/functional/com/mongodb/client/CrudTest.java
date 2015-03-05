@@ -84,7 +84,7 @@ public class CrudTest extends DatabaseTestCase {
         }
     }
 
-    @Parameterized.Parameters // (name = "{1}")  for when we update to JUnit >= 4.11
+    @Parameterized.Parameters(name = "{1}")
     public static Collection<Object[]> data() throws URISyntaxException, IOException {
         List<Object[]> data = new ArrayList<Object[]>();
         for (File file : JsonPoweredTestHelper.getTestFiles("/crud")) {

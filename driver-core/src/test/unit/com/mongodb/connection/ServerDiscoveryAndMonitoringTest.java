@@ -48,12 +48,11 @@ import static org.junit.Assert.assertNotNull;
 // See https://github.com/mongodb/specifications/tree/master/source/server-discovery-and-monitoring/tests
 @RunWith(Parameterized.class)
 public class ServerDiscoveryAndMonitoringTest {
-
     private final TestClusterableServerFactory factory = new TestClusterableServerFactory();
     private final BsonDocument definition;
     private final BaseCluster cluster;
 
-    public ServerDiscoveryAndMonitoringTest(final BsonDocument definition) {
+    public ServerDiscoveryAndMonitoringTest(final String description, final BsonDocument definition) {
         this.definition = definition;
         cluster = getCluster(definition.getString("uri").getValue());
     }
@@ -70,11 +69,12 @@ public class ServerDiscoveryAndMonitoringTest {
         }
     }
 
-    @Parameterized.Parameters // (name = "{1}")  for when we update to JUnit >= 4.11
+    @Parameterized.Parameters(name = "{0}")
     public static Collection<Object[]> data() throws URISyntaxException, IOException {
         List<Object[]> data = new ArrayList<Object[]>();
         for (File file : JsonPoweredTestHelper.getTestFiles("/server-discovery-and-monitoring")) {
-            data.add(new Object[]{JsonPoweredTestHelper.getTestDocument(file)});
+            BsonDocument testDocument = JsonPoweredTestHelper.getTestDocument(file);
+            data.add(new Object[]{testDocument.getString("description").getValue(), testDocument});
         }
         return data;
     }

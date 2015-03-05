@@ -51,7 +51,7 @@ public class ServerSelectionSelectionTest {
     private final BsonDocument definition;
     private final ClusterDescription clusterDescription;
 
-    public ServerSelectionSelectionTest(final BsonDocument definition) {
+    public ServerSelectionSelectionTest(final String description, final BsonDocument definition) {
         this.definition = definition;
         this.clusterDescription = buildClusterDescription(definition.getDocument("topology_description"));
     }
@@ -71,11 +71,11 @@ public class ServerSelectionSelectionTest {
         assertServers(latencyBasedSelectedServers, inLatencyWindowServers);
     }
 
-    @Parameterized.Parameters // (name = "{1}")  for when we update to JUnit >= 4.11
+    @Parameterized.Parameters(name = "{0}")
     public static Collection<Object[]> data() throws URISyntaxException, IOException {
         List<Object[]> data = new ArrayList<Object[]>();
         for (File file : JsonPoweredTestHelper.getTestFiles("/server-selection/server_selection")) {
-            data.add(new Object[]{JsonPoweredTestHelper.getTestDocument(file)});
+            data.add(new Object[]{file.getName(), JsonPoweredTestHelper.getTestDocument(file)});
         }
         return data;
     }

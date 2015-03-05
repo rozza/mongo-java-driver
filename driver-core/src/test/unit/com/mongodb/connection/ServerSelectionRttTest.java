@@ -37,7 +37,7 @@ import static org.junit.Assert.assertEquals;
 public class ServerSelectionRttTest {
     private final BsonDocument definition;
 
-    public ServerSelectionRttTest(final BsonDocument definition) {
+    public ServerSelectionRttTest(final String description, final BsonDocument definition) {
         this.definition = definition;
     }
 
@@ -56,11 +56,11 @@ public class ServerSelectionRttTest {
         assertEquals(subject.getAverage(), expected);
     }
 
-    @Parameterized.Parameters // (name = "{1}")  for when we update to JUnit >= 4.11
+    @Parameterized.Parameters(name = "{0}")
     public static Collection<Object[]> data() throws URISyntaxException, IOException {
         List<Object[]> data = new ArrayList<Object[]>();
         for (File file : JsonPoweredTestHelper.getTestFiles("/server-selection/rtt")) {
-            data.add(new Object[]{JsonPoweredTestHelper.getTestDocument(file)});
+            data.add(new Object[]{file.getName(), JsonPoweredTestHelper.getTestDocument(file)});
         }
         return data;
     }
