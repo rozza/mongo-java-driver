@@ -21,6 +21,7 @@ import com.mongodb.client.model.CountOptions;
 import com.mongodb.client.model.FindOneAndDeleteOptions;
 import com.mongodb.client.model.FindOneAndReplaceOptions;
 import com.mongodb.client.model.FindOneAndUpdateOptions;
+import com.mongodb.client.model.ReturnDocument;
 import com.mongodb.client.model.UpdateOptions;
 import com.mongodb.client.result.UpdateResult;
 import org.bson.BsonArray;
@@ -213,7 +214,8 @@ public class CrudTest extends DatabaseTestCase {
             options.upsert(arguments.getBoolean("upsert").getValue());
         }
         if (arguments.containsKey("returnDocument")) {
-            options.returnOriginal(!arguments.getString("returnDocument").getValue().equals("After"));
+            options.returnDocument(arguments.getString("returnDocument").getValue().equals("After") ? ReturnDocument.AFTER
+                    : ReturnDocument.BEFORE);
         }
         return toResult(collection.findOneAndReplace(arguments.getDocument("filter"), arguments.getDocument("replacement"), options));
     }
@@ -230,7 +232,8 @@ public class CrudTest extends DatabaseTestCase {
             options.upsert(arguments.getBoolean("upsert").getValue());
         }
         if (arguments.containsKey("returnDocument")) {
-            options.returnOriginal(!arguments.getString("returnDocument").getValue().equals("After"));
+            options.returnDocument(arguments.getString("returnDocument").getValue().equals("After") ? ReturnDocument.AFTER
+                    : ReturnDocument.BEFORE);
         }
         return toResult(collection.findOneAndUpdate(arguments.getDocument("filter"), arguments.getDocument("update"), options));
     }
