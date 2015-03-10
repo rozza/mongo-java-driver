@@ -33,7 +33,7 @@ import static java.util.Arrays.asList;
 public class QueryPrimer extends PrimerTestCase {
 
     @Test
-    public void QueryAll() {
+    public void queryAll() {
         // @begin: query-all
         // @code: start
         FindIterable<Document> iterable = db.getCollection("restaurants").find();
@@ -53,7 +53,7 @@ public class QueryPrimer extends PrimerTestCase {
 
 
     @Test
-    public void LogicalAnd() {
+    public void logicalAnd() {
 
         // @begin: logical-and
         // @code: start
@@ -80,7 +80,7 @@ public class QueryPrimer extends PrimerTestCase {
     }
 
     @Test
-    public void LogicalOr() {
+    public void logicalOr() {
 
         // @begin: logical-or
         // @code: start
@@ -108,7 +108,7 @@ public class QueryPrimer extends PrimerTestCase {
     }
 
     @Test
-    public void QueryTopLevelField() {
+    public void queryTopLevelField() {
         // @begin: query-top-level-field
         // @code: start
         FindIterable<Document> iterable = db.getCollection("restaurants").find(
@@ -133,7 +133,7 @@ public class QueryPrimer extends PrimerTestCase {
     }
 
     @Test
-    public void QueryEmbeddedDocument() {
+    public void queryEmbeddedDocument() {
         // @begin: query-embedded-document
         // @code: start
         FindIterable<Document> iterable = db.getCollection("restaurants").find(
@@ -158,7 +158,7 @@ public class QueryPrimer extends PrimerTestCase {
     }
 
     @Test
-    public void QueryFieldInArray() {
+    public void queryFieldInArray() {
         // @begin: query-field-in-array
         // @code: start
         FindIterable<Document> iterable = db.getCollection("restaurants").find(
@@ -183,7 +183,7 @@ public class QueryPrimer extends PrimerTestCase {
     }
 
     @Test
-    public void GreaterThan() {
+    public void greaterThan() {
         // @begin: greater-than
         // @code: start
         FindIterable<Document> iterable = db.getCollection("restaurants").find(
@@ -208,7 +208,7 @@ public class QueryPrimer extends PrimerTestCase {
     }
 
     @Test
-    public void LessThan() {
+    public void lessThan() {
         // @begin: less-than
         // @code: start
         FindIterable<Document> iterable = db.getCollection("restaurants").find(
@@ -234,7 +234,7 @@ public class QueryPrimer extends PrimerTestCase {
 
 
     @Test
-    public void Sort() {
+    public void sort() {
         // @begin: sort
         // @code: start
         FindIterable<Document> iterable = db.getCollection("restaurants").find()

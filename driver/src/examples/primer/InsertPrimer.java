@@ -33,7 +33,7 @@ import static java.util.Arrays.asList;
 public class InsertPrimer extends PrimerTestCase {
 
     @Test
-    public void InsertADocument() throws ParseException {
+    public void insertADocument() throws ParseException {
 
         // @begin: insert-a-document
         // @code: start

@@ -30,7 +30,7 @@ import static java.util.Arrays.asList;
 public class AggregatePrimer extends PrimerTestCase {
 
     @Test
-    public void  GroupDocumentsByAFieldAndCalculateCount() {
+    public void  groupDocumentsByAFieldAndCalculateCount() {
 
         // @begin: group-documents-by-a-field-and-calculate-count
         // @code: start
@@ -62,7 +62,7 @@ public class AggregatePrimer extends PrimerTestCase {
     }
 
     @Test
-    public void FilterAndGroupDocuments() {
+    public void filterAndGroupDocuments() {
 
         // @begin: filter-and-group-documents
         // @code: start

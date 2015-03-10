@@ -26,7 +26,7 @@ import org.bson.Document;
 public class IndexesPrimer extends PrimerTestCase {
 
     @Test
-    public void  SingleFieldIndex() {
+    public void  singleFieldIndex() {
 
         // @begin: single-field-index
         // @code: start
@@ -38,7 +38,7 @@ public class IndexesPrimer extends PrimerTestCase {
     }
 
     @Test
-    public void  CreateCompoundIndex() {
+    public void  createCompoundIndex() {
         // @begin: create-compound-index
         // @code: start
         db.getCollection("resturants").createIndex(new Document("cuisine", 1).append("address.zipcode", 1));

@@ -27,7 +27,7 @@ import com.mongodb.client.result.DeleteResult;
 public class RemovePrimer extends PrimerTestCase {
 
     @Test
-    public void RemoveMatchingDocuments() {
+    public void removeMatchingDocuments() {
         // @begin: remove-matching-documents
         db.getCollection("restaurants").deleteMany(new Document("borough", "Manhattan"),
                 new SingleResultCallback<DeleteResult>() {
@@ -48,7 +48,7 @@ public class RemovePrimer extends PrimerTestCase {
     }
 
     @Test
-    public void RemoveAllDocuments() {
+    public void removeAllDocuments() {
         // @begin: remove-all-documents
         db.getCollection("restaurants").deleteMany(new Document(),
                 new SingleResultCallback<DeleteResult>() {
@@ -69,7 +69,7 @@ public class RemovePrimer extends PrimerTestCase {
     }
 
     @Test
-    public void DropCollection() {
+    public void dropCollection() {
         // @begin: drop-collection
         db.getCollection("restaurants").drop(new SingleResultCallback<Void>() {
             @Override

@@ -27,7 +27,7 @@ import com.mongodb.client.result.UpdateResult;
 public class UpdatePrimer extends PrimerTestCase {
 
     @Test
-    public void UpdateTopLevelFields() {
+    public void updateTopLevelFields() {
         // @begin: update-top-level-fields
         db.getCollection("restaurants").updateOne(new Document("name", "Juni"),
                 new Document("$set", new Document("cuisine", "American (New)"))
@@ -50,7 +50,7 @@ public class UpdatePrimer extends PrimerTestCase {
     }
 
     @Test
-    public void UpdateEmbeddedField() {
+    public void updateEmbeddedField() {
         // @begin: update-top-level-fields
         db.getCollection("restaurants").updateOne(new Document("restaurant_id", "41156888"),
                 new Document("$set", new Document("address.street", "East 31st Street")),
@@ -73,7 +73,7 @@ public class UpdatePrimer extends PrimerTestCase {
 
 
     @Test
-    public void UpdateMultipleDocuments() {
+    public void updateMultipleDocuments() {
         // @begin: update-multiple-documents
         db.getCollection("restaurants").updateMany(new Document("address.zipcode", "10016"),
                 new Document("$set", new Document("borough", "Midtown"))
