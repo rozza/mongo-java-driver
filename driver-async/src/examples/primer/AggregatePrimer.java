@@ -44,7 +44,7 @@ public class AggregatePrimer extends PrimerTestCase {
         iterable.forEach(new Block<Document>() {
             @Override
             public void apply(final Document document) {
-                System.out.println(document);
+                System.out.println(document.toJson());
             }
         }, new SingleResultCallback<Void>() {
             @Override
@@ -56,11 +56,11 @@ public class AggregatePrimer extends PrimerTestCase {
 
         /*
         // @results: start
-        Document{{_id=11377, count=1}}
-        Document{{_id=11368, count=1}}
-        Document{{_id=11101, count=2}}
-        Document{{_id=11106, count=3}}
-        Document{{_id=11103, count=1}}
+        { "_id" : "11377", "count" : 1 }
+        { "_id" : "11368", "count" : 1 }
+        { "_id" : "11101", "count" : 2 }
+        { "_id" : "11106", "count" : 3 }
+        { "_id" : "11103", "count" : 1 }
         // @results: end
        */
 
@@ -82,7 +82,7 @@ public class AggregatePrimer extends PrimerTestCase {
         iterable.forEach(new Block<Document>() {
             @Override
             public void apply(final Document document) {
-                System.out.println(document);
+                System.out.println(document.toJson());
             }
         }, new SingleResultCallback<Void>() {
             @Override
@@ -94,12 +94,12 @@ public class AggregatePrimer extends PrimerTestCase {
 
         /*
         // @results: start
-        Document{{_id=Missing, count=51}}
-        Document{{_id=Staten Island, count=969}}
-        Document{{_id=Manhattan, count=10259}}
-        Document{{_id=Brooklyn, count=6086}}
-        Document{{_id=Queens, count=5656}}
-        Document{{_id=Bronx, count=2338}}
+        { "_id" : "Missing", "count" : 51 }
+        { "_id" : "Staten Island", "count" : 969 }
+        { "_id" : "Manhattan", "count" : 10259 }
+        { "_id" : "Brooklyn", "count" : 6086 }
+        { "_id" : "Queens", "count" : 5656 }
+        { "_id" : "Bronx", "count" : 2338 }
         // @results: end
         */
 

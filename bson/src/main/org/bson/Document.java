@@ -16,14 +16,20 @@
 
 package org.bson;
 
+import org.bson.codecs.BsonTypeClassMap;
 import org.bson.codecs.DecoderContext;
 import org.bson.codecs.DocumentCodec;
+import org.bson.codecs.EncoderContext;
 import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.conversions.Bson;
+import org.bson.json.JsonMode;
 import org.bson.json.JsonReader;
+import org.bson.json.JsonWriter;
+import org.bson.json.JsonWriterSettings;
 import org.bson.types.ObjectId;
 
 import java.io.Serializable;
+import java.io.StringWriter;
 import java.util.Collection;
 import java.util.Date;
 import java.util.LinkedHashMap;
@@ -219,6 +225,29 @@ public class Document implements Map<String, Object>, Serializable, Bson {
         return (Date) get(key);
     }
 
+    /**
+     * Gets a JSON representation of this document
+     *
+     * <p>If using custom types with the document you should provide your own {@link DocumentCodec} instance.</p>
+     *
+     * @return a JSON representation of this document
+     */
+    public String toJson() {
+        return toJson(new DocumentCodec());
+    }
+
+    /**
+     * Gets a JSON representation of this document
+     *
+     * @param documentCodec the document codec instance to use to encode the document
+     * @return a JSON representation of this document
+     */
+    public String toJson(final DocumentCodec documentCodec) {
+        JsonWriter writer = new JsonWriter(new StringWriter(), new JsonWriterSettings(JsonMode.SHELL, false));
+        documentCodec.encode(writer, this, EncoderContext.builder().isEncodingCollectibleDocument(true).build());
+        return writer.getWriter().toString();
+    }
+
     // Vanilla Map methods delegate to map field
 
     @Override
@@ -280,6 +309,7 @@ public class Document implements Map<String, Object>, Serializable, Bson {
     public Set<Map.Entry<String, Object>> entrySet() {
         return documentAsMap.entrySet();
     }
+
 
     @Override
     public boolean equals(final Object o) {
