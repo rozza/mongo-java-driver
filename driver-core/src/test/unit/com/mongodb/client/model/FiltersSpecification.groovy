@@ -46,6 +46,8 @@ import static com.mongodb.client.model.Filters.size
 import static com.mongodb.client.model.Filters.text
 import static com.mongodb.client.model.Filters.type
 import static com.mongodb.client.model.Filters.where
+import static com.mongodb.client.model.Filters.not
+import static com.mongodb.client.model.Filters.nor
 import static org.bson.BsonDocument.parse
 import static org.bson.codecs.configuration.CodecRegistries.fromProviders
 
@@ -62,6 +64,18 @@ class FiltersSpecification extends Specification {
         expect:
         toBson(ne('x', 1)) == parse('{x : {$ne : 1} }')
         toBson(ne('x', null)) == parse('{x : {$ne : null} }')
+    }
+
+    def 'should render $not'() {
+        expect:
+        toBson(not('x', eq(1))) == parse('{x : {$not: {$eq: 1}}}')
+        toBson(not('x', Pattern.compile('/^p.*/'))) == parse('{x : {$not: "/^p.*/"}}')
+    }
+
+    def 'should render $nor'() {
+        expect:
+        toBson(nor(eq('price', 1))) == parse('{$nor : [{price: 1}]}')
+        toBson(nor(eq('price', 1), eq('sale', true))) == parse('{$nor : [{price: 1}, {sale: true}]}')
     }
 
     def 'should render $gt'() {

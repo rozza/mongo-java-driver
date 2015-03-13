@@ -50,8 +50,19 @@ public final class Filters {
     }
 
     /**
-     * Creates a filter that matches all documents where the value of the field name equals the specified value. Note that this does
-     * actually generate a $eq operator, as the query language doesn't require it.
+     * Creates a bson document for the $eq operator that matches the specified value.
+     *
+     * @param value     the value
+     * @param <TItem>  the value type
+     * @return the filter
+     * @mongodb.driver.manual reference/operator/query/eq $eq
+     */
+    public static <TItem> Bson eq(final TItem value) {
+        return new SimpleEncodingFilter<TItem>("$eq", value);
+    }
+
+    /**
+     * Creates a filter that matches all documents where the value of the field name equals the specified value.
      *
      * @param fieldName the field name
      * @param value     the value
@@ -64,6 +75,18 @@ public final class Filters {
     }
 
     /**
+     * Creates a bson documents for the $ne operator.
+     *
+     * @param value     the value
+     * @param <TItem>  the value type
+     * @return the filter
+     * @mongodb.driver.manual reference/operator/query/ne $ne
+     */
+    public static <TItem> Bson ne(final TItem value) {
+        return new SimpleEncodingFilter<TItem>("$ne", value);
+    }
+
+    /**
      * Creates a filter that matches all documents where the value of the field name does not equal the specified value.
      *
      * @param fieldName the field name
@@ -73,7 +96,19 @@ public final class Filters {
      * @mongodb.driver.manual reference/operator/query/ne $ne
      */
     public static <TItem> Bson ne(final String fieldName, final TItem value) {
-        return new OperatorFilter<TItem>("$ne", fieldName, value);
+        return new SimpleEncodingFilter<Bson>(fieldName, ne(value));
+    }
+
+    /**
+     * Creates a bson document for the $gt operator
+     *
+     * @param value the value
+     * @param <TItem> the value type
+     * @return the filter
+     * @mongodb.driver.manual reference/operator/query/gt $gt
+     */
+    public static <TItem> Bson gt(final TItem value) {
+        return new SimpleEncodingFilter<TItem>("$gt", value);
     }
 
     /**
@@ -86,7 +121,19 @@ public final class Filters {
      * @mongodb.driver.manual reference/operator/query/gt $gt
      */
     public static <TItem> Bson gt(final String fieldName, final TItem value) {
-        return new OperatorFilter<TItem>("$gt", fieldName, value);
+        return new SimpleEncodingFilter<Bson>(fieldName, gt(value));
+    }
+
+    /**
+     * Creates a bson document for the $lt operator
+     *
+     * @param value the value
+     * @param <TItem> the value type
+     * @return the filter
+     * @mongodb.driver.manual reference/operator/query/lt $lt
+     */
+    public static <TItem> Bson lt(final TItem value) {
+        return new SimpleEncodingFilter<TItem>("$lt", value);
     }
 
     /**
@@ -99,7 +146,19 @@ public final class Filters {
      * @mongodb.driver.manual reference/operator/query/lt $lt
      */
     public static <TItem> Bson lt(final String fieldName, final TItem value) {
-        return new OperatorFilter<TItem>("$lt", fieldName, value);
+        return new SimpleEncodingFilter<Bson>(fieldName, lt(value));
+    }
+
+    /**
+     * Creates a bson document for the $gte operator
+     *
+     * @param value the value
+     * @param <TItem> the value type
+     * @return the filter
+     * @mongodb.driver.manual reference/operator/query/gte $gte
+     */
+    public static <TItem> Bson gte(final TItem value) {
+        return new SimpleEncodingFilter<TItem>("$gte", value);
     }
 
     /**
@@ -112,7 +171,19 @@ public final class Filters {
      * @mongodb.driver.manual reference/operator/query/gte $gte
      */
     public static <TItem> Bson gte(final String fieldName, final TItem value) {
-        return new OperatorFilter<TItem>("$gte", fieldName, value);
+        return new SimpleEncodingFilter<Bson>(fieldName, gte(value));
+    }
+
+    /**
+     * Creates a bson document for the $lte operator
+     *
+     * @param value the value
+     * @param <TItem> the value type
+     * @return the filter
+     * @mongodb.driver.manual reference/operator/query/lte $lte
+     */
+    public static <TItem> Bson lte(final TItem value) {
+        return new SimpleEncodingFilter<TItem>("$lte", value);
     }
 
     /**
@@ -125,7 +196,31 @@ public final class Filters {
      * @mongodb.driver.manual reference/operator/query/lte $lte
      */
     public static <TItem> Bson lte(final String fieldName, final TItem value) {
-        return new OperatorFilter<TItem>("$lte", fieldName, value);
+        return new SimpleEncodingFilter<Bson>(fieldName, lte(value));
+    }
+
+    /**
+     * Creates a bson document for the $in operator
+     *
+     * @param values    the list of values
+     * @param <TItem>   the value type
+     * @return the filter
+     * @mongodb.driver.manual reference/operator/query/in $in
+     */
+    public static <TItem> Bson in(final TItem... values) {
+        return in(asList(values));
+    }
+
+    /**
+     * Creates a bson document for the $in operator
+     *
+     * @param values    the list of values
+     * @param <TItem>   the value type
+     * @return the filter
+     * @mongodb.driver.manual reference/operator/query/in $in
+     */
+    public static <TItem> Bson in(final Iterable<TItem> values) {
+        return new IterableEncodingFilter<TItem>("$in", values);
     }
 
     /**
@@ -151,8 +246,33 @@ public final class Filters {
      * @mongodb.driver.manual reference/operator/query/in $in
      */
     public static <TItem> Bson in(final String fieldName, final Iterable<TItem> values) {
-        return new ArrayOperatorFilter<TItem>("$in", fieldName, values);
+        return new SimpleEncodingFilter<Bson>(fieldName, in(values));
     }
+
+    /**
+     * Creates a bson document for the $nin operator
+     *
+     * @param values    the list of values
+     * @param <TItem>   the value type
+     * @return the filter
+     * @mongodb.driver.manual reference/operator/query/nin $nin
+     */
+    public static <TItem> Bson nin(final TItem... values) {
+        return nin(asList(values));
+    }
+
+    /**
+     * Creates a bson document for the $nin operator
+     *
+     * @param values    the list of values
+     * @param <TItem>   the value type
+     * @return the filter
+     * @mongodb.driver.manual reference/operator/query/nin $nin
+     */
+    public static <TItem> Bson nin(final Iterable<TItem> values) {
+        return new IterableEncodingFilter<TItem>("$nin", values);
+    }
+
 
     /**
      * Creates a filter that matches all documents where the value of a field does not equal any of the specified values or does not exist.
@@ -177,7 +297,7 @@ public final class Filters {
      * @mongodb.driver.manual reference/operator/query/nin $nin
      */
     public static <TItem> Bson nin(final String fieldName, final Iterable<TItem> values) {
-        return new ArrayOperatorFilter<TItem>("$nin", fieldName, values);
+        return new SimpleEncodingFilter<Bson>(fieldName, nin(values));
     }
 
     /**
@@ -247,8 +367,51 @@ public final class Filters {
         return or(asList(filters));
     }
 
-    // TODO: $not
-    // TODO: $nor
+    /**
+     * Creates a filter that matches all documents where the value of the field name does not match the specified value.
+     *
+     * @param fieldName the field name
+     * @param value     the value
+     * @return the filter
+     * @mongodb.driver.manual reference/operator/query/not $not
+     */
+    public static Bson not(final String fieldName, final Bson value) {
+        return new OperatorFilter<Bson>("$not", fieldName, value);
+    }
+
+    /**
+     * Creates a filter that matches all documents where the value of the field name does not match the specified value.
+     *
+     * @param fieldName the field name
+     * @param value     the value
+     * @return the filter
+     * @mongodb.driver.manual reference/operator/query/not $not
+     */
+    public static Bson not(final String fieldName, final Pattern value) {
+        return new OperatorFilter<String>("$not", fieldName, value.pattern());
+    }
+
+    /**
+     * Creates a filter that performs a logical NOR operation on all the specified filters.
+     *
+     * @param values    the list of values
+     * @return the filter
+     * @mongodb.driver.manual reference/operator/query/nor $nor
+     */
+    public static Bson nor(final Bson... values) {
+        return nor(asList(values));
+    }
+
+    /**
+     * Creates a filter that performs a logical NOR operation on all the specified filters.
+     *
+     * @param values    the list of values
+     * @return the filter
+     * @mongodb.driver.manual reference/operator/query/nor $nor
+     */
+    public static Bson nor(final Iterable<Bson> values) {
+        return new IterableEncodingFilter<Bson>("$nor", values);
+    }
 
     /**
      * Creates a filter that matches all documents that contain the given field.
@@ -390,6 +553,30 @@ public final class Filters {
     }
 
     /**
+     * Creates a bson document for the $all operator
+     *
+     * @param values    the list of values
+     * @param <TItem>   the value type
+     * @return the filter
+     * @mongodb.driver.manual reference/operator/query/all $all
+     */
+    public static <TItem> Bson all(final TItem... values) {
+        return all(asList(values));
+    }
+
+    /**
+     * Creates a bson document for the $all operator
+     *
+     * @param values    the list of values
+     * @param <TItem>   the value type
+     * @return the filter
+     * @mongodb.driver.manual reference/operator/query/all $all
+     */
+    public static <TItem> Bson all(final Iterable<TItem> values) {
+        return new IterableEncodingFilter<TItem>("$all", values);
+    }
+
+    /**
      * Creates a filter that matches all documents where the value of a field is an array that contains all the specified values.
      *
      * @param fieldName the field name
@@ -412,7 +599,7 @@ public final class Filters {
      * @mongodb.driver.manual reference/operator/query/all $all
      */
     public static <TItem> Bson all(final String fieldName, final Iterable<TItem> values) {
-        return new ArrayOperatorFilter<TItem>("$all", fieldName, values);
+        return new SimpleEncodingFilter<Bson>(fieldName, all(values));
     }
 
     /**
@@ -581,14 +768,12 @@ public final class Filters {
         }
     }
 
-    private static class ArrayOperatorFilter<TItem> implements Bson {
+    private static class IterableEncodingFilter<TItem> implements Bson {
         private final String operatorName;
-        private final String fieldName;
         private final Iterable<TItem> values;
 
-        ArrayOperatorFilter(final String operatorName, final String fieldName, final Iterable<TItem> values) {
+        IterableEncodingFilter(final String operatorName, final Iterable<TItem> values) {
             this.operatorName = notNull("operatorName", operatorName);
-            this.fieldName = notNull("fieldName", fieldName);
             this.values = notNull("values", values);
         }
 
@@ -596,15 +781,12 @@ public final class Filters {
         public <TDocument> BsonDocument toBsonDocument(final Class<TDocument> documentClass, final CodecRegistry codecRegistry) {
             BsonDocumentWriter writer = new BsonDocumentWriter(new BsonDocument());
             writer.writeStartDocument();
-            writer.writeName(fieldName);
-            writer.writeStartDocument();
             writer.writeName(operatorName);
             writer.writeStartArray();
             for (TItem value : values) {
                 encodeValue(writer, value, codecRegistry);
             }
             writer.writeEndArray();
-            writer.writeEndDocument();
             writer.writeEndDocument();
 
             return writer.getDocument();
@@ -637,63 +819,11 @@ public final class Filters {
     private static <TItem> void encodeValue(final BsonDocumentWriter writer, final TItem value, final CodecRegistry codecRegistry) {
         if (value == null) {
             writer.writeNull();
+        } else if (value instanceof Bson) {
+            ((Encoder) codecRegistry.get(BsonDocument.class)).encode(writer,
+                    ((Bson) value).toBsonDocument(BsonDocument.class, codecRegistry), EncoderContext.builder().build());
         } else {
             ((Encoder) codecRegistry.get(value.getClass())).encode(writer, value, EncoderContext.builder().build());
         }
-    }
-
-    // WIP, to be used later by not/nor methods
-    private static class NotFilter implements Bson {
-        private final Bson filter;
-
-        public NotFilter(final Bson filter) {
-            this.filter = notNull("filter", filter);
-        }
-
-        @Override
-        public <TDocument> BsonDocument toBsonDocument(final Class<TDocument> documentClass, final CodecRegistry codecRegistry) {
-            BsonDocument filterDocument = filter.toBsonDocument(documentClass, codecRegistry);
-            if (filterDocument.size() == 1) {
-                return negateSingleElementFilter(filterDocument);
-            } else {
-                return negateArbitraryFilter(filterDocument);
-            }
-        }
-
-        private BsonDocument negateSingleElementFilter(final BsonDocument filterDocument) {
-            String name = filterDocument.keySet().iterator().next();
-            BsonValue value = filterDocument.get(name);
-
-            if (name.equals("$")) {
-                return negateSingleElementTopLevelOperatorFilter(filterDocument, name, value);
-            }
-
-            if (value.isDocument()) {
-                // TODO: figure out what to do here
-            }
-
-            if (value.isRegularExpression()) {
-                return new BsonDocument(name, new BsonDocument("$not", value));
-            }
-
-            return new BsonDocument(name, new BsonDocument("$ne", value));
-        }
-
-        private BsonDocument negateArbitraryFilter(final BsonDocument filterDocument) {
-            // $not only works as a meta operator on a single operator so simulate using $nor
-            return new BsonDocument("$nor", new BsonArray(asList(filterDocument)));
-        }
-
-        BsonDocument negateSingleElementTopLevelOperatorFilter(final BsonDocument filterDocument, final String name,
-                                                               final BsonValue value) {
-            if (name.equals("$or")) {
-                return new BsonDocument("$nor", value);
-            } else if (name.equals("$nor")) {
-                return new BsonDocument("$or", value);
-            } else {
-                return negateArbitraryFilter(filterDocument);
-            }
-        }
-
     }
 }
