@@ -68,8 +68,12 @@ class FiltersSpecification extends Specification {
 
     def 'should render $not'() {
         expect:
-        toBson(not('x', eq(1))) == parse('{x : {$not: {$eq: 1}}}')
-        toBson(not('x', Pattern.compile('/^p.*/'))) == parse('{x : {$not: "/^p.*/"}}')
+        toBson(not(eq('x', 1))) == parse('{x : {$not: {$eq: 1}}}')
+        toBson(not(gt('x', 1))) == parse('{x : {$not: {$gt: 1}}}')
+        toBson(not(regex('x', '^p.*'))) == parse('{x : {$not: /^p.*/}}')
+        toBson(not(and(gt('x', 1), eq('y', 20)))) == parse('{x : {$not: {$gt: 1}}, y : {$not: {$eq: 20}}}')
+        toBson(not(and(eq('x', 1), eq('x', 2)))) == parse('{x : {$not: {$in: [1, 2]}}}')
+        toBson(not(and(Filters.in('x', 1, 2), eq('x', 3)))) == parse('{x : {$not: {$in: [1, 2, 3]}}}')
     }
 
     def 'should render $nor'() {
