@@ -15,7 +15,6 @@
  */
 
 package com.mongodb.client.model
-
 import org.bson.BsonArray
 import org.bson.BsonDocument
 import org.bson.BsonInt32
@@ -41,13 +40,14 @@ import static com.mongodb.client.model.Filters.elemMatch
 import static com.mongodb.client.model.Filters.mod
 import static com.mongodb.client.model.Filters.ne
 import static com.mongodb.client.model.Filters.nin
+import static com.mongodb.client.model.Filters.nor
+import static com.mongodb.client.model.Filters.not
 import static com.mongodb.client.model.Filters.regex
 import static com.mongodb.client.model.Filters.size
 import static com.mongodb.client.model.Filters.text
 import static com.mongodb.client.model.Filters.type
 import static com.mongodb.client.model.Filters.where
-import static com.mongodb.client.model.Filters.not
-import static com.mongodb.client.model.Filters.nor
+import static java.util.Arrays.asList
 import static org.bson.BsonDocument.parse
 import static org.bson.codecs.configuration.CodecRegistries.fromProviders
 
@@ -74,6 +74,12 @@ class FiltersSpecification extends Specification {
         toBson(not(and(gt('x', 1), eq('y', 20)))) == parse('{x : {$not: {$gt: 1}}, y : {$not: {$eq: 20}}}')
         toBson(not(and(eq('x', 1), eq('x', 2)))) == parse('{x : {$not: {$in: [1, 2]}}}')
         toBson(not(and(Filters.in('x', 1, 2), eq('x', 3)))) == parse('{x : {$not: {$in: [1, 2, 3]}}}')
+
+        when: 'Missing a field name it should error'
+        toBson(not(new BsonDocument('$in', new BsonArray(asList(new BsonInt32(1))))))
+
+        then:
+        thrown(IllegalArgumentException)
     }
 
     def 'should render $nor'() {

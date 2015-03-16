@@ -249,6 +249,16 @@ public final class Filters {
 
     /**
      * Creates a filter that matches all documents where the value of the field name does not match the specified value.
+     * Requires the field name to passed as part of the value passed in and lifts it to create a valid "$not" query:
+     *
+     * <blockquote><pre>
+     *    not(eq("x", 1))
+     * </pre></blockquote>
+     *
+     * will generate a MongoDB query like:
+     * <blockquote><pre>
+     *    {x : $not: {$eq : 1}}
+     * </pre></blockquote>
      *
      * @param value     the value
      * @return the filter
@@ -679,7 +689,12 @@ public final class Filters {
 
         @Override
         public <TDocument> BsonDocument toBsonDocument(final Class<TDocument> documentClass, final CodecRegistry codecRegistry) {
-            return toFilter(filter.toBsonDocument(documentClass, codecRegistry));
+            BsonDocument bsonFilter = toFilter(filter.toBsonDocument(documentClass, codecRegistry));
+            if (bsonFilter.keySet().iterator().next().startsWith("$")) {
+                throw new IllegalArgumentException("Invalid $not document, the filter document must start with the field name that "
+                        + "the $not operator applies to: " + filter);
+            }
+            return bsonFilter;
         }
 
         public BsonDocument toFilter(final BsonDocument filterDocument) {
