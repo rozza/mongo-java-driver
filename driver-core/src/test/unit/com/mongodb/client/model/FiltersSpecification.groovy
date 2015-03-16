@@ -15,7 +15,6 @@
  */
 
 package com.mongodb.client.model
-
 import org.bson.BsonArray
 import org.bson.BsonDocument
 import org.bson.BsonInt32
