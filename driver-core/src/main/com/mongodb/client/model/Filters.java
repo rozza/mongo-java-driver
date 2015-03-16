@@ -248,7 +248,7 @@ public final class Filters {
     }
 
     /**
-     * Creates a filter that matches all documents where the value of the field name does not match the specified value.
+     * Creates a filter that matches all documents that do not match the passed in filter.
      * Requires the field name to passed as part of the value passed in and lifts it to create a valid "$not" query:
      *
      * <blockquote><pre>
@@ -260,34 +260,34 @@ public final class Filters {
      *    {x : $not: {$eq : 1}}
      * </pre></blockquote>
      *
-     * @param value     the value
+     * @param filter     the value
      * @return the filter
      * @mongodb.driver.manual reference/operator/query/not $not
      */
-    public static Bson not(final Bson value) {
-        return new NotFilter(value);
+    public static Bson not(final Bson filter) {
+        return new NotFilter(filter);
     }
 
     /**
      * Creates a filter that performs a logical NOR operation on all the specified filters.
      *
-     * @param values    the list of values
+     * @param filters    the list of values
      * @return the filter
      * @mongodb.driver.manual reference/operator/query/nor $nor
      */
-    public static Bson nor(final Bson... values) {
-        return nor(asList(values));
+    public static Bson nor(final Bson... filters) {
+        return nor(asList(filters));
     }
 
     /**
      * Creates a filter that performs a logical NOR operation on all the specified filters.
      *
-     * @param values    the list of values
+     * @param filters    the list of values
      * @return the filter
      * @mongodb.driver.manual reference/operator/query/nor $nor
      */
-    public static Bson nor(final Iterable<Bson> values) {
-        return new IterableOperatorFilter<Bson>("$nor", values);
+    public static Bson nor(final Iterable<Bson> filters) {
+        return new IterableOperatorFilter<Bson>("$nor", filters);
     }
 
     /**
