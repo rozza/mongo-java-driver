@@ -322,18 +322,18 @@ public final class ClusterFixture {
     public static AsyncConnectionSource getWriteConnectionSource(final AsyncReadWriteBinding binding) throws Throwable {
         final FutureResultCallback<AsyncConnectionSource> futureResultCallback = new FutureResultCallback<AsyncConnectionSource>();
         binding.getWriteConnectionSource(futureResultCallback);
-        return futureResultCallback.get(20, SECONDS);
+        return futureResultCallback.get(60, SECONDS);
     }
 
     public static AsyncConnectionSource getReadConnectionSource(final AsyncReadWriteBinding binding) throws Throwable {
         final FutureResultCallback<AsyncConnectionSource> futureResultCallback = new FutureResultCallback<AsyncConnectionSource>();
         binding.getReadConnectionSource(futureResultCallback);
-        return futureResultCallback.get(20, SECONDS);
+        return futureResultCallback.get(60, SECONDS);
     }
 
     public static Connection getConnection(final AsyncConnectionSource source) throws Throwable {
         final FutureResultCallback<Connection> futureResultCallback = new FutureResultCallback<Connection>();
         source.getConnection(futureResultCallback);
-        return futureResultCallback.get(20, SECONDS);
+        return futureResultCallback.get(60, SECONDS);
     }
 }
