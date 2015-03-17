@@ -39,6 +39,7 @@ import java.io.InterruptedIOException;
 import java.net.SocketTimeoutException;
 import java.nio.channels.ClosedByInterruptException;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static com.mongodb.assertions.Assertions.isTrue;
 import static com.mongodb.assertions.Assertions.notNull;
@@ -54,8 +55,8 @@ class InternalStreamConnection implements InternalConnection {
 
     private volatile ConnectionDescription description;
     private volatile Stream stream;
-    private volatile boolean isClosed;
-    private volatile boolean opened;
+    private volatile AtomicBoolean isClosed = new AtomicBoolean();
+    private volatile AtomicBoolean opened = new AtomicBoolean();
 
     static final Logger LOGGER = Loggers.getLogger("connection");
 
@@ -87,7 +88,7 @@ class InternalStreamConnection implements InternalConnection {
             } catch (Throwable t) {
                 LOGGER.warn("Exception when trying to signal connectionOpened to the connectionListener", t);
             }
-            opened = true;
+            opened.set(true);
         } catch (Throwable t) {
             close();
             if (t instanceof MongoException) {
@@ -122,7 +123,7 @@ class InternalStreamConnection implements InternalConnection {
                             } catch (Throwable tr) {
                                 LOGGER.warn("Exception when trying to signal connectionOpened to the connectionListener", tr);
                             }
-                            opened = true;
+                            opened.set(true);
                         }
                     }
                 });
@@ -140,7 +141,7 @@ class InternalStreamConnection implements InternalConnection {
         if (stream != null) {
             stream.close();
         }
-        isClosed = true;
+        isClosed.set(true);
         try {
             connectionListener.connectionClosed(new ConnectionEvent(getId()));
         } catch (Throwable t) {
@@ -150,12 +151,12 @@ class InternalStreamConnection implements InternalConnection {
 
     @Override
     public boolean opened() {
-        return opened;
+        return opened.get();
     }
 
     @Override
     public boolean isClosed() {
-        return isClosed;
+        return isClosed.get();
     }
 
     @Override
@@ -211,7 +212,9 @@ class InternalStreamConnection implements InternalConnection {
             LOGGER.trace(format("Send message async: %s", lastRequestId));
         }
         final SingleResultCallback<Void> safeCallback = errorHandlingCallback(callback, LOGGER);
-        if (isClosed()) {
+        if (!opened()) {
+            safeCallback.onResult(null, new MongoSocketClosedException("Stream not opened yet", getServerAddress()));
+        } else if (isClosed()) {
             try {
                 safeCallback.onResult(null, new MongoSocketClosedException("Cannot write to a closed stream", getServerAddress()));
             } catch (Throwable t) {
