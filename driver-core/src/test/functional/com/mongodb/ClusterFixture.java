@@ -142,7 +142,7 @@ public final class ClusterFixture {
     }
 
     public static SingleConnectionBinding getSingleConnectionBinding() {
-        return new SingleConnectionBinding(getCluster(), ReadPreference.primary(), 20, SECONDS);
+        return new SingleConnectionBinding(getCluster(), ReadPreference.primary(), 60, SECONDS);
     }
 
     public static AsyncSingleConnectionBinding getAsyncSingleConnectionBinding() {
@@ -150,7 +150,7 @@ public final class ClusterFixture {
     }
 
     public static AsyncSingleConnectionBinding getAsyncSingleConnectionBinding(final Cluster cluster) {
-        return new AsyncSingleConnectionBinding(cluster, 20, SECONDS);
+        return new AsyncSingleConnectionBinding(cluster, 60, SECONDS);
     }
 
     public static AsyncReadWriteBinding getAsyncBinding() {
@@ -265,7 +265,7 @@ public final class ClusterFixture {
     public static <T> T executeAsync(final AsyncWriteOperation<T> op, final AsyncReadWriteBinding binding) throws Throwable {
         final FutureResultCallback<T> futureResultCallback = new FutureResultCallback<T>();
         op.executeAsync(binding, futureResultCallback);
-        return futureResultCallback.get(20, SECONDS);
+        return futureResultCallback.get(60, SECONDS);
     }
 
     public static <T> T executeAsync(final AsyncReadOperation<T> op) throws Throwable {
@@ -275,7 +275,7 @@ public final class ClusterFixture {
     public static <T> T executeAsync(final AsyncReadOperation<T> op, final AsyncReadWriteBinding binding) throws Throwable {
         final FutureResultCallback<T> futureResultCallback = new FutureResultCallback<T>();
         op.executeAsync(binding, futureResultCallback);
-        return futureResultCallback.get(20, SECONDS);
+        return futureResultCallback.get(60, SECONDS);
     }
 
     public static <T> void loopCursor(final List<AsyncBatchCursor<T>> batchCursors, final Block<T> block) throws Throwable {
@@ -286,14 +286,14 @@ public final class ClusterFixture {
             loopCursor(batchCursor, block, futureResultCallback);
         }
         for (int i = 0; i < batchCursors.size(); i++) {
-            futures.get(i).get(20, SECONDS);
+            futures.get(i).get(60, SECONDS);
         }
     }
 
     public static <T> void loopCursor(final AsyncReadOperation<AsyncBatchCursor<T>> op, final Block<T> block) throws Throwable {
         final FutureResultCallback<Void> futureResultCallback = new FutureResultCallback<Void>();
         loopCursor(executeAsync(op), block, futureResultCallback);
-        futureResultCallback.get(20, SECONDS);
+        futureResultCallback.get(60, SECONDS);
     }
 
     public static <T> void loopCursor(final AsyncBatchCursor<T> batchCursor, final Block<T> block,
