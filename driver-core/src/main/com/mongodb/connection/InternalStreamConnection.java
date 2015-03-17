@@ -212,9 +212,7 @@ class InternalStreamConnection implements InternalConnection {
             LOGGER.trace(format("Send message async: %s", lastRequestId));
         }
         final SingleResultCallback<Void> safeCallback = errorHandlingCallback(callback, LOGGER);
-        if (!opened()) {
-            safeCallback.onResult(null, new MongoSocketClosedException("Stream not opened yet", getServerAddress()));
-        } else if (isClosed()) {
+        if (isClosed()) {
             try {
                 safeCallback.onResult(null, new MongoSocketClosedException("Cannot write to a closed stream", getServerAddress()));
             } catch (Throwable t) {

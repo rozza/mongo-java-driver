@@ -20,6 +20,8 @@ import com.mongodb.MongoNamespace;
 import com.mongodb.async.SingleResultCallback;
 import com.mongodb.binding.AsyncWriteBinding;
 import com.mongodb.binding.WriteBinding;
+import com.mongodb.diagnostics.logging.Logger;
+import com.mongodb.diagnostics.logging.Loggers;
 import com.mongodb.internal.validator.CollectibleDocumentFieldNameValidator;
 import com.mongodb.internal.validator.MappedFieldNameValidator;
 import com.mongodb.internal.validator.NoOpFieldNameValidator;
@@ -238,9 +240,10 @@ public class FindAndReplaceOperation<T> implements AsyncWriteOperation<T>, Write
 
     @Override
     public void executeAsync(final AsyncWriteBinding binding, final SingleResultCallback<T> callback) {
+        Loggers.getLogger("test").info("FindAndReplaceOperation executeAsync called");
         executeWrappedCommandProtocolAsync(namespace.getDatabaseName(), getCommand(), getValidator(),
-                                           CommandResultDocumentCodec.create(decoder, "value"), binding,
-                                           FindAndModifyHelper.<T>transformer(), callback);
+                CommandResultDocumentCodec.create(decoder, "value"), binding,
+                FindAndModifyHelper.<T>transformer(), callback);
     }
 
     private BsonDocument getCommand() {

@@ -91,6 +91,7 @@ class FindAndReplaceOperationSpecification extends OperationFunctionalSpecificat
                                                           new BsonDocumentWrapper<Document>(pete, documentCodec))
                 .filter(new BsonDocument('name', new BsonString('Jordan')))
                 .returnOriginal(false)
+        CollectionHelper.LOGGER.info("Second FindAndReplaceOperation")
         returnedDocument = executeAsync(operation)
 
         then:
