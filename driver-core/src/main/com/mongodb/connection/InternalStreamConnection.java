@@ -52,11 +52,11 @@ class InternalStreamConnection implements InternalConnection {
     private final StreamFactory streamFactory;
     private final InternalConnectionInitializer connectionInitializer;
     private final ConnectionListener connectionListener;
+    private final AtomicBoolean isClosed = new AtomicBoolean();
+    private final AtomicBoolean opened = new AtomicBoolean();
 
     private volatile ConnectionDescription description;
     private volatile Stream stream;
-    private volatile AtomicBoolean isClosed = new AtomicBoolean();
-    private volatile AtomicBoolean opened = new AtomicBoolean();
 
     static final Logger LOGGER = Loggers.getLogger("connection");
 
