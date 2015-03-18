@@ -39,6 +39,7 @@ import java.io.InterruptedIOException;
 import java.net.SocketTimeoutException;
 import java.nio.channels.ClosedByInterruptException;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static com.mongodb.assertions.Assertions.isTrue;
 import static com.mongodb.assertions.Assertions.notNull;
@@ -51,11 +52,11 @@ class InternalStreamConnection implements InternalConnection {
     private final StreamFactory streamFactory;
     private final InternalConnectionInitializer connectionInitializer;
     private final ConnectionListener connectionListener;
+    private final AtomicBoolean isClosed = new AtomicBoolean();
+    private final AtomicBoolean opened = new AtomicBoolean();
 
     private volatile ConnectionDescription description;
     private volatile Stream stream;
-    private volatile boolean isClosed;
-    private volatile boolean opened;
 
     static final Logger LOGGER = Loggers.getLogger("connection");
 
@@ -81,13 +82,13 @@ class InternalStreamConnection implements InternalConnection {
         try {
             stream.open();
             description = connectionInitializer.initialize(this);
+            opened.set(true);
             LOGGER.info(format("Opened connection [%s] to %s", getId(), serverId.getAddress()));
             try {
                 connectionListener.connectionOpened(new ConnectionEvent(getId()));
             } catch (Throwable t) {
                 LOGGER.warn("Exception when trying to signal connectionOpened to the connectionListener", t);
             }
-            opened = true;
         } catch (Throwable t) {
             close();
             if (t instanceof MongoException) {
@@ -100,29 +101,52 @@ class InternalStreamConnection implements InternalConnection {
 
     @Override
     public void openAsync(final SingleResultCallback<Void> callback) {
-        isTrue("Open already called", stream == null);
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("Connection openAsync: " + System.currentTimeMillis());
+        }
+        try {
+            isTrue("Open already called", stream == null);
+        } catch (Throwable t) {
+            if (LOGGER.isInfoEnabled()) {
+                LOGGER.info("Open already called: " + System.currentTimeMillis());
+            }
+            isTrue("Open already called so normally I explode silently", stream == null);
+        }
         stream = streamFactory.create(serverId.getAddress());
+        if (LOGGER.isInfoEnabled()) {
+            LOGGER.info("Connection openAsync stream created: " + System.currentTimeMillis());
+        }
         stream.openAsync(new AsyncCompletionHandler<Void>() {
             @Override
             public void completed(final Void aVoid) {
+                if (LOGGER.isInfoEnabled()) {
+                    LOGGER.info("Connection opened now calling initializeAsync: " + System.currentTimeMillis());
+                }
                 connectionInitializer.initializeAsync(InternalStreamConnection.this, new SingleResultCallback<ConnectionDescription>() {
                     @Override
                     public void onResult(final ConnectionDescription result, final Throwable t) {
+                        if (LOGGER.isInfoEnabled()) {
+                            LOGGER.info("Connection opened and initialized: " + System.currentTimeMillis());
+                        }
                         if (t != null) {
+                            if (LOGGER.isInfoEnabled()) {
+                                LOGGER.info(format("Asynchronous initialization of connection %s to %s failed", getId(),
+                                                   serverId.getAddress()), t);
+                            }
                             close();
                             callback.onResult(null, t);
                         } else {
                             description = result;
-                            callback.onResult(null, null);
                             if (LOGGER.isInfoEnabled()) {
-                                LOGGER.info(format("Opened connection [%s] to %s", getId(), serverId.getAddress()));
+                                LOGGER.info(format("Opened connection %s to %s", getId(), serverId.getAddress()));
                             }
+                            callback.onResult(null, null);
                             try {
                                 connectionListener.connectionOpened(new ConnectionEvent(getId()));
                             } catch (Throwable tr) {
                                 LOGGER.warn("Exception when trying to signal connectionOpened to the connectionListener", tr);
                             }
-                            opened = true;
+                            opened.set(true);
                         }
                     }
                 });
@@ -130,6 +154,9 @@ class InternalStreamConnection implements InternalConnection {
 
             @Override
             public void failed(final Throwable t) {
+                if (LOGGER.isInfoEnabled()) {
+                    LOGGER.info(format("Asynchronous opening of connection %s to %s failed", getId(), serverId.getAddress()), t);
+                }
                 callback.onResult(null, t);
             }
         });
@@ -140,7 +167,7 @@ class InternalStreamConnection implements InternalConnection {
         if (stream != null) {
             stream.close();
         }
-        isClosed = true;
+        isClosed.set(true);
         try {
             connectionListener.connectionClosed(new ConnectionEvent(getId()));
         } catch (Throwable t) {
@@ -150,12 +177,12 @@ class InternalStreamConnection implements InternalConnection {
 
     @Override
     public boolean opened() {
-        return opened;
+        return opened.get();
     }
 
     @Override
     public boolean isClosed() {
-        return isClosed;
+        return isClosed.get();
     }
 
     @Override
@@ -208,7 +235,7 @@ class InternalStreamConnection implements InternalConnection {
         notNull("open", stream);
         notNull("callback", callback);
         if (LOGGER.isTraceEnabled()) {
-            LOGGER.trace(format("Send message async: %s", lastRequestId));
+            LOGGER.trace(format("Sending message %s asynchronously on connection %s", lastRequestId, getId()));
         }
         final SingleResultCallback<Void> safeCallback = errorHandlingCallback(callback, LOGGER);
         if (isClosed()) {
@@ -221,6 +248,9 @@ class InternalStreamConnection implements InternalConnection {
             stream.writeAsync(byteBuffers, new AsyncCompletionHandler<Void>() {
                 @Override
                 public void completed(final Void v) {
+                    if (LOGGER.isTraceEnabled()) {
+                        LOGGER.trace(format("Sent %s asynchronously on connection %s", lastRequestId, getId()));
+                    }
                     try {
                         connectionListener.messagesSent(new ConnectionMessagesSentEvent(getId(), lastRequestId,
                                 getTotalRemaining(byteBuffers)));
@@ -244,7 +274,7 @@ class InternalStreamConnection implements InternalConnection {
         notNull("open", stream);
         notNull("callback", callback);
         if (LOGGER.isTraceEnabled()) {
-            LOGGER.trace(format("Receive message async: %s", responseTo));
+            LOGGER.trace(format("Receiving message %s asynchronously on connection %s", responseTo, getId()));
         }
         final SingleResultCallback<ResponseBuffers> safeCallback = errorHandlingCallback(callback, LOGGER);
         if (isClosed()) {
@@ -258,7 +288,7 @@ class InternalStreamConnection implements InternalConnection {
                         @Override
                         public void onResult(final ResponseBuffers result, final Throwable t) {
                             if (LOGGER.isTraceEnabled()) {
-                                LOGGER.trace(format("Received message: %s", responseTo));
+                                LOGGER.trace(format("Received message %s asynchronously on connection %s", responseTo, getId()));
                             }
                             safeCallback.onResult(result, t);
                         }

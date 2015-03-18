@@ -25,6 +25,8 @@ import com.mongodb.binding.WriteBinding;
 import com.mongodb.bulk.IndexRequest;
 import com.mongodb.bulk.InsertRequest;
 import com.mongodb.client.model.CreateCollectionOptions;
+import com.mongodb.diagnostics.logging.Logger;
+import com.mongodb.diagnostics.logging.Loggers;
 import com.mongodb.operation.BatchCursor;
 import com.mongodb.operation.CountOperation;
 import com.mongodb.operation.CreateCollectionOperation;
@@ -56,6 +58,8 @@ public final class CollectionHelper<T> {
         this.codec = codec;
         this.namespace = namespace;
     }
+
+    public static final Logger LOGGER = Loggers.getLogger("test");
 
     public static void drop(final MongoNamespace namespace) {
         new DropCollectionOperation(namespace).execute(getBinding());
