@@ -118,7 +118,6 @@ class InternalStreamConnection implements InternalConnection {
                             callback.onResult(null, t);
                         } else {
                             description = result;
-                            opened.set(true);
                             if (LOGGER.isInfoEnabled()) {
                                 LOGGER.info(format("Opened connection %s to %s", getId(), serverId.getAddress()));
                             }
@@ -128,6 +127,7 @@ class InternalStreamConnection implements InternalConnection {
                             } catch (Throwable tr) {
                                 LOGGER.warn("Exception when trying to signal connectionOpened to the connectionListener", tr);
                             }
+                            opened.set(true);
                         }
                     }
                 });
