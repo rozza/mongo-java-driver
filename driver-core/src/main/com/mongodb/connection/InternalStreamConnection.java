@@ -101,32 +101,32 @@ class InternalStreamConnection implements InternalConnection {
 
     @Override
     public void openAsync(final SingleResultCallback<Void> callback) {
-        if (LOGGER.isTraceEnabled()) {
-            LOGGER.trace("Connection openAsync");
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("Connection openAsync: " + System.currentTimeMillis());
         }
         try {
             isTrue("Open already called", stream == null);
         } catch (Throwable t) {
-            if (LOGGER.isTraceEnabled()) {
-                LOGGER.trace("Open already called");
+            if (LOGGER.isInfoEnabled()) {
+                LOGGER.info("Open already called: " + System.currentTimeMillis());
             }
             isTrue("Open already called so normally I explode silently", stream == null);
         }
         stream = streamFactory.create(serverId.getAddress());
-        if (LOGGER.isTraceEnabled()) {
-            LOGGER.trace("Connection openAsync stream created");
+        if (LOGGER.isInfoEnabled()) {
+            LOGGER.info("Connection openAsync stream created: " + System.currentTimeMillis());
         }
         stream.openAsync(new AsyncCompletionHandler<Void>() {
             @Override
             public void completed(final Void aVoid) {
-                if (LOGGER.isTraceEnabled()) {
-                    LOGGER.trace("Connection opened now calling initializeAsync");
+                if (LOGGER.isInfoEnabled()) {
+                    LOGGER.info("Connection opened now calling initializeAsync: " + System.currentTimeMillis());
                 }
                 connectionInitializer.initializeAsync(InternalStreamConnection.this, new SingleResultCallback<ConnectionDescription>() {
                     @Override
                     public void onResult(final ConnectionDescription result, final Throwable t) {
-                        if (LOGGER.isTraceEnabled()) {
-                            LOGGER.trace("Connection opened and initialized");
+                        if (LOGGER.isInfoEnabled()) {
+                            LOGGER.info("Connection opened and initialized: " + System.currentTimeMillis());
                         }
                         if (t != null) {
                             if (LOGGER.isInfoEnabled()) {
