@@ -102,13 +102,25 @@ class InternalStreamConnection implements InternalConnection {
     @Override
     public void openAsync(final SingleResultCallback<Void> callback) {
         isTrue("Open already called", stream == null);
+        if (LOGGER.isTraceEnabled()) {
+            LOGGER.trace("Connection openAsync");
+        }
         stream = streamFactory.create(serverId.getAddress());
+        if (LOGGER.isTraceEnabled()) {
+            LOGGER.trace("Connection openAsync stream created");
+        }
         stream.openAsync(new AsyncCompletionHandler<Void>() {
             @Override
             public void completed(final Void aVoid) {
+                if (LOGGER.isTraceEnabled()) {
+                    LOGGER.trace("Connection opened now calling initializeAsync");
+                }
                 connectionInitializer.initializeAsync(InternalStreamConnection.this, new SingleResultCallback<ConnectionDescription>() {
                     @Override
                     public void onResult(final ConnectionDescription result, final Throwable t) {
+                        if (LOGGER.isTraceEnabled()) {
+                            LOGGER.trace("Connection opened and initialized");
+                        }
                         if (t != null) {
                             if (LOGGER.isInfoEnabled()) {
                                 LOGGER.info(format("Asynchronous initialization of connection %s to %s failed", getId(),
