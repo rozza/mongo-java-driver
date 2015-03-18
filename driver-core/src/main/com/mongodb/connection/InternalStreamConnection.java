@@ -101,9 +101,16 @@ class InternalStreamConnection implements InternalConnection {
 
     @Override
     public void openAsync(final SingleResultCallback<Void> callback) {
-        isTrue("Open already called", stream == null);
         if (LOGGER.isTraceEnabled()) {
             LOGGER.trace("Connection openAsync");
+        }
+        try {
+            isTrue("Open already called", stream == null);
+        } catch (Throwable t) {
+            if (LOGGER.isTraceEnabled()) {
+                LOGGER.trace("Open already called");
+            }
+            isTrue("Open already called so normally I explode silently", stream == null);
         }
         stream = streamFactory.create(serverId.getAddress());
         if (LOGGER.isTraceEnabled()) {
