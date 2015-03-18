@@ -127,7 +127,7 @@ abstract class BaseCluster implements Cluster {
         isTrue("open", !isClosed());
 
         if (LOGGER.isTraceEnabled()) {
-            LOGGER.trace(String.format("Asynchronously selection server with selector %s", serverSelector));
+            LOGGER.trace(String.format("Asynchronously selecting server with selector %s", serverSelector));
         }
         ServerSelectionRequest request = new ServerSelectionRequest(serverSelector, getCompositeServerSelector(serverSelector),
                                                                     getUseableTimeoutInNanoseconds(), callback);

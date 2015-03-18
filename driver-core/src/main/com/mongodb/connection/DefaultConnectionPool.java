@@ -125,7 +125,8 @@ class DefaultConnectionPool implements ConnectionPool {
 
         if (connection != null) {
             if (LOGGER.isTraceEnabled()) {
-                LOGGER.trace(String.format("Asynchronously opening a pooled connection to server %s", serverId));
+                LOGGER.trace(String.format("Asynchronously opening pooled connection %s to server %s",
+                                           connection.getDescription().getConnectionId(), serverId));
             }
             openAsync(connection, wrappedCallback);
         } else if (waitQueueSize.incrementAndGet() > settings.getMaxWaitQueueSize()) {
@@ -173,14 +174,16 @@ class DefaultConnectionPool implements ConnectionPool {
             callback.onResult(pooledConnection, null);
         } else {
             if (LOGGER.isTraceEnabled()) {
-                LOGGER.trace(String.format("Pooled connection to server %s is not yet open", serverId));
+                LOGGER.trace(String.format("Pooled connection %s to server %s is not yet open",
+                                           pooledConnection.getDescription().getConnectionId(), serverId));
             }
             pooledConnection.openAsync(new SingleResultCallback<Void>() {
                 @Override
                 public void onResult(final Void result, final Throwable t) {
                     if (t != null) {
                         if (LOGGER.isTraceEnabled()) {
-                            LOGGER.trace(String.format("Pooled connection to server %s failed to open", serverId));
+                            LOGGER.trace(String.format("Pooled connection %s to server %s failed to open",
+                                                       pooledConnection.getDescription().getConnectionId(), serverId));
                         }
                         callback.onResult(null, t);
                     } else {

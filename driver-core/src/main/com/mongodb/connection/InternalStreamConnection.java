@@ -82,13 +82,13 @@ class InternalStreamConnection implements InternalConnection {
         try {
             stream.open();
             description = connectionInitializer.initialize(this);
+            opened.set(true);
             LOGGER.info(format("Opened connection [%s] to %s", getId(), serverId.getAddress()));
             try {
                 connectionListener.connectionOpened(new ConnectionEvent(getId()));
             } catch (Throwable t) {
                 LOGGER.warn("Exception when trying to signal connectionOpened to the connectionListener", t);
             }
-            opened.set(true);
         } catch (Throwable t) {
             close();
             if (t instanceof MongoException) {
@@ -114,16 +114,16 @@ class InternalStreamConnection implements InternalConnection {
                             callback.onResult(null, t);
                         } else {
                             description = result;
-                            callback.onResult(null, null);
+                            opened.set(true);
                             if (LOGGER.isInfoEnabled()) {
                                 LOGGER.info(format("Opened connection [%s] to %s", getId(), serverId.getAddress()));
                             }
+                            callback.onResult(null, null);
                             try {
                                 connectionListener.connectionOpened(new ConnectionEvent(getId()));
                             } catch (Throwable tr) {
                                 LOGGER.warn("Exception when trying to signal connectionOpened to the connectionListener", tr);
                             }
-                            opened.set(true);
                         }
                     }
                 });
@@ -209,7 +209,7 @@ class InternalStreamConnection implements InternalConnection {
         notNull("open", stream);
         notNull("callback", callback);
         if (LOGGER.isTraceEnabled()) {
-            LOGGER.trace(format("Send message async: %s", lastRequestId));
+            LOGGER.trace(format("Sending message %s asynchronously on connection %s", lastRequestId, getId()));
         }
         final SingleResultCallback<Void> safeCallback = errorHandlingCallback(callback, LOGGER);
         if (isClosed()) {
@@ -222,6 +222,9 @@ class InternalStreamConnection implements InternalConnection {
             stream.writeAsync(byteBuffers, new AsyncCompletionHandler<Void>() {
                 @Override
                 public void completed(final Void v) {
+                    if (LOGGER.isTraceEnabled()) {
+                        LOGGER.trace(format("Sent %s asynchronously on connection %s", lastRequestId, getId()));
+                    }
                     try {
                         connectionListener.messagesSent(new ConnectionMessagesSentEvent(getId(), lastRequestId,
                                 getTotalRemaining(byteBuffers)));
@@ -245,7 +248,7 @@ class InternalStreamConnection implements InternalConnection {
         notNull("open", stream);
         notNull("callback", callback);
         if (LOGGER.isTraceEnabled()) {
-            LOGGER.trace(format("Receive message async: %s", responseTo));
+            LOGGER.trace(format("Receiving message %s asynchronously on connection %s", responseTo, getId()));
         }
         final SingleResultCallback<ResponseBuffers> safeCallback = errorHandlingCallback(callback, LOGGER);
         if (isClosed()) {
@@ -259,7 +262,7 @@ class InternalStreamConnection implements InternalConnection {
                         @Override
                         public void onResult(final ResponseBuffers result, final Throwable t) {
                             if (LOGGER.isTraceEnabled()) {
-                                LOGGER.trace(format("Received message: %s", responseTo));
+                                LOGGER.trace(format("Received message %s asynchronously on connection %s", responseTo, getId()));
                             }
                             safeCallback.onResult(result, t);
                         }
