@@ -110,13 +110,17 @@ class InternalStreamConnection implements InternalConnection {
                     @Override
                     public void onResult(final ConnectionDescription result, final Throwable t) {
                         if (t != null) {
+                            if (LOGGER.isInfoEnabled()) {
+                                LOGGER.info(format("Asynchronous initialization of connection %s to %s failed", getId(),
+                                                   serverId.getAddress()), t);
+                            }
                             close();
                             callback.onResult(null, t);
                         } else {
                             description = result;
                             opened.set(true);
                             if (LOGGER.isInfoEnabled()) {
-                                LOGGER.info(format("Opened connection [%s] to %s", getId(), serverId.getAddress()));
+                                LOGGER.info(format("Opened connection %s to %s", getId(), serverId.getAddress()));
                             }
                             callback.onResult(null, null);
                             try {
@@ -131,6 +135,9 @@ class InternalStreamConnection implements InternalConnection {
 
             @Override
             public void failed(final Throwable t) {
+                if (LOGGER.isInfoEnabled()) {
+                    LOGGER.info(format("Asynchronous opening of connection %s to %s failed", getId(), serverId.getAddress()), t);
+                }
                 callback.onResult(null, t);
             }
         });
