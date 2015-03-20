@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2014 MongoDB, Inc.
+ * Copyright (c) 2014-2015 MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -66,6 +66,7 @@ class InternalStreamConnection implements InternalConnection {
 
     private final AtomicBoolean isClosed = new AtomicBoolean();
     private final AtomicBoolean opened = new AtomicBoolean();
+    private final AtomicBoolean readingRequested = new AtomicBoolean();
     private final Semaphore writing = new Semaphore(1);
     private final Semaphore reading = new Semaphore(1);
 
@@ -438,6 +439,9 @@ class InternalStreamConnection implements InternalConnection {
 
             if (readQueue.isEmpty()) {
                 reading.release();
+                if (readingRequested.compareAndSet(true, false)) {
+                    processPendingReads();
+                }
             } else if (isClosed()) {
                 Iterator<Map.Entry<Integer, SingleResultCallback<ResponseBuffers>>> it = readQueue.entrySet().iterator();
                 try {
@@ -453,6 +457,9 @@ class InternalStreamConnection implements InternalConnection {
                     }
                 } finally {
                     reading.release();
+                    if (readingRequested.compareAndSet(true, false)) {
+                        processPendingReads();
+                    }
                 }
             } else {
                 fillAndFlipBuffer(REPLY_HEADER_LENGTH,
@@ -474,6 +481,9 @@ class InternalStreamConnection implements InternalConnection {
                                       }
                                   }), LOGGER));
             }
+
+        } else {
+            readingRequested.set(true);
         }
     }
 
