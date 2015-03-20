@@ -436,10 +436,16 @@ class InternalStreamConnection implements InternalConnection {
 
     private void processPendingReads() {
         if (reading.tryAcquire()) {
+            if (LOGGER.isTraceEnabled()) {
+                LOGGER.trace(format("Reading locked ([%s] %s)", getId(), serverId));
+            }
             processPendingResults();
 
             if (readQueue.isEmpty()) {
                 reading.release();
+                if (LOGGER.isTraceEnabled()) {
+                    LOGGER.trace(format("Reading released (empty) ([%s] %s)", getId(), serverId));
+                }
                 if (readingRequested.compareAndSet(true, false)) {
                     processPendingReads();
                 }
@@ -458,6 +464,9 @@ class InternalStreamConnection implements InternalConnection {
                     }
                 } finally {
                     reading.release();
+                    if (LOGGER.isTraceEnabled()) {
+                        LOGGER.trace(format("Reading released (closed) ([%s] %s)", getId(), serverId));
+                    }
                 }
                 if (readingRequested.compareAndSet(true, false)) {
                     processPendingReads();
@@ -473,6 +482,7 @@ class InternalStreamConnection implements InternalConnection {
                                           } else {
                                               reading.release();
                                               if (LOGGER.isTraceEnabled()) {
+                                                  LOGGER.trace(format("Reading released (completed) ([%s] %s)", getId(), serverId));
                                                   LOGGER.trace(format("Message added to pending results: %s. ([%s] %s)",
                                                                       result.getReplyHeader().getResponseTo(), getId(), serverId));
                                               }
@@ -482,16 +492,24 @@ class InternalStreamConnection implements InternalConnection {
                                       }
                                   }), LOGGER));
             }
-
         } else {
+            if (LOGGER.isTraceEnabled()) {
+                LOGGER.trace(format("Reading lock unavailable ([%s] %s)", getId(), serverId));
+            }
             readingRequested.set(true);
         }
     }
 
     private void processPendingWrites() {
         if (writing.tryAcquire()) {
+            if (LOGGER.isTraceEnabled()) {
+                LOGGER.trace(format("Writing locked ([%s] %s)", getId(), serverId));
+            }
             if (writeQueue.isEmpty()) {
                 writing.release();
+                if (LOGGER.isTraceEnabled()) {
+                    LOGGER.trace(format("Writing released (empty) ([%s] %s)", getId(), serverId));
+                }
                 if (writingRequested.compareAndSet(true, false)) {
                     processPendingWrites();
                 }
@@ -504,6 +522,9 @@ class InternalStreamConnection implements InternalConnection {
                     }
                 } finally {
                     writing.release();
+                    if (LOGGER.isTraceEnabled()) {
+                        LOGGER.trace(format("Writing released (closed) ([%s] %s)", getId(), serverId));
+                    }
                 }
                 if (writingRequested.compareAndSet(true, false)) {
                     processPendingWrites();
@@ -517,6 +538,9 @@ class InternalStreamConnection implements InternalConnection {
                     @Override
                     public void completed(final Void v) {
                         writing.release();
+                        if (LOGGER.isTraceEnabled()) {
+                            LOGGER.trace(format("Writing released (completed) ([%s] %s)", getId(), serverId));
+                        }
                         try {
                             connectionListener.messagesSent(new ConnectionMessagesSentEvent(getId(),
                                                                                             message.getMessageId(),
@@ -531,6 +555,9 @@ class InternalStreamConnection implements InternalConnection {
                     @Override
                     public void failed(final Throwable t) {
                         writing.release();
+                        if (LOGGER.isTraceEnabled()) {
+                            LOGGER.trace(format("Writing released (failed) ([%s] %s)", getId(), serverId));
+                        }
                         close();
                         errorHandlingCallback(message.getCallback(), LOGGER).onResult(null, translateWriteException(t));
                         processPendingWrites();
@@ -539,10 +566,16 @@ class InternalStreamConnection implements InternalConnection {
             }
         } else {
             writingRequested.set(true);
+            if (LOGGER.isTraceEnabled()) {
+                LOGGER.trace(format("Writing lock unavailable ([%s] %s)", getId(), serverId));
+            }
         }
     }
 
     private void processPendingResults() {
+        if (LOGGER.isTraceEnabled()) {
+            LOGGER.trace(format("Processing results started ([%s] %s)", getId(), serverId));
+        }
         Iterator<Map.Entry<Integer, Response>> it = messages.entrySet().iterator();
         while (it.hasNext()) {
             Map.Entry<Integer, Response> pairs = it.next();
@@ -567,6 +600,9 @@ class InternalStreamConnection implements InternalConnection {
                 }
                 it.remove();
             }
+        }
+        if (LOGGER.isTraceEnabled()) {
+            LOGGER.trace(format("Processing results ended ([%s] %s)", getId(), serverId));
         }
     }
 
