@@ -40,13 +40,8 @@ import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.net.SocketTimeoutException;
 import java.nio.channels.ClosedByInterruptException;
-import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static com.mongodb.assertions.Assertions.isTrue;
@@ -545,7 +540,7 @@ final class InternalStreamConnection implements InternalConnection {
         if (LOGGER.isTraceEnabled()) {
             LOGGER.trace(format("Processing results started ([%s] %s)", getId(), serverId));
         }
-        readQueue.forEachResponse(new Function< Map.Entry<Integer, InternalStreamResponse>, Boolean>() {
+        readQueue.forEachResponse(new Function<Map.Entry<Integer, InternalStreamResponse>, Boolean>() {
             @Override
             public Boolean apply(final Map.Entry<Integer, InternalStreamResponse> entry) {
                 int messageId = entry.getKey();

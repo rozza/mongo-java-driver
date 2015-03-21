@@ -111,7 +111,7 @@ final class InternalStreamReadQueue {
         }
     }
 
-    public final void acquire(final Block<Throwable> block) {
+    public void acquire(final Block<Throwable> block) {
         try {
             queueLock.acquire();
         } catch (InterruptedException e) {
