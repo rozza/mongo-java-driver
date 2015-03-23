@@ -191,9 +191,9 @@ final class InternalStreamConnection implements InternalConnection {
                 } catch (Throwable t) {
                     LOGGER.warn("Exception when trying to signal messagesSent to the connectionListener", t);
                 }
-            } catch (Exception e) {
+            } catch (Throwable t) {
                 close();
-                throw translateWriteException(e);
+                throw translateWriteException(t);
             } finally {
                 writeQueue.release();
             }
@@ -224,8 +224,8 @@ final class InternalStreamConnection implements InternalConnection {
                                 }
                                 readQueue.putResponse(responseBuffers.getReplyHeader().getResponseTo(),
                                         new InternalStreamResponse(responseBuffers, null));
-                            } catch (IOException e) {
-                                readQueue.putResponse(responseTo, new InternalStreamResponse(null, translateReadException(e)));
+                            } catch (Throwable t2) {
+                                readQueue.putResponse(responseTo, new InternalStreamResponse(null, translateReadException(t2)));
                                 close();
                                 break;
                             }
@@ -236,12 +236,7 @@ final class InternalStreamConnection implements InternalConnection {
 
             InternalStreamResponse response = readQueue.removeResponse(responseTo);
             if (response.hasError()) {
-                Throwable t = response.getError();
-                if (t instanceof MongoException) {
-                    throw (MongoException) t;
-                } else {
-                    throw MongoException.fromThrowable(t);
-                }
+                throw MongoException.fromThrowable(response.getError());
             }
             return response.getResult();
         }
