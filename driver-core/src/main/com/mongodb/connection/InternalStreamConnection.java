@@ -492,38 +492,42 @@ final class InternalStreamConnection implements InternalConnection {
                 LOGGER.trace(format("Writing locked ([%s] %s)", getId(), serverId));
             }
             final InternalStreamSendMessageAsync message = writeQueue.poll();
-            if (LOGGER.isTraceEnabled()) {
-                LOGGER.trace(format("Sending Message: %s. ([%s] %s)", message.getMessageId(), getId(), serverId));
-            }
-            stream.writeAsync(message.getByteBuffers(), new AsyncCompletionHandler<Void>() {
-                @Override
-                public void completed(final Void v) {
-                    writeQueue.release();
-                    if (LOGGER.isTraceEnabled()) {
-                        LOGGER.trace(format("Writing released (completed) ([%s] %s)", getId(), serverId));
-                    }
-                    try {
-                        connectionListener.messagesSent(new ConnectionMessagesSentEvent(getId(),
-                                                                                        message.getMessageId(),
-                                                                                        getTotalRemaining(message.getByteBuffers())));
-                    } catch (Throwable t) {
-                        LOGGER.warn("Exception when trying to signal messagesSent to the connectionListener", t);
-                    }
-                    errorHandlingCallback(message.getCallback(), LOGGER).onResult(null, null);
-                    processPendingWrites();
+            if (message != null) {
+                if (LOGGER.isTraceEnabled()) {
+                    LOGGER.trace(format("Sending Message: %s. ([%s] %s)", message.getMessageId(), getId(), serverId));
                 }
+                stream.writeAsync(message.getByteBuffers(), new AsyncCompletionHandler<Void>() {
+                    @Override
+                    public void completed(final Void v) {
+                        writeQueue.release();
+                        if (LOGGER.isTraceEnabled()) {
+                            LOGGER.trace(format("Writing released (completed) ([%s] %s)", getId(), serverId));
+                        }
+                        try {
+                            connectionListener.messagesSent(new ConnectionMessagesSentEvent(getId(),
+                                    message.getMessageId(),
+                                    getTotalRemaining(message.getByteBuffers())));
+                        } catch (Throwable t) {
+                            LOGGER.warn("Exception when trying to signal messagesSent to the connectionListener", t);
+                        }
+                        errorHandlingCallback(message.getCallback(), LOGGER).onResult(null, null);
+                        processPendingWrites();
+                    }
 
-                @Override
-                public void failed(final Throwable t) {
-                    writeQueue.release();
-                    if (LOGGER.isTraceEnabled()) {
-                        LOGGER.trace(format("Writing released (failed) ([%s] %s)", getId(), serverId));
+                    @Override
+                    public void failed(final Throwable t) {
+                        writeQueue.release();
+                        if (LOGGER.isTraceEnabled()) {
+                            LOGGER.trace(format("Writing released (failed) ([%s] %s)", getId(), serverId));
+                        }
+                        close();
+                        errorHandlingCallback(message.getCallback(), LOGGER).onResult(null, translateWriteException(t));
+                        processPendingWrites();
                     }
-                    close();
-                    errorHandlingCallback(message.getCallback(), LOGGER).onResult(null, translateWriteException(t));
-                    processPendingWrites();
-                }
-            });
+                });
+            } else {
+                writeQueue.release();
+            }
         } else {
             if (LOGGER.isTraceEnabled()) {
                 LOGGER.trace(format("Writing lock unavailable or queue empty ([%s] %s)", getId(), serverId));
