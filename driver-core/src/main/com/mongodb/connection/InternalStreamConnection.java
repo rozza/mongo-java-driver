@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2014 MongoDB, Inc.
+ * Copyright (c) 2014-2015 MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,8 @@
 
 package com.mongodb.connection;
 
+import com.mongodb.Block;
+import com.mongodb.Function;
 import com.mongodb.MongoException;
 import com.mongodb.MongoInternalException;
 import com.mongodb.MongoInterruptedException;
@@ -38,13 +40,8 @@ import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.net.SocketTimeoutException;
 import java.nio.channels.ClosedByInterruptException;
-import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static com.mongodb.assertions.Assertions.isTrue;
@@ -53,21 +50,17 @@ import static com.mongodb.connection.ReplyHeader.REPLY_HEADER_LENGTH;
 import static com.mongodb.internal.async.ErrorHandlingResultCallback.errorHandlingCallback;
 import static java.lang.String.format;
 
-class InternalStreamConnection implements InternalConnection {
+final class InternalStreamConnection implements InternalConnection {
     private final ServerId serverId;
     private final StreamFactory streamFactory;
     private final InternalConnectionInitializer connectionInitializer;
     private final ConnectionListener connectionListener;
 
-    private final LinkedList<SendMessageAsync> writeQueue = new LinkedList<SendMessageAsync>();
-    private final ConcurrentHashMap<Integer, SingleResultCallback<ResponseBuffers>> readQueue =
-        new ConcurrentHashMap<Integer, SingleResultCallback<ResponseBuffers>>();
-    private final ConcurrentMap<Integer, Response> messages = new ConcurrentHashMap<Integer, Response>();
+    private final InternalStreamWriteQueue writeQueue;
+    private final InternalStreamReadQueue readQueue;
 
     private final AtomicBoolean isClosed = new AtomicBoolean();
     private final AtomicBoolean opened = new AtomicBoolean();
-    private final Semaphore writing = new Semaphore(1);
-    private final Semaphore reading = new Semaphore(1);
 
     private volatile ConnectionDescription description;
     private volatile Stream stream;
@@ -82,6 +75,8 @@ class InternalStreamConnection implements InternalConnection {
         this.connectionInitializer = notNull("connectionInitializer", connectionInitializer);
         this.connectionListener = notNull("connectionListener", connectionListener);
         description = new ConnectionDescription(serverId);
+        readQueue = new InternalStreamReadQueue(serverId, description);
+        writeQueue = new InternalStreamWriteQueue(serverId, description);
     }
 
     @Override
@@ -95,7 +90,8 @@ class InternalStreamConnection implements InternalConnection {
         stream = streamFactory.create(serverId.getAddress());
         try {
             stream.open();
-            description = connectionInitializer.initialize(this);
+            setDescription(connectionInitializer.initialize(this));
+
             opened.set(true);
 
             try {
@@ -186,7 +182,7 @@ class InternalStreamConnection implements InternalConnection {
             throw new MongoSocketClosedException("Cannot write to a closed stream", getServerAddress());
         } else {
             try {
-                writing.acquire();
+                writeQueue.acquire();
                 stream.write(byteBuffers);
                 try {
                     connectionListener.messagesSent(new ConnectionMessagesSentEvent(getId(),
@@ -195,11 +191,11 @@ class InternalStreamConnection implements InternalConnection {
                 } catch (Throwable t) {
                     LOGGER.warn("Exception when trying to signal messagesSent to the connectionListener", t);
                 }
-            } catch (Exception e) {
+            } catch (Throwable t) {
                 close();
-                throw translateWriteException(e);
+                throw translateWriteException(t);
             } finally {
-                writing.release();
+                writeQueue.release();
             }
         }
     }
@@ -210,38 +206,37 @@ class InternalStreamConnection implements InternalConnection {
         if (isClosed()) {
             throw new MongoSocketClosedException("Cannot read from a closed stream", getServerAddress());
         } else {
-            while (!messages.containsKey(responseTo)) {
-                try {
-                    reading.acquire();
-                    if (messages.containsKey(responseTo)) {
-                        break;
+            readQueue.acquire(new Block<Throwable>() {
+                @Override
+                public void apply(final Throwable t) {
+                    if (t != null) {
+                        throw MongoException.fromThrowable(t);
+                    } else {
+                        while (!readQueue.containsKeyResponse(responseTo)) {
+                            try {
+                                ResponseBuffers responseBuffers = receiveResponseBuffers();
+                                try {
+                                    connectionListener.messageReceived(new ConnectionMessageReceivedEvent(getId(),
+                                            responseBuffers.getReplyHeader().getResponseTo(),
+                                            responseBuffers.getReplyHeader().getMessageLength()));
+                                } catch (Throwable t1) {
+                                    LOGGER.warn("Exception when trying to signal messageReceived to the connectionListener", t1);
+                                }
+                                readQueue.putResponse(responseBuffers.getReplyHeader().getResponseTo(),
+                                        new InternalStreamResponse(responseBuffers, null));
+                            } catch (Throwable t2) {
+                                readQueue.putResponse(responseTo, new InternalStreamResponse(null, translateReadException(t2)));
+                                close();
+                                break;
+                            }
+                        }
                     }
-                    ResponseBuffers responseBuffers = receiveResponseBuffers();
-                    try {
-                        connectionListener.messageReceived(new ConnectionMessageReceivedEvent(getId(),
-                                                                                              responseBuffers.getReplyHeader()
-                                                                                                             .getResponseTo(),
-                                                                                              responseBuffers.getReplyHeader()
-                                                                                                             .getMessageLength()));
-                    } catch (Throwable t) {
-                        LOGGER.warn("Exception when trying to signal messageReceived to the connectionListener", t);
-                    }
-                    messages.put(responseBuffers.getReplyHeader().getResponseTo(), new Response(responseBuffers, null));
-                } catch (Exception e) {
-                    close();
-                    messages.put(responseTo, new Response(null, translateReadException(e)));
-                } finally {
-                    reading.release();
                 }
-            }
-            Response response = messages.remove(responseTo);
+            });
+
+            InternalStreamResponse response = readQueue.removeResponse(responseTo);
             if (response.hasError()) {
-                Throwable t = response.getError();
-                if (t instanceof MongoException) {
-                    throw (MongoException) t;
-                } else {
-                    throw MongoException.fromThrowable(t);
-                }
+                throw MongoException.fromThrowable(response.getError());
             }
             return response.getResult();
         }
@@ -250,21 +245,22 @@ class InternalStreamConnection implements InternalConnection {
     @Override
     public void sendMessageAsync(final List<ByteBuf> byteBuffers, final int lastRequestId, final SingleResultCallback<Void> callback) {
         notNull("open", stream, callback);
-        if (LOGGER.isTraceEnabled()) {
-            LOGGER.trace(format("Queuing send message: %s. ([%s] %s)", lastRequestId, getId(), serverId));
-        }
-        writeQueue.add(new SendMessageAsync(byteBuffers, lastRequestId, errorHandlingCallback(callback, LOGGER)));
+        writeQueue.add(new InternalStreamSendMessageAsync(byteBuffers, lastRequestId, errorHandlingCallback(callback, LOGGER)));
         processPendingWrites();
     }
 
     @Override
     public void receiveMessageAsync(final int responseTo, final SingleResultCallback<ResponseBuffers> callback) {
         notNull("open", stream, callback);
-        if (LOGGER.isTraceEnabled()) {
-            LOGGER.trace(format("Queuing read message: %s. ([%s] %s)", responseTo, getId(), serverId));
-        }
         readQueue.put(responseTo, errorHandlingCallback(callback, LOGGER));
         processPendingReads();
+    }
+
+    private void setDescription(final ConnectionDescription description) {
+        this.description = description;
+        writeQueue.setDescription(description);
+        readQueue.setDescription(description);
+
     }
 
     private ConnectionId getId() {
@@ -433,78 +429,84 @@ class InternalStreamConnection implements InternalConnection {
     }
 
     private void processPendingReads() {
-        if (reading.tryAcquire()) {
-            processPendingResults();
 
-            if (readQueue.isEmpty()) {
-                reading.release();
-            } else if (isClosed()) {
-                Iterator<Map.Entry<Integer, SingleResultCallback<ResponseBuffers>>> it = readQueue.entrySet().iterator();
-                try {
-                    while (it.hasNext()) {
-                        Map.Entry<Integer, SingleResultCallback<ResponseBuffers>> pairs = it.next();
-                        SingleResultCallback<ResponseBuffers> callback = pairs.getValue();
-                        it.remove();
-                        try {
-                            callback.onResult(null, new MongoSocketClosedException("Cannot read from a closed stream", getServerAddress()));
-                        } catch (Throwable t) {
-                            LOGGER.warn("Exception calling callback", t);
-                        }
+        processPendingResults();
+
+        if (readQueue.isEmpty()) {
+            return;
+        } else if (isClosed()) {
+            readQueue.forEach(new Block<Map.Entry<Integer, SingleResultCallback<ResponseBuffers>>>() {
+                @Override
+                public void apply(final Map.Entry<Integer, SingleResultCallback<ResponseBuffers>> entry) {
+                    SingleResultCallback<ResponseBuffers> callback = entry.getValue();
+                    try {
+                        callback.onResult(null, new MongoSocketClosedException("Cannot read from a closed stream", getServerAddress()));
+                    } catch (Throwable t) {
+                        LOGGER.warn("Exception calling callback", t);
                     }
-                } finally {
-                    reading.release();
                 }
-            } else {
-                fillAndFlipBuffer(REPLY_HEADER_LENGTH,
-                                  errorHandlingCallback(new ResponseHeaderCallback(new SingleResultCallback<ResponseBuffers>() {
-                                      @Override
-                                      public void onResult(final ResponseBuffers result, final Throwable t) {
-                                          if (result == null) {
-                                              reading.release();
-                                              processUnknownFailedRead(t);
-                                          } else {
-                                              reading.release();
-                                              if (LOGGER.isTraceEnabled()) {
-                                                  LOGGER.trace(format("Message added to pending results: %s. ([%s] %s)",
-                                                                      result.getReplyHeader().getResponseTo(), getId(), serverId));
-                                              }
-                                              messages.put(result.getReplyHeader().getResponseTo(), new Response(result, t));
-                                          }
-                                          processPendingReads();
-                                      }
-                                  }), LOGGER));
-            }
+            });
+        }
+
+        if (readQueue.tryAcquire()) {
+            fillAndFlipBuffer(REPLY_HEADER_LENGTH,
+                    errorHandlingCallback(new ResponseHeaderCallback(new SingleResultCallback<ResponseBuffers>() {
+                        @Override
+                        public void onResult(final ResponseBuffers result, final Throwable t) {
+                            readQueue.release();
+                            if (result == null) {
+                                close();
+                                readQueue.forEach(new Block<Map.Entry<Integer, SingleResultCallback<ResponseBuffers>>>() {
+                                    @Override
+                                    public void apply(final Map.Entry<Integer, SingleResultCallback<ResponseBuffers>> entry) {
+                                        if (LOGGER.isTraceEnabled()) {
+                                            LOGGER.trace(format("Processing unknown failed message: %s. ([%s] %s)", entry.getKey(),
+                                                    getId(), serverId));
+                                        }
+                                        SingleResultCallback<ResponseBuffers> callback = entry.getValue();
+                                        try {
+                                            callback.onResult(null, t);
+                                        } catch (Throwable tr) {
+                                            LOGGER.warn("Exception calling callback", tr);
+                                        }
+                                    }
+                                });
+                            } else {
+                                readQueue.putResponse(result.getReplyHeader().getResponseTo(), new InternalStreamResponse(result, t));
+                            }
+                            processPendingReads();
+                        }
+                    }), LOGGER));
         }
     }
 
     private void processPendingWrites() {
-        if (writing.tryAcquire()) {
-            if (writeQueue.isEmpty()) {
-                writing.release();
-            } else if (isClosed()) {
-                try {
-                    while (!writeQueue.isEmpty()) {
-                        SendMessageAsync message = writeQueue.poll();
-                        errorHandlingCallback(message.getCallback(), LOGGER).onResult(null,
-                                  new MongoSocketClosedException("Cannot write to a closed stream", getServerAddress()));
-                    }
-                } finally {
-                    writing.release();
-                }
+        if (writeQueue.isEmpty()) {
+            return;
+        } else if (isClosed()) {
+            writeQueue.closeAll();
+        }
 
-            } else {
-                final SendMessageAsync message = writeQueue.poll();
+        if (writeQueue.tryAcquire()) {
+            if (LOGGER.isTraceEnabled()) {
+                LOGGER.trace(format("Writing locked ([%s] %s)", getId(), serverId));
+            }
+            final InternalStreamSendMessageAsync message = writeQueue.poll();
+            if (message != null) {
                 if (LOGGER.isTraceEnabled()) {
                     LOGGER.trace(format("Sending Message: %s. ([%s] %s)", message.getMessageId(), getId(), serverId));
                 }
                 stream.writeAsync(message.getByteBuffers(), new AsyncCompletionHandler<Void>() {
                     @Override
                     public void completed(final Void v) {
-                        writing.release();
+                        writeQueue.release();
+                        if (LOGGER.isTraceEnabled()) {
+                            LOGGER.trace(format("Writing released (completed) ([%s] %s)", getId(), serverId));
+                        }
                         try {
                             connectionListener.messagesSent(new ConnectionMessagesSentEvent(getId(),
-                                                                                            message.getMessageId(),
-                                                                                            getTotalRemaining(message.getByteBuffers())));
+                                    message.getMessageId(),
+                                    getTotalRemaining(message.getByteBuffers())));
                         } catch (Throwable t) {
                             LOGGER.warn("Exception when trying to signal messagesSent to the connectionListener", t);
                         }
@@ -514,114 +516,58 @@ class InternalStreamConnection implements InternalConnection {
 
                     @Override
                     public void failed(final Throwable t) {
-                        writing.release();
+                        writeQueue.release();
+                        if (LOGGER.isTraceEnabled()) {
+                            LOGGER.trace(format("Writing released (failed) ([%s] %s)", getId(), serverId));
+                        }
                         close();
                         errorHandlingCallback(message.getCallback(), LOGGER).onResult(null, translateWriteException(t));
                         processPendingWrites();
                     }
                 });
+            } else {
+                writeQueue.release();
+            }
+        } else {
+            if (LOGGER.isTraceEnabled()) {
+                LOGGER.trace(format("Writing lock unavailable or queue empty ([%s] %s)", getId(), serverId));
             }
         }
     }
 
     private void processPendingResults() {
-        Iterator<Map.Entry<Integer, Response>> it = messages.entrySet().iterator();
-        while (it.hasNext()) {
-            Map.Entry<Integer, Response> pairs = it.next();
-            int messageId = pairs.getKey();
-            if (LOGGER.isTraceEnabled()) {
-                LOGGER.trace(format("Processing read message: %s. ([%s] %s)", messageId, getId(), serverId));
-            }
-            SingleResultCallback<ResponseBuffers> callback = readQueue.remove(messageId);
-            if (callback != null) {
-                if (pairs.getValue().hasError()) {
-                    try {
-                        callback.onResult(null, pairs.getValue().getError());
-                    } catch (Throwable t) {
-                        LOGGER.warn("Exception calling callback", t);
+        if (LOGGER.isTraceEnabled()) {
+            LOGGER.trace(format("Processing results started ([%s] %s)", getId(), serverId));
+        }
+        readQueue.forEachResponse(new Function<Map.Entry<Integer, InternalStreamResponse>, Boolean>() {
+            @Override
+            public Boolean apply(final Map.Entry<Integer, InternalStreamResponse> entry) {
+                int messageId = entry.getKey();
+                InternalStreamResponse response = entry.getValue();
+                SingleResultCallback<ResponseBuffers> callback = readQueue.remove(messageId);
+                if (callback != null) {
+                    if (response.hasError()) {
+                        try {
+                            callback.onResult(null, response.getError());
+                        } catch (Throwable t) {
+                            LOGGER.warn("Exception calling callback", t);
+                        }
+                    } else {
+                        try {
+                            callback.onResult(response.getResult(), null);
+                        } catch (Throwable t) {
+                            LOGGER.warn("Exception calling callback", t);
+                        }
                     }
+                    return true;
                 } else {
-                    try {
-                        callback.onResult(pairs.getValue().getResult(), null);
-                    } catch (Throwable t) {
-                        LOGGER.warn("Exception calling callback", t);
-                    }
+                    return false;
                 }
-                it.remove();
             }
+        });
+        if (LOGGER.isTraceEnabled()) {
+            LOGGER.trace(format("Processing results ended ([%s] %s)", getId(), serverId));
         }
     }
 
-    private void processUnknownFailedRead(final Throwable t) {
-        processPendingResults();
-        close();
-        Iterator<Map.Entry<Integer, SingleResultCallback<ResponseBuffers>>> it = readQueue.entrySet().iterator();
-        while (it.hasNext()) {
-            Map.Entry<Integer, SingleResultCallback<ResponseBuffers>> pairs = it.next();
-            if (LOGGER.isTraceEnabled()) {
-                LOGGER.trace(format("Processing unknown failed message: %s. ([%s] %s)", pairs.getKey(), getId(), serverId));
-            }
-            SingleResultCallback<ResponseBuffers> callback = pairs.getValue();
-            it.remove();
-            try {
-                callback.onResult(null, t);
-            } catch (Throwable tr) {
-                LOGGER.warn("Exception calling callback", tr);
-            }
-        }
-    }
-
-    private static class SendMessage {
-        private final List<ByteBuf> byteBuffers;
-        private final int messageId;
-
-        SendMessage(final List<ByteBuf> byteBuffers, final int messageId) {
-            this.byteBuffers = byteBuffers;
-            this.messageId = messageId;
-        }
-
-        public List<ByteBuf> getByteBuffers() {
-            return byteBuffers;
-        }
-
-        public int getMessageId() {
-            return messageId;
-        }
-    }
-
-    private static class SendMessageAsync extends SendMessage {
-        private final SingleResultCallback<Void> callback;
-
-        SendMessageAsync(final List<ByteBuf> byteBuffers, final int messageId, final SingleResultCallback<Void> callback) {
-            super(byteBuffers, messageId);
-            this.callback = callback;
-        }
-
-        public SingleResultCallback<Void> getCallback() {
-            return callback;
-        }
-    }
-
-
-    private static class Response {
-        private final ResponseBuffers result;
-        private final Throwable t;
-
-        public Response(final ResponseBuffers result, final Throwable t) {
-            this.result = result;
-            this.t = t;
-        }
-
-        public ResponseBuffers getResult() {
-            return result;
-        }
-
-        public Throwable getError() {
-            return t;
-        }
-
-        public boolean hasError() {
-            return t != null;
-        }
-    }
 }
