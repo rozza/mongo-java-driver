@@ -124,6 +124,7 @@ final class InternalStreamReadQueue {
         } catch (InterruptedException e) {
             block.apply(e);
             queueLock.release();
+            return;
         }
 
         try {
