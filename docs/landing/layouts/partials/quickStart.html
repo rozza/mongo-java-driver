@@ -1,0 +1,57 @@
+<h2 id="quickStart">Quick Start</h2>
+
+<p>
+  The recommended way to get started using the <code>mongodb-java-driver</code>
+  in your project is with a dependency management system – the snippet below can be copied and pasted into your build.
+</p>
+
+{{ range where $.Site.Data.releases.versions "version" $.Site.Data.releases.current  }}{{ $.Scratch.Set "currentVersion" . }}{{end }}
+
+{{$currentVersion := $.Scratch.Get "currentVersion"}}
+
+<p>Need help? See our getting started guides on building with Maven and Gradle.</p>
+
+<div id="downloadWidget">
+    <form class="form-inline">
+      <a href="https://oss.sonatype.org/content/repositories/releases/org/mongodb/mongo-java-driver/{{$currentVersion.version}}/"
+        class="btn btn-large btn-download" target="_blank">Download</a>
+      {{ $.Scratch.Set "pos" 0 }}
+      {{ with $.Site.Data.releases.versions }}
+        <select class="selectpicker">
+          {{ range . }}
+          <option value="{{$.Scratch.Get "pos"}}">{{.version}}</option>
+          {{ $.Scratch.Add "pos" 1 }}
+          {{ end }}
+        </select>
+      {{ end }}
+      <input type="checkbox" checked class="distropicker" data-toggle="toggle" data-on="Maven" data-off="Gradle" data-offstyle="success">
+  </form>
+
+  {{ $.Scratch.Set "pos" 0 }}
+  {{ with $.Site.Data.releases.versions }}
+      {{ range . }}
+      {{ $pos := $.Scratch.Get "pos" }}
+  <div id="maven-{{$pos}}" class="maven"{{if ne . $currentVersion}} style="display:none;"{{end}}>
+<pre><code>
+  &lt;dependencies&gt;
+      &lt;dependency&gt;
+          &lt;groupId&gt;org.mongodb&lt;/groupId&gt;
+          &lt;artifactId&gt;mongo-java-driver&lt;/artifactId&gt;
+          &lt;version&gt;{{.version}}&lt;/version&gt;
+      &lt;/dependency&gt;
+  &lt;/dependencies&gt;
+
+</code></pre>
+  </div>
+  <div id="gradle-{{$pos}}" class="gradle" style="display:none;">
+<pre><code>
+    dependencies {
+        compile 'org.mongodb:mongo-java-driver:{{.version}}'
+    }
+
+</code></pre>
+  </div>
+  {{ $.Scratch.Add "pos" 1 }}
+  {{ end }}
+  {{ end }}
+</div>
