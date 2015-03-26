@@ -16,3 +16,19 @@ current = "3.0.0-rc1"
   status = "old"
   docs = "http://api.mongodb.org/java/2.12"  # We have no plans for a doc site
   api = "http://api.mongodb.org/java/2.12"
+
+[[drivers]]
+  name = "mongodb-driver"
+  description = "The synchronous driver."
+
+[[drivers]]
+  name = "mongodb-driver-async"
+  description = "The new asynchronous driver."
+
+[[drivers]]
+  name = "mongo-java-driver"
+  description = "An uber jar containing the bson library, the core library and the mongodb-driver."
+
+[[drivers]]
+  name = "mongodb-driver-core"
+  description = "The core library."

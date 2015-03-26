@@ -217,36 +217,28 @@ input.gsc-search-button[title], input.gsc-search-button:hover[title], input.gsc-
 }
 
 
-/* Promo Styles */
+/* Hero Styles */
 
-
-#promo {
+#hero {
   background-color: #666;
   color: #f3f4eb;
   border-bottom: 1px solid #313030;
+  padding: 12px 0px;
 }
 
 #mongodbJVMlogo {
   background-image: url("../img/mongoJVMlogo.png");
   background-position: left top;
   background-repeat: no-repeat;
-  width: 194px;
-  height: 350px;
+  width: 83px;
+  height: 150px;
 }
 
-#promo h2 {
+#hero h2 {
   border-top: 3px solid #6ca439;
   color: #f3f4eb;
-  padding: 20px 0;
-  margin-bottom: 20px;
+  padding: 10px 0;
   display: inline-block;
-}
-
-
-#promo .btn-mongo {
-  background-color: #3b291f;
-  margin-left: 40px;
-  padding: 20px 60px;
 }
 
 .btn-mongo, .btn-mongo:visited, .btn-mongo:active {
@@ -268,10 +260,21 @@ input.gsc-search-button[title], input.gsc-search-button:hover[title], input.gsc-
   text-decoration:none;
 }
 
-.btn-download, .btn-download:visited, .btn-download:active {
+.btn-dark {
   border: 2px solid #3b291f;
   background-color: #3b291f;
   color: white;
+  border-radius: 0;
+}
+
+.btn-dark:hover {
+  color: white;
+  border: 2px solid #6ca439;
+  box-shadow:none;
+  border-radius: 0;
+}
+
+.btn-download, .btn-download:visited, .btn-download:active {
   font-size: 14px;
   font-weight: 800;
   line-height: 14px;
@@ -279,13 +282,6 @@ input.gsc-search-button[title], input.gsc-search-button:hover[title], input.gsc-
   padding: 20px 60px;
   text-shadow: none;
   text-transform: uppercase;
-  border-radius: 0;
-}
-
-.btn-download:hover {
-  color: white;
-  border: 2px solid #6ca439;
-  box-shadow:none;
 }
 
 
@@ -319,10 +315,33 @@ input.gsc-search-button[title], input.gsc-search-button:hover[title], input.gsc-
   border: 1px solid #3b291f;
 }
 
+#downloadWidget .description {
+  border-top: 1px solid #3b291f;
+  padding: 10px;
+  background-color: #666;
+  color: #f3f4eb;
+}
+
 #downloadWidget pre {
   border-radius: 0;
-  margin: 0;
+  margin: 10px;
   padding: 0;
+}
+
+#downloadWidget code {
+  padding: 0 10px;
+}
+
+#downloadWidget .clipboard {
+  position: relative;
+}
+
+#downloadWidget .clipboard button {
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  border-radius: 0;
+  color: white;
 }
 
 /* University Promo */
