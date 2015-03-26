@@ -1,15 +1,15 @@
 <h2 id="quickStart">Quick Start</h2>
 
 <p>
-  The recommended way to get started using the <code>mongodb-java-driver</code>
-  in your project is with a dependency management system – the snippet below can be copied and pasted into your build.
+  The recommended way to get started using one of the drivers in your project is with a dependency management system.
+  Select the driver, version and dependency management system below and the snippet can be copied and pasted into your build.
+</p>
+<p>
+  Alternatively, head over to our documentation to learn more about getting started with Java and MongoDB.
 </p>
 
 {{ range where $.Site.Data.releases.versions "version" $.Site.Data.releases.current  }}{{ $.Scratch.Set "currentReleasedVersion" . }}{{end }}
-
 {{$currentReleasedVersion := $.Scratch.Get "currentReleasedVersion"}}
-
-<p>Need help? See our getting started guides on building with Maven and Gradle.</p>
 
 <div id="downloadWidget">
   <form class="form-inline">
