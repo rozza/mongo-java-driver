@@ -1,22 +1,22 @@
 +++
 date = "2015-03-17T15:36:56Z"
-title = "Admin Quick Tour"
+title = "Async Admin Quick Tour"
 [menu.main]
   parent = "Getting Started"
-  weight = 20
+  weight = 50
   pre = "<i class='fa'></i>"
 +++
 
 # MongoDB Driver Admin Quick Tour
 
 This is the second part of the MongoDB driver quick tour. In the
-[quick tour]({{< relref "getting-started/quick-tour.md" >}}) we looked at how to
-use the Java driver to execute basic CRUD operations.  In this section we'll look at some of the
+[quick tour]({{< relref "getting-started/async-quick-tour.md" >}}) we looked at how to
+use the Async Java driver to execute basic CRUD operations.  In this section we'll look at some of the
 administrative features available in the driver.
 
 The following code snippets come from the `QuickTourAdmin.java` example code
 that can be found with the [driver
-source]({{< srcref "driver/src/examples/tour/QuickTourAdmin.java">}}).
+source]({{< srcref "driver-async/src/examples/tour/QuickTourAdmin.java">}}).
 
 {{% note %}}
 See the [installation guide]({{< relref "getting-started/installation-guide.md" >}})
@@ -29,19 +29,38 @@ To get use started we'll quickly connect and create a `mongoClient`, `database` 
 variable for use in the examples below:
 
 ```java
-MongoClient mongoClient = new MongoClient();
+MongoClient mongoClient = new MongoClient(new ConnectionString("mongodb://localhost"));
 MongoDatabase database = mongoClient.getDatabase("mydb");
 MongoCollection<Document> collection = database.getCollection("test");
 ```
+
+{{% note %}}
+Sometimes you will need the same or similar callbacks more than once.  In these situations
+it makes sense to DRY (Do not Repeat Yourself) up your code and save the callback either
+as a concrete class or assign to a variable as below:
+
+```java
+SingleResultCallback<Void> callbackWhenFinished = new SingleResultCallback<Void>() {
+    @Override
+    public void onResult(final Void result, final Throwable t) {
+        System.out.println("Operation Finished!");
+    }
+};
+```
+{{% /note %}}
+
 
 ## Get A List of Databases
 
 You can get a list of the available databases:
 
 ```java
-for (String name: mongoClient.listDatabaseNames()) {
-    System.out.println(name);
-}
+mongoClient.listDatabaseNames().forEach(new Block<String>() {
+    @Override
+    public void apply(final String s) {
+        System.out.println(s);
+    }
+}, callbackWhenFinished);
 ```
 
 Calling the `getDatabase()` on `MongoClient` does not create a database.
@@ -54,7 +73,7 @@ collection.
 You can drop a database by name using a `MongoClient` instance:
 
 ```java
-mongoClient.getDatabase("databaseToBeDropped").drop();
+mongoClient.getDatabase("databaseToBeDropped").drop(callbackWhenFinished);
 ```
 
 ## Create A Collection
@@ -63,7 +82,8 @@ Collections in MongoDB are created automatically simply by inserted a document i
 
 ```java
 database.createCollection("cappedCollection",
-  new CreateCollectionOptions().capped(true).sizeInBytes(0x100000));
+  new CreateCollectionOptions().capped(true).sizeInBytes(0x100000),
+  callbackWhenFinished);
 ```
 
 ## Get A List of Collections
@@ -71,9 +91,12 @@ database.createCollection("cappedCollection",
 You can get a list of the available collections in a database:
 
 ```java
-for (String name : database.listCollectionNames()) {
-    System.out.println(name);
-}
+database.listCollectionNames().forEach(new Block<String>() {
+    @Override
+    public void apply(final String databaseName) {
+        System.out.println(databaseName);
+    }
+}, callbackWhenFinished);
 ```
 
 ## Drop A Collection
@@ -81,7 +104,7 @@ for (String name : database.listCollectionNames()) {
 You can drop a collection by using the drop() method:
 
 ```java
-collection.dropCollection();
+collection.dropCollection(call);
 ```
 
 ## Create An Index
@@ -92,18 +115,26 @@ For `1` ascending  or `-1` for descending. The following creates an ascending in
 
 ```java
 // create an ascending index on the "i" field
- collection.createIndex(new Document("i", 1));
+ collection.createIndex(new Document("i", 1), callbackWhenFinished);
 ```
 
 ## Get a List of Indexes on a Collection
 
-Use the `listIndexes()` method to get a list of indexes. The following lists
- the indexes on the collection `test`:
+Use the `listIndexes()` method to get a list of indexes. The following creates a
+`printDocumentBlock` Block that prints out the Json version of a document and then passes
+that block to the `forEach` method on a
+[`mongoIterable`]({{< apiref "com/mongodb/async/client/MongoIterable.html">}})
+so that it will printout all the indexes on the collection `test`:
 
 ```java
-for (final Document index : collection.listIndexes()) {
-    System.out.println(index.toJson());
-}
+Block<Document> printDocumentBlock = new Block<Document>() {
+    @Override
+    public void apply(final Document document) {
+        System.out.println(document.toJson());
+    }
+};
+
+collection.listIndexes().forEach(printDocumentBlock, callbackWhenFinished);
 ```
 
 The example should print the following indexes:
@@ -111,6 +142,7 @@ The example should print the following indexes:
 ```json
 { "v" : 1, "key" : { "_id" : 1 }, "name" : "_id_", "ns" : "mydb.test" }
 { "v" : 1, "key" : { "i" : 1 }, "name" : "i_1", "ns" : "mydb.test" }
+Operation Finished!
 ```
 
 ## Text indexes
@@ -122,7 +154,7 @@ literal "text" in the index document:
 
 ```java
 // create a text index on the "content" field
-coll.createIndex(new Document("content", "text"));
+coll.createIndex(new Document("content", "text"), callbackWhenFinished);
 ```
 
 As of MongoDB 2.6, text indexes are now integrated into the main query
@@ -130,9 +162,9 @@ language and enabled by default (here we use the [`Filters.text`]({{< apiref "co
 
 ```java
 // Insert some documents
-collection.insertOne(new Document("_id", 0).append("content", "textual content"));
-collection.insertOne(new Document("_id", 1).append("content", "additional content"));
-collection.insertOne(new Document("_id", 2).append("content", "irrelevant content"));
+collection.insertOne(new Document("_id", 0).append("content", "textual content"), callbackWhenFinished);
+collection.insertOne(new Document("_id", 1).append("content", "additional content"), callbackWhenFinished);
+collection.insertOne(new Document("_id", 2).append("content", "irrelevant content"), callbackWhenFinished);
 
 // Find using the text index
 long matchCount = collection.count(text("textual content -irrelevant"));
@@ -144,9 +176,33 @@ matchCount = collection.count(textSearch);
 System.out.println("Text search matches (english): " + matchCount);
 
 // Find the highest scoring match
+// Find using the text index
+collection.count(text("textual content -irrelevant"), new SingleResultCallback<Long>() {
+    @Override
+    public void onResult(final Long matchCount, final Throwable t) {
+        System.out.println("Text search matches: " + matchCount);
+    }
+});
+
+
+// Find using the $language operator
+Bson textSearch = text("textual content -irrelevant", "english");
+collection.count(textSearch, new SingleResultCallback<Long>() {
+    @Override
+    public void onResult(final Long matchCount, final Throwable t) {
+        System.out.println("Text search matches (english): " + matchCount);
+    }
+});
+
+// Find the highest scoring match
 Document projection = new Document("score", new Document("$meta", "textScore"));
-Document myDoc = collection.find(textSearch).projection(projection).first();
-System.out.println("Highest scoring document: " + myDoc.toJson());
+collection.find(textSearch).projection(projection).first(new SingleResultCallback<Document>() {
+    @Override
+    public void onResult(final Document highest, final Throwable t) {
+        System.out.println("Highest scoring document: " + highest.toJson());
+
+    }
+});
 ```
 
 and it should print:
@@ -160,4 +216,4 @@ Highest scoring document: { "_id" : 1, "content" : "additional content", "score"
 For more information about text search see the [text index]({{< docsref "/core/index-text" >}}) and
 [$text query operator]({{< docsref "/reference/operator/query/text">}}) documentation.
 
-That concludes the admin quick tour overview!  Remember any [command]({{< docsref "/reference/command">}}) that doesn't have a specific helper can be called by the [database.runCommand()](http://api.mongodb.org/java/3.0/?com/mongodb/client/MongoDatabase.html#runCommand-org.bson.conversions.Bson-com.mongodb.ReadPreference-com.mongodb.async.SingleResultCallback-).
+That concludes the admin quick tour overview!  Remember any [command]({{< docsref "/reference/command">}}) that doesn't have a specific helper can be called by the [database.runCommand()](http://api.mongodb.org/java/3.0/?com/mongodb/async/client/MongoDatabase.html#runCommand-org.bson.conversions.Bson-com.mongodb.ReadPreference-com.mongodb.async.SingleResultCallback-).
