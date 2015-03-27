@@ -9,7 +9,7 @@ title = "Installation Guide"
 
 # Installation
 
-There are three different MongoDB drivers available in the 3.0 release and a standalone Bson library.
+There are three different MongoDB drivers available in the 3.0 release and a standalone BSON library.
 The recommended way to get started using one of the drivers in your project is with a dependency management system.
 
 {{< distroPicker >}}
@@ -33,15 +33,15 @@ The MongoDB Driver and Async Driver are both built on top of this new core libra
 
 {{< install artifactId="mongodb-driver-core" version="3.0.0-rc1" >}}
 
-## Bson
+## BSON
 
-The Bson library comprehensively supports [BSON](http://www.bsonspec.org),
+This library comprehensively supports [BSON](http://www.bsonspec.org),
 the data storage and network transfer format that MongoDB uses for "documents".
 BSON is short for Binary [JSON](http://json.org/), is a binary-encoded serialization of JSON-like documents.
 
 {{< install artifactId="bson" version="3.0.0-rc1" >}}
 
 ## Uber MongoDB Java Driver
-This is the legacy uber jar that contains everything you need; the bson library, the core library and the mongodb-driver.
+This is the legacy uber jar that contains everything you need; the BSON library, the core library and the mongodb-driver.
 
 {{< install artifactId="mongo-java-driver" version="3.0.0-rc1" >}}
