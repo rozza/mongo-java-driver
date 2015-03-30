@@ -1,54 +1,62 @@
 +++
 date = "2015-03-17T15:36:56Z"
-title = "Quick Tour"
+title = "Async Quick Tour"
 [menu.main]
   parent = "Getting Started"
-  weight = 10
+  weight = 30
   pre = "<i class='fa'></i>"
 +++
 
-# MongoDB Driver Quick Tour
+# MongoDB Async Driver Quick Tour
 
 The following code snippets come from the `QuickTour.java` example code
-that can be found with the [driver source]({{< srcref "driver/src/examples/tour/QuickTour.java">}}).
+that can be found with the [async driver
+source]({{< srcref "driver-async/src/examples/tour/QuickTour.java">}}).
 
 {{% note %}}
-See the [installation guide]({{< relref "getting-started/installation-guide.md" >}})
-for instructions on how to install the MongoDB Driver.
+See the [installation guide]({{< relref "getting-started/installation-guide.md#mongodb-async-driver" >}})
+for instructions on how to install the MongoDB Async Driver.
+{{% /note %}}
+
+## Going Async with Callbacks
+
+The MongoDB Async driver provides an asynchronous API that can leverage either Netty or Java 7's `AsynchronousSocketChannel` for fast and non-blocking IO.
+
+The API mirrors the new Synchronous API from the MongoDB Driver, but any methods that cause network IO take a `SingleResponseCallback<T>` and return immediately, where `T` is the type of response for the document.
+
+The `SingleResponseCallback<T>` interface requires the implementation of a single method `onResult(T result, Throwable t)` which is called when the operation has completed.  The `result` parameter contains the result of the operation, if successful. If the operation failed for any reason then the `t` contains the Throwable reason for the failure.
+
+{{% note class="important" %}}
+It's important to always check for errors in any `SingleResponseCallback<T>` implementation
+and handle them appropriately! Below the error checks are left out only for the sake of brevity.
 {{% /note %}}
 
 ## Make a Connection
 
-The following example shows five ways to connect to the
-database `mydb` on the local machine. If the database does not exist, MongoDB
-will create it for you.
+The following example shows two ways to connect to the
+database `mydb` on the local machine.
 
 ```java
-// To directly connect to a single MongoDB server
-// (this will not auto-discover the primary even if it's a member of a replica set)
-MongoClient mongoClient = new MongoClient();
-
-// or
-MongoClient mongoClient = new MongoClient( "localhost" );
-
-// or
-MongoClient mongoClient = new MongoClient( "localhost" , 27017 );
-
-// or, to connect to a replica set, with auto-discovery of the primary, supply a seed list of members
-MongoClient mongoClient = new MongoClient(
-  Arrays.asList(new ServerAddress("localhost", 27017),
-                new ServerAddress("localhost", 27018),
-                new ServerAddress("localhost", 27019)));
+// Provide custom MongoClientSettings
+MongoClientSettings settings = MongoClientSettings.builder().build();
+MongoClient mongoClient = MongoClients.create(settings);
 
 // or use a connection string
-MongoClientURI connectionString = new MongoClientURI("mongodb://localhost:27017,localhost:27018,localhost:27019");
-MongoClient mongoClient = new MongoClient(connectionString);
+MongoClient mongoClient = new MongoClient(new ConnectionString("mongodb://localhost"));
 
 MongoDatabase database = mongoClient.getDatabase("mydb");
 ```
 
 At this point, the `database` object will be a connection to a MongoDB
 server for the specified database.
+
+{{% note %}}
+There is no callback required for `getDatabase("mydb")` as there is no network IO required.
+A `MongoDatabase` instance provides methods to interact with a database
+but the database might not actually exist and will only be created on the
+insertion of data via some means; eg the creation of a collection or inserting documents,
+which do require callbacks as they require network IO.
+{{% /note %}}
 
 ### MongoClient
 
@@ -117,8 +125,17 @@ Document doc = new Document("name", "MongoDB")
 To insert the document into the collection, use the `insertOne()` method.
 
 ```java
-collection.insertOne(doc);
+collection.insertOne(doc, new SingleResultCallback<Void>() {
+    @Override
+    public void onResult(final Void result, final Throwable t) {
+        System.out.println("Inserted!");
+    }
+});
 ```
+
+Once the document has been inserted the `onResult` callback will be called and it will
+print "Inserted!".  Remember, in a normal application you would always check for the presence of 
+errors in the `t` variable.
 
 ## Add Multiple Documents
 
@@ -143,7 +160,12 @@ To insert these documents to the collection, pass the list of documents to the
 `insertMany()` method.
 
 ```java
-collection.insertMany(documents);
+collection.insertMany(documents, new SingleResultCallback<Void>() {
+    @Override
+    public void onResult(final Void result, final Throwable t) {
+        System.out.println("Documents inserted!");
+    }
+});
 ```
 
 ## Count Documents in A Collection
@@ -154,7 +176,13 @@ the first one), we can check to see if we have them all using the
 method. The following code should print `101`.
 
 ```java
-System.out.println(collection.count());
+collection.count(
+  new SingleResultCallback<Long>() {
+      @Override
+      public void onResult(final Long count, final Throwable t) {
+          System.out.println(count);
+      }
+  });
 ```
 
 ## Query the Collection
@@ -174,14 +202,29 @@ operation. `collection.find().first()` returns the first document or null rather
 This is useful for queries that should only match a single document, or if you are
 interested in the first document only.
 
-The following example prints the first document found in the collection.
+{{% note %}}
+Sometimes you will need the same or similar callbacks more than once.  In these situations
+it makes sense to DRY (Do not Repeat Yourself) up your code and save the callback either
+as a concrete class or assign to a variable as below:
 
 ```java
-Document myDoc = collection.find().first();
-System.out.println(myDoc.toJson());
+SingleResultCallback<Document> printDocument = new SingleResultCallback<Document>() {
+    @Override
+    public void onResult(final Document document, final Throwable t) {
+        System.out.println(document.toJson());
+    }
+};
+```
+{{% /note %}}
+
+The following example passes the `printDocument` callback  to the `first` method:
+
+```java
+collection.find().first(printDocument);
 ```
 
-The example should print the following document:
+
+The example should return immediately and eventually print the following document:
 
 ```json
 { "_id" : { "$oid" : "551582c558c7b4fbacf16735" },
@@ -201,29 +244,26 @@ names that start with
 To retrieve all the documents in the collection, we will use the
 `find()` method. The `find()` method returns a `FindIterable` instance, that
 provides a fluent interface for chaining or controlling find operations. Use the
-`iterator()` method to get an iterator over the set of documents that matched the
-query and iterate. The following code retrieves all documents in the collection
-and prints them out (101 documents):
+`forEach()` method to provide a `Block` to apply to each document and a callback that
+is run once the iteration has finished.
+The following code retrieves all documents in the collection and prints them out
+(101 documents) and then finally prints out "Operation Finished!":
 
 ```java
-MongoCursor<Document> cursor = collection.find().iterator();
-try {
-    while (cursor.hasNext()) {
-        System.out.println(cursor.next().toJson());
+Block<Document> printDocumentBlock = new Block<Document>() {
+    @Override
+    public void apply(final Document document) {
+        System.out.println(document.toJson());
     }
-} finally {
-    cursor.close();
-}
-```
+};
+SingleResultCallback<Void> callbackWhenFinished = new SingleResultCallback<Void>() {
+    @Override
+    public void onResult(final Void result, final Throwable t) {
+        System.out.println("Operation Finished!");
+    }
+};
 
-Although the following idiom is permissible, its use is discouraged as the
-application can leak a cursor if the loop
-terminates early:
-
-```java
-for (Document cur : collection.find()) {
-    System.out.println(cur.toJson());
-}
+collection.find().forEach(printDocumentBlock, callbackWhenFinished);
 ```
 
 ## Get A Single Document with a Query Filter
@@ -231,16 +271,15 @@ for (Document cur : collection.find()) {
 We can create a filter to pass to the find() method to get a subset of
 the documents in our collection. For example, if we wanted to find the
 document for which the value of the "i" field is 71, we would do the
-following:
+following (reusing the `printDocument` callback):
 
 ```java
 import static com.mongodb.client.model.Filters.*;
 
-myDoc = collection.find(eq("i", 71)).first();
-System.out.println(myDoc.toJson());
+collection.find(eq("i", 71)).first(printDocument);
 ```
 
-and it should just print just one document
+and it should return immediately and eventually print just one document:
 
 ```json
 { "_id" : { "$oid" : "5515836e58c7b4fbc756320b" }, "i" : 71 }
@@ -256,26 +295,18 @@ helpers for simple and concise ways of building up queries.
 
 We can use the query to get a set of documents from our collection. For
 example, if we wanted to get all documents where `"i" > 50`, we could
-write:
+write (reusing `printDocumentBlock` block and `callbackWhenFinished` callback):
 
 ```java
 // now use a range query to get a larger subset
-Block<Document> printBlock = new Block<Document>() {
-     @Override
-     public void apply(final Document document) {
-         System.out.println(document.toJson());
-     }
-};
-collection.find(gt("i", 50)).forEach(printBlock);
+collection.find(gt("i", 50)).forEach(printDocumentBlock, callbackWhenFinished);
 ```
-
-Notice we use the `forEach` method on `FindIterable` which applies a block to each
-document and we print all documents where `i > 50`.
+which should print the documents where `i > 50`.
 
 We could also get a range, say `50 < i <= 100`:
 
 ```java
-collection.find(and(gt("i", 50), lte("i", 100))).forEach(printBlock);
+collection.find(and(gt("i", 50), lte("i", 100))).forEach(printDocumentBlock, callbackWhenFinished);
 ```
 
 ## Sorting documents
@@ -286,8 +317,7 @@ We add a sort to a find query by calling the `sort()` method on a `FindIterable`
 sort our documents:
 
 ```java
-myDoc = collection.find(exists("i")).sort(descending("i")).first();
-System.out.println(myDoc.toJson());
+collection.find(exists("i")).sort(descending("i")).first(printDocument);
 ```
 
 ## Projecting fields
@@ -297,8 +327,7 @@ find operation.  Below we'll sort the collection, exclude the `_id` field and ou
 matching document:
 
 ```java
-myDoc = collection.find().projection(excludeId()).first();
-System.out.println(myDoc.toJson());
+collection.find().projection(excludeId()).first(printDocument);
 ```
 
 ## Updating documents
@@ -306,12 +335,18 @@ System.out.println(myDoc.toJson());
 There are numerous [update operators](http://docs.mongodb.org/manual/reference/operator/update-field/)
 supported by MongoDB.
 
-If you want to update a single document, the [`updateOne`]({{< apiref "com/mongodb/client/MongoCollection.html#updateOne-org.bson.conversions.Bson-org.bson.conversions.Bson-">}})
+If you want to update a single document, the [`updateOne`]({{< apiref "com/mongodb/async/client/MongoCollection.html#updateOne-org.bson.conversions.Bson-org.bson.conversions.Bson-">}})
 method takes a filter and then the update document.  
 Here we update the first document that meets the filter `i` equals `10` and set the value of `i` to `110`:
 
 ```java
-collection.updateOne(eq("i", 10), new Document("$set", new Document("i", 110)));
+collection.updateOne(eq("i", 10), new Document("$set", new Document("i", 110)),
+    new SingleResultCallback<UpdateResult>() {
+        @Override
+        public void onResult(final UpdateResult result, final Throwable t) {
+            System.out.println(result.getModifiedCount());
+        }
+    });
 ```
 
 If we you want to update multiple documents, the [`updateMany`]({{< apiref "com/mongodb/async/client/MongoCollection.html#updateMany-org.bson.conversions.Bson-org.bson.conversions.Bson-">}})
@@ -319,34 +354,48 @@ method will update all documents that match the filter.  Here we increment the v
 is less than 100.
 
 ```java
-UpdateResult updateResult = collection.updateMany(lt("i", 10),
-          new Document("$inc", new Document("i", 100)));
-System.out.println(updateResult.getModifiedCount());
+collection.updateMany(lt("i", 10), new Document("$inc", new Document("i", 100)),
+    new SingleResultCallback<UpdateResult>() {
+        @Override
+        public void onResult(final UpdateResult result, final Throwable t) {
+            System.out.println(result.getModifiedCount());
+        }
+    });
 ```
 
-The update methods return a [`UpdateResult`](({{< apiref "com/mongodb/client/result/UpdateResult.html">}}))
+The update methods return a [`UpdateResult`]({{< apiref "com/mongodb/client/result/UpdateResult.html">}})
 which provides information about the operation including the number of documents modified by the update.
 
 ## Deleting documents
 
-If you want to delete a single document, the [`deleteOne`]({{< apiref "com/mongodb/client/MongoCollection.html#deleteOne-org.bson.conversions.Bson-">}})
+If you want to delete a single document, the [`deleteOne`]({{< apiref "com/mongodb/async/client/MongoCollection.html#deleteOne-org.bson.conversions.Bson-">}})
 method takes a filter and will delete the first document that matches the filter:
 
 ```java
-collection.deleteOne(eq("i", 110));
+collection.deleteOne(eq("i", 110), new SingleResultCallback<DeleteResult>() {
+    @Override
+    public void onResult(final DeleteResult result, final Throwable t) {
+        System.out.println(result.getDeletedCount());
+    }
+});
 ```
 
-If we want to delete multiple documents then we can use the [`deleteMany`]({{< apiref "com/mongodb/client/MongoCollection.html#deleteMany-org.bson.conversions.Bson-">}})
+If we want to delete multiple documents then we can use the [`deleteMany`]({{< apiref "com/mongodb/async/client/MongoCollection.html#deleteMany-org.bson.conversions.Bson-">}})
 method to delete all documents that match the filter.  
 Here we delete all documents where `i` is greater or equal to `100`:
 
 ```java
-DeleteResult deleteResult = collection.deleteMany(gte("i", 100));
-System.out.println(deleteResult.getDeletedCount());
+collection.deleteMany(gte("i", 100), new SingleResultCallback<DeleteResult>() {
+    @Override
+    public void onResult(final DeleteResult result, final Throwable t) {
+        System.out.println(result.getDeletedCount());
+    }
+});
 ```
 
-The delete methods return a [`DeleteResult`](({{< apiref "com/mongodb/client/result/DeleteResult.html">}}))
+The delete methods return a [`DeleteResult`]({{< apiref "com/mongodb/client/result/DeleteResult.html">}})
 which provides information about the operation including the number of documents deleted.
+
 
 ## Bulk operations
 
@@ -367,7 +416,14 @@ Let's look at two simple examples using ordered and unordered
 operations:
 
 ```java
-// 2. Ordered bulk operation - order is guarenteed
+SingleResultCallback<BulkWriteResult> printBatchResult = new SingleResultCallback<BulkWriteResult>() {
+    @Override
+    public void onResult(final BulkWriteResult result, final Throwable t) {
+        System.out.println(result);
+    }
+};
+
+// 2. Ordered bulk operation - order is guaranteed
 collection.bulkWrite(
   Arrays.asList(new InsertOneModel<>(new Document("_id", 4)),
                 new InsertOneModel<>(new Document("_id", 5)),
@@ -376,7 +432,9 @@ collection.bulkWrite(
                                      new Document("$set", new Document("x", 2))),
                 new DeleteOneModel<>(new Document("_id", 2)),
                 new ReplaceOneModel<>(new Document("_id", 3),
-                                      new Document("_id", 3).append("x", 4))));
+                                      new Document("_id", 3).append("x", 4))),
+  printBatchResult
+);
 
 
  // 2. Unordered bulk operation - no guarantee of order of operation
@@ -389,7 +447,9 @@ collection.bulkWrite(
                 new DeleteOneModel<>(new Document("_id", 2)),
                 new ReplaceOneModel<>(new Document("_id", 3),
                                       new Document("_id", 3).append("x", 4))),
-  new BulkWriteOptions().ordered(false));
+  new BulkWriteOptions().ordered(false),
+  printBatchResult
+);
 ```
 
 {{% note class="important" %}}
@@ -398,4 +458,4 @@ Use of the bulkWrite methods is not recommended when connected to pre-2.6 MongoD
 
 The concludes the quick tour of the new driver. To learn about MongoDB
 administration features available in the driver see the
-[admin quick tour]({{< relref "getting-started/quick-tour-admin.md" >}}).
+[admin quick tour]({{< relref "getting-started/async-quick-tour-admin.md" >}}).
