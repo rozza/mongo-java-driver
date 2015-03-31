@@ -46,9 +46,9 @@ public class QuickTourAdmin {
 
         if (args.length == 0) {
             // connect to the local database server
-            mongoClient = MongoClients.create(new ConnectionString("mongodb://localhost"));
+            mongoClient = MongoClients.create();
         } else {
-            mongoClient = MongoClients.create(new ConnectionString(args[0]));
+            mongoClient = MongoClients.create(args[0]);
         }
 
         // get handle to "mydb" database
