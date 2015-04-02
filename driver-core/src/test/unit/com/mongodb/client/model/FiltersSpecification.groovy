@@ -72,9 +72,14 @@ class FiltersSpecification extends Specification {
         toBson(not(eq('x', 1))) == parse('{x : {$not: {$eq: 1}}}')
         toBson(not(gt('x', 1))) == parse('{x : {$not: {$gt: 1}}}')
         toBson(not(regex('x', '^p.*'))) == parse('{x : {$not: /^p.*/}}')
-        toBson(not(and(gt('x', 1), eq('y', 20)))) == parse('{x : {$not: {$gt: 1}}, y : {$not: {$eq: 20}}}')
-        toBson(not(and(eq('x', 1), eq('x', 2)))) == parse('{x : {$not: {$in: [1, 2]}}}')
-        toBson(not(and(Filters.in('x', 1, 2), eq('x', 3)))) == parse('{x : {$not: {$in: [1, 2, 3]}}}')
+
+        toBson(not(and(gt('x', 1), eq('y', 20)))) == parse('{$or: [{x : {$not: {$gt: 1}}}, {y : {$not: {$eq: 20}}}]}')
+        toBson(not(and(eq('x', 1), eq('x', 2)))) == parse('{$or: [{x : {$not: {$eq: 1}}}, {x : {$not: {$eq: 2}}}]}')
+        toBson(not(and(Filters.in('x', 1, 2), eq('x', 3)))) == parse('{$or: [{x : {$not: {$in: [1, 2]}}}, {x : {$not: {$eq: 3}}}]}')
+
+        toBson(not(or(gt('x', 1), eq('y', 20)))) == parse('{x : {$not: {$gt: 1}}, y : {$not: {$eq: 20}}}')
+        toBson(not(or(eq('x', 1), eq('x', 2)))) == parse('{x : {$not: {$in: [1, 2]}}}')
+        toBson(not(or(Filters.in('x', 1, 2), eq('x', 3)))) == parse('{x : {$not: {$in: [1, 2, 3]}}}')
 
         when: 'Missing a field name it should error'
         toBson(not(new BsonDocument('$in', new BsonArray(asList(new BsonInt32(1))))))
