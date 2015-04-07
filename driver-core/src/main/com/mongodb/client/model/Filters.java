@@ -690,7 +690,8 @@ public final class Filters {
         @Override
         public <TDocument> BsonDocument toBsonDocument(final Class<TDocument> documentClass, final CodecRegistry codecRegistry) {
             BsonDocument bsonFilter = toFilter(filter.toBsonDocument(documentClass, codecRegistry));
-            if (bsonFilter.keySet().iterator().next().startsWith("$")) {
+            String firstKey = bsonFilter.keySet().iterator().next();
+            if (firstKey.startsWith("$") && !firstKey.equals("$or")) {
                 throw new IllegalArgumentException("Invalid $not document, the filter document must start with the field name that "
                         + "the $not operator applies to: " + filter);
             }
@@ -698,16 +699,18 @@ public final class Filters {
         }
 
         public BsonDocument toFilter(final BsonDocument filterDocument) {
-            BsonDocument combinedDocument = new BsonDocument();
+            BsonArray orValues = new BsonArray();
             for (Map.Entry<String, BsonValue> docs : filterDocument.entrySet()) {
-                combinedDocument = combineDocuments(combinedDocument, createFilter(docs.getKey(), docs.getValue()));
+                orValues.add(createFilter(docs.getKey(), docs.getValue()));
             }
-            return combinedDocument;
+            return orValuesToDocument(orValues);
         }
 
         private BsonDocument createFilter(final String fieldName, final BsonValue value) {
             if (fieldName.equals("$and")) {
-                return toFilter(flattenBsonArray(value.asArray()));
+                return convertToOr(value.asArray());
+            } else if (fieldName.equals("$or")) {
+                return convertToAnd(value.asArray());
             } else if (value.isDocument() && ((BsonDocument) value).keySet().iterator().next().startsWith("$")) {
                 return new BsonDocument(fieldName, new BsonDocument("$not", value));
             } else if (value.isRegularExpression()) {
@@ -716,7 +719,28 @@ public final class Filters {
             return new BsonDocument(fieldName, new BsonDocument("$not", new BsonDocument("$eq", value)));
         }
 
-        private BsonDocument combineDocuments(final BsonDocument document1, final BsonDocument document2) {
+        private BsonDocument orValuesToDocument(final BsonArray orValues) {
+            BsonDocument combinedDocument = new BsonDocument();
+            if (orValues.size() > 1) {
+                combinedDocument.append("$or", orValues);
+            } else {
+                combinedDocument = orValues.get(0).asDocument();
+            }
+            return combinedDocument;
+        }
+
+        private BsonDocument convertToOr(final BsonArray bsonArray) {
+            BsonArray orValues = new BsonArray();
+            for (BsonValue bsonValue : bsonArray) {
+                if (!bsonValue.isDocument()) {
+                    throw new IllegalArgumentException("Invalid $not document " + bsonValue);
+                }
+                orValues.add(toFilter(bsonValue.asDocument()));
+            }
+            return orValuesToDocument(orValues);
+        }
+
+        private BsonDocument flattenDocuments(final BsonDocument document1, final BsonDocument document2) {
             BsonDocument combinedDocument = document1;
             for (Map.Entry<String, BsonValue> entry : document2.entrySet()) {
                 String key = entry.getKey();
@@ -743,15 +767,22 @@ public final class Filters {
             return combinedDocument;
         }
 
-        private BsonDocument flattenBsonArray(final BsonArray bsonArray) {
-            BsonDocument combinedDocument = new BsonDocument();
+        private BsonDocument convertToAnd(final BsonArray bsonArray) {
+            BsonDocument flattenedDocument = new BsonDocument();
             for (BsonValue bsonValue : bsonArray) {
                 if (!bsonValue.isDocument()) {
                     throw new IllegalArgumentException("Invalid $not document " + bsonValue);
                 }
-                combinedDocument = combineDocuments(combinedDocument, bsonValue.asDocument());
+                flattenedDocument = flattenDocuments(flattenedDocument, bsonValue.asDocument());
             }
+
+            BsonDocument combinedDocument = new BsonDocument();
+            for (Map.Entry<String, BsonValue> keyValue : flattenedDocument.entrySet()) {
+                combinedDocument.put(keyValue.getKey(), new BsonDocument("$not", keyValue.getValue()));
+            }
+
             return combinedDocument;
         }
+
     }
 }
