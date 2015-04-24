@@ -98,10 +98,29 @@ public final class MongoClients {
                                          .build());
     }
 
-    public static final CodecRegistry DEFAULT_CODEC_REGISTRY = fromProviders(asList(new ValueCodecProvider(),
-            new DocumentCodecProvider(),
-            new BsonValueCodecProvider(),
-            new GeoJsonCodecProvider()));
+    /**
+     * Gets the default codec registry.  It includes the following providers:
+     *
+     * <ul>
+     *     <li>{@link org.bson.codecs.ValueCodecProvider}</li>
+     *     <li>{@link org.bson.codecs.DocumentCodecProvider}</li>
+     *     <li>{@link org.bson.codecs.BsonValueCodecProvider}</li>
+     *     <li>{@link com.mongodb.client.model.geojson.codecs.GeoJsonCodecProvider}</li>
+     * </ul>
+     *
+     * @return the default codec registry
+     * @see MongoClientSettings#getCodecRegistry()
+     * @since 3.0
+     */
+    public static CodecRegistry getDefaultCodecRegistry() {
+        return MongoClients.DEFAULT_CODEC_REGISTRY;
+    }
+
+    private static final CodecRegistry DEFAULT_CODEC_REGISTRY =
+            fromProviders(asList(new ValueCodecProvider(),
+                    new DocumentCodecProvider(),
+                    new BsonValueCodecProvider(),
+                    new GeoJsonCodecProvider()));
 
     private static Cluster createCluster(final MongoClientSettings settings, final StreamFactory streamFactory) {
         StreamFactory heartbeatStreamFactory = getHeartbeatStreamFactory(settings);

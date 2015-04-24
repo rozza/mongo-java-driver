@@ -45,6 +45,10 @@ class MongoClientImpl implements MongoClient {
     private final MongoClientSettings settings;
     private final AsyncOperationExecutor executor;
 
+    MongoClientImpl(final MongoClientSettings settings, final Cluster cluster) {
+        this(settings, cluster, createOperationExecutor(settings, cluster));
+    }
+
     MongoClientImpl(final MongoClientSettings settings, final Cluster cluster, final AsyncOperationExecutor executor) {
         this.settings = notNull("settings", settings);
         this.cluster = notNull("cluster", cluster);
