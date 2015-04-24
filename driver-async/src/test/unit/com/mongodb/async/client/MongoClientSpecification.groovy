@@ -38,7 +38,7 @@ class MongoClientSpecification extends Specification {
         def cluster = Stub(Cluster)
         def executor = new TestOperationExecutor([null, null, null])
         def client = new MongoClientImpl(settings, cluster, executor)
-        def codecRegistry = client.getDefaultCodecRegistry()
+        def codecRegistry = MongoClients.getDefaultCodecRegistry()
 
         when:
         def listDatabasesIterable = client.listDatabases()
@@ -93,7 +93,7 @@ class MongoClientSpecification extends Specification {
         def cluster = Stub(Cluster)
         def executor = new TestOperationExecutor([null, null, null])
         def client = new MongoClientImpl(settings, cluster, executor)
-        def codecRegistry = client.getDefaultCodecRegistry()
+        def codecRegistry = MongoClients.getDefaultCodecRegistry()
 
         expect:
         codecRegistry.get(BsonDocument)

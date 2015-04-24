@@ -79,7 +79,7 @@ public final class MongoClientSettings {
     public static final class Builder {
         private ReadPreference readPreference = ReadPreference.primary();
         private WriteConcern writeConcern = WriteConcern.ACKNOWLEDGED;
-        private CodecRegistry codecRegistry = MongoClientImpl.getDefaultCodecRegistry();
+        private CodecRegistry codecRegistry = MongoClients.DEFAULT_CODEC_REGISTRY;
 
         private ClusterSettings clusterSettings;
         private SocketSettings socketSettings = SocketSettings.builder().build();
