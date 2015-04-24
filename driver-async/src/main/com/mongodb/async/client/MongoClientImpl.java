@@ -45,28 +45,6 @@ class MongoClientImpl implements MongoClient {
     private final MongoClientSettings settings;
     private final AsyncOperationExecutor executor;
 
-    /**
-     * Gets the default codec registry.  It includes the following providers:
-     *
-     * <ul>
-     *     <li>{@link org.bson.codecs.ValueCodecProvider}</li>
-     *     <li>{@link org.bson.codecs.DocumentCodecProvider}</li>
-     *     <li>{@link org.bson.codecs.BsonValueCodecProvider}</li>
-     *     <li>{@link com.mongodb.client.model.geojson.codecs.GeoJsonCodecProvider}</li>
-     * </ul>
-     *
-     * @return the default codec registry
-     * @see MongoClientSettings#getCodecRegistry()
-     * @since 3.0
-     */
-    public static CodecRegistry getDefaultCodecRegistry() {
-        return MongoClients.DEFAULT_CODEC_REGISTRY;
-    }
-
-    MongoClientImpl(final MongoClientSettings settings, final Cluster cluster) {
-        this(settings, cluster, createOperationExecutor(settings, cluster));
-    }
-
     MongoClientImpl(final MongoClientSettings settings, final Cluster cluster, final AsyncOperationExecutor executor) {
         this.settings = notNull("settings", settings);
         this.cluster = notNull("cluster", cluster);
