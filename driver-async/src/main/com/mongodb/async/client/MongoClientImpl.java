@@ -45,11 +45,6 @@ class MongoClientImpl implements MongoClient {
     private final MongoClientSettings settings;
     private final AsyncOperationExecutor executor;
 
-    private static final CodecRegistry DEFAULT_CODEC_REGISTRY = fromProviders(asList(new ValueCodecProvider(),
-            new DocumentCodecProvider(),
-            new BsonValueCodecProvider(),
-            new GeoJsonCodecProvider()));
-
     /**
      * Gets the default codec registry.  It includes the following providers:
      *
@@ -65,7 +60,7 @@ class MongoClientImpl implements MongoClient {
      * @since 3.0
      */
     public static CodecRegistry getDefaultCodecRegistry() {
-        return DEFAULT_CODEC_REGISTRY;
+        return MongoClients.DEFAULT_CODEC_REGISTRY;
     }
 
     MongoClientImpl(final MongoClientSettings settings, final Cluster cluster) {
@@ -95,8 +90,8 @@ class MongoClientImpl implements MongoClient {
 
     @Override
     public MongoIterable<String> listDatabaseNames() {
-        return new ListDatabasesIterableImpl<BsonDocument>(BsonDocument.class, getDefaultCodecRegistry(), ReadPreference.primary(),
-                executor).map(new Function<BsonDocument, String>() {
+        return new ListDatabasesIterableImpl<BsonDocument>(BsonDocument.class, MongoClients.DEFAULT_CODEC_REGISTRY,
+                                                           ReadPreference.primary(), executor).map(new Function<BsonDocument, String>() {
             @Override
             public String apply(final BsonDocument document) {
                 return document.getString("name").getValue();
