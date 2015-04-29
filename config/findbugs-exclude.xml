@@ -8,6 +8,12 @@
     </Match>
 
     <Match>
+        <Class name="org.bson.types.ObjectId">
+            <Bug pattern="BIT_ADD_OF_SIGNED_BYTE"/>  <!-- Integer.compare implementation is copied from Integer.compareUnsigned  -->
+        </Class>
+    </Match>
+
+    <Match>
         <Package name="com.mongodb">
             <Bug pattern="EQ_DOESNT_OVERRIDE_EQUALS"/>  <!-- Deliberately ignoring this, as many BSONObject subclasses don't do it -->
         </Package>
