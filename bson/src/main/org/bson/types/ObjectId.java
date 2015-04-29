@@ -409,7 +409,7 @@ public final class ObjectId implements Comparable<ObjectId>, Serializable {
         byte[] otherByteArray = other.toByteArray();
         for (int i = 0; i < 12; i++) {
             if (byteArray[i] != otherByteArray[i]) {
-                return Integer.compare(byteArray[i] + Integer.MIN_VALUE, otherByteArray[i] + Integer.MIN_VALUE);
+                return Integer.compare(byteArray[i] & 0xff, otherByteArray[i] & 0xff);
             }
         }
         return 0;
