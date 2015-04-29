@@ -629,38 +629,8 @@ public class DB {
      * @see com.mongodb.ReadPreference
      */
     ReadPreference getCommandReadPreference(final DBObject command, final ReadPreference requestedPreference) {
-        if (mongo.getReplicaSetStatus() == null) {
-            if (requestedPreference == null) {
-                return ReadPreference.primary();
-            } else {
-                return requestedPreference;
-            }
-        }
-
         String comString = command.keySet().iterator().next().toLowerCase();
-
-        if (comString.equals("getnonce") || comString.equals("authenticate")) {
-            return ReadPreference.primaryPreferred();
-        }
-
-        boolean primaryRequired;
-
-        // explicitly check mapreduce commands are inline
-        if (comString.equals("mapreduce")) {
-            Object out = command.get("out");
-            if (out instanceof BSONObject) {
-                BSONObject outMap = (BSONObject) out;
-                primaryRequired = outMap.get("inline") == null;
-            } else {
-                primaryRequired = true;
-            }
-        } else if (comString.equals("aggregate")) {
-            @SuppressWarnings("unchecked")
-            List<DBObject> pipeline = (List<DBObject>) command.get("pipeline");
-            primaryRequired = pipeline.get(pipeline.size() - 1).get("$out") != null;
-        } else {
-            primaryRequired = !OBEDIENT_COMMANDS.contains(comString);
-        }
+        boolean primaryRequired = !OBEDIENT_COMMANDS.contains(comString);
 
         if (primaryRequired) {
             return ReadPreference.primary();

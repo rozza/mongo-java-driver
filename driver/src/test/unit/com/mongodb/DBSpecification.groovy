@@ -16,7 +16,6 @@
 
 package com.mongodb
 
-import com.mongodb.connection.Cluster
 import com.mongodb.operation.CreateCollectionOperation
 import org.bson.BsonDocument
 import org.bson.BsonDouble
@@ -57,9 +56,7 @@ class DBSpecification extends Specification {
 
     def 'should use provided read preference for obedient commands'() {
         given:
-        def mongo = Stub(Mongo) {
-            getReplicaSetStatus() >> new ReplicaSetStatus(Stub(Cluster))
-        }
+        def mongo = Stub(Mongo)
         mongo.mongoClientOptions >> MongoClientOptions.builder().build()
         def executor = new TestOperationExecutor([new BsonDocument('ok', new BsonDouble(1.0))])
         def database = new DB(mongo, 'test', executor)
@@ -74,8 +71,6 @@ class DBSpecification extends Specification {
         where:
         expectedReadPreference     | cmd
         ReadPreference.secondary() | new BasicDBObject('listCollections', 1)
-        ReadPreference.secondary() | new BasicDBObject('aggregate', 'coll')
-                                        .append('pipeline', [new BasicDBObject('$match', new BasicDBObject())])
         ReadPreference.secondary() | new BasicDBObject('collStats', 1)
         ReadPreference.secondary() | new BasicDBObject('dbStats', 1)
         ReadPreference.secondary() | new BasicDBObject('distinct', 1)
@@ -84,19 +79,13 @@ class DBSpecification extends Specification {
         ReadPreference.secondary() | new BasicDBObject('group', 1)
         ReadPreference.secondary() | new BasicDBObject('listCollections', 1)
         ReadPreference.secondary() | new BasicDBObject('listIndexes', 1)
-        ReadPreference.secondary() | new BasicDBObject('mapReduce', 'coll')
-                                        .append('map', 'mapFunction')
-                                        .append('reduce', 'reduceFunction')
-                                        .append('out', new BasicDBObject('inline', true))
         ReadPreference.secondary() | new BasicDBObject('parallelCollectionScan', 1)
         ReadPreference.secondary() | new BasicDBObject('text', 1)
     }
 
     def 'should use primary read preference for non obedient commands'() {
         given:
-        def mongo = Stub(Mongo) {
-            getReplicaSetStatus() >> new ReplicaSetStatus(Stub(Cluster))
-        }
+        def mongo = Stub(Mongo)
         mongo.mongoClientOptions >> MongoClientOptions.builder().build()
         def executor = new TestOperationExecutor([new BsonDocument('ok', new BsonDouble(1.0))])
         def database = new DB(mongo, 'test', executor)
@@ -111,11 +100,5 @@ class DBSpecification extends Specification {
         where:
         expectedReadPreference      | cmd
         ReadPreference.primary()    | new BasicDBObject('command', 1)
-        ReadPreference.primary()    | new BasicDBObject('aggregate', 'coll')
-                                            .append('pipeline', [new BasicDBObject('$out', 'coll')])
-        ReadPreference.primary()    | new BasicDBObject('mapReduce', 'coll')
-                                            .append('map', 'mapFunction')
-                                            .append('reduce', 'reduceFunction')
-
     }
 }
