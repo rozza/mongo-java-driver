@@ -27,6 +27,7 @@ import com.mongodb.operation.ListCollectionsOperation;
 import com.mongodb.operation.OperationExecutor;
 import com.mongodb.operation.UpdateUserOperation;
 import com.mongodb.operation.UserExistsOperation;
+import org.bson.BSONObject;
 import org.bson.BsonDocument;
 import org.bson.BsonDocumentWrapper;
 import org.bson.BsonInt32;
