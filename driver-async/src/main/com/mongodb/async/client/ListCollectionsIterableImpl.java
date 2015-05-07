@@ -80,12 +80,12 @@ final class ListCollectionsIterableImpl<TResult> implements ListCollectionsItera
 
     @Override
     public void forEach(final Block<? super TResult> block, final SingleResultCallback<Void> callback) {
-        execute().forEach(block, callback);
+        subscribe(ObservableHelpers.forEach(block, callback, batchSize));
     }
 
     @Override
     public <A extends Collection<? super TResult>> void into(final A target, final SingleResultCallback<A> callback) {
-        execute().into(target, callback);
+        subscribe(ObservableHelpers.<TResult, A>into(target, callback, batchSize));
     }
 
     @Override
@@ -96,6 +96,11 @@ final class ListCollectionsIterableImpl<TResult> implements ListCollectionsItera
     @Override
     public void batchCursor(final SingleResultCallback<AsyncBatchCursor<TResult>> callback) {
         execute().batchCursor(callback);
+    }
+
+    @Override
+    public Subscription subscribe(final Observer<TResult> observer) {
+        return SubscriptionHelpers.subscribeToMongoIterable(this, observer);
     }
 
     private MongoIterable<TResult> execute() {

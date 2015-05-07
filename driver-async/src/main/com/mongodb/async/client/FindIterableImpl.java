@@ -139,12 +139,12 @@ class FindIterableImpl<TDocument, TResult> implements FindIterable<TResult> {
 
     @Override
     public void forEach(final Block<? super TResult> block, final SingleResultCallback<Void> callback) {
-        execute().forEach(block, callback);
+        subscribe(ObservableHelpers.forEach(block, callback, findOptions.getBatchSize()));
     }
 
     @Override
     public <A extends Collection<? super TResult>> void into(final A target, final SingleResultCallback<A> callback) {
-        execute().into(target, callback);
+        subscribe(ObservableHelpers.<TResult, A>into(target, callback, findOptions.getBatchSize()));
     }
 
     @Override
@@ -155,6 +155,11 @@ class FindIterableImpl<TDocument, TResult> implements FindIterable<TResult> {
     @Override
     public void batchCursor(final SingleResultCallback<AsyncBatchCursor<TResult>> callback) {
         execute().batchCursor(callback);
+    }
+
+    @Override
+    public Subscription subscribe(final Observer<TResult> observer) {
+        return SubscriptionHelpers.subscribeToMongoIterable(this, observer);
     }
 
     private MongoIterable<TResult> execute() {

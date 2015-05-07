@@ -881,21 +881,21 @@ class MongoCollectionSpecification extends Specification {
         def futureResultCallback = new FutureResultCallback<List<Document>>()
 
         when:
-        collection.listIndexes().into([], futureResultCallback)
+        collection.listIndexes().batchSize(100).into([], futureResultCallback)
         futureResultCallback.get()
         def operation = executor.getReadOperation() as ListIndexesOperation
 
         then:
-        expect operation, isTheSameAs(new ListIndexesOperation(namespace, new DocumentCodec()))
+        expect operation, isTheSameAs(new ListIndexesOperation(namespace, new DocumentCodec()).batchSize(100))
 
         when:
         futureResultCallback = new FutureResultCallback<List<BsonDocument>>()
-        collection.listIndexes(BsonDocument).into([], futureResultCallback)
+        collection.listIndexes(BsonDocument).batchSize(100).into([], futureResultCallback)
         futureResultCallback.get()
         operation = executor.getReadOperation() as ListIndexesOperation
 
         then:
-        expect operation, isTheSameAs(new ListIndexesOperation(namespace, new BsonDocumentCodec()))
+        expect operation, isTheSameAs(new ListIndexesOperation(namespace, new BsonDocumentCodec()).batchSize(100))
     }
 
     def 'should use DropIndexOperation correctly for dropIndex'() {

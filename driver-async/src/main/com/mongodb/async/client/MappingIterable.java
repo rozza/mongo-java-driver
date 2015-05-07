@@ -18,8 +18,8 @@ package com.mongodb.async.client;
 
 import com.mongodb.Block;
 import com.mongodb.Function;
-import com.mongodb.async.SingleResultCallback;
 import com.mongodb.async.AsyncBatchCursor;
+import com.mongodb.async.SingleResultCallback;
 
 import java.util.Collection;
 
@@ -107,5 +107,10 @@ class MappingIterable<T, U> implements MongoIterable<U> {
                 }
             }
         });
+    }
+
+    @Override
+    public Subscription subscribe(final Observer<U> observer) {
+        return SubscriptionHelpers.subscribeToMongoIterable(this, observer);
     }
 }
