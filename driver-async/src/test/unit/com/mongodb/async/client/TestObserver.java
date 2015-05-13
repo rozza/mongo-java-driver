@@ -254,7 +254,7 @@ public class TestObserver<T> implements Observer<T> {
      *
      * @throws AssertionError if this {@link Observer} did not received an {@link #onError} notifications
      */
-    public void assertErrors() {
+    public void assertErrored() {
         if (onErrorEvents.size() == 0) {
             // can't use AssertionError because (message, cause) doesn't exist until Java 7
             throw new RuntimeException("No onError events");

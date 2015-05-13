@@ -20,7 +20,7 @@ import com.mongodb.MongoException
 import com.mongodb.async.AsyncBatchCursor
 import spock.lang.Specification
 
-import static com.mongodb.async.client.SubscriptionHelpers.subscribeTo
+import static Subscriptions.subscribeTo
 
 class MongoIterableSubscriptionSpecification extends Specification {
 
@@ -81,6 +81,124 @@ class MongoIterableSubscriptionSpecification extends Specification {
         then:
         observer.assertNoErrors()
         observer.assertReceivedOnNext([1, 2, 3, 4])
+        observer.assertTerminalEvent()
+    }
+
+    def 'should call onError if batchCursor returns an throwable in the callback'() {
+        given:
+        def observer = new TestObserver()
+        def mongoIterable = Mock(MongoIterable) {
+            1 * batchCursor(_) >> {
+                it[0].onResult(null, new MongoException("failed"))
+            }
+        }
+        subscribeTo(mongoIterable, observer)
+
+        when:
+        observer.requestMore(1)
+
+        then:
+        observer.assertErrored()
+        observer.assertTerminalEvent()
+    }
+
+    def 'should call onError if batchCursor returns a null for the cursor in the callback'() {
+        given:
+        def observer = new TestObserver()
+        def mongoIterable = Mock(MongoIterable) {
+            1 * batchCursor(_) >> {
+                it[0].onResult(null, null)
+            }
+        }
+        subscribeTo(mongoIterable, observer)
+
+        when:
+        observer.requestMore(1)
+
+        then:
+        observer.assertErrored()
+        observer.assertTerminalEvent()
+    }
+
+    def 'should call onError if batchCursor.next returns an throwable in the callback'() {
+        given:
+        def observer = new TestObserver()
+        def mongoIterable = Mock(MongoIterable) {
+            1 * batchCursor(_) >> {
+                it[0].onResult(Mock(AsyncBatchCursor) {
+                    next(_) >> { it[0].onResult(null, new MongoException("failed"))}
+                }, null)
+            }
+        }
+        subscribeTo(mongoIterable, observer)
+
+        when:
+        observer.requestMore(1)
+
+        then:
+        observer.assertErrored()
+        observer.assertTerminalEvent()
+    }
+
+    def 'should set batchSize to 2 if request is passed 1'() {
+        given:
+        def observer = new TestObserver()
+        def mockIterable = getMongoIterable()
+        subscribeTo(mockIterable, observer)
+
+        when:
+        observer.requestMore(1)
+
+        then:
+        1 * mockIterable.batchSize(2)
+    }
+
+    def 'should set batchSize to Integer.MAX_VALUE if request is passed a bigger value'() {
+        given:
+        def observer = new TestObserver()
+        def mockIterable = getMongoIterable()
+        subscribeTo(mockIterable, observer)
+
+        when:
+        observer.requestMore(Long.MAX_VALUE)
+
+        then:
+        1 * mockIterable.batchSize(Integer.MAX_VALUE)
+        observer.assertTerminalEvent()
+    }
+
+    def 'should set batchSize on the cursor to 2 if request is passed 1'() {
+        given:
+        def observer = new TestObserver()
+        def cursor = getCursor()
+        def mockIterable = getMongoIterable(cursor)
+        subscribeTo(mockIterable, observer)
+
+        when:
+        observer.requestMore(2)
+        observer.requestMore(1)
+        observer.requestMore(100)
+
+        then:
+        1 * mockIterable.batchSize(2)
+        2 * cursor.setBatchSize(2)
+        observer.assertTerminalEvent()
+    }
+
+    def 'should set batchSize to Integer.MAX_VALUE  on the cursor if request is passed a bigger value'() {
+        given:
+        def observer = new TestObserver()
+        def cursor = getCursor()
+        def mockIterable = getMongoIterable(cursor)
+        subscribeTo(mockIterable, observer)
+
+        when:
+        observer.requestMore(2)
+        observer.requestMore(Long.MAX_VALUE)
+
+        then:
+        1 * mockIterable.batchSize(2)
+        2 * cursor.setBatchSize(Integer.MAX_VALUE)
         observer.assertTerminalEvent()
     }
 

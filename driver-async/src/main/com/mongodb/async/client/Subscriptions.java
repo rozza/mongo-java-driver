@@ -29,7 +29,7 @@ import java.util.List;
  *
  * @since 3.1
  */
-public final class SubscriptionHelpers {
+public final class Subscriptions {
 
     /**
      * Subscribe to a {@link MongoIterable} with the supplied {@link Observer}.
@@ -94,6 +94,6 @@ public final class SubscriptionHelpers {
         return new FlatteningSingleResultCallbackSubscription<TResult>(operation, observer);
     }
 
-    private SubscriptionHelpers() {
+    private Subscriptions() {
     }
 }

@@ -21,7 +21,7 @@ import com.mongodb.MongoException
 import com.mongodb.async.SingleResultCallback
 import spock.lang.Specification
 
-import static com.mongodb.async.client.SubscriptionHelpers.subscribeToAndFlatten
+import static Subscriptions.subscribeToAndFlatten
 
 class FlatteningSingleResultCallbackSubscriptionSpecification extends Specification {
 
@@ -70,6 +70,24 @@ class FlatteningSingleResultCallbackSubscriptionSpecification extends Specificat
 
         then:
         thrown IllegalArgumentException
+    }
+
+    def 'should call onError if batch returns an throwable in the callback'() {
+        given:
+        def observer = new TestObserver()
+        subscribeToAndFlatten(new Block<SingleResultCallback<List<Integer>>>() {
+            @Override
+            void apply(final SingleResultCallback<List<Integer>> callback) {
+                callback.onResult(null, new MongoException("Failed"));
+            }
+        }, observer)
+
+        when:
+        observer.requestMore(1)
+
+        then:
+        observer.assertErrored()
+        observer.assertTerminalEvent()
     }
 
     def 'should not be unsubscribed unless unsubscribed is called'() {

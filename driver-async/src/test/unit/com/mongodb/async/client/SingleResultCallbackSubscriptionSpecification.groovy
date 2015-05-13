@@ -15,13 +15,12 @@
  */
 
 package com.mongodb.async.client
-
 import com.mongodb.Block
 import com.mongodb.MongoException
 import com.mongodb.async.SingleResultCallback
 import spock.lang.Specification
 
-import static com.mongodb.async.client.SubscriptionHelpers.subscribeTo
+import static Subscriptions.subscribeTo
 
 class SingleResultCallbackSubscriptionSpecification extends Specification {
 
@@ -70,6 +69,24 @@ class SingleResultCallbackSubscriptionSpecification extends Specification {
 
         then:
         thrown IllegalArgumentException
+    }
+
+    def 'should call onError if batch returns an throwable in the callback'() {
+        given:
+        def observer = new TestObserver()
+        subscribeTo(new Block<SingleResultCallback<Integer>>() {
+            @Override
+            void apply(final SingleResultCallback<Integer> callback) {
+                callback.onResult(null, new MongoException("Failed"));
+            }
+        }, observer)
+
+        when:
+        observer.requestMore(1)
+
+        then:
+        observer.assertErrored()
+        observer.assertTerminalEvent()
     }
 
     def 'should not be unsubscribed unless unsubscribed is called'() {
@@ -169,7 +186,7 @@ class SingleResultCallbackSubscriptionSpecification extends Specification {
         then:
         observer.assertUnsubscribed()
         observer.assertReceivedOnNext([1])
-        observer.assertErrors()
+        observer.assertErrored()
         observer.assertTerminalEvent()
     }
 
