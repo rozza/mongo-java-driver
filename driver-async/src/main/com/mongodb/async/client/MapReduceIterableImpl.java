@@ -186,12 +186,12 @@ class MapReduceIterableImpl<TDocument, TResult> implements MapReduceIterable<TRe
 
     @Override
     public void forEach(final Block<? super TResult> block, final SingleResultCallback<Void> callback) {
-        subscribe(ObservableHelpers.forEach(block, callback, batchSize));
+        subscribe(ObserverHelpers.forEach(block, callback, batchSize));
     }
 
     @Override
     public <A extends Collection<? super TResult>> void into(final A target, final SingleResultCallback<A> callback) {
-        subscribe(ObservableHelpers.<TResult, A>into(target, callback, batchSize));
+        subscribe(ObserverHelpers.<TResult, A>into(target, callback, batchSize));
     }
 
     @Override

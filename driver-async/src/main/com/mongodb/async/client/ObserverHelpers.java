@@ -21,7 +21,7 @@ import com.mongodb.async.SingleResultCallback;
 
 import java.util.Collection;
 
-final class ObservableHelpers {
+final class ObserverHelpers {
 
     static <T> Observer<T> forEach(final Block<? super T> block, final SingleResultCallback<Void> callback,
                                    final Integer batchSize) {
@@ -73,6 +73,6 @@ final class ObservableHelpers {
         }, batchSize);
     }
 
-    private ObservableHelpers() {
+    private ObserverHelpers() {
     }
 }

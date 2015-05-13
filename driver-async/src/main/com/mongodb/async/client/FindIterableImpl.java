@@ -139,12 +139,12 @@ class FindIterableImpl<TDocument, TResult> implements FindIterable<TResult> {
 
     @Override
     public void forEach(final Block<? super TResult> block, final SingleResultCallback<Void> callback) {
-        subscribe(ObservableHelpers.forEach(block, callback, findOptions.getBatchSize()));
+        subscribe(ObserverHelpers.forEach(block, callback, findOptions.getBatchSize()));
     }
 
     @Override
     public <A extends Collection<? super TResult>> void into(final A target, final SingleResultCallback<A> callback) {
-        subscribe(ObservableHelpers.<TResult, A>into(target, callback, findOptions.getBatchSize()));
+        subscribe(ObserverHelpers.<TResult, A>into(target, callback, findOptions.getBatchSize()));
     }
 
     @Override

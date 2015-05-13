@@ -36,7 +36,7 @@ public interface Subscription {
      * An outstanding cumulative demand of Long.MAX_VALUE may be treated by the Observable as "effectively unbounded".
      * </p>
      * <p>
-     * Whatever has been requested can be sent by the Observable so only signal demand for what can be safely handled.
+     * Whatever has been requested might be sent, so only signal demand for what can be safely handled.
      * <p>
      * A Observable can send less than is requested if the stream ends but then must emit either {@link Observer#onError(Throwable)} or
      * {@link Observer#onComplete()}.
