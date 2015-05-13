@@ -68,11 +68,11 @@ class AggregateIterableSpecification extends Specification {
 
         then:
         expect operation, isTheSameAs(new AggregateOperation<Document>(namespace, [new BsonDocument('$match', new BsonInt32(1))],
-                new DocumentCodec()));
+                new DocumentCodec()).batchSize(Integer.MAX_VALUE));
         readPreference == secondary()
 
         when: 'overriding initial options'
-        aggregationIterable.maxTime(999, MILLISECONDS).useCursor(true).into([]) { result, t -> }
+        aggregationIterable.maxTime(999, MILLISECONDS).useCursor(true).batchSize(100).into([]) { result, t -> }
 
         operation = executor.getReadOperation() as AggregateOperation<Document>
 
@@ -80,7 +80,8 @@ class AggregateIterableSpecification extends Specification {
         expect operation, isTheSameAs(new AggregateOperation<Document>(namespace, [new BsonDocument('$match', new BsonInt32(1))],
                 new DocumentCodec())
                 .maxTime(999, MILLISECONDS)
-                .useCursor(true))
+                .useCursor(true)
+                .batchSize(100))
 
     }
 

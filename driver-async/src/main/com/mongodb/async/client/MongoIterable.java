@@ -80,4 +80,16 @@ public interface MongoIterable<TResult> {
      * @param callback a callback that will be passed the AsyncBatchCursor
      */
     void batchCursor(SingleResultCallback<AsyncBatchCursor<TResult>> callback);
+
+    /**
+     * Subscribe to this Iterable using an Observer
+     * <p>
+     *     The {@link Subscription} will only cause an operation once demand is called for via {@link Subscription#request(long n)}
+     * </p>
+     *
+     * @param observer the observer of the MongoIterable
+     * @return the Subscription
+     * @since 3.1
+     */
+    Subscription subscribe(Observer<TResult> observer);
 }

@@ -40,46 +40,10 @@ class OperationIterable<T> implements MongoIterable<T> {
         this.executor = executor;
     }
 
+    @SuppressWarnings("unchecked")
     @Override
-    public void forEach(final Block<? super T> block, final SingleResultCallback<Void> callback) {
-        batchCursor(new SingleResultCallback<AsyncBatchCursor<T>>() {
-            @Override
-            public void onResult(final AsyncBatchCursor<T> batchCursor, final Throwable t) {
-                if (t != null) {
-                    callback.onResult(null, t);
-                } else {
-                    loopCursor(batchCursor, block, callback);
-                }
-            }
-        });
-    }
-
-    @Override
-    public <A extends Collection<? super T>> void into(final A target, final SingleResultCallback<A> callback) {
-        batchCursor(new SingleResultCallback<AsyncBatchCursor<T>>() {
-            @Override
-            public void onResult(final AsyncBatchCursor<T> batchCursor, final Throwable t) {
-                if (t != null) {
-                    callback.onResult(null, t);
-                } else {
-                    loopCursor(batchCursor, new Block<T>() {
-                        @Override
-                        public void apply(final T t) {
-                            target.add(t);
-                        }
-                    }, new SingleResultCallback<Void>() {
-                        @Override
-                        public void onResult(final Void result, final Throwable t) {
-                            if (t != null) {
-                                callback.onResult(null, t);
-                            } else {
-                                callback.onResult(target, null);
-                            }
-                        }
-                    });
-                }
-            }
-        });
+    public void batchCursor(final SingleResultCallback<AsyncBatchCursor<T>> callback) {
+        executor.execute((AsyncReadOperation<AsyncBatchCursor<T>>) operation, readPreference, callback);
     }
 
     @Override
@@ -110,8 +74,18 @@ class OperationIterable<T> implements MongoIterable<T> {
     }
 
     @Override
+    public void forEach(final Block<? super T> block, final SingleResultCallback<Void> callback) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public <A extends Collection<? super T>> void into(final A target, final SingleResultCallback<A> callback) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
     public <U> MongoIterable<U> map(final Function<T, U> mapper) {
-        return new MappingIterable<T, U>(this, mapper);
+        throw new UnsupportedOperationException();
     }
 
     @Override
@@ -119,33 +93,9 @@ class OperationIterable<T> implements MongoIterable<T> {
         throw new UnsupportedOperationException();
     }
 
-    @SuppressWarnings("unchecked")
     @Override
-    public void batchCursor(final SingleResultCallback<AsyncBatchCursor<T>> callback) {
-        executor.execute((AsyncReadOperation<AsyncBatchCursor<T>>) operation, readPreference, callback);
-    }
-
-    private void loopCursor(final AsyncBatchCursor<T> batchCursor, final Block<? super T> block,
-                            final SingleResultCallback<Void> callback) {
-        batchCursor.next(new SingleResultCallback<List<T>>() {
-            @Override
-            public void onResult(final List<T> results, final Throwable t) {
-                if (t != null || results == null) {
-                    batchCursor.close();
-                    callback.onResult(null, t);
-                } else {
-                    try {
-                        for (T result : results) {
-                            block.apply(result);
-                        }
-                        loopCursor(batchCursor, block, callback);
-                    } catch (Throwable tr) {
-                        batchCursor.close();
-                        callback.onResult(null, tr);
-                    }
-                }
-            }
-        });
+    public Subscription subscribe(final Observer<T> observer) {
+        throw new UnsupportedOperationException();
     }
 
 }

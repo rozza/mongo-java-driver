@@ -18,8 +18,8 @@ package com.mongodb.async.client;
 
 import com.mongodb.Block;
 import com.mongodb.Function;
-import com.mongodb.async.SingleResultCallback;
 import com.mongodb.async.AsyncBatchCursor;
+import com.mongodb.async.SingleResultCallback;
 import com.mongodb.operation.AsyncOperationExecutor;
 import com.mongodb.operation.AsyncWriteOperation;
 
@@ -172,5 +172,10 @@ class AwaitingWriteOperationIterable<T, W> implements MongoIterable<T> {
                 delegated.batchCursor(callback);
             }
         }
+    }
+
+    @Override
+    public Subscription subscribe(final Observer<T> observer) {
+        return SubscriptionHelpers.subscribeToMongoIterable(this, observer);
     }
 }
