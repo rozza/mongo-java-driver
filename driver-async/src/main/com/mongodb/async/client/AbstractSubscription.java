@@ -16,7 +16,6 @@
 
 package com.mongodb.async.client;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
@@ -36,9 +35,7 @@ abstract class AbstractSubscription<TResult> implements Subscription {
 
     public AbstractSubscription(final Observer<? super TResult> observer) {
         this.observer = observer;
-        observer.onSubscribe(this);
     }
-
 
     @Override
     public void unsubscribe() {
@@ -70,7 +67,11 @@ abstract class AbstractSubscription<TResult> implements Subscription {
 
         boolean requestData = false;
         synchronized (this) {
-            requested += n;
+            if (requested + n < 1) {
+                requested = Long.MAX_VALUE;
+            } else {
+                requested += n;
+            }
             if (!requestedData) {
                 requestedData = true;
                 requestData = true;
@@ -105,7 +106,10 @@ abstract class AbstractSubscription<TResult> implements Subscription {
     }
 
     void addToQueue(final TResult result) {
-        addToQueue(Collections.singletonList(result));
+        if (result != null) {
+            resultsQueue.add(result);
+        }
+        processResultsQueue();
     }
 
     void addToQueue(final List<TResult> results) {

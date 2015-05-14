@@ -29,6 +29,7 @@ class FlatteningSingleResultCallbackSubscription<TResult> extends AbstractSubscr
                                                       final Observer<? super TResult> observer) {
         super(observer);
         this.block = block;
+        observer.onSubscribe(this);
     }
 
     @Override
@@ -38,7 +39,7 @@ class FlatteningSingleResultCallbackSubscription<TResult> extends AbstractSubscr
             public void onResult(final List<TResult> result, final Throwable t) {
                 if (t != null) {
                     onError(t);
-                } else if (result != null) {
+                } else {
                     addToQueue(result);
                 }
             }

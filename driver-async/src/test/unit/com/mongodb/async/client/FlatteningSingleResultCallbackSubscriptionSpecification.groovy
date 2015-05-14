@@ -21,7 +21,7 @@ import com.mongodb.MongoException
 import com.mongodb.async.SingleResultCallback
 import spock.lang.Specification
 
-import static Subscriptions.subscribeToAndFlatten
+import static com.mongodb.async.client.Observables.observeAndFlatten
 
 class FlatteningSingleResultCallbackSubscriptionSpecification extends Specification {
 
@@ -31,7 +31,7 @@ class FlatteningSingleResultCallbackSubscriptionSpecification extends Specificat
         def observer = new TestObserver()
 
         when:
-        subscribeToAndFlatten(block, observer)
+        observeAndFlatten(block).subscribe(observer)
 
         then:
         0 * block.apply(_)
@@ -48,7 +48,7 @@ class FlatteningSingleResultCallbackSubscriptionSpecification extends Specificat
         given:
         def block = getBlock()
         def observer = new TestObserver()
-        subscribeToAndFlatten(block, observer)
+        observeAndFlatten(block).subscribe(observer)
 
         when:
         observer.requestMore(10)
@@ -63,7 +63,7 @@ class FlatteningSingleResultCallbackSubscriptionSpecification extends Specificat
         given:
         def block = getBlock()
         def observer = new TestObserver()
-        subscribeToAndFlatten(block, observer)
+        observeAndFlatten(block).subscribe(observer)
 
         when:
         observer.requestMore(0)
@@ -75,12 +75,12 @@ class FlatteningSingleResultCallbackSubscriptionSpecification extends Specificat
     def 'should call onError if batch returns an throwable in the callback'() {
         given:
         def observer = new TestObserver()
-        subscribeToAndFlatten(new Block<SingleResultCallback<List<Integer>>>() {
+        observeAndFlatten(new Block<SingleResultCallback<List<Integer>>>() {
             @Override
             void apply(final SingleResultCallback<List<Integer>> callback) {
-                callback.onResult(null, new MongoException("Failed"));
+                callback.onResult(null, new MongoException('Failed'));
             }
-        }, observer)
+        }).subscribe(observer)
 
         when:
         observer.requestMore(1)
@@ -94,7 +94,7 @@ class FlatteningSingleResultCallbackSubscriptionSpecification extends Specificat
         given:
         def block = getBlock()
         def observer = new TestObserver()
-        subscribeToAndFlatten(block, observer)
+        observeAndFlatten(block).subscribe(observer)
 
         when:
         observer.requestMore(1)
@@ -122,7 +122,7 @@ class FlatteningSingleResultCallbackSubscriptionSpecification extends Specificat
         given:
         def block = getBlock()
         def observer = new TestObserver()
-        subscribeToAndFlatten(block, observer)
+        observeAndFlatten(block).subscribe(observer)
 
         when:
         observer.requestMore(1)
@@ -145,7 +145,7 @@ class FlatteningSingleResultCallbackSubscriptionSpecification extends Specificat
         given:
         def block = getBlock()
         def observer = new TestObserver()
-        subscribeToAndFlatten(block, observer)
+        observeAndFlatten(block).subscribe(observer)
 
         when:
         observer.requestMore(1)
@@ -162,7 +162,7 @@ class FlatteningSingleResultCallbackSubscriptionSpecification extends Specificat
         def block = getBlock()
         def observer = new TestObserver(new Observer() {
             @Override
-            void onSubscribe(final Subscription s) {
+            void onSubscribe(final Subscription subscription) {
             }
 
             @Override
@@ -180,7 +180,7 @@ class FlatteningSingleResultCallbackSubscriptionSpecification extends Specificat
             void onComplete() {
             }
         })
-        subscribeToAndFlatten(block, observer)
+        observeAndFlatten(block).subscribe(observer)
 
         when:
         observer.requestMore(1)
@@ -204,11 +204,11 @@ class FlatteningSingleResultCallbackSubscriptionSpecification extends Specificat
         def block = getBlock()
         def observer = new TestObserver(new Observer() {
             @Override
-            void onSubscribe(final Subscription s) {
+            void onSubscribe(final Subscription subscription) {
             }
 
             @Override
-            void onNext(final Object t) {
+            void onNext(final Object result) {
                 throw new MongoException('Failure')
             }
 
@@ -220,7 +220,7 @@ class FlatteningSingleResultCallbackSubscriptionSpecification extends Specificat
             void onComplete() {
             }
         })
-        subscribeToAndFlatten(block, observer)
+        observeAndFlatten(block).subscribe(observer)
 
         when:
         observer.requestMore(1)

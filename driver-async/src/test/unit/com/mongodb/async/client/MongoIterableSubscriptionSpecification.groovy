@@ -20,26 +20,26 @@ import com.mongodb.MongoException
 import com.mongodb.async.AsyncBatchCursor
 import spock.lang.Specification
 
-import static Subscriptions.subscribeTo
+import static com.mongodb.async.client.Observables.observe
 
 class MongoIterableSubscriptionSpecification extends Specification {
 
     def 'should do nothing until data is requested'() {
         given:
-        def iterable = Mock(MongoIterable)
+        def mongoIterable = Mock(MongoIterable)
         def observer = new TestObserver()
 
         when:
-        subscribeTo(iterable, observer)
+        observe(mongoIterable).subscribe(observer)
 
         then:
-        0 * iterable.batchCursor(_)
+        0 * mongoIterable.batchCursor(_)
 
         when:
         observer.requestMore(1)
 
         then:
-        1 * iterable.batchCursor(_)
+        1 * mongoIterable.batchCursor(_)
     }
 
     def 'should call batchCursor.next when requested data is more than queued data'() {
@@ -48,7 +48,7 @@ class MongoIterableSubscriptionSpecification extends Specification {
         def observer = new TestObserver()
 
         when:
-        subscribeTo(mongoIterable, observer)
+        observe(mongoIterable).subscribe(observer)
 
         then:
         0 * mongoIterable.batchCursor(_)
@@ -73,7 +73,7 @@ class MongoIterableSubscriptionSpecification extends Specification {
         given:
         def mongoIterable = getMongoIterable()
         def observer = new TestObserver()
-        subscribeTo(mongoIterable, observer)
+        observe(mongoIterable).subscribe(observer)
 
         when:
         observer.requestMore(10)
@@ -89,10 +89,10 @@ class MongoIterableSubscriptionSpecification extends Specification {
         def observer = new TestObserver()
         def mongoIterable = Mock(MongoIterable) {
             1 * batchCursor(_) >> {
-                it[0].onResult(null, new MongoException("failed"))
+                it[0].onResult(null, new MongoException('failed'))
             }
         }
-        subscribeTo(mongoIterable, observer)
+        observe(mongoIterable).subscribe(observer)
 
         when:
         observer.requestMore(1)
@@ -110,7 +110,7 @@ class MongoIterableSubscriptionSpecification extends Specification {
                 it[0].onResult(null, null)
             }
         }
-        subscribeTo(mongoIterable, observer)
+        observe(mongoIterable).subscribe(observer)
 
         when:
         observer.requestMore(1)
@@ -126,11 +126,11 @@ class MongoIterableSubscriptionSpecification extends Specification {
         def mongoIterable = Mock(MongoIterable) {
             1 * batchCursor(_) >> {
                 it[0].onResult(Mock(AsyncBatchCursor) {
-                    next(_) >> { it[0].onResult(null, new MongoException("failed"))}
+                    next(_) >> { it[0].onResult(null, new MongoException('failed')) }
                 }, null)
             }
         }
-        subscribeTo(mongoIterable, observer)
+        observe(mongoIterable).subscribe(observer)
 
         when:
         observer.requestMore(1)
@@ -144,7 +144,7 @@ class MongoIterableSubscriptionSpecification extends Specification {
         given:
         def observer = new TestObserver()
         def mockIterable = getMongoIterable()
-        subscribeTo(mockIterable, observer)
+        observe(mockIterable).subscribe(observer)
 
         when:
         observer.requestMore(1)
@@ -157,7 +157,7 @@ class MongoIterableSubscriptionSpecification extends Specification {
         given:
         def observer = new TestObserver()
         def mockIterable = getMongoIterable()
-        subscribeTo(mockIterable, observer)
+        observe(mockIterable).subscribe(observer)
 
         when:
         observer.requestMore(Long.MAX_VALUE)
@@ -172,7 +172,7 @@ class MongoIterableSubscriptionSpecification extends Specification {
         def observer = new TestObserver()
         def cursor = getCursor()
         def mockIterable = getMongoIterable(cursor)
-        subscribeTo(mockIterable, observer)
+        observe(mockIterable).subscribe(observer)
 
         when:
         observer.requestMore(2)
@@ -190,7 +190,7 @@ class MongoIterableSubscriptionSpecification extends Specification {
         def observer = new TestObserver()
         def cursor = getCursor()
         def mockIterable = getMongoIterable(cursor)
-        subscribeTo(mockIterable, observer)
+        observe(mockIterable).subscribe(observer)
 
         when:
         observer.requestMore(2)
@@ -205,7 +205,7 @@ class MongoIterableSubscriptionSpecification extends Specification {
     def 'should throw an error if request is less than 1'() {
         given:
         def observer = new TestObserver()
-        subscribeTo(Stub(MongoIterable), observer)
+        observe(Stub(MongoIterable)).subscribe(observer)
 
         when:
         observer.requestMore(0)
@@ -218,7 +218,7 @@ class MongoIterableSubscriptionSpecification extends Specification {
         given:
         def mongoIterable = getMongoIterable()
         def observer = new TestObserver()
-        subscribeTo(mongoIterable, observer)
+        observe(mongoIterable).subscribe(observer)
 
         when:
         observer.requestMore(1)
@@ -246,7 +246,7 @@ class MongoIterableSubscriptionSpecification extends Specification {
         given:
         def cursor = getCursor()
         def observer = new TestObserver()
-        subscribeTo(getMongoIterable(cursor), observer)
+        observe(getMongoIterable(cursor)).subscribe(observer)
 
         when:
         observer.requestMore(1)
@@ -268,7 +268,7 @@ class MongoIterableSubscriptionSpecification extends Specification {
         given:
         def cursor = getCursor()
         def observer = new TestObserver()
-        subscribeTo(getMongoIterable(cursor), observer)
+        observe(getMongoIterable(cursor)).subscribe(observer)
 
         when:
         observer.requestMore(1)
@@ -292,7 +292,7 @@ class MongoIterableSubscriptionSpecification extends Specification {
         given:
         def cursor = getCursor()
         def observer = new TestObserver()
-        subscribeTo(getMongoIterable(cursor), observer)
+        observe(getMongoIterable(cursor)).subscribe(observer)
 
         when:
         observer.requestMore(1)
@@ -308,7 +308,7 @@ class MongoIterableSubscriptionSpecification extends Specification {
         given:
         def observer = new TestObserver(new Observer() {
             @Override
-            void onSubscribe(final Subscription s) {
+            void onSubscribe(final Subscription subscription) {
             }
 
             @Override
@@ -326,7 +326,7 @@ class MongoIterableSubscriptionSpecification extends Specification {
             void onComplete() {
             }
         })
-        subscribeTo(getMongoIterable(), observer)
+        observe(getMongoIterable()).subscribe(observer)
 
         when:
         observer.requestMore(1)
@@ -349,11 +349,11 @@ class MongoIterableSubscriptionSpecification extends Specification {
         given:
         def observer = new TestObserver(new Observer() {
             @Override
-            void onSubscribe(final Subscription s) {
+            void onSubscribe(final Subscription subscription) {
             }
 
             @Override
-            void onNext(final Object t) {
+            void onNext(final Object result) {
                 throw new MongoException('Failure')
             }
 
@@ -365,7 +365,7 @@ class MongoIterableSubscriptionSpecification extends Specification {
             void onComplete() {
             }
         })
-        subscribeTo(getMongoIterable(), observer)
+        observe(getMongoIterable()).subscribe(observer)
 
         when:
         observer.requestMore(1)

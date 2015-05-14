@@ -28,7 +28,6 @@ public class TestObserver<T> implements Observer<T> {
     private final ArrayList<Throwable> onErrorEvents = new ArrayList<Throwable>();
     private final ArrayList<Void> onCompleteEvents = new ArrayList<Void>();
 
-    private volatile Thread lastSeenThread;
     private Subscription subscription;
 
     public TestObserver(final Observer<T> delegate) {
@@ -39,12 +38,12 @@ public class TestObserver<T> implements Observer<T> {
         this(new Observer<T>() {
 
             @Override
-            public void onSubscribe(final Subscription s) {
+            public void onSubscribe(final Subscription subscription) {
                 // do nothing
             }
 
             @Override
-            public void onNext(final T t) {
+            public void onNext(final T result) {
                 // do nothing
             }
 
@@ -61,25 +60,25 @@ public class TestObserver<T> implements Observer<T> {
     }
 
     @Override
-    public void onSubscribe(final Subscription s) {
-        subscription = s;
+    public void onSubscribe(final Subscription subscription) {
+        this.subscription = subscription;
     }
 
     /**
      * Provides the Subscriber with a new item to observe.
      * <p>
-     * The {@code MongoIterable} may call this method 0 or more times.
+     * The {@link Observable} may call this method 0 or more times.
      * </p>
      * <p>
-     * The {@code MongoIterable} will not call this method again after it calls either {@link #onComplete} or
+     * The {@link Observable} will not call this method again after it calls either {@link #onComplete} or
      * {@link #onError}.
      * </p>
-     * @param t the item emitted by the obserable
+     * @param result the item emitted by the obserable
      */
     @Override
-    public void onNext(final T t) {
-        onNextEvents.add(t);
-        delegate.onNext(t);
+    public void onNext(final T result) {
+        onNextEvents.add(result);
+        delegate.onNext(result);
     }
 
     /**
@@ -128,7 +127,7 @@ public class TestObserver<T> implements Observer<T> {
     }
 
     /**
-     * Get the {@link Throwable}s this {@link MongoIterable} was notified of via {@link #onError} as a
+     * Get the {@link Throwable}s this {@link Observer} was notified of via {@link #onError} as a
      * {@link List}.
      *
      * @return a list of the Throwables that were passed to this Subscriber's {@link #onError} method

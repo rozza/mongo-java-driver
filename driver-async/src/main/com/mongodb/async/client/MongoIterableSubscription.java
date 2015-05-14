@@ -34,10 +34,13 @@ final class MongoIterableSubscription<TResult> extends AbstractSubscription<TRes
 
     private volatile AsyncBatchCursor<TResult> batchCursor;
 
-    public MongoIterableSubscription(final MongoIterable<TResult> mongoIterable, final Observer<TResult> observer) {
+    public MongoIterableSubscription(final MongoIterable<TResult> mongoIterable, final Observer<? super TResult> observer) {
         super(observer);
         this.mongoIterable = mongoIterable;
+        observer.onSubscribe(this);
     }
+
+
 
     @Override
     void requestInitialData() {

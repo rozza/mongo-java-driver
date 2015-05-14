@@ -15,12 +15,13 @@
  */
 
 package com.mongodb.async.client
+
 import com.mongodb.Block
 import com.mongodb.MongoException
 import com.mongodb.async.SingleResultCallback
 import spock.lang.Specification
 
-import static Subscriptions.subscribeTo
+import static com.mongodb.async.client.Observables.observe
 
 class SingleResultCallbackSubscriptionSpecification extends Specification {
 
@@ -30,7 +31,7 @@ class SingleResultCallbackSubscriptionSpecification extends Specification {
         def observer = new TestObserver()
 
         when:
-        subscribeTo(block, observer)
+        observe(block).subscribe(observer)
 
         then:
         0 * block.apply(_)
@@ -47,7 +48,7 @@ class SingleResultCallbackSubscriptionSpecification extends Specification {
         given:
         def block = getBlock()
         def observer = new TestObserver()
-        subscribeTo(block, observer)
+        observe(block).subscribe(observer)
 
         when:
         observer.requestMore(10)
@@ -62,7 +63,7 @@ class SingleResultCallbackSubscriptionSpecification extends Specification {
         given:
         def block = getBlock()
         def observer = new TestObserver()
-        subscribeTo(block, observer)
+        observe(block).subscribe(observer)
 
         when:
         observer.requestMore(0)
@@ -74,12 +75,12 @@ class SingleResultCallbackSubscriptionSpecification extends Specification {
     def 'should call onError if batch returns an throwable in the callback'() {
         given:
         def observer = new TestObserver()
-        subscribeTo(new Block<SingleResultCallback<Integer>>() {
+        observe(new Block<SingleResultCallback<Integer>>() {
             @Override
             void apply(final SingleResultCallback<Integer> callback) {
-                callback.onResult(null, new MongoException("Failed"));
+                callback.onResult(null, new MongoException('failed'));
             }
-        }, observer)
+        }).subscribe(observer)
 
         when:
         observer.requestMore(1)
@@ -93,7 +94,7 @@ class SingleResultCallbackSubscriptionSpecification extends Specification {
         given:
         def block = getBlock()
         def observer = new TestObserver()
-        subscribeTo(block, observer)
+        observe(block).subscribe(observer)
 
         when:
         observer.requestMore(1)
@@ -121,7 +122,7 @@ class SingleResultCallbackSubscriptionSpecification extends Specification {
         given:
         def block = getBlock()
         def observer = new TestObserver()
-        subscribeTo(block, observer)
+        observe(block).subscribe(observer)
 
         when:
         observer.requestMore(1)
@@ -144,7 +145,7 @@ class SingleResultCallbackSubscriptionSpecification extends Specification {
         given:
         def block = getBlock()
         def observer = new TestObserver()
-        subscribeTo(block, observer)
+        observe(block).subscribe(observer)
 
         when:
         observer.requestMore(1)
@@ -161,7 +162,7 @@ class SingleResultCallbackSubscriptionSpecification extends Specification {
         def block = getBlock()
         def observer = new TestObserver(new Observer() {
             @Override
-            void onSubscribe(final Subscription s) {
+            void onSubscribe(final Subscription subscription) {
             }
 
             @Override
@@ -177,7 +178,7 @@ class SingleResultCallbackSubscriptionSpecification extends Specification {
             void onComplete() {
             }
         })
-        subscribeTo(block, observer)
+        observe(block).subscribe(observer)
 
         when:
         observer.requestMore(1)
@@ -196,7 +197,7 @@ class SingleResultCallbackSubscriptionSpecification extends Specification {
         def expected = [1, 2, 3, 4]
         def block = getBlock(expected)
         def observer = new TestObserver()
-        subscribeTo(block, observer)
+        observe(block).subscribe(observer)
 
         when:
         observer.requestMore(10)
@@ -204,6 +205,25 @@ class SingleResultCallbackSubscriptionSpecification extends Specification {
         then:
         observer.assertNoErrors()
         observer.assertReceivedOnNext([expected])
+        observer.assertTerminalEvent()
+    }
+
+    def 'should be able to handle Void callbacks'() {
+        given:
+        def observer = new TestObserver()
+        observe(new Block<SingleResultCallback<Void>>(){
+            @Override
+            void apply(final SingleResultCallback<Void> callback) {
+                callback.onResult(null, null)
+            }
+        }).subscribe(observer)
+
+        when:
+        observer.requestMore(10)
+
+        then:
+        observer.assertNoErrors()
+        observer.assertReceivedOnNext([])
         observer.assertTerminalEvent()
     }
 

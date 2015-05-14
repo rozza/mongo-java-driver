@@ -20,7 +20,7 @@ package com.mongodb.async.client;
  * Provides a mechanism for receiving push-based notifications.
  *
  * <p>
- * Will receive a call to {@link #onSubscribe(Subscription)} on subscription to the observable.
+ * Will receive a call to {@link #onSubscribe(Subscription)} on subscription to the {@link Observable}.
  * No further notifications will be received until {@link Subscription#request(long)} is called.
  * </p>
  * <p>
@@ -40,7 +40,7 @@ package com.mongodb.async.client;
 public interface Observer<TResult> {
 
     /**
-     * Invoked on subscription to an observable.
+     * Invoked on subscription to an {@link Observable}.
      * <p>
      * No operation will happen until {@link Subscription#request(long)} is invoked.
      * </p>
@@ -51,9 +51,9 @@ public interface Observer<TResult> {
      * The {@link MongoIterable} will send notifications only in response to {@link Subscription#request(long)}.
      * </p>
      *
-     * @param s {@link Subscription} that allows requesting data via {@link Subscription#request(long)}
+     * @param subscription {@link Subscription} that allows requesting data via {@link Subscription#request(long)}
      */
-    void onSubscribe(Subscription s);
+    void onSubscribe(Subscription subscription);
 
     /**
      * Provides the Observer with a new item to observe.
@@ -61,27 +61,27 @@ public interface Observer<TResult> {
      * The Observer may call this method 0 or more times.
      * </p>
      * <p>
-     * The {@code observable} will not call this method again after it calls either {@link #onComplete} or
+     * The {@link Observable} will not call this method again after it calls either {@link #onComplete} or
      * {@link #onError}.
      *</p>
      *
-     * @param t the item emitted by the observable
+     * @param result the item emitted by the {@link Observable}
      */
-    void onNext(TResult t);
+    void onNext(TResult result);
 
     /**
-     * Notifies the Observer that the observable has experienced an error condition.
+     * Notifies the Observer that the {@link Observable} has experienced an error condition.
      *
-     * <p> If the observable calls this method, it will not thereafter call {@link #onNext} or {@link #onComplete}.</p>
+     * <p> If the {@link Observable} calls this method, it will not thereafter call {@link #onNext} or {@link #onComplete}.</p>
      *
-     * @param e the exception encountered by the observable
+     * @param e the exception encountered by the {@link Observable}
      */
     void onError(Throwable e);
 
     /**
-     * Notifies the Subscriber that the observable has finished sending push-based notifications.
+     * Notifies the Subscriber that the {@link Observable} has finished sending push-based notifications.
      * <p>
-     * The observable will not call this method if it calls {@link #onError}.
+     * The {@link Observable} will not call this method if it calls {@link #onError}.
      * </p>
      */
     void onComplete();

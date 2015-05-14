@@ -27,6 +27,7 @@ class SingleResultCallbackSubscription<TResult> extends AbstractSubscription<TRe
                                             final Observer<? super TResult> observer) {
         super(observer);
         this.block = block;
+        observer.onSubscribe(this);
     }
 
     @Override
@@ -36,7 +37,7 @@ class SingleResultCallbackSubscription<TResult> extends AbstractSubscription<TRe
             public void onResult(final TResult result, final Throwable t) {
                 if (t != null) {
                     onError(t);
-                } else if (result != null) {
+                } else {
                     addToQueue(result);
                 }
             }
