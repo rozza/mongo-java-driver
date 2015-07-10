@@ -26,6 +26,7 @@ import com.mongodb.MongoSocketWriteException
 import com.mongodb.ServerAddress
 import com.mongodb.async.FutureResultCallback
 import com.mongodb.async.SingleResultCallback
+import com.mongodb.event.ConnectionEvent
 import com.mongodb.event.ConnectionListener
 import com.mongodb.event.ConnectionMessageReceivedEvent
 import com.mongodb.event.ConnectionMessagesSentEvent
@@ -195,6 +196,37 @@ class InternalStreamConnectionSpecification extends Specification {
         1 * listener.messageReceived {
             compare(new ConnectionMessageReceivedEvent(connectionId, messageId1, 110), it)
         }
+    }
+
+    @Category(Async)
+    @IgnoreIf({ javaVersion < 1.7 })
+    def 'should handle premature end of stream asynchronously'() {
+        given:
+        def (buffers1, messageId1) = helper.isMaster()
+        stream.readAsync(36, _) >> { int numBytes, AsyncCompletionHandler<ByteBuf> handler ->
+            handler.completed(helper.header(messageId1))
+        }
+        stream.readAsync(74, _) >> { int numBytes, AsyncCompletionHandler<ByteBuf> handler ->
+            handler.completed(-1)
+        }
+        def connection = getOpenedConnection()
+        def latch = new CountDownLatch(1);
+
+        when:
+        connection.receiveMessageAsync(messageId1, new SingleResultCallback<ResponseBuffers>() {
+            @Override
+            void onResult(final ResponseBuffers result, final Throwable t) {
+                latch.countDown();
+            }
+        })
+        latch.countDown();
+        latch.await()
+
+        then:
+        1 * listener.connectionClosed {
+            compare(new ConnectionEvent(connectionId), it)
+        }
+        1 * stream.close()
     }
 
     def 'should change the connection description when opened'() {
