@@ -81,4 +81,24 @@ class IndexMapSpecification extends Specification {
         1 == indexMap.map(0)
         2 == indexMap.map(1)
     }
+
+    def 'should create the correct mappings when converting from range based to hashed implementations'() {
+        when:
+        def indexMap = IndexMap.create(1000, 3)
+
+        then:
+        indexMap.map(1)  == 1001
+        indexMap.map(2)  == 1002
+        indexMap.map(3)  == 1003
+
+        when:
+        indexMap = indexMap.add(5, 1005)
+
+        then:
+        indexMap.map(1)  == 1001
+        indexMap.map(2)  == 1002
+        indexMap.map(3)  == 1003
+        indexMap.map(5)  == 1005
+    }
+
 }

@@ -15,7 +15,6 @@
  */
 
 package com.mongodb.operation
-
 import category.Slow
 import com.mongodb.ClusterFixture
 import com.mongodb.MongoBulkWriteException
@@ -525,6 +524,29 @@ class MixedBulkWriteOperationSpecification extends OperationFunctionalSpecificat
 
         then:
         getCollectionHelper().count() == 2001
+
+        where:
+        ordered << [true, false]
+    }
+
+    def 'should be able to merge upserts across batches'() {
+        given:
+        def writeOperations = new ArrayList<WriteRequest>();
+        int batchSize = 1002;
+        (0..1002).each {
+            def upsert = new UpdateRequest(new BsonDocument('key', new BsonInt32(it)),
+                                           new BsonDocument('$set', new BsonDocument('key', new BsonInt32(it))),
+                        UPDATE).upsert(true)
+            writeOperations.add(upsert);
+            writeOperations.add(new DeleteRequest(new BsonDocument('key', new BsonInt32(it))));
+        }
+
+        when:
+        def result = new MixedBulkWriteOperation(getNamespace(), writeOperations, ordered, ACKNOWLEDGED).execute(getBinding())
+
+        then:
+        result.deletedCount == result.upserts.size()
+        getCollectionHelper().count() == 0
 
         where:
         ordered << [true, false]

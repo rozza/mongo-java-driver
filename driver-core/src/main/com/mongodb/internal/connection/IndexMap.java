@@ -71,7 +71,7 @@ public abstract class IndexMap {
         private final Map<Integer, Integer> indexMap = new HashMap<Integer, Integer>();
 
         public HashBased(final int startIndex, final int count) {
-            for (int i = startIndex; i <= count; i++) {
+            for (int i = startIndex; i <= startIndex + count; i++) {
                 indexMap.put(i - startIndex, i);
             }
         }
@@ -106,6 +106,7 @@ public abstract class IndexMap {
 
         @Override
         public IndexMap add(final int index, final int originalIndex) {
+
             if (count == 0) {
                 startIndex = originalIndex;
                 count = 1;
@@ -122,7 +123,7 @@ public abstract class IndexMap {
 
         @Override
         public int map(final int index) {
-            if (index >= count) {
+            if (index > count) {
                 throw new MongoInternalException("index should not be greater than count");
             }
             return startIndex + index;
