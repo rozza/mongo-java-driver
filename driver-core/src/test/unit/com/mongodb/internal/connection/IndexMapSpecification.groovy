@@ -82,23 +82,32 @@ class IndexMapSpecification extends Specification {
         2 == indexMap.map(1)
     }
 
-    def 'should create the correct mappings when converting from range based to hashed implementations'() {
-        when:
+    def 'should include ranges when converting from range based to hash based indexMap'() {
+        given:
         def indexMap = IndexMap.create(1000, 3)
 
-        then:
-        indexMap.map(1)  == 1001
-        indexMap.map(2)  == 1002
-        indexMap.map(3)  == 1003
-
-        when:
+        when: 'converts from range based with a high startIndex to hash based'
         indexMap = indexMap.add(5, 1005)
 
         then:
-        indexMap.map(1)  == 1001
-        indexMap.map(2)  == 1002
-        indexMap.map(3)  == 1003
-        indexMap.map(5)  == 1005
+        1000 == indexMap.map(0)
+        1001 == indexMap.map(1)
+        1002 == indexMap.map(2)
+        1005 == indexMap.map(5)
+    }
+
+    def 'should not allow a negative startIndex or count'() {
+        when:
+        IndexMap.create(-1, 10)
+
+        then:
+        thrown(IllegalArgumentException)
+
+        when:
+        IndexMap.create(1, -10)
+
+        then:
+        thrown(IllegalArgumentException)
     }
 
 }
