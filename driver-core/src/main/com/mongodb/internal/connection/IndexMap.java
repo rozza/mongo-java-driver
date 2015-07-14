@@ -126,7 +126,9 @@ public abstract class IndexMap {
 
         @Override
         public int map(final int index) {
-            if (index >= count) {
+            if (index < 0) {
+                throw new MongoInternalException("no mapping found for index " + index);
+            } else if (index >= count) {
                 throw new MongoInternalException("index should not be greater than or equal to count");
             }
             return startIndex + index;

@@ -15,6 +15,7 @@
  */
 
 package com.mongodb.operation
+
 import category.Slow
 import com.mongodb.ClusterFixture
 import com.mongodb.MongoBulkWriteException
@@ -531,8 +532,7 @@ class MixedBulkWriteOperationSpecification extends OperationFunctionalSpecificat
 
     def 'should be able to merge upserts across batches'() {
         given:
-        def writeOperations = new ArrayList<WriteRequest>();
-        int batchSize = 1002;
+        def writeOperations = [];
         (0..1002).each {
             def upsert = new UpdateRequest(new BsonDocument('key', new BsonInt32(it)),
                                            new BsonDocument('$set', new BsonDocument('key', new BsonInt32(it))),
