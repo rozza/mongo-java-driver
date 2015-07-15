@@ -125,7 +125,6 @@ public final class Sorts {
                 for (Bson sort : sorts) {
                     BsonDocument sortDocument = sort.toBsonDocument(documentClass, codecRegistry);
                     for (String key : sortDocument.keySet()) {
-                        combinedDocument.remove(key);
                         combinedDocument.append(key, sortDocument.get(key));
                     }
                 }

@@ -29,7 +29,8 @@ import static com.mongodb.assertions.Assertions.notNull;
 import static java.util.Arrays.asList;
 
 /**
- * A factory for defining index keys. A convenient way to use this class is to statically import all of its methods, which allows usage like:
+ * A factory for defining index keys. A convenient way to use this class is to statically import all of its methods, which allows usage
+ * like:
  * <blockquote><pre>
  *    collection.createIndex(compoundIndex(ascending("x"), descending("y")));
  * </pre></blockquote>
@@ -196,7 +197,6 @@ public final class Indexes {
                 for (Bson index : indexes) {
                     BsonDocument indexDocument = index.toBsonDocument(documentClass, codecRegistry);
                     for (String key : indexDocument.keySet()) {
-                        compoundIndex.remove(key);
                         compoundIndex.append(key, indexDocument.get(key));
                     }
                 }
