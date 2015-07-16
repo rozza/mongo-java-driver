@@ -31,8 +31,8 @@ This example specifies an ascending index key for the `quantity` field:
 ascending("quantity")
 ```
 
-This example specifies a compound index key composed of an ascending index on the `quantity` field, followed by an ascending index on 
-the `totalAmount` field:
+This example specifies a compound index key composed of the `quantity` field sorted in ascending order and the `totalAmount` field
+sorted in ascending order:
 
 ```java
 ascending("quantity", "totalAmount") 
@@ -48,8 +48,8 @@ This example specifies a descending index key on the `quantity` field:
 descending("quantity")
 ```
 
-This example specifies a compound index key composed of an descending index key on the `quantity` field, followed by a descending index on 
-the `totalAmount` field:
+This example specifies a compound index key composed of the `quantity` field sorted in descending order and the `totalAmount` field
+sorted in descending order:
 
 
 ```java
@@ -60,11 +60,11 @@ descending("quantity", "totalAmount")
 
 To specify a compound index, use the `compoundIndex` method.
 
-This example specifies a compound index key composed of an ascending index on `quantity` field, followed by an ascending index on 
-the `totalAmount` field, followed by a descending index on the `orderDate` field:
+This example specifies a compound index key composed of the `quantity` field sorted in ascending order, followed by the `totalAmount` field
+sorted in ascending order, followed by the `orderDate` field sorted in descending order:
 
 ```java
-orderBy(ascending("quantity", "totalAmount"), descending("orderDate"))
+compoundIndex(ascending("quantity", "totalAmount"), descending("orderDate"))
 ```
 
 ### Text Index
