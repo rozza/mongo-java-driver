@@ -66,7 +66,7 @@ public interface MongoDatabase {
      * Create a new MongoDatabase instance with a different codec registry.
      *
      * @param codecRegistry the new {@link org.bson.codecs.configuration.CodecRegistry} for the database
-     * @return a new MongoCollection instance with the different codec registry
+     * @return a new MongoDatabase instance with the different codec registry
      */
     MongoDatabase withCodecRegistry(CodecRegistry codecRegistry);
 
@@ -82,7 +82,7 @@ public interface MongoDatabase {
      * Create a new MongoDatabase instance with a different write concern.
      *
      * @param writeConcern the new {@link WriteConcern} for the database
-     * @return a new MongoCollection instance with the different writeConcern
+     * @return a new MongoDatabase instance with the different writeConcern
      */
     MongoDatabase withWriteConcern(WriteConcern writeConcern);
 
@@ -190,5 +190,20 @@ public interface MongoDatabase {
      * @mongodb.driver.manual reference/commands/create Create Command
      */
     void createCollection(String collectionName, CreateCollectionOptions createCollectionOptions);
+
+    /**
+     * Gets a GridFSBucket with the default bucketName
+     *
+     * @return a GridFSBucket
+     */
+    GridFSBucket getGridFSBucket();
+
+    /**
+     * Gets a GridFSBucket with a custom bucketName
+     *
+     * @param bucketName the custom bucketName
+     * @return a GridFSBucket
+     */
+    GridFSBucket getGridFSBucket(String bucketName);
 
 }
