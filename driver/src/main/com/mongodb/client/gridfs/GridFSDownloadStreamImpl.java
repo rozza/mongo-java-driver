@@ -110,11 +110,12 @@ class GridFSDownloadStreamImpl extends InputStream implements GridFSDownloadStre
 
         long skippedPosition = currentPosition + bytesToSkip;
         bufferOffset = (int) skippedPosition % chunkSizeInBytes;
-        if (skippedPosition > length) {
+        if (skippedPosition >= length) {
+            long skipped = length - currentPosition;
             chunkIndex = numberOfChunks - 1;
             currentPosition = length;
             buffer = null;
-            return skippedPosition - (skippedPosition - length);
+            return skipped;
         } else {
             chunkIndex = (int) Math.floor((float) skippedPosition / chunkSizeInBytes);
             currentPosition += bytesToSkip;

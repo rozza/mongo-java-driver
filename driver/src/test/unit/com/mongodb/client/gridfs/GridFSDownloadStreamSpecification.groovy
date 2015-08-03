@@ -103,37 +103,40 @@ class GridFSDownloadStreamSpecification extends Specification {
 
     def 'should skip to the correct point'() {
         given:
+        def twoBytes = new byte[2]
         def oneByte = new byte[1]
-        def findQuery = new BsonDocument('files_id', fileInfo.getObjectId('_id')).append('n', new BsonInt32(1))
-        def chunkDocument = new BsonDocument('files_id', fileInfo.getObjectId('_id'))
-                .append('n', new BsonInt32(1))
-                .append('data', new BsonBinary(oneByte))
+        def findQueries = [new BsonDocument('files_id', fileInfo.getObjectId('_id')).append('n', new BsonInt32(0)),
+                           new BsonDocument('files_id', fileInfo.getObjectId('_id')).append('n', new BsonInt32(1))]
+        def chunkDocuments =
+                [new BsonDocument('files_id', fileInfo.getObjectId('_id')).append('n', new BsonInt32(0))
+                         .append('data', new BsonBinary(twoBytes)),
+                 new BsonDocument('files_id', fileInfo.getObjectId('_id')).append('n', new BsonInt32(1))
+                         .append('data', new BsonBinary(oneByte))]
 
         def findIterable = Mock(FindIterable)
         def chunksCollection = Mock(MongoCollection)
         def downloadStream = new GridFSDownloadStreamImpl(fileInfo, chunksCollection)
 
         when:
-        def result = downloadStream.skip(2)
+        def skipResult = downloadStream.skip(1)
 
         then:
-        result == 2L
-        1 * chunksCollection.find(findQuery) >> findIterable
-        1 * findIterable.first() >> chunkDocument
+        1 * chunksCollection.find(findQueries[0]) >> findIterable
+        1 * findIterable.first() >> chunkDocuments[0]
 
         when:
-        result = downloadStream.read()
+        skipResult = downloadStream.skip(1)
 
         then:
-        result == (oneByte[0] & 0xFF)
-        0 * chunksCollection.find(_)
-        0 * findIterable.first()
+        skipResult == 1L
+        1 * chunksCollection.find(findQueries[1]) >> findIterable
+        1 * findIterable.first() >> chunkDocuments[1]
 
         when:
-        result = downloadStream.read()
+        skipResult = downloadStream.skip(1)
 
         then:
-        result == -1
+        skipResult == 1L
         0 * chunksCollection.find(_)
         0 * findIterable.first()
     }
@@ -149,16 +152,17 @@ class GridFSDownloadStreamSpecification extends Specification {
         result == 0L
     }
 
-    def 'should handle skip that is larger than the file'() {
+    def 'should handle skip that is larger or equal to the file length'() {
         given:
         def chunksCollection = Mock(MongoCollection)
         def downloadStream = new GridFSDownloadStreamImpl(fileInfo, chunksCollection)
 
         when:
-        def result = downloadStream.skip(100)
+        def result = downloadStream.skip(skipValue)
 
         then:
         result == 3L
+        0 * chunksCollection.find(_)
 
         when:
         result = downloadStream.read()
@@ -166,6 +170,9 @@ class GridFSDownloadStreamSpecification extends Specification {
         then:
         result == -1
         0 * chunksCollection.find(_)
+
+        where:
+        skipValue << [3, 100]
     }
 
     def 'should thrown an exception if passed invalid file info'() {
