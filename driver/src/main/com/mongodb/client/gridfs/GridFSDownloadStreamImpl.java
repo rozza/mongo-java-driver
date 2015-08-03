@@ -33,7 +33,7 @@ class GridFSDownloadStreamImpl extends InputStream implements GridFSDownloadStre
     private final BsonDocument fileInfo;
     private final MongoCollection<BsonDocument> chunksCollection;
     private final BsonObjectId fileId;
-    private final long lengthInBytes;
+    private final long length;
     private final int chunkSizeInBytes;
     private final int numberOfChunks;
     private int chunkIndex;
@@ -54,9 +54,9 @@ class GridFSDownloadStreamImpl extends InputStream implements GridFSDownloadStre
             throw new MongoGridFSException("GridFS file information is not in the expected format", e);
         }
         fileId = fileInfo.getObjectId("_id");
-        lengthInBytes = fileInfo.getInt64("length").getValue();
+        length = fileInfo.getInt64("length").getValue();
         chunkSizeInBytes = fileInfo.getInt32("chunkSize").getValue();
-        numberOfChunks = (int) Math.ceil((double) lengthInBytes / chunkSizeInBytes);
+        numberOfChunks = (int) Math.ceil((double) length / chunkSizeInBytes);
     }
 
     @Override
@@ -83,7 +83,7 @@ class GridFSDownloadStreamImpl extends InputStream implements GridFSDownloadStre
     public int read(final byte[] b, final int off, final int len) throws IOException {
         checkClosed();
 
-        if (currentPosition == lengthInBytes) {
+        if (currentPosition == length) {
             return -1;
         } else if (buffer == null) {
             buffer = getBuffer(chunkIndex);
@@ -110,11 +110,11 @@ class GridFSDownloadStreamImpl extends InputStream implements GridFSDownloadStre
 
         long skippedPosition = currentPosition + bytesToSkip;
         bufferOffset = (int) skippedPosition % chunkSizeInBytes;
-        if (skippedPosition > lengthInBytes) {
+        if (skippedPosition > length) {
             chunkIndex = numberOfChunks - 1;
-            currentPosition = lengthInBytes;
+            currentPosition = length;
             buffer = null;
-            return skippedPosition - (skippedPosition - lengthInBytes);
+            return skippedPosition - (skippedPosition - length);
         } else {
             chunkIndex = (int) Math.floor((float) skippedPosition / chunkSizeInBytes);
             currentPosition += bytesToSkip;
@@ -156,7 +156,7 @@ class GridFSDownloadStreamImpl extends InputStream implements GridFSDownloadStre
             byte[] data = chunk.getBinary("data").getData();
             long expectedDataLength;
             if (chunkIndexToFetch + 1 == numberOfChunks) {
-                expectedDataLength = lengthInBytes - (chunkIndexToFetch * (long) chunkSizeInBytes);
+                expectedDataLength = length - (chunkIndexToFetch * (long) chunkSizeInBytes);
             } else {
                 expectedDataLength = chunkSizeInBytes;
             }
