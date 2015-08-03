@@ -28,14 +28,13 @@ import org.bson.BsonString;
 import org.bson.types.ObjectId;
 
 import java.io.IOException;
-import java.io.OutputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
 import static com.mongodb.assertions.Assertions.notNull;
 import static com.mongodb.util.Util.toHex;
 
-final class GridFSUploadStreamImpl extends OutputStream implements GridFSUploadStream {
+final class GridFSUploadStreamImpl extends GridFSUploadStream {
     private final MongoCollection<BsonDocument> filesCollection;
     private final MongoCollection<BsonDocument> chunksCollection;
     private final ObjectId fileId;
@@ -70,11 +69,6 @@ final class GridFSUploadStreamImpl extends OutputStream implements GridFSUploadS
     @Override
     public ObjectId getFileId() {
         return fileId;
-    }
-
-    @Override
-    public OutputStream getOutputStream() {
-        return this;
     }
 
     @Override

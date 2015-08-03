@@ -23,13 +23,12 @@ import org.bson.BsonInt32;
 import org.bson.BsonObjectId;
 
 import java.io.IOException;
-import java.io.InputStream;
 
 import static com.mongodb.assertions.Assertions.isTrue;
 import static com.mongodb.assertions.Assertions.notNull;
 import static java.lang.String.format;
 
-class GridFSDownloadStreamImpl extends InputStream implements GridFSDownloadStream {
+class GridFSDownloadStreamImpl extends GridFSDownloadStream {
     private final BsonDocument fileInfo;
     private final MongoCollection<BsonDocument> chunksCollection;
     private final BsonObjectId fileId;
@@ -62,11 +61,6 @@ class GridFSDownloadStreamImpl extends InputStream implements GridFSDownloadStre
     @Override
     public BsonDocument getFileInformation() {
         return fileInfo;
-    }
-
-    @Override
-    public InputStream getInputStream() {
-        return this;
     }
 
     @Override

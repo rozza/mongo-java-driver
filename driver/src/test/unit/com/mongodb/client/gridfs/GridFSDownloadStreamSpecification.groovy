@@ -42,14 +42,6 @@ class GridFSDownloadStreamSpecification extends Specification {
         downloadStream.getFileInformation() == fileInfo
     }
 
-    def 'should return an input stream'() {
-        when:
-        def downloadStream = new GridFSDownloadStreamImpl(fileInfo, Stub(MongoCollection))
-
-        then:
-        downloadStream.getInputStream() == downloadStream
-    }
-
     def 'should query the chunks collection as expected'() {
         when:
         def twoBytes = new byte[2]

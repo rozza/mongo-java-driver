@@ -35,14 +35,6 @@ class GridFSUploadStreamSpecification extends Specification {
         uploadStream.getFileId() == fileId
     }
 
-    def 'should return an output stream'() {
-        when:
-        def uploadStream = new GridFSUploadStreamImpl(Stub(MongoCollection), Stub(MongoCollection), fileId, filename, 255, metadata)
-
-        then:
-        uploadStream.getOutputStream() == uploadStream
-    }
-
     def 'should write the buffer it reaches the chunk size'() {
         given:
         def filesCollection = Mock(MongoCollection)

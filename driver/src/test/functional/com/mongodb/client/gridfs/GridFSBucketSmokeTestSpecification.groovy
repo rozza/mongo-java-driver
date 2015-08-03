@@ -69,11 +69,10 @@ class GridFSBucketSmokeTestSpecification extends FunctionalSpecification {
         if (direct) {
             fileId = gridFSBucket.uploadFromStream('myFile', new ByteArrayInputStream(contentBytes));
         } else {
-            def result = gridFSBucket.openUploadStream('myFile')
-            def outputStream = result.getOutputStream()
+            def outputStream = gridFSBucket.openUploadStream('myFile')
             outputStream.write(contentBytes)
             outputStream.close()
-            fileId = result.getFileId()
+            fileId = outputStream.getFileId()
         }
 
         then:
@@ -92,7 +91,7 @@ class GridFSBucketSmokeTestSpecification extends FunctionalSpecification {
 
         when:
         if (direct) {
-            gridFSContentBytes = gridFSBucket.openDownloadStream(fileId).getInputStream().getBytes()
+            gridFSContentBytes = gridFSBucket.openDownloadStream(fileId).getBytes()
         } else {
             def outputStream = new ByteArrayOutputStream(expectedLength as int)
             gridFSBucket.downloadToStream(fileId, outputStream)
@@ -131,11 +130,10 @@ class GridFSBucketSmokeTestSpecification extends FunctionalSpecification {
         if (direct) {
             fileId = gridFSBucket.uploadFromStream('myFile', new ByteArrayInputStream(contentBytes), options);
         } else {
-            def result = gridFSBucket.openUploadStream('myFile', options)
-            def outputStream = result.getOutputStream()
+            def outputStream = gridFSBucket.openUploadStream('myFile', options)
             outputStream.write(contentBytes)
             outputStream.close()
-            fileId = result.getFileId()
+            fileId = outputStream.getFileId()
         }
 
         then:
@@ -154,7 +152,7 @@ class GridFSBucketSmokeTestSpecification extends FunctionalSpecification {
 
         when:
         if (direct) {
-            gridFSContentBytes = gridFSBucket.openDownloadStream(fileId).getInputStream().getBytes()
+            gridFSContentBytes = gridFSBucket.openDownloadStream(fileId).getBytes()
         } else {
             def outputStream = new ByteArrayOutputStream(expectedLength as int)
             gridFSBucket.downloadToStream(fileId, outputStream)
@@ -179,7 +177,7 @@ class GridFSBucketSmokeTestSpecification extends FunctionalSpecification {
         byte[] gridFSContentBytes
 
         when: 'Direct to a stream'
-        gridFSContentBytes = gridFSBucket.openDownloadStreamByName(filename).getInputStream().getBytes()
+        gridFSContentBytes = gridFSBucket.openDownloadStreamByName(filename).getBytes()
 
         then:
         gridFSContentBytes == contentBytes
@@ -207,7 +205,7 @@ class GridFSBucketSmokeTestSpecification extends FunctionalSpecification {
         def options = new GridFSDownloadByNameOptions().revision(version)
 
         when: 'Direct to a stream'
-        gridFSContentBytes = gridFSBucket.openDownloadStreamByName(filename, options).getInputStream().getBytes()
+        gridFSContentBytes = gridFSBucket.openDownloadStreamByName(filename, options).getBytes()
 
         then:
         gridFSContentBytes == expectedContentBytes
@@ -356,8 +354,7 @@ class GridFSBucketSmokeTestSpecification extends FunctionalSpecification {
         if (direct) {
             gridFSBucket.uploadFromStream('myFile', new ByteArrayInputStream(contentBytes));
         } else {
-            def result = gridFSBucket.openUploadStream('myFile')
-            def outputStream = result.getOutputStream()
+            def outputStream = gridFSBucket.openUploadStream('myFile')
             outputStream.write(contentBytes)
             outputStream.close()
         }
@@ -383,8 +380,7 @@ class GridFSBucketSmokeTestSpecification extends FunctionalSpecification {
         if (direct) {
             gridFSBucket.uploadFromStream('myFile', new ByteArrayInputStream(contentBytes));
         } else {
-            def result = gridFSBucket.openUploadStream('myFile')
-            def outputStream = result.getOutputStream()
+            def outputStream = gridFSBucket.openUploadStream('myFile')
             outputStream.write(contentBytes)
             outputStream.close()
         }
