@@ -116,9 +116,9 @@ class GridFSBucketSmokeTestSpecification extends FunctionalSpecification {
         def chunkSize = 20
         def metadata = new Document('archived', false)
         def options = new GridFSUploadOptions()
-                .setChunkSizeBytes(chunkSize)
-                .setCodecRegistry(fromProviders(new DocumentCodecProvider(), new ValueCodecProvider()))
-                .setMetadata(metadata)
+                .chunkSizeBytes(chunkSize)
+                .codecRegistry(fromProviders(new DocumentCodecProvider(), new ValueCodecProvider()))
+                .metadata(metadata)
         def content = 'qwerty' * 1024
         def contentBytes = content as byte[]
         def expectedLength = contentBytes.length as Long
@@ -204,7 +204,7 @@ class GridFSBucketSmokeTestSpecification extends FunctionalSpecification {
             gridFSBucket.uploadFromStream(filename, new ByteArrayInputStream(it))
         }
         def expectedContentBytes = contentBytes[version]
-        def options = new GridFSDownloadByNameOptions().setRevision(version)
+        def options = new GridFSDownloadByNameOptions().revision(version)
 
         when: 'Direct to a stream'
         gridFSContentBytes = gridFSBucket.openDownloadStreamByName(filename, options).getInputStream().getBytes()
@@ -245,7 +245,7 @@ class GridFSBucketSmokeTestSpecification extends FunctionalSpecification {
     def 'should throw an exception if cannot open by name with selected version'() {
         given:
         def filename = 'myFile'
-        def options = new GridFSDownloadByNameOptions().setRevision(1)
+        def options = new GridFSDownloadByNameOptions().revision(1)
         gridFSBucket.uploadFromStream(filename, new ByteArrayInputStream('Hello GridFS' as byte[]))
 
         when: 'Direct to a stream'

@@ -54,7 +54,7 @@ public class GridFSUploadOptions {
      * @param chunkSizeBytes the number of bytes per chunk for the uploaded file
      * @return this
      */
-    public GridFSUploadOptions setChunkSizeBytes(final Integer chunkSizeBytes) {
+    public GridFSUploadOptions chunkSizeBytes(final Integer chunkSizeBytes) {
         this.chunkSizeBytes = chunkSizeBytes;
         return this;
     }
@@ -76,7 +76,7 @@ public class GridFSUploadOptions {
      * @param codecRegistry the new {@link org.bson.codecs.configuration.CodecRegistry} for encoding the metadata
      * @return this
      */
-    public GridFSUploadOptions setCodecRegistry(final CodecRegistry codecRegistry) {
+    public GridFSUploadOptions codecRegistry(final CodecRegistry codecRegistry) {
         this.codecRegistry = codecRegistry;
         return this;
     }
@@ -96,7 +96,7 @@ public class GridFSUploadOptions {
      * @param metadata the metadata to be stored
      * @return this
      */
-    public GridFSUploadOptions setMetadata(final Bson metadata) {
+    public GridFSUploadOptions metadata(final Bson metadata) {
         this.metadata = metadata;
         return this;
     }

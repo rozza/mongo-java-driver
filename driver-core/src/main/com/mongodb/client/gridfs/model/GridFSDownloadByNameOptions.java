@@ -52,7 +52,7 @@ public class GridFSDownloadByNameOptions {
      * @param revision the file revision to download
      * @return this
      */
-    public GridFSDownloadByNameOptions setRevision(final int revision) {
+    public GridFSDownloadByNameOptions revision(final int revision) {
         this.revision = revision;
         return this;
     }

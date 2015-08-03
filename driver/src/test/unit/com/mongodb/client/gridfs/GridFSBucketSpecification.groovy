@@ -236,7 +236,7 @@ class GridFSBucketSpecification extends Specification {
                 Stub(ReadPreference), Stub(WriteConcern), filesCollection, chunksCollection, true)
 
         when:
-        def stream = gridFSBucket.openDownloadStreamByName(filename, new GridFSDownloadByNameOptions().setRevision(version))
+        def stream = gridFSBucket.openDownloadStreamByName(filename, new GridFSDownloadByNameOptions().revision(version))
 
         then:
         1 * filesCollection.find(new BsonDocument('filename', new BsonString(filename))) >> findIterable
