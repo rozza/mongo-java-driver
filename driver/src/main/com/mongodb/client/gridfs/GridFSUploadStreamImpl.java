@@ -115,7 +115,6 @@ final class GridFSUploadStreamImpl extends OutputStream implements GridFSUploadS
             md5.update(buffer);
             chunkIndex++;
             bufferOffset = 0;
-            buffer = new byte[chunkSizeInBytes];
         }
     }
 
