@@ -14,8 +14,9 @@
  * limitations under the License.
  */
 
-package com.mongodb
+package com.mongodb.client.gridfs
 
+import com.mongodb.MongoGridFSException
 import com.mongodb.client.MongoCollection
 import org.bson.BsonDocument
 import org.bson.types.ObjectId

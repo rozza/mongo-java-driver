@@ -14,13 +14,14 @@
  * limitations under the License.
  */
 
-package com.mongodb
+package com.mongodb.client.gridfs
 
-import com.mongodb.client.GridFSBucket
+import com.mongodb.FunctionalSpecification
+import com.mongodb.MongoGridFSException
 import com.mongodb.client.MongoCollection
 import com.mongodb.client.MongoDatabase
-import com.mongodb.client.model.GridFSDownloadByNameOptions
-import com.mongodb.client.model.GridFSUploadOptions
+import com.mongodb.client.gridfs.model.GridFSDownloadByNameOptions
+import com.mongodb.client.gridfs.model.GridFSUploadOptions
 import org.bson.Document
 import org.bson.codecs.DocumentCodecProvider
 import org.bson.codecs.ValueCodecProvider

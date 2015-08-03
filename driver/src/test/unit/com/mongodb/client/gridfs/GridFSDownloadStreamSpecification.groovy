@@ -14,8 +14,9 @@
  * limitations under the License.
  */
 
-package com.mongodb
+package com.mongodb.client.gridfs
 
+import com.mongodb.MongoGridFSException
 import com.mongodb.client.FindIterable
 import com.mongodb.client.MongoCollection
 import org.bson.BsonBinary
@@ -177,22 +178,22 @@ class GridFSDownloadStreamSpecification extends Specification {
         when:
         def badFileInfo = new BsonDocument('_id', new BsonString('123'))
                 .append('filename', new BsonString('filename'))
-                .append('length', new BsonString("2"))
-                .append('chunkSize', new BsonString("2"))
+                .append('length', new BsonString('2'))
+                .append('chunkSize', new BsonString('2'))
         new GridFSDownloadStreamImpl(badFileInfo, Stub(MongoCollection))
 
         then:
         thrown(MongoGridFSException)
 
         when:
-        badFileInfo.put("_id", fileInfo.get("_id"))
+        badFileInfo.put('_id', fileInfo.get('_id'))
         new GridFSDownloadStreamImpl(badFileInfo, Stub(MongoCollection))
 
         then:
         thrown(MongoGridFSException)
 
         when:
-        badFileInfo.put("length", fileInfo.get("length"))
+        badFileInfo.put('length', fileInfo.get('length'))
         new GridFSDownloadStreamImpl(badFileInfo, Stub(MongoCollection))
 
         then:

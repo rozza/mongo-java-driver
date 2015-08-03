@@ -14,10 +14,11 @@
  * limitations under the License.
  */
 
-package com.mongodb;
+package com.mongodb.client.gridfs;
 
+import com.mongodb.Block;
+import com.mongodb.Function;
 import com.mongodb.client.FindIterable;
-import com.mongodb.client.GridFSFindIterable;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoIterable;
 import org.bson.conversions.Bson;

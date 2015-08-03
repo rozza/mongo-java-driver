@@ -14,8 +14,15 @@
  * limitations under the License.
  */
 
-package com.mongodb
+package com.mongodb.client.gridfs
 
+import com.mongodb.Block
+import com.mongodb.CursorType
+import com.mongodb.DBObjectCodecProvider
+import com.mongodb.FindIterableImpl
+import com.mongodb.Function
+import com.mongodb.MongoNamespace
+import com.mongodb.TestOperationExecutor
 import com.mongodb.client.model.FindOptions
 import com.mongodb.operation.BatchCursor
 import com.mongodb.operation.FindOperation

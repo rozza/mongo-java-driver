@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-package com.mongodb.client;
+package com.mongodb.client.gridfs;
 
 import com.mongodb.ReadPreference;
 import com.mongodb.WriteConcern;
-import com.mongodb.client.model.GridFSDownloadByNameOptions;
-import com.mongodb.client.model.GridFSUploadOptions;
+import com.mongodb.client.gridfs.model.GridFSDownloadByNameOptions;
+import com.mongodb.client.gridfs.model.GridFSUploadOptions;
 import org.bson.Document;
 import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.conversions.Bson;
@@ -34,13 +34,6 @@ import java.io.OutputStream;
  * @since 3.1
  */
 public interface GridFSBucket {
-
-    /**
-     * The bucket name. Defaults to "fs".
-     *
-     * @return the bucket name
-     */
-    String getBucketName();
 
     /**
      * Sets the chunk size in bytes. Defaults to 255.
@@ -69,14 +62,6 @@ public interface GridFSBucket {
      * @return the {@link com.mongodb.ReadPreference}
      */
     ReadPreference getReadPreference();
-
-    /**
-     * Create a new GridFSBucket instance with a new bucket name
-     *
-     * @param bucketName the new bucket name
-     * @return a new GridFSBucket instance with the different bucket name
-     */
-    GridFSBucket withBucketName(String bucketName);
 
     /**
      *  Create a new GridFSBucket instance with a new chunk size in bytes.

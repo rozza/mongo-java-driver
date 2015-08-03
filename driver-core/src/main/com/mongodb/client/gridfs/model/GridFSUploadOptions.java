@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.mongodb.client.model;
+package com.mongodb.client.gridfs.model;
 
 import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.conversions.Bson;

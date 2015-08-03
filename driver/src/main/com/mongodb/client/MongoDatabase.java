@@ -191,19 +191,4 @@ public interface MongoDatabase {
      */
     void createCollection(String collectionName, CreateCollectionOptions createCollectionOptions);
 
-    /**
-     * Gets a GridFSBucket with the default bucketName
-     *
-     * @return a GridFSBucket
-     */
-    GridFSBucket getGridFSBucket();
-
-    /**
-     * Gets a GridFSBucket with a custom bucketName
-     *
-     * @param bucketName the custom bucketName
-     * @return a GridFSBucket
-     */
-    GridFSBucket getGridFSBucket(String bucketName);
-
 }

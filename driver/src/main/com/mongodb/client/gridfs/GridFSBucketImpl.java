@@ -14,16 +14,15 @@
  * limitations under the License.
  */
 
-package com.mongodb;
+package com.mongodb.client.gridfs;
 
-import com.mongodb.client.GridFSBucket;
-import com.mongodb.client.GridFSDownloadStream;
-import com.mongodb.client.GridFSFindIterable;
-import com.mongodb.client.GridFSUploadStream;
+import com.mongodb.MongoGridFSException;
+import com.mongodb.ReadPreference;
+import com.mongodb.WriteConcern;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
-import com.mongodb.client.model.GridFSDownloadByNameOptions;
-import com.mongodb.client.model.GridFSUploadOptions;
+import com.mongodb.client.gridfs.model.GridFSDownloadByNameOptions;
+import com.mongodb.client.gridfs.model.GridFSUploadOptions;
 import com.mongodb.client.model.IndexOptions;
 import com.mongodb.client.model.Indexes;
 import com.mongodb.client.result.DeleteResult;
@@ -54,7 +53,7 @@ final class GridFSBucketImpl implements GridFSBucket {
     private final ReadPreference readPreference;
     private final MongoCollection<BsonDocument> filesCollection;
     private final MongoCollection<BsonDocument> chunksCollection;
-    private boolean checkedIndexes;
+    private volatile boolean checkedIndexes;
 
     GridFSBucketImpl(final MongoDatabase database) {
         this(database, "fs");
@@ -87,11 +86,6 @@ final class GridFSBucketImpl implements GridFSBucket {
     }
 
     @Override
-    public String getBucketName() {
-        return bucketName;
-    }
-
-    @Override
     public int getChunkSizeBytes() {
         return chunkSizeBytes;
     }
@@ -109,12 +103,6 @@ final class GridFSBucketImpl implements GridFSBucket {
     @Override
     public WriteConcern getWriteConcern() {
         return writeConcern;
-    }
-
-    @Override
-    public GridFSBucket withBucketName(final String bucketName) {
-        return new GridFSBucketImpl(database, bucketName, chunkSizeBytes, codecRegistry, readPreference, writeConcern, filesCollection,
-                chunksCollection, false);
     }
 
     @Override
@@ -171,9 +159,14 @@ final class GridFSBucketImpl implements GridFSBucket {
             while ((len = source.read(buffer)) != -1) {
                 uploadStream.write(buffer, 0, len);
             }
-            uploadStream.close();
         } catch (IOException e) {
             throw new MongoGridFSException("IO Exception when reading from the InputStream", e);
+        } finally {
+            try {
+                uploadStream.close();
+            } catch (IOException e) {
+                throw new MongoGridFSException("IO Exception when closing the InputStream", e);
+            }
         }
         return uploadStream.getFileId();
     }
@@ -301,16 +294,21 @@ final class GridFSBucketImpl implements GridFSBucket {
         return fileInfo;
     }
 
-    private void downloadToStream(final GridFSDownloadStream stream, final OutputStream destination) {
-        byte[] buffer = new byte[stream.getFileInformation().getInt32("chunkSize").getValue()];
+    private void downloadToStream(final GridFSDownloadStream downloadStream, final OutputStream destination) {
+        byte[] buffer = new byte[downloadStream.getFileInformation().getInt32("chunkSize").getValue()];
         int len;
         try {
-            while ((len = stream.read(buffer)) != -1) {
+            while ((len = downloadStream.read(buffer)) != -1) {
                 destination.write(buffer, 0, len);
             }
-            stream.close();
         } catch (IOException e) {
             throw new MongoGridFSException("IO Exception when reading from the OutputStream", e);
+        } finally {
+            try {
+                downloadStream.close();
+            } catch (IOException e) {
+                throw new MongoGridFSException("IO Exception when closing the OutputStream", e);
+            }
         }
     }
 }

@@ -14,12 +14,17 @@
  * limitations under the License.
  */
 
-package com.mongodb
+package com.mongodb.client.gridfs
 
+import com.mongodb.MongoDatabaseImpl
+import com.mongodb.MongoGridFSException
+import com.mongodb.ReadPreference
+import com.mongodb.TestOperationExecutor
+import com.mongodb.WriteConcern
 import com.mongodb.client.FindIterable
 import com.mongodb.client.MongoCollection
 import com.mongodb.client.MongoDatabase
-import com.mongodb.client.model.GridFSDownloadByNameOptions
+import com.mongodb.client.gridfs.model.GridFSDownloadByNameOptions
 import com.mongodb.client.result.DeleteResult
 import com.mongodb.client.result.UpdateResult
 import org.bson.BsonBinary
@@ -42,18 +47,6 @@ import static org.bson.codecs.configuration.CodecRegistries.fromProviders
 import static spock.util.matcher.HamcrestSupport.expect
 
 class GridFSBucketSpecification extends Specification {
-
-    def 'should behave correctly when using withBucketName'() {
-        given:
-        def newBucketName = 'filez'
-        def database = Stub(MongoDatabase)
-
-        when:
-        def gridFSBucket = new GridFSBucketImpl(database).withBucketName(newBucketName)
-
-        then:
-        gridFSBucket.getBucketName() == newBucketName
-    }
 
     def 'should behave correctly when using withChunkSizeBytes'() {
         given:
@@ -106,7 +99,6 @@ class GridFSBucketSpecification extends Specification {
 
     def 'should get defaults from MongoDatabase'() {
         given:
-        def defaultBucketName = 'fs'
         def defaultChunkSize = 255
         def database = new MongoDatabaseImpl('test', fromProviders(new DocumentCodecProvider()), secondary(), WriteConcern.ACKNOWLEDGED,
                 new TestOperationExecutor([]))
@@ -115,7 +107,6 @@ class GridFSBucketSpecification extends Specification {
         def gridFSBucket = new GridFSBucketImpl(database)
 
         then:
-        gridFSBucket.getBucketName() == defaultBucketName
         gridFSBucket.getChunkSizeBytes() == defaultChunkSize
         gridFSBucket.getCodecRegistry() == database.getCodecRegistry()
         gridFSBucket.getReadPreference() == database.getReadPreference()

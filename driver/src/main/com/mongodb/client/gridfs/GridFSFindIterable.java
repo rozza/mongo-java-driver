@@ -14,8 +14,9 @@
  * limitations under the License.
  */
 
-package com.mongodb.client;
+package com.mongodb.client.gridfs;
 
+import com.mongodb.client.MongoIterable;
 import org.bson.conversions.Bson;
 
 import java.util.concurrent.TimeUnit;

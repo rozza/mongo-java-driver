@@ -16,7 +16,6 @@
 
 package com.mongodb;
 
-import com.mongodb.client.GridFSBucket;
 import com.mongodb.client.ListCollectionsIterable;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
@@ -158,16 +157,6 @@ class MongoDatabaseImpl implements MongoDatabase {
                 .maxDocuments(createCollectionOptions.getMaxDocuments())
                 .usePowerOf2Sizes(createCollectionOptions.isUsePowerOf2Sizes())
                 .storageEngineOptions(toBsonDocument(createCollectionOptions.getStorageEngineOptions())));
-    }
-
-    @Override
-    public GridFSBucket getGridFSBucket() {
-        return new GridFSBucketImpl(this);
-    }
-
-    @Override
-    public GridFSBucket getGridFSBucket(final String bucketName) {
-        return new GridFSBucketImpl(this, bucketName);
     }
 
     private BsonDocument toBsonDocument(final Bson document) {
