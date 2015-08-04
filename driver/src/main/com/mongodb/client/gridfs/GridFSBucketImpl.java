@@ -32,6 +32,8 @@ import org.bson.BsonDocument;
 import org.bson.BsonInt32;
 import org.bson.BsonObjectId;
 import org.bson.BsonString;
+import org.bson.BsonValue;
+import org.bson.Document;
 import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.conversions.Bson;
 import org.bson.types.ObjectId;
@@ -44,6 +46,7 @@ import static com.mongodb.ReadPreference.primary;
 import static com.mongodb.assertions.Assertions.notNull;
 import static java.lang.String.format;
 
+@SuppressWarnings("deprecation")
 final class GridFSBucketImpl implements GridFSBucket {
     private final MongoDatabase database;
     private final String bucketName;
@@ -161,16 +164,23 @@ final class GridFSBucketImpl implements GridFSBucket {
 
     @Override
     public GridFSDownloadStream openDownloadStream(final ObjectId id) {
-        GridFSFile fileInfo = find(new BsonDocument("_id", new BsonObjectId(id))).first();
-        if (fileInfo == null) {
-            throw new MongoGridFSException(format("No file found with the ObjectId: %s", id));
-        }
-        return new GridFSDownloadStreamImpl(fileInfo, chunksCollection);
+        return openDownloadStream(new BsonObjectId(id));
     }
 
     @Override
     public void downloadToStream(final ObjectId id, final OutputStream destination) {
-        downloadToStream(openDownloadStream(id), destination);
+        downloadToStream(openDownloadStream(new BsonObjectId(id)), destination);
+    }
+
+    @Override
+    public void downloadLegacyFileToStream(final Object id, final OutputStream destination) {
+        downloadToStream(openDownloadLegacyFileStream(id), destination);
+    }
+
+    @Override
+    public GridFSDownloadStream openDownloadLegacyFileStream(final Object id) {
+        BsonDocument idDocument = new Document("_id", id).toBsonDocument(BsonDocument.class, codecRegistry);
+        return openDownloadStream(idDocument.get("_id"));
     }
 
     @Override
@@ -266,6 +276,14 @@ final class GridFSBucketImpl implements GridFSBucket {
             throw new MongoGridFSException(format("No file found with the filename: %s and revision: %s", filename, revision));
         }
         return fileInfo;
+    }
+
+    private GridFSDownloadStream openDownloadStream(final BsonValue id) {
+        GridFSFile fileInfo = find(new BsonDocument("_id", id)).first();
+        if (fileInfo == null) {
+            throw new MongoGridFSException(format("No file found with the id: %s", id));
+        }
+        return new GridFSDownloadStreamImpl(fileInfo, chunksCollection);
     }
 
     private void downloadToStream(final GridFSDownloadStream downloadStream, final OutputStream destination) {

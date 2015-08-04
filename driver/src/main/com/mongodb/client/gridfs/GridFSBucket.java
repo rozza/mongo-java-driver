@@ -144,6 +144,27 @@ public interface GridFSBucket {
     /**
      * Downloads the contents of the stored file specified by {@code id} and writes the contents to the {@code destination} Stream.
      *
+     * @param id the custom id of the file, to be written to the destination stream
+     * @param destination the destination stream
+     * @deprecated using custom id values for with GridFS is no longer supported
+     */
+    @Deprecated
+    void downloadLegacyFileToStream(Object id, OutputStream destination);
+
+
+    /**
+     * Opens a Stream from which the application can read the contents of the stored file specified by {@code id}.
+     *
+     * @param id the custom id value of the file, to be put into a stream.
+     * @return the stream
+     * @deprecated using custom id values for with GridFS is no longer supported
+     */
+    @Deprecated
+    GridFSDownloadStream openDownloadLegacyFileStream(Object id);
+
+    /**
+     * Downloads the contents of the stored file specified by {@code id} and writes the contents to the {@code destination} Stream.
+     *
      * @param id the ObjectId of the file to be written to the destination stream
      * @param destination the destination stream
      */

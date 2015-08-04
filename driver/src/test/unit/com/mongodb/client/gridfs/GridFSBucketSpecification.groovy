@@ -1,7 +1,7 @@
 /*
  * Copyright 2015 MongoDB, Inc.
  *
- * Licensed under the Apache License, Version 2.0 (the 'License");
+ * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
@@ -34,7 +34,9 @@ import org.bson.BsonInt32
 import org.bson.BsonObjectId
 import org.bson.BsonString
 import org.bson.Document
+import org.bson.codecs.BsonValueCodecProvider
 import org.bson.codecs.DocumentCodecProvider
+import org.bson.codecs.ValueCodecProvider
 import org.bson.codecs.configuration.CodecRegistry
 import org.bson.types.ObjectId
 import spock.lang.Specification
@@ -47,6 +49,8 @@ import static org.bson.codecs.configuration.CodecRegistries.fromProviders
 import static spock.util.matcher.HamcrestSupport.expect
 
 class GridFSBucketSpecification extends Specification {
+
+    def codecRegistry = fromProviders([new ValueCodecProvider(),  new DocumentCodecProvider(), new BsonValueCodecProvider()])
 
     def 'should behave correctly when using withChunkSizeBytes'() {
         given:
@@ -180,6 +184,39 @@ class GridFSBucketSpecification extends Specification {
 
         when:
         gridFSBucket.downloadToStream(fileId, outputStream)
+        outputStream.close()
+
+        then:
+        1 * findIterable.filter(new BsonDocument('_id', bsonFileId)) >> findIterable
+        1 * findIterable.map(_) >> findIterable
+        1 * findIterable.first() >> fileInfo
+        1 * chunksCollection.find(_) >> findIterable
+        1 * findIterable.first() >> chunkDocument
+
+        then:
+        outputStream.toByteArray() == tenBytes
+    }
+
+    def 'should download to stream legacy'() {
+        given:
+        def fileId = '1'
+        def bsonFileId = new BsonString(fileId)
+        def fileInfo = new GridFSFile(bsonFileId, 'filename', 10, 255, new Date(), '1234', new Document())
+        def findIterable =  Mock(FindIterable)
+        def filesCollection = Mock(MongoCollection) {
+            1 * find() >> findIterable
+        }
+        def tenBytes = new byte[10]
+        def chunkDocument = new BsonDocument('files_id', fileInfo.getId())
+                .append('n', new BsonInt32(0))
+                .append('data', new BsonBinary(tenBytes))
+        def chunksCollection = Mock(MongoCollection)
+        def gridFSBucket = new GridFSBucketImpl(Stub(MongoDatabase), 'fs', 255, codecRegistry,
+                Stub(ReadPreference), Stub(WriteConcern), filesCollection, chunksCollection, true)
+        def outputStream = new ByteArrayOutputStream(10)
+
+        when:
+        gridFSBucket.downloadLegacyFileToStream(fileId, outputStream)
         outputStream.close()
 
         then:
