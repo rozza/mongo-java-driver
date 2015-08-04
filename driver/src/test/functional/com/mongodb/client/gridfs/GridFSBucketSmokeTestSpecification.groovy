@@ -23,8 +23,6 @@ import com.mongodb.client.MongoDatabase
 import com.mongodb.client.gridfs.model.GridFSDownloadByNameOptions
 import com.mongodb.client.gridfs.model.GridFSUploadOptions
 import org.bson.Document
-import org.bson.codecs.DocumentCodecProvider
-import org.bson.codecs.ValueCodecProvider
 import org.bson.types.ObjectId
 import spock.lang.Unroll
 
@@ -32,7 +30,6 @@ import java.security.MessageDigest
 
 import static com.mongodb.Fixture.getDefaultDatabaseName
 import static com.mongodb.Fixture.getMongoClient
-import static org.bson.codecs.configuration.CodecRegistries.fromProviders
 
 class GridFSBucketSmokeTestSpecification extends FunctionalSpecification {
     protected MongoDatabase mongoDatabase;
@@ -116,7 +113,6 @@ class GridFSBucketSmokeTestSpecification extends FunctionalSpecification {
         def metadata = new Document('archived', false)
         def options = new GridFSUploadOptions()
                 .chunkSizeBytes(chunkSize)
-                .codecRegistry(fromProviders(new DocumentCodecProvider(), new ValueCodecProvider()))
                 .metadata(metadata)
         def content = 'qwerty' * 1024
         def contentBytes = content as byte[]

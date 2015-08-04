@@ -22,6 +22,7 @@ import com.mongodb.WriteConcern;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.gridfs.model.GridFSDownloadByNameOptions;
+import com.mongodb.client.gridfs.model.GridFSFile;
 import com.mongodb.client.gridfs.model.GridFSUploadOptions;
 import com.mongodb.client.model.IndexOptions;
 import com.mongodb.client.model.Indexes;
@@ -31,7 +32,6 @@ import org.bson.BsonDocument;
 import org.bson.BsonInt32;
 import org.bson.BsonObjectId;
 import org.bson.BsonString;
-import org.bson.Document;
 import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.conversions.Bson;
 import org.bson.types.ObjectId;
@@ -66,8 +66,8 @@ final class GridFSBucketImpl implements GridFSBucket {
         this.codecRegistry = database.getCodecRegistry();
         this.writeConcern = database.getWriteConcern();
         this.readPreference = database.getReadPreference();
-        this.filesCollection = getFilesCollection(BsonDocument.class);
-        this.chunksCollection = getChunksCollection(BsonDocument.class);
+        this.filesCollection = getFilesCollection();
+        this.chunksCollection = getChunksCollection();
     }
 
     GridFSBucketImpl(final MongoDatabase database, final String bucketName, final int chunkSizeBytes, final CodecRegistry codecRegistry,
@@ -91,11 +91,6 @@ final class GridFSBucketImpl implements GridFSBucket {
     }
 
     @Override
-    public CodecRegistry getCodecRegistry() {
-        return codecRegistry;
-    }
-
-    @Override
     public ReadPreference getReadPreference() {
         return readPreference;
     }
@@ -107,12 +102,6 @@ final class GridFSBucketImpl implements GridFSBucket {
 
     @Override
     public GridFSBucket withChunkSizeBytes(final int chunkSizeBytes) {
-        return new GridFSBucketImpl(database, bucketName, chunkSizeBytes, codecRegistry, readPreference, writeConcern, filesCollection,
-                chunksCollection, checkedIndexes);
-    }
-
-    @Override
-    public GridFSBucket withCodecRegistry(final CodecRegistry codecRegistry) {
         return new GridFSBucketImpl(database, bucketName, chunkSizeBytes, codecRegistry, readPreference, writeConcern, filesCollection,
                 chunksCollection, checkedIndexes);
     }
@@ -137,9 +126,8 @@ final class GridFSBucketImpl implements GridFSBucket {
     @Override
     public GridFSUploadStream openUploadStream(final String filename, final GridFSUploadOptions options) {
         int chunkSize = options.getChunkSizeBytes() == null ? chunkSizeBytes : options.getChunkSizeBytes();
-        CodecRegistry codecRegistryToUse = options.getCodecRegistry() == null ? codecRegistry : options.getCodecRegistry();
         Bson metadata = options.getMetadata() == null ? new BsonDocument() : options.getMetadata();
-        BsonDocument metadataBsonDocument = metadata.toBsonDocument(BsonDocument.class, codecRegistryToUse);
+        BsonDocument metadataBsonDocument = metadata.toBsonDocument(BsonDocument.class, codecRegistry);
         checkCreateIndex();
         return new GridFSUploadStreamImpl(filesCollection, chunksCollection, new ObjectId(), filename, chunkSize, metadataBsonDocument);
     }
@@ -173,7 +161,7 @@ final class GridFSBucketImpl implements GridFSBucket {
 
     @Override
     public GridFSDownloadStream openDownloadStream(final ObjectId id) {
-        BsonDocument fileInfo = filesCollection.find(new BsonDocument("_id", new BsonObjectId(id))).first();
+        GridFSFile fileInfo = find(new BsonDocument("_id", new BsonObjectId(id))).first();
         if (fileInfo == null) {
             throw new MongoGridFSException(format("No file found with the ObjectId: %s", id));
         }
@@ -206,23 +194,13 @@ final class GridFSBucketImpl implements GridFSBucket {
     }
 
     @Override
-    public GridFSFindIterable<Document> find() {
-        return new GridFSFindIterableImpl<Document>(getFilesCollection().find());
+    public GridFSFindIterable find() {
+        return new GridFSFindIterableImpl(codecRegistry, filesCollection.find());
     }
 
     @Override
-    public <TResult> GridFSFindIterable<TResult> find(final Class<TResult> resultClass) {
-        return new GridFSFindIterableImpl<TResult>(getFilesCollection(resultClass).find());
-    }
-
-    @Override
-    public GridFSFindIterable<Document> find(final Bson filter) {
+    public GridFSFindIterable find(final Bson filter) {
         return find().filter(filter);
-    }
-
-    @Override
-    public <TResult> GridFSFindIterable<TResult> find(final Bson filter, final Class<TResult> resultClass) {
-        return find(resultClass).filter(filter);
     }
 
     @Override
@@ -245,19 +223,15 @@ final class GridFSBucketImpl implements GridFSBucket {
         }
     }
 
-    private MongoCollection<Document> getFilesCollection() {
-        return getFilesCollection(Document.class);
-    }
-
-    private <TResult> MongoCollection<TResult> getFilesCollection(final Class<TResult> clazz) {
-        return database.getCollection(bucketName + ".files", clazz)
+    private MongoCollection<BsonDocument> getFilesCollection() {
+        return database.getCollection(bucketName + ".files", BsonDocument.class)
                 .withCodecRegistry(codecRegistry)
                 .withReadPreference(readPreference)
                 .withWriteConcern(writeConcern);
     }
 
-    private <TResult> MongoCollection<TResult> getChunksCollection(final Class<TResult> clazz) {
-        return database.getCollection(bucketName + ".chunks", clazz)
+    private MongoCollection<BsonDocument> getChunksCollection() {
+        return database.getCollection(bucketName + ".chunks", BsonDocument.class)
                 .withCodecRegistry(codecRegistry)
                 .withReadPreference(readPreference)
                 .withWriteConcern(writeConcern);
@@ -274,7 +248,7 @@ final class GridFSBucketImpl implements GridFSBucket {
         }
     }
 
-    private BsonDocument getFileByName(final String filename, final GridFSDownloadByNameOptions options) {
+    private GridFSFile getFileByName(final String filename, final GridFSDownloadByNameOptions options) {
         int revision = options.getRevision();
         int skip;
         BsonInt32 sort;
@@ -286,7 +260,7 @@ final class GridFSBucketImpl implements GridFSBucket {
             sort = new BsonInt32(-1);
         }
 
-        BsonDocument fileInfo = filesCollection.find(new BsonDocument("filename", new BsonString(filename)))
+        GridFSFile fileInfo = find(new BsonDocument("filename", new BsonString(filename)))
                 .skip(skip).sort(new BsonDocument("uploadDate", sort)).first();
         if (fileInfo == null) {
             throw new MongoGridFSException(format("No file found with the filename: %s and revision: %s", filename, revision));
@@ -295,7 +269,7 @@ final class GridFSBucketImpl implements GridFSBucket {
     }
 
     private void downloadToStream(final GridFSDownloadStream downloadStream, final OutputStream destination) {
-        byte[] buffer = new byte[downloadStream.getFileInformation().getInt32("chunkSize").getValue()];
+        byte[] buffer = new byte[downloadStream.getGridFSFile().getChunkSize()];
         int len;
         try {
             while ((len = downloadStream.read(buffer)) != -1) {

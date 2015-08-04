@@ -17,6 +17,7 @@
 package com.mongodb.client.gridfs;
 
 import com.mongodb.client.MongoIterable;
+import com.mongodb.client.gridfs.model.GridFSFile;
 import org.bson.conversions.Bson;
 
 import java.util.concurrent.TimeUnit;
@@ -24,10 +25,9 @@ import java.util.concurrent.TimeUnit;
 /**
  * Iterable for the GridFS Files Collection.
  *
- * @param <TResult> The type of the result.
  * @since 3.1
  */
-public interface GridFSFindIterable<TResult> extends MongoIterable<TResult> {
+public interface GridFSFindIterable extends MongoIterable<GridFSFile> {
 
     /**
      * Sets the query filter to apply to the query.
@@ -46,7 +46,7 @@ public interface GridFSFindIterable<TResult> extends MongoIterable<TResult> {
      * @mongodb.driver.manual reference/method/db.collection.find/ Filter
      * @see com.mongodb.client.model.Filters
      */
-    GridFSFindIterable<TResult> filter(Bson filter);
+    GridFSFindIterable filter(Bson filter);
 
     /**
      * Sets the limit to apply.
@@ -55,7 +55,7 @@ public interface GridFSFindIterable<TResult> extends MongoIterable<TResult> {
      * @return this
      * @mongodb.driver.manual reference/method/cursor.limit/#cursor.limit Limit
      */
-    GridFSFindIterable<TResult> limit(int limit);
+    GridFSFindIterable limit(int limit);
 
     /**
      * Sets the number of documents to skip.
@@ -64,7 +64,7 @@ public interface GridFSFindIterable<TResult> extends MongoIterable<TResult> {
      * @return this
      * @mongodb.driver.manual reference/method/cursor.skip/#cursor.skip Skip
      */
-    GridFSFindIterable<TResult> skip(int skip);
+    GridFSFindIterable skip(int skip);
 
     /**
      * Sets the sort criteria to apply to the query.
@@ -73,7 +73,7 @@ public interface GridFSFindIterable<TResult> extends MongoIterable<TResult> {
      * @return this
      * @mongodb.driver.manual reference/method/cursor.sort/ Sort
      */
-    GridFSFindIterable<TResult> sort(Bson sort);
+    GridFSFindIterable sort(Bson sort);
 
     /**
      * The server normally times out idle cursors after an inactivity period (10 minutes)
@@ -82,7 +82,7 @@ public interface GridFSFindIterable<TResult> extends MongoIterable<TResult> {
      * @param noCursorTimeout true if cursor timeout is disabled
      * @return this
      */
-    GridFSFindIterable<TResult> noCursorTimeout(boolean noCursorTimeout);
+    GridFSFindIterable noCursorTimeout(boolean noCursorTimeout);
 
     /**
      * Sets the maximum execution time on the server for this operation.
@@ -92,7 +92,7 @@ public interface GridFSFindIterable<TResult> extends MongoIterable<TResult> {
      * @return this
      * @mongodb.driver.manual reference/method/cursor.maxTimeMS/#cursor.maxTimeMS Max Time
      */
-    GridFSFindIterable<TResult> maxTime(long maxTime, TimeUnit timeUnit);
+    GridFSFindIterable maxTime(long maxTime, TimeUnit timeUnit);
 
     /**
      * Sets the number of documents to return per batch.
@@ -102,5 +102,5 @@ public interface GridFSFindIterable<TResult> extends MongoIterable<TResult> {
      * @mongodb.driver.manual reference/method/cursor.batchSize/#cursor.batchSize Batch Size
      */
     @Override
-    GridFSFindIterable<TResult> batchSize(int batchSize);
+    GridFSFindIterable batchSize(int batchSize);
 }

@@ -25,12 +25,12 @@ import com.mongodb.client.FindIterable
 import com.mongodb.client.MongoCollection
 import com.mongodb.client.MongoDatabase
 import com.mongodb.client.gridfs.model.GridFSDownloadByNameOptions
+import com.mongodb.client.gridfs.model.GridFSFile
 import com.mongodb.client.result.DeleteResult
 import com.mongodb.client.result.UpdateResult
 import org.bson.BsonBinary
 import org.bson.BsonDocument
 import org.bson.BsonInt32
-import org.bson.BsonInt64
 import org.bson.BsonObjectId
 import org.bson.BsonString
 import org.bson.Document
@@ -58,18 +58,6 @@ class GridFSBucketSpecification extends Specification {
 
         then:
         gridFSBucket.getChunkSizeBytes() == newChunkSize
-    }
-
-    def 'should behave correctly when using withCodecRegistry'() {
-        given:
-        def newCodecRegistry = Stub(CodecRegistry)
-        def database = Stub(MongoDatabase)
-
-        when:
-        def gridFSBucket = new GridFSBucketImpl(database).withCodecRegistry(newCodecRegistry)
-
-        then:
-        gridFSBucket.getCodecRegistry() == newCodecRegistry
     }
 
     def 'should behave correctly when using withReadPreference'() {
@@ -108,7 +96,6 @@ class GridFSBucketSpecification extends Specification {
 
         then:
         gridFSBucket.getChunkSizeBytes() == defaultChunkSize
-        gridFSBucket.getCodecRegistry() == database.getCodecRegistry()
         gridFSBucket.getReadPreference() == database.getReadPreference()
         gridFSBucket.getWriteConcern() == database.getWriteConcern()
     }
@@ -150,21 +137,24 @@ class GridFSBucketSpecification extends Specification {
 
     def 'should create the expected GridFSDownloadStream'() {
         given:
-        def fileId = new ObjectId()
-        def fileInfo = new BsonDocument('_id', new BsonObjectId(fileId))
-                .append('chunkSize', new BsonInt32(255))
-                .append('length', new BsonInt64(10))
+        def codecRegistry = Stub(CodecRegistry)
+        def fileId = new BsonObjectId(new ObjectId())
+        def fileInfo = new GridFSFile(fileId, 'File 1', 10, 255, new Date(), '1234', new Document())
+        def findIterable =  Mock(FindIterable)
         def filesCollection = Mock(MongoCollection) {
-            1 * find(_) >> Mock(FindIterable) {
-                1 * first() >> fileInfo
-            }
+            1 * find() >> findIterable
         }
         def chunksCollection = Stub(MongoCollection)
-        def gridFSBucket = new GridFSBucketImpl(Stub(MongoDatabase), 'fs', 255, Stub(CodecRegistry),
+        def gridFSBucket = new GridFSBucketImpl(Stub(MongoDatabase), 'fs', 255, codecRegistry,
                 Stub(ReadPreference), Stub(WriteConcern), filesCollection, chunksCollection, true)
 
         when:
-        def stream = gridFSBucket.openDownloadStream(fileId)
+        def stream = gridFSBucket.openDownloadStream(fileId.getValue())
+
+        then:
+        1 * findIterable.filter(_) >> findIterable
+        1 * findIterable.map(_) >> findIterable
+        1 * findIterable.first() >> fileInfo
 
         then:
         expect stream, isTheSameAs(new GridFSDownloadStreamImpl(fileInfo, chunksCollection))
@@ -173,17 +163,16 @@ class GridFSBucketSpecification extends Specification {
     def 'should download to stream'() {
         given:
         def fileId = new ObjectId()
-        def filename = 'filename'
-        def fileInfo = new BsonDocument('_id', new BsonObjectId(fileId))
-                .append('filename', new BsonString(filename))
-                .append('chunkSize', new BsonInt32(255))
-                .append('length', new BsonInt64(10))
+        def bsonFileId = new BsonObjectId(fileId)
+        def fileInfo = new GridFSFile(bsonFileId, 'filename', 10, 255, new Date(), '1234', new Document())
+        def findIterable =  Mock(FindIterable)
+        def filesCollection = Mock(MongoCollection) {
+            1 * find() >> findIterable
+        }
         def tenBytes = new byte[10]
-        def chunkDocument = new BsonDocument('files_id', fileInfo.getObjectId('_id'))
+        def chunkDocument = new BsonDocument('files_id', fileInfo.getId())
                 .append('n', new BsonInt32(0))
                 .append('data', new BsonBinary(tenBytes))
-        def findIterable = Mock(FindIterable)
-        def filesCollection = Mock(MongoCollection)
         def chunksCollection = Mock(MongoCollection)
         def gridFSBucket = new GridFSBucketImpl(Stub(MongoDatabase), 'fs', 255, Stub(CodecRegistry),
                 Stub(ReadPreference), Stub(WriteConcern), filesCollection, chunksCollection, true)
@@ -194,21 +183,57 @@ class GridFSBucketSpecification extends Specification {
         outputStream.close()
 
         then:
-        1 * filesCollection.find(new BsonDocument('_id', new BsonObjectId(fileId))) >> findIterable
+        1 * findIterable.filter(new BsonDocument('_id', bsonFileId)) >> findIterable
+        1 * findIterable.map(_) >> findIterable
         1 * findIterable.first() >> fileInfo
         1 * chunksCollection.find(_) >> findIterable
         1 * findIterable.first() >> chunkDocument
 
         then:
         outputStream.toByteArray() == tenBytes
+    }
 
+    def 'should download to stream by name'() {
+        given:
+        def filename = 'filename'
+        def fileId = new ObjectId()
+        def bsonFileId = new BsonObjectId(fileId)
+        def fileInfo = new GridFSFile(bsonFileId, filename, 10, 255, new Date(), '1234', new Document())
+        def findIterable =  Mock(FindIterable)
+        def filesCollection = Mock(MongoCollection) {
+            1 * find() >> findIterable
+        }
+        def tenBytes = new byte[10]
+        def chunkDocument = new BsonDocument('files_id', fileInfo.getId())
+                .append('n', new BsonInt32(0))
+                .append('data', new BsonBinary(tenBytes))
+        def chunksCollection = Mock(MongoCollection)
+        def gridFSBucket = new GridFSBucketImpl(Stub(MongoDatabase), 'fs', 255, Stub(CodecRegistry),
+                Stub(ReadPreference), Stub(WriteConcern), filesCollection, chunksCollection, true)
+        def outputStream = new ByteArrayOutputStream(10)
+
+        when:
+        gridFSBucket.downloadToStreamByName(filename, outputStream)
+        outputStream.close()
+
+        then:
+        1 * findIterable.filter(new BsonDocument('filename', new BsonString(filename))) >> findIterable
+        1 * findIterable.map(_) >> findIterable
+        1 * findIterable.first() >> fileInfo
+        1 * chunksCollection.find(_) >> findIterable
+        1 * findIterable.first() >> chunkDocument
+
+        then:
+        outputStream.toByteArray() == tenBytes
     }
 
     def 'should throw an exception if file not found'() {
         given:
         def fileId = new ObjectId()
+        def bsonFileId = new BsonObjectId(fileId)
+        def findIterable =  Mock(FindIterable)
         def filesCollection = Mock(MongoCollection) {
-            1 * find(_) >> Mock(FindIterable)
+            1 * find() >> findIterable
         }
         def chunksCollection = Stub(MongoCollection)
         def gridFSBucket = new GridFSBucketImpl(Stub(MongoDatabase), 'fs', 255, Stub(CodecRegistry),
@@ -218,6 +243,11 @@ class GridFSBucketSpecification extends Specification {
         gridFSBucket.openDownloadStream(fileId)
 
         then:
+        1 * findIterable.filter(new BsonDocument('_id', bsonFileId)) >> findIterable
+        1 * findIterable.map(_) >> findIterable
+        1 * findIterable.first() >> null
+
+        then:
         thrown(MongoGridFSException)
     }
 
@@ -225,12 +255,13 @@ class GridFSBucketSpecification extends Specification {
     def 'should create the expected GridFSDownloadStream when opening by name with version: #version'() {
         given:
         def filename = 'filename'
-        def fileInfo = new BsonDocument('_id', new BsonObjectId(new ObjectId()))
-                .append('filename', new BsonString(filename))
-                .append('chunkSize', new BsonInt32(255))
-                .append('length', new BsonInt64(10))
-        def findIterable = Mock(FindIterable)
-        def filesCollection = Mock(MongoCollection)
+        def fileId = new ObjectId()
+        def bsonFileId = new BsonObjectId(fileId)
+        def fileInfo = new GridFSFile(bsonFileId, filename, 10, 255, new Date(), '1234', new Document())
+        def findIterable =  Mock(FindIterable)
+        def filesCollection = Mock(MongoCollection) {
+            1 * find() >> findIterable
+        }
         def chunksCollection = Stub(MongoCollection)
         def gridFSBucket = new GridFSBucketImpl(Stub(MongoDatabase), 'fs', 255, Stub(CodecRegistry),
                 Stub(ReadPreference), Stub(WriteConcern), filesCollection, chunksCollection, true)
@@ -239,9 +270,10 @@ class GridFSBucketSpecification extends Specification {
         def stream = gridFSBucket.openDownloadStreamByName(filename, new GridFSDownloadByNameOptions().revision(version))
 
         then:
-        1 * filesCollection.find(new BsonDocument('filename', new BsonString(filename))) >> findIterable
+        1 * findIterable.filter(new BsonDocument('filename', new BsonString(filename))) >> findIterable
         1 * findIterable.skip(skip) >> findIterable
         1 * findIterable.sort(new BsonDocument('uploadDate', sortOrder)) >> findIterable
+        1 * findIterable.map(_) >> findIterable
         1 * findIterable.first() >> fileInfo
 
         then:
@@ -260,58 +292,29 @@ class GridFSBucketSpecification extends Specification {
 
     def 'should create the expected GridFSFindIterable'() {
         given:
+        def codecRegistry = Stub(CodecRegistry)
         def database = Mock(MongoDatabase)
         def collection = Mock(MongoCollection)
         def findIterable = Mock(FindIterable)
         def filter = new BsonDocument('filename', new BsonString('filename'))
-        def gridFSBucket = new GridFSBucketImpl(database, 'fs', 255, Stub(CodecRegistry),
-                Stub(ReadPreference), Stub(WriteConcern), Stub(MongoCollection), Stub(MongoCollection), true)
+        def gridFSBucket = new GridFSBucketImpl(database, 'fs', 255, codecRegistry,
+                Stub(ReadPreference), Stub(WriteConcern), collection, Stub(MongoCollection), true)
 
         when:
         def result = gridFSBucket.find()
 
-        then:
-        1 * database.getCollection('fs.files', Document) >> collection
-        1 * collection.withCodecRegistry(_) >> collection
-        1 * collection.withReadPreference(_) >> collection
-        1 * collection.withWriteConcern(_) >> collection
-        1 * collection.find() >> findIterable
-        expect result, isTheSameAs(new GridFSFindIterableImpl(findIterable))
-
-        when:
-        result = gridFSBucket.find(BsonDocument)
 
         then:
-        1 * database.getCollection('fs.files', BsonDocument) >> collection
-        1 * collection.withCodecRegistry(_) >> collection
-        1 * collection.withReadPreference(_) >> collection
-        1 * collection.withWriteConcern(_) >> collection
         1 * collection.find() >> findIterable
-        expect result, isTheSameAs(new GridFSFindIterableImpl(findIterable))
+        expect result, isTheSameAs(new GridFSFindIterableImpl(codecRegistry, findIterable))
 
         when:
         result = gridFSBucket.find(filter)
 
         then:
-        1 * database.getCollection('fs.files', Document) >> collection
-        1 * collection.withCodecRegistry(_) >> collection
-        1 * collection.withReadPreference(_) >> collection
-        1 * collection.withWriteConcern(_) >> collection
         1 * collection.find() >> findIterable
-        1 * findIterable.filter(filter) >> findIterable
-        expect result, isTheSameAs(new GridFSFindIterableImpl(findIterable))
-
-        when:
-        result = gridFSBucket.find(filter, BsonDocument)
-
-        then:
-        1 * database.getCollection('fs.files', BsonDocument) >> collection
-        1 * collection.withCodecRegistry(_) >> collection
-        1 * collection.withReadPreference(_) >> collection
-        1 * collection.withWriteConcern(_) >> collection
-        1 * collection.find() >> findIterable
-        1 * findIterable.filter(filter) >> findIterable
-        expect result, isTheSameAs(new GridFSFindIterableImpl(findIterable))
+        1 * findIterable.filter(filter)
+        expect result, isTheSameAs(new GridFSFindIterableImpl(codecRegistry, findIterable))
     }
 
     def 'should throw an exception if file not found when opening by name'() {
@@ -326,9 +329,11 @@ class GridFSBucketSpecification extends Specification {
         gridFSBucket.openDownloadStreamByName('filename')
 
         then:
-        1 * filesCollection.find(_) >> findIterable
-        1 * findIterable.skip(_) >> findIterable
-        1 * findIterable.sort(_) >> findIterable
+        1 * filesCollection.find() >> findIterable
+        1 * findIterable.filter(new BsonDocument('filename', new BsonString('filename'))) >> findIterable
+        1 * findIterable.skip(0) >> findIterable
+        1 * findIterable.sort(new BsonDocument('uploadDate', new BsonInt32(-1))) >> findIterable
+        1 * findIterable.map(_) >> findIterable
         1 * findIterable.first() >> null
 
         then:
@@ -375,6 +380,27 @@ class GridFSBucketSpecification extends Specification {
 
         then:
         1 * chunksCollection.deleteMany(new BsonDocument('files_id', new BsonObjectId(fileId)))
+    }
+
+    def 'should throw an exception when deleting if no record in the files collection'() {
+        given:
+        def fileId = new ObjectId()
+        def filesCollection = Mock(MongoCollection)
+        def chunksCollection = Mock(MongoCollection)
+        def gridFSBucket = new GridFSBucketImpl(Stub(MongoDatabase), 'fs', 255, Stub(CodecRegistry),
+                Stub(ReadPreference), Stub(WriteConcern), filesCollection, chunksCollection, true)
+
+        when:
+        gridFSBucket.delete(fileId)
+
+        then: 'Delete from the files collection first'
+        1 * filesCollection.deleteOne(new BsonDocument('_id', new BsonObjectId(fileId))) >> DeleteResult.acknowledged(0)
+
+        then: 'Should still delete any orphan chunks'
+        1 * chunksCollection.deleteMany(new BsonDocument('files_id', new BsonObjectId(fileId)))
+
+        then:
+        thrown(MongoGridFSException)
     }
 
     def 'should rename a file'() {

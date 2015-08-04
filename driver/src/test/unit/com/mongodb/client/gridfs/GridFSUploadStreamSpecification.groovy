@@ -19,8 +19,11 @@ package com.mongodb.client.gridfs
 import com.mongodb.MongoGridFSException
 import com.mongodb.client.MongoCollection
 import org.bson.BsonDocument
+import org.bson.BsonString
 import org.bson.types.ObjectId
 import spock.lang.Specification
+
+import java.security.MessageDigest
 
 class GridFSUploadStreamSpecification extends Specification {
     def fileId = new ObjectId()
@@ -58,7 +61,7 @@ class GridFSUploadStreamSpecification extends Specification {
         given:
         def filesCollection = Mock(MongoCollection)
         def chunksCollection = Mock(MongoCollection)
-        def uploadStream = new GridFSUploadStreamImpl(filesCollection, chunksCollection, fileId, filename, 255, metadata)
+        def uploadStream = new GridFSUploadStreamImpl(filesCollection, chunksCollection, fileId, filename, 255, new BsonDocument())
 
         when:
         uploadStream.write('file content ' as byte[])
@@ -72,6 +75,36 @@ class GridFSUploadStreamSpecification extends Specification {
         then:
         1 * chunksCollection.insertOne(_)
         1 * filesCollection.insertOne(_)
+    }
+
+    def 'should write to the files and chunks collection as expected close'() {
+        given:
+        def filesCollection = Mock(MongoCollection)
+        def chunksCollection = Mock(MongoCollection)
+        def content = 'file content ' as byte[]
+        def metadata = new BsonDocument('contentType', new BsonString('text/txt'))
+        def uploadStream = new GridFSUploadStreamImpl(filesCollection, chunksCollection, fileId, filename, 255, metadata)
+
+        when:
+        uploadStream.write(content)
+        uploadStream.close()
+
+        then:
+        1 * chunksCollection.insertOne { BsonDocument chunksData ->
+            chunksData.getObjectId('files_id').getValue() == fileId
+            chunksData.getInt32('n').getValue() == 0
+            chunksData.getBinary('data').getData() == content
+        }
+
+        then:
+        1 * filesCollection.insertOne { BsonDocument fileData ->
+            fileData.getObjectId('_id').getValue() == fileId &&
+            fileData.getString('filename').getValue() == filename &&
+            fileData.getInt64('length').getValue() == content.length &&
+            fileData.getInt32('chunkSize').getValue() == 255 &&
+            fileData.getString('md5').getValue() == MessageDigest.getInstance('MD5').digest(content).encodeHex().toString()
+            fileData.getDocument('metadata') == metadata
+        }
     }
 
     def 'should not write an empty chunk'() {

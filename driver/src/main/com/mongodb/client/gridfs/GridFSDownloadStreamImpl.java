@@ -18,20 +18,20 @@ package com.mongodb.client.gridfs;
 
 import com.mongodb.MongoGridFSException;
 import com.mongodb.client.MongoCollection;
+import com.mongodb.client.gridfs.model.GridFSFile;
 import org.bson.BsonDocument;
 import org.bson.BsonInt32;
-import org.bson.BsonObjectId;
+import org.bson.BsonValue;
 
 import java.io.IOException;
 
-import static com.mongodb.assertions.Assertions.isTrue;
 import static com.mongodb.assertions.Assertions.notNull;
 import static java.lang.String.format;
 
 class GridFSDownloadStreamImpl extends GridFSDownloadStream {
-    private final BsonDocument fileInfo;
+    private final GridFSFile fileInfo;
     private final MongoCollection<BsonDocument> chunksCollection;
-    private final BsonObjectId fileId;
+    private final BsonValue fileId;
     private final long length;
     private final int chunkSizeInBytes;
     private final int numberOfChunks;
@@ -41,25 +41,18 @@ class GridFSDownloadStreamImpl extends GridFSDownloadStream {
     private byte[] buffer = null;
     private boolean closed;
 
-    GridFSDownloadStreamImpl(final BsonDocument fileInfo, final MongoCollection<BsonDocument> chunksCollection) {
+    GridFSDownloadStreamImpl(final GridFSFile fileInfo, final MongoCollection<BsonDocument> chunksCollection) {
         this.fileInfo = notNull("file information", fileInfo);
         this.chunksCollection = notNull("chunks collection", chunksCollection);
 
-        try {
-            isTrue("file information contains _id", fileInfo.containsKey("_id") && fileInfo.get("_id").isObjectId());
-            isTrue("file information contains length", fileInfo.containsKey("length") && fileInfo.get("length").isInt64());
-            isTrue("file information contains chunkSize", fileInfo.containsKey("chunkSize") && fileInfo.get("chunkSize").isInt32());
-        } catch (IllegalStateException e) {
-            throw new MongoGridFSException("GridFS file information is not in the expected format", e);
-        }
-        fileId = fileInfo.getObjectId("_id");
-        length = fileInfo.getInt64("length").getValue();
-        chunkSizeInBytes = fileInfo.getInt32("chunkSize").getValue();
+        fileId = fileInfo.getId();
+        length = fileInfo.getLength();
+        chunkSizeInBytes = fileInfo.getChunkSize();
         numberOfChunks = (int) Math.ceil((double) length / chunkSizeInBytes);
     }
 
     @Override
-    public BsonDocument getFileInformation() {
+    public GridFSFile getGridFSFile() {
         return fileInfo;
     }
 
@@ -82,7 +75,7 @@ class GridFSDownloadStreamImpl extends GridFSDownloadStream {
         } else if (buffer == null) {
             buffer = getBuffer(chunkIndex);
             bufferOffset = 0;
-        } else if (bufferOffset >= buffer.length) {
+        } else if (bufferOffset == buffer.length) {
             chunkIndex += 1;
             buffer = getBuffer(chunkIndex);
             bufferOffset = 0;
@@ -140,13 +133,13 @@ class GridFSDownloadStreamImpl extends GridFSDownloadStream {
         }
     }
 
-    private byte[] getBuffer(final int chunkIndexToFetch)  {
+    private byte[] getBuffer(final int chunkIndexToFetch) {
         BsonDocument chunk = chunksCollection.find(new BsonDocument("files_id", fileId)
                 .append("n", new BsonInt32(chunkIndexToFetch))).first();
 
         if (chunk == null) {
             throw new MongoGridFSException(format("Could not find file chunk for file_id: %s at chunk index %s.",
-                        fileId.getValue().toHexString(), chunkIndexToFetch));
+                        fileId, chunkIndexToFetch));
         } else {
             byte[] data = chunk.getBinary("data").getData();
             long expectedDataLength;
@@ -158,7 +151,7 @@ class GridFSDownloadStreamImpl extends GridFSDownloadStream {
             if (data.length != expectedDataLength) {
                 throw new MongoGridFSException(format("Chunk size data length is not the expected size. "
                         + "The size was %s for file_id: %s chunk index %s it should be %s bytes.",
-                        data.length, fileId.getValue().toHexString(), chunkIndexToFetch, expectedDataLength));
+                        data.length, fileId, chunkIndexToFetch, expectedDataLength));
             }
             return data;
         }

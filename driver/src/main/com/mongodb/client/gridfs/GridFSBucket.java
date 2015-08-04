@@ -20,8 +20,6 @@ import com.mongodb.ReadPreference;
 import com.mongodb.WriteConcern;
 import com.mongodb.client.gridfs.model.GridFSDownloadByNameOptions;
 import com.mongodb.client.gridfs.model.GridFSUploadOptions;
-import org.bson.Document;
-import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.conversions.Bson;
 import org.bson.types.ObjectId;
 
@@ -41,13 +39,6 @@ public interface GridFSBucket {
      * @return the chunk size in bytes.
      */
     int getChunkSizeBytes();
-
-    /**
-     * Get the codec registry for the GridFSBucket.
-     *
-     * @return the {@link org.bson.codecs.configuration.CodecRegistry}
-     */
-    CodecRegistry getCodecRegistry();
 
     /**
      * Get the write concern for the GridFSBucket.
@@ -70,14 +61,6 @@ public interface GridFSBucket {
      * @return a new GridFSBucket instance with the different chunk size in bytes
      */
     GridFSBucket withChunkSizeBytes(int chunkSizeBytes);
-
-    /**
-     * Create a new GridFSBucket instance with a different codec registry.
-     *
-     * @param codecRegistry the new {@link org.bson.codecs.configuration.CodecRegistry} for the database
-     * @return a new MongoDatabase instance with the different codec registry
-     */
-    GridFSBucket withCodecRegistry(CodecRegistry codecRegistry);
 
     /**
      * Create a new GridFSBucket instance with a different read preference.
@@ -210,16 +193,7 @@ public interface GridFSBucket {
      * @return the GridFS find iterable interface
      * @mongodb.driver.manual tutorial/query-documents/ Find
      */
-    GridFSFindIterable<Document> find();
-
-    /**
-     * Finds all documents in the collection.
-     *
-     * @param resultClass the class to decode each document into
-     * @param <TResult>   the target document type of the iterable.
-     * @return the GridFS find iterable interface
-     */
-    <TResult> GridFSFindIterable<TResult> find(Class<TResult> resultClass);
+    GridFSFindIterable find();
 
     /**
      * Finds all documents in the collection that match the filter.
@@ -237,27 +211,7 @@ public interface GridFSBucket {
      * @return the GridFS find iterable interface
      * @see com.mongodb.client.model.Filters
      */
-    GridFSFindIterable<Document> find(Bson filter);
-
-    /**
-     * Finds all documents in the collection.
-     *
-     * <p>
-     *     Below is an example of filtering against the filename and some nested metadata that can also be stored along with the file data:
-     *  <pre>
-     *  {@code
-     *      Filters.and(Filters.eq("filename", "mongodb.png"), Filters.eq("metadata.contentType", "image/png"));
-     *  }
-     *  </pre>
-     * </p>
-     *
-     * @param filter      the query filter
-     * @param resultClass the class to decode each document into
-     * @param <TResult>   the target document type of the iterable.
-     * @return the GridFS find iterable interface
-     * @see com.mongodb.client.model.Filters
-     */
-    <TResult> GridFSFindIterable<TResult> find(Bson filter, Class<TResult> resultClass);
+    GridFSFindIterable find(Bson filter);
 
     /**
      * Given a {@code id}, delete this stored file's files collection document and associated chunks from a GridFS bucket.

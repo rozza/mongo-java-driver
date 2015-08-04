@@ -19,35 +19,32 @@ package com.mongodb.client.gridfs
 import com.mongodb.MongoGridFSException
 import com.mongodb.client.FindIterable
 import com.mongodb.client.MongoCollection
+import com.mongodb.client.gridfs.model.GridFSFile
 import org.bson.BsonBinary
 import org.bson.BsonDocument
 import org.bson.BsonInt32
-import org.bson.BsonInt64
 import org.bson.BsonObjectId
-import org.bson.BsonString
+import org.bson.Document
 import org.bson.types.ObjectId
 import spock.lang.Specification
 
 class GridFSDownloadStreamSpecification extends Specification {
-    def fileInfo = new BsonDocument('_id', new BsonObjectId(new ObjectId()))
-            .append('filename', new BsonString('filename'))
-            .append('chunkSize', new BsonInt32(2))
-            .append('length', new BsonInt64(3))
+    def fileInfo = new GridFSFile(new BsonObjectId(new ObjectId()), 'filename', 3L, 2, new Date(), 'abc', new Document())
 
     def 'should return the file info'() {
         when:
         def downloadStream = new GridFSDownloadStreamImpl(fileInfo, Stub(MongoCollection))
 
         then:
-        downloadStream.getFileInformation() == fileInfo
+        downloadStream.getGridFSFile() == fileInfo
     }
 
     def 'should query the chunks collection as expected'() {
         when:
         def twoBytes = new byte[2]
         def oneByte = new byte[1]
-        def findQuery = new BsonDocument('files_id', fileInfo.getObjectId('_id')).append('n', new BsonInt32(0))
-        def chunkDocument = new BsonDocument('files_id', fileInfo.getObjectId('_id'))
+        def findQuery = new BsonDocument('files_id', fileInfo.getId()).append('n', new BsonInt32(0))
+        def chunkDocument = new BsonDocument('files_id', fileInfo.getId())
                 .append('n', new BsonInt32(0))
                 .append('data', new BsonBinary(twoBytes))
 
@@ -97,12 +94,12 @@ class GridFSDownloadStreamSpecification extends Specification {
         given:
         def twoBytes = new byte[2]
         def oneByte = new byte[1]
-        def findQueries = [new BsonDocument('files_id', fileInfo.getObjectId('_id')).append('n', new BsonInt32(0)),
-                           new BsonDocument('files_id', fileInfo.getObjectId('_id')).append('n', new BsonInt32(1))]
+        def findQueries = [new BsonDocument('files_id', fileInfo.getId()).append('n', new BsonInt32(0)),
+                           new BsonDocument('files_id', fileInfo.getId()).append('n', new BsonInt32(1))]
         def chunkDocuments =
-                [new BsonDocument('files_id', fileInfo.getObjectId('_id')).append('n', new BsonInt32(0))
+                [new BsonDocument('files_id', fileInfo.getId()).append('n', new BsonInt32(0))
                          .append('data', new BsonBinary(twoBytes)),
-                 new BsonDocument('files_id', fileInfo.getObjectId('_id')).append('n', new BsonInt32(1))
+                 new BsonDocument('files_id', fileInfo.getId()).append('n', new BsonInt32(1))
                          .append('data', new BsonBinary(oneByte))]
 
         def findIterable = Mock(FindIterable)
@@ -167,38 +164,6 @@ class GridFSDownloadStreamSpecification extends Specification {
         skipValue << [3, 100]
     }
 
-    def 'should thrown an exception if passed invalid file info'() {
-        when:
-        new GridFSDownloadStreamImpl(new BsonDocument(), Stub(MongoCollection))
-
-        then:
-        thrown(MongoGridFSException)
-
-        when:
-        def badFileInfo = new BsonDocument('_id', new BsonString('123'))
-                .append('filename', new BsonString('filename'))
-                .append('length', new BsonString('2'))
-                .append('chunkSize', new BsonString('2'))
-        new GridFSDownloadStreamImpl(badFileInfo, Stub(MongoCollection))
-
-        then:
-        thrown(MongoGridFSException)
-
-        when:
-        badFileInfo.put('_id', fileInfo.get('_id'))
-        new GridFSDownloadStreamImpl(badFileInfo, Stub(MongoCollection))
-
-        then:
-        thrown(MongoGridFSException)
-
-        when:
-        badFileInfo.put('length', fileInfo.get('length'))
-        new GridFSDownloadStreamImpl(badFileInfo, Stub(MongoCollection))
-
-        then:
-        thrown(MongoGridFSException)
-    }
-
     def 'should throw if no chunks found when data is expected'() {
         given:
         def findIterable = Mock(FindIterable)
@@ -219,8 +184,8 @@ class GridFSDownloadStreamSpecification extends Specification {
     def 'should throw if chunk data is the wrong size'() {
         given:
         def oneByte = new byte[1]
-        def findQuery = new BsonDocument('files_id', fileInfo.getObjectId('_id')).append('n', new BsonInt32(0))
-        def chunkDocument = new BsonDocument('files_id', fileInfo.getObjectId('_id'))
+        def findQuery = new BsonDocument('files_id', fileInfo.getId()).append('n', new BsonInt32(0))
+        def chunkDocument = new BsonDocument('files_id', fileInfo.getId())
                 .append('n', new BsonInt32(0))
                 .append('data', new BsonBinary(oneByte))
 

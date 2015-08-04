@@ -24,7 +24,7 @@ import com.mongodb.client.MongoDatabase;
  *
  * @since 3.1
  */
-public class GridFSBuckets {
+public final class GridFSBuckets {
 
     /**
      * Create a new GridFS bucket with the default {@code 'fs'} bucket name
@@ -32,7 +32,7 @@ public class GridFSBuckets {
      * @param database the database instance to use with GridFS
      * @return the GridFSBucket
      */
-    public GridFSBucket create(final MongoDatabase database) {
+    public static GridFSBucket create(final MongoDatabase database) {
         return new GridFSBucketImpl(database);
     }
 
@@ -43,7 +43,10 @@ public class GridFSBuckets {
      * @param bucketName the custom bucket name to use
      * @return the GridFSBucket
      */
-    public GridFSBucket create(final MongoDatabase database, final String bucketName) {
+    public static GridFSBucket create(final MongoDatabase database, final String bucketName) {
         return new GridFSBucketImpl(database, bucketName);
+    }
+
+    private GridFSBuckets() {
     }
 }

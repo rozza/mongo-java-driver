@@ -16,7 +16,7 @@
 
 package com.mongodb.client.gridfs;
 
-import org.bson.BsonDocument;
+import com.mongodb.client.gridfs.model.GridFSFile;
 
 import java.io.InputStream;
 
@@ -28,9 +28,9 @@ import java.io.InputStream;
 public abstract class GridFSDownloadStream extends InputStream {
 
     /**
-     * Gets the corresponding files collection document for the file being downloaded
+     * Gets the corresponding {@link GridFSFile} for the file being downloaded
      *
-     * @return the corresponding files collection document for the file being downloaded
+     * @return the corresponding GridFSFile for the file being downloaded
      */
-    public abstract BsonDocument getFileInformation();
+    public abstract GridFSFile getGridFSFile();
 }

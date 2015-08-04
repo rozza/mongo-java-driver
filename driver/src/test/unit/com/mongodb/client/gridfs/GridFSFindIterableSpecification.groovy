@@ -1,14 +1,14 @@
 /*
  * Copyright 2015 MongoDB, Inc.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
+ * Licensed under the Apache License, Version 2.0 (the 'License');
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
  *    http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
+ * distributed under the License is distributed on an 'AS IS' BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
@@ -18,21 +18,25 @@ package com.mongodb.client.gridfs
 
 import com.mongodb.Block
 import com.mongodb.CursorType
-import com.mongodb.DBObjectCodecProvider
 import com.mongodb.FindIterableImpl
 import com.mongodb.Function
+import com.mongodb.MongoGridFSException
 import com.mongodb.MongoNamespace
 import com.mongodb.TestOperationExecutor
+import com.mongodb.client.gridfs.model.GridFSFile
 import com.mongodb.client.model.FindOptions
 import com.mongodb.operation.BatchCursor
 import com.mongodb.operation.FindOperation
 import org.bson.BsonDocument
+import org.bson.BsonDocumentReader
 import org.bson.BsonInt32
 import org.bson.Document
 import org.bson.codecs.BsonValueCodecProvider
+import org.bson.codecs.DecoderContext
 import org.bson.codecs.DocumentCodec
 import org.bson.codecs.DocumentCodecProvider
 import org.bson.codecs.ValueCodecProvider
+import spock.lang.Shared
 import spock.lang.Specification
 
 import static com.mongodb.CustomMatchers.isTheSameAs
@@ -43,8 +47,7 @@ import static spock.util.matcher.HamcrestSupport.expect
 
 class GridFSFindIterableSpecification extends Specification {
 
-    def codecRegistry = fromProviders([new ValueCodecProvider(),  new DocumentCodecProvider(),
-                                       new DBObjectCodecProvider(), new BsonValueCodecProvider()])
+    def codecRegistry = fromProviders([new ValueCodecProvider(),  new DocumentCodecProvider(), new BsonValueCodecProvider()])
     def readPreference = secondary()
     def namespace = new MongoNamespace('test', 'fs.files')
 
@@ -53,7 +56,7 @@ class GridFSFindIterableSpecification extends Specification {
         def executor = new TestOperationExecutor([null, null]);
         def underlying = new FindIterableImpl(namespace, Document, Document, codecRegistry, readPreference, executor,
                 new Document(), new FindOptions())
-        def findIterable = new GridFSFindIterableImpl(underlying)
+        def findIterable = new GridFSFindIterableImpl(codecRegistry, underlying)
 
         when: 'default input should be as expected'
         findIterable.iterator()
@@ -117,7 +120,7 @@ class GridFSFindIterableSpecification extends Specification {
 
     def 'should follow the MongoIterable interface as expected'() {
         given:
-        def cannedResults = [new Document('_id', 1), new Document('_id', 2), new Document('_id', 3)]
+        def expectedFilenames = ['File 1', 'File 2', 'File 3']
         def cursor = {
             Stub(BatchCursor) {
                 def count = 0
@@ -139,19 +142,43 @@ class GridFSFindIterableSpecification extends Specification {
         def executor = new TestOperationExecutor([cursor(), cursor(), cursor(), cursor()]);
         def underlying = new FindIterableImpl(namespace, Document, Document, codecRegistry, readPreference, executor,
                 new Document(), new FindOptions())
-        def mongoIterable = new GridFSFindIterableImpl(underlying)
+        def mongoIterable = new GridFSFindIterableImpl(codecRegistry, underlying)
 
         when:
-        def results = mongoIterable.first()
+        def firstResult = mongoIterable.first()
+        def expectedResult = cannedResults[0]
 
         then:
-        results == cannedResults[0]
+        firstResult.getId() == expectedResult.get('_id');
+        firstResult.getFilename() == expectedResult.getString('filename').getValue()
+        firstResult.getLength() == expectedResult.getInt64('length').getValue()
+        firstResult.getChunkSize() == expectedResult.getInt32('chunkSize').getValue()
+        firstResult.getMD5() == expectedResult.getString('md5').getValue()
+        firstResult.getUploadDate() == new Date(expectedResult.getDateTime('uploadDate').getValue())
+
+        if (expectedResult.containsKey('metadata')) {
+            def metadata = codecRegistry.get(Document)
+                    .decode(new BsonDocumentReader(expectedResult.getDocument('metadata')), DecoderContext.builder().build())
+            firstResult.getMetadata() == metadata
+        } else {
+            firstResult.getMetadata() == new Document()
+        }
+        if (expectedResult.containsKey('contentType')) {
+            firstResult.getContentType() == expectedResult.getString('contentType').getValue()
+        } else {
+            firstResult.getContentType() == null
+        }
+        if (expectedResult.containsKey('aliases')) {
+            firstResult.getAliases() == expectedResult.getArray('aliases').iterator()*.getString().getValue()
+        } else {
+            firstResult.getAliases() == null
+        }
 
         when:
         def count = 0
-        mongoIterable.forEach(new Block<Document>() {
+        mongoIterable.forEach(new Block<GridFSFile>() {
             @Override
-            void apply(Document document) {
+            void apply(GridFSFile document) {
                 count++
             }
         })
@@ -164,18 +191,85 @@ class GridFSFindIterableSpecification extends Specification {
         mongoIterable.into(target)
 
         then:
-        target == cannedResults
+        target*.getFilename() == expectedFilenames
 
         when:
         target = []
-        mongoIterable.map(new Function<Document, Integer>() {
+        mongoIterable.map(new Function<GridFSFile, String>() {
             @Override
-            Integer apply(Document document) {
-                document.getInteger('_id')
+            String apply(GridFSFile file) {
+                file.getFilename()
             }
         }).into(target)
 
         then:
-        target == [1, 2, 3]
+        target == expectedFilenames
+
+        where:
+        cannedResults << [toSpecCannedResults, legacyCannedResults]
     }
+
+    def 'should throw an exception when handling invalid aliases'() {
+        given:
+        def cannedResults = [BsonDocument.parse('''{ "_id" : { "$oid" : "000000000000000000000002" }, "filename" : "File 3",
+                                    "length" : { "$numberLong" : "1" },  "chunkSize" : 255, "uploadDate" : { "$date" : 1438679434090 },
+                                    "md5" : "d41d8cd98f00b204e9800998ecf8427e", "aliases" : ["File Three", 3] }''')]
+        def cursor = {
+            Stub(BatchCursor) {
+                def count = 0
+                def results;
+                def getResult = {
+                    count++
+                    results = count == 1 ? cannedResults : null
+                    results
+                }
+                next() >> {
+                    getResult()
+                }
+                hasNext() >> {
+                    count == 0
+                }
+
+            }
+        }
+        def executor = new TestOperationExecutor([cursor(), cursor(), cursor(), cursor()]);
+        def underlying = new FindIterableImpl(namespace, Document, Document, codecRegistry, readPreference, executor,
+                new Document(), new FindOptions())
+        def mongoIterable = new GridFSFindIterableImpl(codecRegistry, underlying)
+
+        when:
+        mongoIterable.first()
+
+        then:
+        thrown(MongoGridFSException)
+    }
+
+    @Shared
+    def toSpecCannedResults = [
+            BsonDocument.parse('''{ "_id" : { "$oid" : "000000000000000000000001" }, "filename" : "File 1",
+                                    "length" : { "$numberLong" : "123" },  "chunkSize" : 255, "uploadDate" : { "$date" : 1438679434041 },
+                                    "md5" : "d41d8cd98f00b204e9800998ecf8427e" }'''),
+            BsonDocument.parse('''{ "_id" : { "$oid" : "000000000000000000000002" }, "filename" : "File 2",
+                                    "length" : { "$numberLong" : "99999" },  "chunkSize" : 255, "uploadDate" : { "$date" : 1438679434050 },
+                                    "md5" : "d41d8cd98f00b204e9800998ecf8427e" }'''),
+            BsonDocument.parse('''{ "_id" : { "$oid" : "000000000000000000000003" }, "filename" : "File 3",
+                                    "length" : { "$numberLong" : "1" },  "chunkSize" : 255, "uploadDate" : { "$date" : 1438679434090 },
+                                    "md5" : "d41d8cd98f00b204e9800998ecf8427e" }''')
+    ]
+
+    @Shared
+    def legacyCannedResults = [
+            BsonDocument.parse('''{ "_id" : 1, "filename" : "File 1",
+                                    "length" : { "$numberLong" : "123" },  "chunkSize" : 255, "uploadDate" : { "$date" : 1438679434041 },
+                                    "md5" : "d41d8cd98f00b204e9800998ecf8427e" }'''),
+            BsonDocument.parse('''{ "_id" : { "$oid" : "000000000000000000000001" }, "filename" : "File 2",
+                                    "length" : { "$numberLong" : "99999" },  "chunkSize" : 255, "uploadDate" : { "$date" : 1438679434050 },
+                                    "md5" : "d41d8cd98f00b204e9800998ecf8427e", "contentType" : "text/txt" }'''),
+            BsonDocument.parse('''{ "_id" : { "$oid" : "000000000000000000000002" }, "filename" : "File 3",
+                                    "length" : { "$numberLong" : "1" },  "chunkSize" : 255, "uploadDate" : { "$date" : 1438679434090 },
+                                    "md5" : "d41d8cd98f00b204e9800998ecf8427e", "aliases" : ["File Three", "Third File"] }''')
+    ]
+
+    @Shared
+    mixedResults = [toSpecCannedResults[0], legacyCannedResults[1], legacyCannedResults[2]]
 }

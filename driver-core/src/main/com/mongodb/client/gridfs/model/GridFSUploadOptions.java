@@ -16,7 +16,6 @@
 
 package com.mongodb.client.gridfs.model;
 
-import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.conversions.Bson;
 
 /**
@@ -28,7 +27,6 @@ import org.bson.conversions.Bson;
  */
 public class GridFSUploadOptions {
     private Integer chunkSizeBytes;
-    private CodecRegistry codecRegistry;
     private Bson metadata;
 
     /**
@@ -56,28 +54,6 @@ public class GridFSUploadOptions {
      */
     public GridFSUploadOptions chunkSizeBytes(final Integer chunkSizeBytes) {
         this.chunkSizeBytes = chunkSizeBytes;
-        return this;
-    }
-
-    /**
-     * Get the codec registry for the UploadOptions used to encode the metadata.
-     *
-     * <p>If no value has been set then, the codec registry from the GridFSBucket will be used.</p>
-     *
-     * @return the {@link org.bson.codecs.configuration.CodecRegistry}
-     */
-    public CodecRegistry getCodecRegistry() {
-        return codecRegistry;
-    }
-
-    /**
-     * Set a custom codec registry to encode the metadata.
-     *
-     * @param codecRegistry the new {@link org.bson.codecs.configuration.CodecRegistry} for encoding the metadata
-     * @return this
-     */
-    public GridFSUploadOptions codecRegistry(final CodecRegistry codecRegistry) {
-        this.codecRegistry = codecRegistry;
         return this;
     }
 
