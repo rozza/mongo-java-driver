@@ -27,7 +27,6 @@ import org.bson.BsonObjectId;
 import org.bson.BsonString;
 import org.bson.types.ObjectId;
 
-import java.io.IOException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
@@ -72,7 +71,7 @@ final class GridFSUploadStreamImpl extends GridFSUploadStream {
     }
 
     @Override
-    public void write(final int b) throws IOException {
+    public void write(final int b) {
         checkClosed();
         buffer[bufferOffset++] = (byte) (0xFF & b);
         lengthInBytes++;
@@ -82,7 +81,27 @@ final class GridFSUploadStreamImpl extends GridFSUploadStream {
     }
 
     @Override
-    public void close() throws IOException {
+    public void write(final byte[] b) {
+        write(b, 0, b.length);
+    }
+
+    @Override
+    public void write(final byte[] b, final int off, final int len) {
+        if (b == null) {
+            throw new NullPointerException();
+        } else if ((off < 0) || (off > b.length) || (len < 0)
+                || ((off + len) > b.length) || ((off + len) < 0)) {
+            throw new IndexOutOfBoundsException();
+        } else if (len == 0) {
+            return;
+        }
+        for (int i = 0; i < len; i++) {
+            write(b[off + i]);
+        }
+    }
+
+    @Override
+    public void close() {
         checkClosed();
         writeChunks();
         closed = true;
@@ -100,7 +119,7 @@ final class GridFSUploadStreamImpl extends GridFSUploadStream {
         buffer = null;
     }
 
-    private void writeChunks() throws IOException {
+    private void writeChunks() {
         if (bufferOffset > 0) {
             chunksCollection.insertOne(
                     new BsonDocument("files_id", new BsonObjectId(fileId))

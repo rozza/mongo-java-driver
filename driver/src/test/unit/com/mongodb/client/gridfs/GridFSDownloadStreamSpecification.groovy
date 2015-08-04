@@ -92,40 +92,64 @@ class GridFSDownloadStreamSpecification extends Specification {
 
     def 'should skip to the correct point'() {
         given:
-        def twoBytes = new byte[2]
-        def oneByte = new byte[1]
+        def fileInfo = new GridFSFile(new BsonObjectId(new ObjectId()), 'filename', 60L, 25, new Date(), 'abc', new Document())
+
+        def firstChunkBytes = 1..25 as byte[]
+        def thirdChunkBytes = 51 .. 60 as byte[]
         def findQueries = [new BsonDocument('files_id', fileInfo.getId()).append('n', new BsonInt32(0)),
-                           new BsonDocument('files_id', fileInfo.getId()).append('n', new BsonInt32(1))]
+                           new BsonDocument('files_id', fileInfo.getId()).append('n', new BsonInt32(2))]
         def chunkDocuments =
                 [new BsonDocument('files_id', fileInfo.getId()).append('n', new BsonInt32(0))
-                         .append('data', new BsonBinary(twoBytes)),
-                 new BsonDocument('files_id', fileInfo.getId()).append('n', new BsonInt32(1))
-                         .append('data', new BsonBinary(oneByte))]
+                         .append('data', new BsonBinary(firstChunkBytes)),
+                 new BsonDocument('files_id', fileInfo.getId()).append('n', new BsonInt32(2))
+                         .append('data', new BsonBinary(thirdChunkBytes))]
 
         def findIterable = Mock(FindIterable)
         def chunksCollection = Mock(MongoCollection)
         def downloadStream = new GridFSDownloadStreamImpl(fileInfo, chunksCollection)
 
         when:
-        def skipResult = downloadStream.skip(1)
+        def skipResult = downloadStream.skip(15)
+
+        then:
+        skipResult == 15L
+        0 * chunksCollection.find(_)
+        0 * findIterable.first()
+
+        when:
+        def readByte = new byte[5]
+        downloadStream.read(readByte)
 
         then:
         1 * chunksCollection.find(findQueries[0]) >> findIterable
         1 * findIterable.first() >> chunkDocuments[0]
 
+        then:
+        readByte == [16, 17, 18, 19, 20] as byte[]
+
         when:
-        skipResult = downloadStream.skip(1)
+        skipResult = downloadStream.skip(35)
 
         then:
-        skipResult == 1L
+        skipResult == 35L
+        0 * chunksCollection.find(_)
+        0 * findIterable.first()
+
+        when:
+        downloadStream.read(readByte)
+
+        then:
         1 * chunksCollection.find(findQueries[1]) >> findIterable
         1 * findIterable.first() >> chunkDocuments[1]
 
+        then:
+        readByte == [56, 57, 58, 59, 60] as byte[]
+
         when:
         skipResult = downloadStream.skip(1)
 
         then:
-        skipResult == 1L
+        skipResult == 0L
         0 * chunksCollection.find(_)
         0 * findIterable.first()
     }

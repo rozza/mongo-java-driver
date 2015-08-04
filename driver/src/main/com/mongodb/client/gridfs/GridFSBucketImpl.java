@@ -33,7 +33,6 @@ import org.bson.BsonInt32;
 import org.bson.BsonObjectId;
 import org.bson.BsonString;
 import org.bson.BsonValue;
-import org.bson.Document;
 import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.conversions.Bson;
 import org.bson.types.ObjectId;
@@ -153,34 +152,29 @@ final class GridFSBucketImpl implements GridFSBucket {
         } catch (IOException e) {
             throw new MongoGridFSException("IO Exception when reading from the InputStream", e);
         } finally {
-            try {
-                uploadStream.close();
-            } catch (IOException e) {
-                throw new MongoGridFSException("IO Exception when closing the InputStream", e);
-            }
+            uploadStream.close();
         }
         return uploadStream.getFileId();
     }
 
     @Override
     public GridFSDownloadStream openDownloadStream(final ObjectId id) {
-        return openDownloadStream(new BsonObjectId(id));
+        return findTheFileInfoAndOpenDownloadStream(new BsonObjectId(id));
     }
 
     @Override
     public void downloadToStream(final ObjectId id, final OutputStream destination) {
-        downloadToStream(openDownloadStream(new BsonObjectId(id)), destination);
+        downloadToStream(findTheFileInfoAndOpenDownloadStream(new BsonObjectId(id)), destination);
     }
 
     @Override
-    public void downloadLegacyFileToStream(final Object id, final OutputStream destination) {
-        downloadToStream(openDownloadLegacyFileStream(id), destination);
+    public void downloadToStream(final BsonValue id, final OutputStream destination) {
+        downloadToStream(findTheFileInfoAndOpenDownloadStream(id), destination);
     }
 
     @Override
-    public GridFSDownloadStream openDownloadLegacyFileStream(final Object id) {
-        BsonDocument idDocument = new Document("_id", id).toBsonDocument(BsonDocument.class, codecRegistry);
-        return openDownloadStream(idDocument.get("_id"));
+    public GridFSDownloadStream openDownloadStream(final BsonValue id) {
+        return findTheFileInfoAndOpenDownloadStream(id);
     }
 
     @Override
@@ -278,7 +272,7 @@ final class GridFSBucketImpl implements GridFSBucket {
         return fileInfo;
     }
 
-    private GridFSDownloadStream openDownloadStream(final BsonValue id) {
+    private GridFSDownloadStream findTheFileInfoAndOpenDownloadStream(final BsonValue id) {
         GridFSFile fileInfo = find(new BsonDocument("_id", id)).first();
         if (fileInfo == null) {
             throw new MongoGridFSException(format("No file found with the id: %s", id));
@@ -296,11 +290,7 @@ final class GridFSBucketImpl implements GridFSBucket {
         } catch (IOException e) {
             throw new MongoGridFSException("IO Exception when reading from the OutputStream", e);
         } finally {
-            try {
-                downloadStream.close();
-            } catch (IOException e) {
-                throw new MongoGridFSException("IO Exception when closing the OutputStream", e);
-            }
+            downloadStream.close();
         }
     }
 }

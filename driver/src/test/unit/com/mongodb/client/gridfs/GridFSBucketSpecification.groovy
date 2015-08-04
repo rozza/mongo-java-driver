@@ -197,10 +197,9 @@ class GridFSBucketSpecification extends Specification {
         outputStream.toByteArray() == tenBytes
     }
 
-    def 'should download to stream legacy'() {
+    def 'should download to stream using BsonValue'() {
         given:
-        def fileId = '1'
-        def bsonFileId = new BsonString(fileId)
+        def bsonFileId = new BsonString('1')
         def fileInfo = new GridFSFile(bsonFileId, 'filename', 10, 255, new Date(), '1234', new Document())
         def findIterable =  Mock(FindIterable)
         def filesCollection = Mock(MongoCollection) {
@@ -216,7 +215,7 @@ class GridFSBucketSpecification extends Specification {
         def outputStream = new ByteArrayOutputStream(10)
 
         when:
-        gridFSBucket.downloadLegacyFileToStream(fileId, outputStream)
+        gridFSBucket.downloadToStream(bsonFileId, outputStream)
         outputStream.close()
 
         then:

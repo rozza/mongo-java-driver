@@ -25,7 +25,7 @@ import org.bson.conversions.Bson;
  *
  * @since 3.1
  */
-public class GridFSUploadOptions {
+public final class GridFSUploadOptions {
     private Integer chunkSizeBytes;
     private Bson metadata;
 

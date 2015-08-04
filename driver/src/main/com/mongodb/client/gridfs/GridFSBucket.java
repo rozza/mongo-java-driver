@@ -18,8 +18,10 @@ package com.mongodb.client.gridfs;
 
 import com.mongodb.ReadPreference;
 import com.mongodb.WriteConcern;
+import com.mongodb.annotations.ThreadSafe;
 import com.mongodb.client.gridfs.model.GridFSDownloadByNameOptions;
 import com.mongodb.client.gridfs.model.GridFSUploadOptions;
+import org.bson.BsonValue;
 import org.bson.conversions.Bson;
 import org.bson.types.ObjectId;
 
@@ -31,6 +33,7 @@ import java.io.OutputStream;
  *
  * @since 3.1
  */
+@ThreadSafe
 public interface GridFSBucket {
 
     /**
@@ -144,13 +147,10 @@ public interface GridFSBucket {
     /**
      * Downloads the contents of the stored file specified by {@code id} and writes the contents to the {@code destination} Stream.
      *
-     * @param id the custom id of the file, to be written to the destination stream
+     * @param id the ObjectId of the file to be written to the destination stream
      * @param destination the destination stream
-     * @deprecated using custom id values for with GridFS is no longer supported
      */
-    @Deprecated
-    void downloadLegacyFileToStream(Object id, OutputStream destination);
-
+    void downloadToStream(ObjectId id, OutputStream destination);
 
     /**
      * Opens a Stream from which the application can read the contents of the stored file specified by {@code id}.
@@ -160,15 +160,17 @@ public interface GridFSBucket {
      * @deprecated using custom id values for with GridFS is no longer supported
      */
     @Deprecated
-    GridFSDownloadStream openDownloadLegacyFileStream(Object id);
+    GridFSDownloadStream openDownloadStream(BsonValue id);
 
     /**
      * Downloads the contents of the stored file specified by {@code id} and writes the contents to the {@code destination} Stream.
      *
-     * @param id the ObjectId of the file to be written to the destination stream
+     * @param id the custom id of the file, to be written to the destination stream
      * @param destination the destination stream
+     * @deprecated using custom id values for with GridFS is no longer supported
      */
-    void downloadToStream(ObjectId id, OutputStream destination);
+    @Deprecated
+    void downloadToStream(BsonValue id, OutputStream destination);
 
     /**
      * Opens a Stream from which the application can read the contents of the latest version of the stored file specified by the

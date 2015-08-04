@@ -16,8 +16,10 @@
 
 package com.mongodb.client.gridfs.model;
 
+import com.mongodb.MongoGridFSException;
 import org.bson.BsonValue;
 import org.bson.Document;
+import org.bson.types.ObjectId;
 
 import java.util.Date;
 import java.util.List;
@@ -29,7 +31,7 @@ import static com.mongodb.assertions.Assertions.notNull;
  *
  * @since 3.1
  */
-public class GridFSFile {
+public final class GridFSFile {
     private final BsonValue id;
     private final String filename;
     private final long length;
@@ -57,15 +59,7 @@ public class GridFSFile {
      */
     public GridFSFile(final BsonValue id, final String filename, final long length, final int chunkSize, final Date uploadDate,
                       final String md5, final Document metadata) {
-        this.id = notNull("id", id);
-        this.filename = notNull("filename", filename);
-        this.length = notNull("length", length);
-        this.chunkSize = notNull("chunkSize", chunkSize);
-        this.uploadDate = notNull("uploadDate", uploadDate);
-        this.md5 = notNull("md5", md5);
-        this.metadata = metadata;
-        this.contentType = null;
-        this.aliases = null;
+        this(id, filename, length, chunkSize, uploadDate, md5, metadata, null, null);
     }
 
     /**
@@ -97,7 +91,19 @@ public class GridFSFile {
     }
 
     /**
-     * The id for this file.
+     * The {@link ObjectId} for this file.
+     *
+     * @return the id for this file or null if a custom id type has been used.
+     */
+    public ObjectId getObjectId() {
+        if (id.isObjectId()) {
+            return id.asObjectId().getValue();
+        }
+        return null;
+    }
+
+    /**
+     * The {@link BsonValue} id for this file.
      *
      * @return the id for this file
      */
@@ -153,7 +159,7 @@ public class GridFSFile {
     /**
      * Any additional metadata stored along with the file
      *
-     * @return the metadata or null
+     * @return the metadata document
      */
     public Document getMetadata() {
         return metadata;

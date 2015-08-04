@@ -23,7 +23,7 @@ package com.mongodb.client.gridfs.model;
  *
  * @since 3.1
  */
-public class GridFSDownloadByNameOptions {
+public final class GridFSDownloadByNameOptions {
     private int revision;
 
     /**

@@ -23,8 +23,6 @@ import org.bson.BsonDocument;
 import org.bson.BsonInt32;
 import org.bson.BsonValue;
 
-import java.io.IOException;
-
 import static com.mongodb.assertions.Assertions.notNull;
 import static java.lang.String.format;
 
@@ -57,7 +55,7 @@ class GridFSDownloadStreamImpl extends GridFSDownloadStream {
     }
 
     @Override
-    public int read() throws IOException {
+    public int read() {
         byte[] b = new byte[1];
         int res = read(b);
         if (res < 0) {
@@ -67,14 +65,17 @@ class GridFSDownloadStreamImpl extends GridFSDownloadStream {
     }
 
     @Override
-    public int read(final byte[] b, final int off, final int len) throws IOException {
-        checkClosed();
+    public int read(final byte[] b) {
+        return read(b, 0, b.length);
+    }
 
+    @Override
+    public int read(final byte[] b, final int off, final int len) {
+        checkClosed();
         if (currentPosition == length) {
             return -1;
         } else if (buffer == null) {
             buffer = getBuffer(chunkIndex);
-            bufferOffset = 0;
         } else if (bufferOffset == buffer.length) {
             chunkIndex += 1;
             buffer = getBuffer(chunkIndex);
@@ -89,7 +90,7 @@ class GridFSDownloadStreamImpl extends GridFSDownloadStream {
     }
 
     @Override
-    public long skip(final long bytesToSkip) throws IOException {
+    public long skip(final long bytesToSkip) {
         checkClosed();
         if (bytesToSkip <= 0) {
             return 0;
@@ -104,15 +105,18 @@ class GridFSDownloadStreamImpl extends GridFSDownloadStream {
             buffer = null;
             return skipped;
         } else {
-            chunkIndex = (int) Math.floor((float) skippedPosition / chunkSizeInBytes);
+            int newChunkIndex = (int) Math.floor((float) skippedPosition / chunkSizeInBytes);
+            if (chunkIndex != newChunkIndex) {
+                chunkIndex = newChunkIndex;
+                buffer = null;
+            }
             currentPosition += bytesToSkip;
-            buffer = getBuffer(chunkIndex);
             return bytesToSkip;
         }
     }
 
     @Override
-    public int available() throws IOException {
+    public int available() {
         checkClosed();
         if (buffer == null) {
             return 0;
@@ -122,7 +126,7 @@ class GridFSDownloadStreamImpl extends GridFSDownloadStream {
     }
 
     @Override
-    public void close() throws IOException {
+    public void close() {
         checkClosed();
         closed = true;
     }

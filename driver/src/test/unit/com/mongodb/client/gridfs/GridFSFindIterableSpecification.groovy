@@ -156,6 +156,12 @@ class GridFSFindIterableSpecification extends Specification {
         firstResult.getMD5() == expectedResult.getString('md5').getValue()
         firstResult.getUploadDate() == new Date(expectedResult.getDateTime('uploadDate').getValue())
 
+        if (expectedResult.get('_id').isObjectId()) {
+            firstResult.getObjectId() == expectedResult.getObjectId('_id').getValue();
+        } else {
+            firstResult.getObjectId() == null
+        }
+
         if (expectedResult.containsKey('metadata')) {
             def metadata = codecRegistry.get(Document)
                     .decode(new BsonDocumentReader(expectedResult.getDocument('metadata')), DecoderContext.builder().build())

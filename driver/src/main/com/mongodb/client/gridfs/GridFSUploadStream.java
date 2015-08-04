@@ -16,6 +16,7 @@
 
 package com.mongodb.client.gridfs;
 
+import com.mongodb.annotations.NotThreadSafe;
 import org.bson.types.ObjectId;
 
 import java.io.OutputStream;
@@ -23,10 +24,14 @@ import java.io.OutputStream;
 /**
  * A GridFS OutputStream for uploading data into GridFS
  *
- * Provides the {@code fileId} for the file to be uploaded as well as the {@code write} methods of an {@link OutputStream}
+ * <p>Provides the {@code id} for the file to be uploaded as well as the {@code write} methods of a {@link OutputStream}</p>
+ *
+ * <p>This implementation of a {@code OutputStream} will not throw {@link @IOException}s. However, it  will throw a
+ * {@link com.mongodb.MongoException} if there is an error writing to MongoDB.</p>
  *
  * @since 3.1
  */
+@NotThreadSafe
 public abstract class GridFSUploadStream extends OutputStream {
 
     /**
@@ -35,4 +40,19 @@ public abstract class GridFSUploadStream extends OutputStream {
      * @return the ObjectId for the file to be uploaded
      */
     public abstract ObjectId getFileId();
+
+    @Override
+    public abstract void write(int b);
+
+    @Override
+    public abstract void write(byte[] b);
+
+    @Override
+    public abstract void write(byte[] b, int off, int len);
+
+    @Override
+    public void flush() {}
+
+    @Override
+    public abstract void close();
 }
