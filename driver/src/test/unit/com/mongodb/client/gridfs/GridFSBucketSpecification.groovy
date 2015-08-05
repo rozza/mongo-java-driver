@@ -412,6 +412,41 @@ class GridFSBucketSpecification extends Specification {
                 { indexOptions -> indexOptions.isUnique() })
     }
 
+    def 'should not create indexes if the already exist'() {
+        given:
+        def filesCollection = Mock(MongoCollection)
+        def chunksCollection = Mock(MongoCollection)
+        def listIndexesIterable = Mock(ListIndexesIterable)
+        def findIterable = Mock(FindIterable)
+        def gridFSBucket = new GridFSBucketImpl(Stub(MongoDatabase), 'fs', 255, Stub(CodecRegistry),
+                Stub(ReadPreference), Stub(WriteConcern), filesCollection, chunksCollection, false)
+
+        when:
+        gridFSBucket.openUploadStream('filename')
+
+        then:
+        1 * filesCollection.withReadPreference(_) >> filesCollection
+        1 * filesCollection.find() >> findIterable
+        1 * findIterable.projection(new BsonDocument('_id', new BsonInt32(1))) >> findIterable
+        1 * findIterable.first() >> null
+
+        then:
+        1 * filesCollection.listIndexes(BsonDocument) >> listIndexesIterable
+        1 * listIndexesIterable.into(_) >> [BsonDocument.parse('{"key": {"_id": 1}}'),
+                                            BsonDocument.parse('{"key": {"filename": 1, "uploadDate": 1 }}')]
+
+        then:
+        0 * filesCollection.createIndex(_)
+
+        then:
+        1 * chunksCollection.listIndexes(BsonDocument) >> listIndexesIterable
+        1 * listIndexesIterable.into(_) >> [BsonDocument.parse('{"key": {"_id": 1}}'),
+                                            BsonDocument.parse('{"key": {"files_id": 1, "n": 1 }}')]
+
+        then:
+        0 * chunksCollection.createIndex(_)
+    }
+
     def 'should delete from files collection then chunks collection'() {
         given:
         def fileId = new ObjectId()
