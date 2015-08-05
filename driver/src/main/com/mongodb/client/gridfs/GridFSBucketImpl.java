@@ -264,8 +264,9 @@ final class GridFSBucketImpl implements GridFSBucket {
         ArrayList<BsonDocument> indexes = collection.listIndexes(BsonDocument.class)
                 .into(new ArrayList<BsonDocument>());
         for (BsonDocument indexDoc : indexes) {
-            if (indexDoc.getDocument("key") == index) {
+            if (indexDoc.getDocument("key").equals(index)) {
                 hasIndex = true;
+                break;
             }
         }
         return hasIndex;
