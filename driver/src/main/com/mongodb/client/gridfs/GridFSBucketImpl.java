@@ -40,6 +40,7 @@ import org.bson.types.ObjectId;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.ArrayList;
 
 import static com.mongodb.ReadPreference.primary;
 import static com.mongodb.assertions.Assertions.notNull;
@@ -245,11 +246,29 @@ final class GridFSBucketImpl implements GridFSBucket {
         if (!checkedIndexes) {
             if (filesCollection.withReadPreference(primary()).find()
                     .projection(new BsonDocument("_id", new BsonInt32(1))).first() == null) {
-                filesCollection.createIndex(Indexes.ascending("filename", "uploadDate"));
-                chunksCollection.createIndex(Indexes.ascending("files_id", "n"), new IndexOptions().unique(true));
+                BsonDocument filesIndex = Indexes.ascending("filename", "uploadDate").toBsonDocument(BsonDocument.class, codecRegistry);
+                if (!hasIndex(filesCollection, filesIndex)) {
+                    filesCollection.createIndex(filesIndex);
+                }
+                BsonDocument chunksIndex = Indexes.ascending("files_id", "n").toBsonDocument(BsonDocument.class, codecRegistry);
+                if (!hasIndex(chunksCollection, chunksIndex)) {
+                    chunksCollection.createIndex(chunksIndex, new IndexOptions().unique(true));
+                }
             }
             checkedIndexes = true;
         }
+    }
+
+    private boolean hasIndex(final MongoCollection<BsonDocument> collection, final BsonDocument index) {
+        boolean hasIndex = false;
+        ArrayList<BsonDocument> indexes = collection.listIndexes(BsonDocument.class)
+                .into(new ArrayList<BsonDocument>());
+        for (BsonDocument indexDoc : indexes) {
+            if (indexDoc.getDocument("key") == index) {
+                hasIndex = true;
+            }
+        }
+        return hasIndex;
     }
 
     private GridFSFile getFileByName(final String filename, final GridFSDownloadByNameOptions options) {

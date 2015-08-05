@@ -22,6 +22,7 @@ import com.mongodb.ReadPreference
 import com.mongodb.TestOperationExecutor
 import com.mongodb.WriteConcern
 import com.mongodb.client.FindIterable
+import com.mongodb.client.ListIndexesIterable
 import com.mongodb.client.MongoCollection
 import com.mongodb.client.MongoDatabase
 import com.mongodb.client.gridfs.model.GridFSDownloadByNameOptions
@@ -376,10 +377,12 @@ class GridFSBucketSpecification extends Specification {
         thrown(MongoGridFSException)
     }
 
+    @SuppressWarnings('ClosureAsLastMethodParameter')
     def 'should create indexes on write'() {
         given:
         def filesCollection = Mock(MongoCollection)
         def chunksCollection = Mock(MongoCollection)
+        def listIndexesIterable = Mock(ListIndexesIterable)
         def findIterable = Mock(FindIterable)
         def gridFSBucket = new GridFSBucketImpl(Stub(MongoDatabase), 'fs', 255, Stub(CodecRegistry),
                 Stub(ReadPreference), Stub(WriteConcern), filesCollection, chunksCollection, false)
@@ -394,10 +397,19 @@ class GridFSBucketSpecification extends Specification {
         1 * findIterable.first() >> null
 
         then:
-        1 * filesCollection.createIndex(_)
+        1 * filesCollection.listIndexes(BsonDocument) >> listIndexesIterable
+        1 * listIndexesIterable.into(_) >> []
 
         then:
-        1 * chunksCollection.createIndex(_, _)
+        1 * filesCollection.createIndex({ index -> index == BsonDocument.parse('{"filename": 1, "uploadDate": 1 }') })
+
+        then:
+        1 * chunksCollection.listIndexes(BsonDocument) >> listIndexesIterable
+        1 * listIndexesIterable.into(_) >> []
+
+        then:
+        1 * chunksCollection.createIndex({ index -> index == BsonDocument.parse('{"files_id": 1, "n": 1}') },
+                { indexOptions -> indexOptions.isUnique() })
     }
 
     def 'should delete from files collection then chunks collection'() {
