@@ -38,7 +38,7 @@ final class GridFSUploadStreamImpl extends GridFSUploadStream {
     private final MongoCollection<BsonDocument> chunksCollection;
     private final ObjectId fileId;
     private final String filename;
-    private final int chunkSizeInBytes;
+    private final int chunkSizeBytes;
     private final BsonDocument metadata;
     private final MessageDigest md5;
     private boolean closed;
@@ -48,12 +48,12 @@ final class GridFSUploadStreamImpl extends GridFSUploadStream {
     private int chunkIndex;
 
     GridFSUploadStreamImpl(final MongoCollection<BsonDocument> filesCollection, final MongoCollection<BsonDocument> chunksCollection,
-                           final ObjectId fileId, final String filename, final int chunkSizeInBytes, final BsonDocument metadata) {
+                           final ObjectId fileId, final String filename, final int chunkSizeBytes, final BsonDocument metadata) {
         this.filesCollection = notNull("files collection", filesCollection);
         this.chunksCollection = notNull("chunks collection", chunksCollection);
         this.fileId = notNull("File Id", fileId);
         this.filename = notNull("filename", filename);
-        this.chunkSizeInBytes = chunkSizeInBytes;
+        this.chunkSizeBytes = chunkSizeBytes;
         this.metadata = metadata;
         try {
             md5 = MessageDigest.getInstance("MD5");
@@ -62,7 +62,7 @@ final class GridFSUploadStreamImpl extends GridFSUploadStream {
         }
         chunkIndex = 0;
         bufferOffset = 0;
-        buffer = new byte[chunkSizeInBytes];
+        buffer = new byte[chunkSizeBytes];
     }
 
     @Override
@@ -72,12 +72,9 @@ final class GridFSUploadStreamImpl extends GridFSUploadStream {
 
     @Override
     public void write(final int b) {
-        checkClosed();
-        buffer[bufferOffset++] = (byte) (0xFF & b);
-        lengthInBytes++;
-        if (bufferOffset == chunkSizeInBytes) {
-            writeChunks();
-        }
+        byte[] byteArray = new byte[1];
+        byteArray[0] = (byte) (0xFF & b);
+        write(byteArray, 0, 1);
     }
 
     @Override
@@ -87,6 +84,7 @@ final class GridFSUploadStreamImpl extends GridFSUploadStream {
 
     @Override
     public void write(final byte[] b, final int off, final int len) {
+        checkClosed();
         if (b == null) {
             throw new NullPointerException();
         } else if ((off < 0) || (off > b.length) || (len < 0)
@@ -95,19 +93,37 @@ final class GridFSUploadStreamImpl extends GridFSUploadStream {
         } else if (len == 0) {
             return;
         }
-        for (int i = 0; i < len; i++) {
-            write(b[off + i]);
+
+        int currentOffset = off;
+        int lengthToWrite = len;
+        int amountToCopy = 0;
+
+        while (lengthToWrite > 0) {
+            amountToCopy = lengthToWrite;
+            if (amountToCopy > chunkSizeBytes - bufferOffset) {
+                amountToCopy = chunkSizeBytes - bufferOffset;
+            }
+            System.arraycopy(b, currentOffset, buffer, bufferOffset, amountToCopy);
+
+            bufferOffset += amountToCopy;
+            currentOffset += amountToCopy;
+            lengthToWrite -= amountToCopy;
+            lengthInBytes += amountToCopy;
+
+            if (bufferOffset == chunkSizeBytes) {
+                writeChunk();
+            }
         }
     }
 
     @Override
     public void close() {
         checkClosed();
-        writeChunks();
+        writeChunk();
         closed = true;
         BsonDocument fileDocument = new BsonDocument("_id", new BsonObjectId(fileId))
                 .append("length", new BsonInt64(lengthInBytes))
-                .append("chunkSize", new BsonInt32(chunkSizeInBytes))
+                .append("chunkSize", new BsonInt32(chunkSizeBytes))
                 .append("uploadDate", new BsonDateTime(System.currentTimeMillis()))
                 .append("md5", new BsonString(toHex(md5.digest())))
                 .append("filename", new BsonString(filename));
@@ -119,7 +135,7 @@ final class GridFSUploadStreamImpl extends GridFSUploadStream {
         buffer = null;
     }
 
-    private void writeChunks() {
+    private void writeChunk() {
         if (bufferOffset > 0) {
             chunksCollection.insertOne(
                     new BsonDocument("files_id", new BsonObjectId(fileId))
@@ -132,7 +148,7 @@ final class GridFSUploadStreamImpl extends GridFSUploadStream {
     }
 
     private BsonBinary getData() {
-        if (bufferOffset < chunkSizeInBytes) {
+        if (bufferOffset < chunkSizeBytes) {
             byte[] sizedBuffer = new byte[bufferOffset];
             System.arraycopy(buffer, 0, sizedBuffer, 0, bufferOffset);
             buffer = sizedBuffer;
