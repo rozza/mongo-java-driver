@@ -134,7 +134,7 @@ final class GridFSUploadStreamImpl extends GridFSUploadStream {
                 .append("md5", new BsonString(toHex(md5.digest())))
                 .append("filename", new BsonString(filename));
 
-        if (!metadata.isEmpty()) {
+        if (metadata != null && !metadata.isEmpty()) {
             fileDocument.append("metadata", metadata);
         }
         filesCollection.insertOne(fileDocument);

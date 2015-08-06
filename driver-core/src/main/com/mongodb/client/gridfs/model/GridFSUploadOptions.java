@@ -16,6 +16,7 @@
 
 package com.mongodb.client.gridfs.model;
 
+import org.bson.Document;
 import org.bson.conversions.Bson;
 
 /**
@@ -27,7 +28,7 @@ import org.bson.conversions.Bson;
  */
 public final class GridFSUploadOptions {
     private Integer chunkSizeBytes;
-    private Bson metadata;
+    private Document metadata;
 
     /**
      * Construct a new instance.
@@ -72,7 +73,7 @@ public final class GridFSUploadOptions {
      * @param metadata the metadata to be stored
      * @return this
      */
-    public GridFSUploadOptions metadata(final Bson metadata) {
+    public GridFSUploadOptions metadata(final Document metadata) {
         this.metadata = metadata;
         return this;
     }

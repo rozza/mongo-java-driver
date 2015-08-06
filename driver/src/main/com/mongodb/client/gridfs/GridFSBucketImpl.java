@@ -54,7 +54,6 @@ final class GridFSBucketImpl implements GridFSBucket {
     private final MongoDatabase database;
     private final String bucketName;
     private final int chunkSizeBytes;
-    private final CodecRegistry codecRegistry;
     private final WriteConcern writeConcern;
     private final ReadPreference readPreference;
     private final MongoCollection<BsonDocument> filesCollection;
@@ -69,21 +68,18 @@ final class GridFSBucketImpl implements GridFSBucket {
         this.database = notNull("database", database);
         this.bucketName = notNull("bucketName", bucketName);
         this.chunkSizeBytes = 255;
-        this.codecRegistry = database.getCodecRegistry();
         this.writeConcern = database.getWriteConcern();
         this.readPreference = database.getReadPreference();
         this.filesCollection = getFilesCollection();
         this.chunksCollection = getChunksCollection();
     }
 
-    GridFSBucketImpl(final MongoDatabase database, final String bucketName, final int chunkSizeBytes, final CodecRegistry codecRegistry,
-                     final ReadPreference readPreference, final WriteConcern writeConcern,
-                     final MongoCollection<BsonDocument> filesCollection, final MongoCollection<BsonDocument> chunksCollection,
-                     final boolean checkedIndexes) {
+    GridFSBucketImpl(final MongoDatabase database, final String bucketName, final int chunkSizeBytes, final ReadPreference readPreference,
+                     final WriteConcern writeConcern, final MongoCollection<BsonDocument> filesCollection,
+                     final MongoCollection<BsonDocument> chunksCollection, final boolean checkedIndexes) {
         this.database = notNull("database", database);
         this.bucketName = notNull("bucketName", bucketName);
         this.chunkSizeBytes = chunkSizeBytes;
-        this.codecRegistry = notNull("codecRegistry", codecRegistry);
         this.readPreference = notNull("readPreference", readPreference);
         this.writeConcern = notNull("writeConcern", writeConcern);
         this.checkedIndexes = checkedIndexes;
@@ -113,19 +109,19 @@ final class GridFSBucketImpl implements GridFSBucket {
 
     @Override
     public GridFSBucket withChunkSizeBytes(final int chunkSizeBytes) {
-        return new GridFSBucketImpl(database, bucketName, chunkSizeBytes, codecRegistry, readPreference, writeConcern, filesCollection,
+        return new GridFSBucketImpl(database, bucketName, chunkSizeBytes, readPreference, writeConcern, filesCollection,
                 chunksCollection, checkedIndexes);
     }
 
     @Override
     public GridFSBucket withReadPreference(final ReadPreference readPreference) {
-        return new GridFSBucketImpl(database, bucketName, chunkSizeBytes, codecRegistry, readPreference, writeConcern, filesCollection,
+        return new GridFSBucketImpl(database, bucketName, chunkSizeBytes, readPreference, writeConcern, filesCollection,
                 chunksCollection, checkedIndexes);
     }
 
     @Override
     public GridFSBucket withWriteConcern(final WriteConcern writeConcern) {
-        return new GridFSBucketImpl(database, bucketName, chunkSizeBytes, codecRegistry, readPreference, writeConcern, filesCollection,
+        return new GridFSBucketImpl(database, bucketName, chunkSizeBytes, readPreference, writeConcern, filesCollection,
                 chunksCollection, checkedIndexes);
     }
 
@@ -137,10 +133,12 @@ final class GridFSBucketImpl implements GridFSBucket {
     @Override
     public GridFSUploadStream openUploadStream(final String filename, final GridFSUploadOptions options) {
         int chunkSize = options.getChunkSizeBytes() == null ? chunkSizeBytes : options.getChunkSizeBytes();
-        Bson metadata = options.getMetadata() == null ? new BsonDocument() : options.getMetadata();
-        BsonDocument metadataBsonDocument = metadata.toBsonDocument(BsonDocument.class, codecRegistry);
+        BsonDocument metadata = null;
+        if (options.getMetadata() != null) {
+            metadata = options.getMetadata().toBsonDocument(BsonDocument.class, DEFAULT_CODEC_REGISTRY);
+        }
         checkCreateIndex();
-        return new GridFSUploadStreamImpl(filesCollection, chunksCollection, new ObjectId(), filename, chunkSize, metadataBsonDocument);
+        return new GridFSUploadStreamImpl(filesCollection, chunksCollection, new ObjectId(), filename, chunkSize, metadata);
     }
 
     @Override

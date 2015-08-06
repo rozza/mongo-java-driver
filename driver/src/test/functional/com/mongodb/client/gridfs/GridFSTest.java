@@ -28,6 +28,7 @@ import org.bson.BsonInt64;
 import org.bson.BsonObjectId;
 import org.bson.BsonString;
 import org.bson.BsonValue;
+import org.bson.Document;
 import org.bson.types.ObjectId;
 import org.junit.Before;
 import org.junit.Test;
@@ -269,7 +270,7 @@ public class GridFSTest extends DatabaseTestCase {
                 options = options.chunkSizeBytes(rawOptions.getInt32("chunkSizeBytes").getValue());
             }
             if (rawOptions.containsKey("metadata")) {
-                options = options.metadata(rawOptions.getDocument("metadata"));
+                options = options.metadata(Document.parse(rawOptions.getDocument("metadata").toJson()));
             }
 
             objectId = gridFSBucket.uploadFromStream(filename, input, options);
