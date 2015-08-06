@@ -77,7 +77,7 @@ class GridFSDownloadStreamImpl extends GridFSDownloadStream {
 
         if (eof) {
             return -1;
-        } if (currentPosition == length) {
+        } else if (currentPosition == length) {
             eof = true;
             int chunkToCheck = chunkIndex;
             if (buffer != null) {
