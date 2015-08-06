@@ -19,6 +19,7 @@ package com.mongodb.client.gridfs;
 import com.mongodb.MongoGridFSException;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.gridfs.model.GridFSFile;
+import org.bson.BsonBinary;
 import org.bson.BsonDocument;
 import org.bson.BsonInt32;
 import org.bson.BsonValue;
@@ -37,6 +38,7 @@ class GridFSDownloadStreamImpl extends GridFSDownloadStream {
     private int bufferOffset;
     private long currentPosition;
     private byte[] buffer = null;
+    private boolean eof;
     private boolean closed;
 
     GridFSDownloadStreamImpl(final GridFSFile fileInfo, final MongoCollection<BsonDocument> chunksCollection) {
@@ -72,7 +74,18 @@ class GridFSDownloadStreamImpl extends GridFSDownloadStream {
     @Override
     public int read(final byte[] b, final int off, final int len) {
         checkClosed();
-        if (currentPosition == length) {
+        if (eof) {
+            return -1;
+        } if (currentPosition == length) {
+            eof = true;
+            int chunkToCheck = chunkIndex;
+            if (buffer != null) {
+                chunkToCheck += 1;
+            }
+            BsonDocument chunk = getChunk(chunkToCheck);
+            if (chunk != null) {
+                validateData(chunk.getBinary("data", new BsonBinary(new byte[0])).getData(), chunkToCheck);
+            }
             return -1;
         } else if (buffer == null) {
             buffer = getBuffer(chunkIndex);
@@ -137,27 +150,41 @@ class GridFSDownloadStreamImpl extends GridFSDownloadStream {
         }
     }
 
-    private byte[] getBuffer(final int chunkIndexToFetch) {
-        BsonDocument chunk = chunksCollection.find(new BsonDocument("files_id", fileId)
+    private BsonDocument getChunk(final int chunkIndexToFetch) {
+        return chunksCollection.find(new BsonDocument("files_id", fileId)
                 .append("n", new BsonInt32(chunkIndexToFetch))).first();
+    }
+
+    private byte[] validateData(final byte[] data, final int chunkIndex) {
+        long expectedDataLength = 0;
+        boolean extraChunk = false;
+        if (chunkIndex + 1 > numberOfChunks) {
+            extraChunk = true;
+        } else if (chunkIndex + 1 == numberOfChunks) {
+            expectedDataLength = length - (chunkIndex * (long) chunkSizeInBytes);
+        } else {
+            expectedDataLength = chunkSizeInBytes;
+        }
+
+        if (extraChunk && data.length > expectedDataLength) {
+            throw new MongoGridFSException(format("Extra chunk data for file_id: %s. Unexpected chunk at chunk index %s."
+                    + "The size was %s and it should be %s bytes.", fileId, chunkIndex, data.length, expectedDataLength));
+        } else if (data.length != expectedDataLength) {
+            throw new MongoGridFSException(format("Chunk size data length is not the expected size. "
+                            + "The size was %s for file_id: %s chunk index %s it should be %s bytes.",
+                    data.length, fileId, chunkIndex, expectedDataLength));
+        }
+        return data;
+    }
+
+    private byte[] getBuffer(final int chunkIndexToFetch) {
+        BsonDocument chunk = getChunk(chunkIndexToFetch);
 
         if (chunk == null) {
             throw new MongoGridFSException(format("Could not find file chunk for file_id: %s at chunk index %s.",
                         fileId, chunkIndexToFetch));
         } else {
-            byte[] data = chunk.getBinary("data").getData();
-            long expectedDataLength;
-            if (chunkIndexToFetch + 1 == numberOfChunks) {
-                expectedDataLength = length - (chunkIndexToFetch * (long) chunkSizeInBytes);
-            } else {
-                expectedDataLength = chunkSizeInBytes;
-            }
-            if (data.length != expectedDataLength) {
-                throw new MongoGridFSException(format("Chunk size data length is not the expected size. "
-                        + "The size was %s for file_id: %s chunk index %s it should be %s bytes.",
-                        data.length, fileId, chunkIndexToFetch, expectedDataLength));
-            }
-            return data;
+            return validateData(chunk.getBinary("data", new BsonBinary(new byte[0])).getData(), chunkIndexToFetch);
         }
     }
 }

@@ -227,10 +227,7 @@ public class GridFSTest extends DatabaseTestCase {
             assertEquals(printHexBinary(outputStream.toByteArray()).toLowerCase(),
                     assertion.getDocument("result").getString("$hex").getValue());
         } else if (assertion.containsKey("error")) {
-            // We don't need to read anything more so don't see the extra chunk
-            if (!assertion.getString("error").getValue().equals("ExtraChunk")) {
-                assertNotNull("Should have thrown an exception", error);
-            }
+            assertNotNull("Should have thrown an exception", error);
         }
     }
 

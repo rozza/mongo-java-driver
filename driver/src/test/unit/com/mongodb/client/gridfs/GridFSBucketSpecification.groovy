@@ -49,6 +49,7 @@ import static com.mongodb.ReadPreference.secondary
 import static org.bson.codecs.configuration.CodecRegistries.fromProviders
 import static spock.util.matcher.HamcrestSupport.expect
 
+@SuppressWarnings('ClosureAsLastMethodParameter')
 class GridFSBucketSpecification extends Specification {
 
     def codecRegistry = fromProviders([new ValueCodecProvider(),  new DocumentCodecProvider(), new BsonValueCodecProvider()])
@@ -191,8 +192,16 @@ class GridFSBucketSpecification extends Specification {
         1 * findIterable.filter(new BsonDocument('_id', bsonFileId)) >> findIterable
         1 * findIterable.map(_) >> findIterable
         1 * findIterable.first() >> fileInfo
-        1 * chunksCollection.find(_) >> findIterable
+        1 * chunksCollection.find({ query ->
+            query.getInt32('n') == new BsonInt32(0)
+        }) >> findIterable
         1 * findIterable.first() >> chunkDocument
+
+        then: 'extra chunk check'
+        1 * chunksCollection.find({ query ->
+            query.getInt32('n') == new BsonInt32(1)
+        }) >> findIterable
+        1 * findIterable.first() >> null
 
         then:
         outputStream.toByteArray() == tenBytes
@@ -223,8 +232,16 @@ class GridFSBucketSpecification extends Specification {
         1 * findIterable.filter(new BsonDocument('_id', bsonFileId)) >> findIterable
         1 * findIterable.map(_) >> findIterable
         1 * findIterable.first() >> fileInfo
-        1 * chunksCollection.find(_) >> findIterable
+        1 * chunksCollection.find({ query ->
+            query.getInt32('n') == new BsonInt32(0)
+        }) >> findIterable
         1 * findIterable.first() >> chunkDocument
+
+        then: 'extra chunk check'
+        1 * chunksCollection.find({ query ->
+            query.getInt32('n') == new BsonInt32(1)
+        }) >> findIterable
+        1 * findIterable.first() >> null
 
         then:
         outputStream.toByteArray() == tenBytes
@@ -257,8 +274,16 @@ class GridFSBucketSpecification extends Specification {
         1 * findIterable.filter(new BsonDocument('filename', new BsonString(filename))) >> findIterable
         1 * findIterable.map(_) >> findIterable
         1 * findIterable.first() >> fileInfo
-        1 * chunksCollection.find(_) >> findIterable
+        1 * chunksCollection.find({ query ->
+            query.getInt32('n') == new BsonInt32(0)
+        }) >> findIterable
         1 * findIterable.first() >> chunkDocument
+
+        then: 'extra chunk check'
+        1 * chunksCollection.find({ query ->
+            query.getInt32('n') == new BsonInt32(1)
+        }) >> findIterable
+        1 * findIterable.first() >> null
 
         then:
         outputStream.toByteArray() == tenBytes
@@ -377,7 +402,6 @@ class GridFSBucketSpecification extends Specification {
         thrown(MongoGridFSException)
     }
 
-    @SuppressWarnings('ClosureAsLastMethodParameter')
     def 'should create indexes on write'() {
         given:
         def filesCollection = Mock(MongoCollection)

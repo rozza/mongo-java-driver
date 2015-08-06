@@ -84,6 +84,14 @@ class GridFSDownloadStreamSpecification extends Specification {
         when:
         result = downloadStream.read()
 
+        then: 'extra chunk check'
+        result == -1
+        1 * chunksCollection.find(findQuery.append('n', new BsonInt32(2))) >> findIterable
+        1 * findIterable.first() >> null
+
+        when:
+        result = downloadStream.read()
+
         then:
         result == -1
         0 * chunksCollection.find(_)
@@ -168,6 +176,7 @@ class GridFSDownloadStreamSpecification extends Specification {
     def 'should handle skip that is larger or equal to the file length'() {
         given:
         def chunksCollection = Mock(MongoCollection)
+        def findIterable = Mock(FindIterable)
         def downloadStream = new GridFSDownloadStreamImpl(fileInfo, chunksCollection)
 
         when:
@@ -182,10 +191,58 @@ class GridFSDownloadStreamSpecification extends Specification {
 
         then:
         result == -1
+        1 * chunksCollection.find(_) >> findIterable
+        1 * findIterable.first() >> null
+
+        when:
+        result = downloadStream.read()
+
+        then:
+        result == -1
         0 * chunksCollection.find(_)
 
         where:
         skipValue << [3, 100]
+    }
+
+    def 'should allow extra empty chunk'() {
+        given:
+        def fileInfo = new GridFSFile(new BsonObjectId(new ObjectId()), 'filename', 10L, 10, new Date(), 'abc', new Document())
+        def chunksCollection = Mock(MongoCollection)
+        def findIterable = Mock(FindIterable)
+
+        def findQuery = new BsonDocument('files_id', fileInfo.getId()).append('n', new BsonInt32(0))
+        def downloadStream = new GridFSDownloadStreamImpl(fileInfo, chunksCollection)
+
+        def tenBytes = new byte[10]
+        def chunkDocument = new BsonDocument('files_id', fileInfo.getId())
+                .append('n', new BsonInt32(0))
+                .append('data', new BsonBinary(tenBytes))
+
+        def emptyChunkDocument = new BsonDocument('files_id', fileInfo.getId())
+                .append('n', new BsonInt32(1))
+                .append('data', new BsonBinary(new byte[0]))
+
+        when:
+        downloadStream.read(new byte[10])
+
+        then:
+        1 * chunksCollection.find(findQuery) >> findIterable
+        1 * findIterable.first() >> chunkDocument
+
+        when:
+        downloadStream.read()
+
+        then: 'extra chunk check'
+        1 * chunksCollection.find(findQuery.append('n', new BsonInt32(1))) >> findIterable
+        1 * findIterable.first() >> emptyChunkDocument
+
+        when:
+        downloadStream.read()
+
+        then:
+        0 * chunksCollection.find(_)
+        0 * findIterable.first()
     }
 
     def 'should throw if no chunks found when data is expected'() {
@@ -205,13 +262,12 @@ class GridFSDownloadStreamSpecification extends Specification {
         thrown(MongoGridFSException)
     }
 
-    def 'should throw if chunk data is the wrong size'() {
+    def 'should throw if chunk data is differs from the expected'() {
         given:
-        def oneByte = new byte[1]
         def findQuery = new BsonDocument('files_id', fileInfo.getId()).append('n', new BsonInt32(0))
         def chunkDocument = new BsonDocument('files_id', fileInfo.getId())
                 .append('n', new BsonInt32(0))
-                .append('data', new BsonBinary(oneByte))
+                .append('data', new BsonBinary(new byte[1]))
 
         def findIterable = Mock(FindIterable)
         def chunksCollection = Mock(MongoCollection)
@@ -223,6 +279,66 @@ class GridFSDownloadStreamSpecification extends Specification {
         then:
         1 * chunksCollection.find(findQuery) >> findIterable
         1 * findIterable.first() >> chunkDocument
+
+        then:
+        thrown(MongoGridFSException)
+
+        where:
+        data << [new byte[1], new byte[100]]
+    }
+
+    def 'should throw if extra chunk contains data'() {
+        def fileInfo = new GridFSFile(new BsonObjectId(new ObjectId()), 'filename', 10L, 10, new Date(), 'abc', new Document())
+        def chunksCollection = Mock(MongoCollection)
+        def findIterable = Mock(FindIterable)
+
+        def findQuery = new BsonDocument('files_id', fileInfo.getId()).append('n', new BsonInt32(0))
+        def downloadStream = new GridFSDownloadStreamImpl(fileInfo, chunksCollection)
+
+        def tenBytes = new byte[10]
+        def chunkDocument = new BsonDocument('files_id', fileInfo.getId())
+                .append('n', new BsonInt32(0))
+                .append('data', new BsonBinary(tenBytes))
+
+        def badChunkDocument = new BsonDocument('files_id', fileInfo.getId())
+                .append('n', new BsonInt32(1))
+                .append('data', new BsonBinary(new byte[1]))
+
+        when:
+        downloadStream.read(new byte[10])
+
+        then:
+        1 * chunksCollection.find(findQuery) >> findIterable
+        1 * findIterable.first() >> chunkDocument
+
+        when:
+        downloadStream.read()
+
+        then:
+        1 * chunksCollection.find(findQuery.append('n', new BsonInt32(1))) >> findIterable
+        1 * findIterable.first() >> badChunkDocument
+
+        then:
+        thrown(MongoGridFSException)
+    }
+
+    def 'should throw if empty chunk contains data'() {
+        def fileInfo = new GridFSFile(new BsonObjectId(new ObjectId()), 'filename', 0L, 10, new Date(), 'abc', new Document())
+        def chunksCollection = Mock(MongoCollection)
+        def findIterable = Mock(FindIterable)
+        def findQuery = new BsonDocument('files_id', fileInfo.getId()).append('n', new BsonInt32(0))
+        def downloadStream = new GridFSDownloadStreamImpl(fileInfo, chunksCollection)
+
+        def badChunkDocument = new BsonDocument('files_id', fileInfo.getId())
+                .append('n', new BsonInt32(1))
+                .append('data', new BsonBinary(new byte[1]))
+
+        when:
+        downloadStream.read(new byte[10])
+
+        then:
+        1 * chunksCollection.find(findQuery) >> findIterable
+        1 * findIterable.first() >> badChunkDocument
 
         then:
         thrown(MongoGridFSException)

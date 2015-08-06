@@ -16,7 +16,6 @@
 
 package com.mongodb.client.gridfs.model;
 
-import com.mongodb.MongoGridFSException;
 import org.bson.BsonValue;
 import org.bson.Document;
 import org.bson.types.ObjectId;
