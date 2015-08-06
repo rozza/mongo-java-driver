@@ -92,6 +92,11 @@ final class GridFSBucketImpl implements GridFSBucket {
     }
 
     @Override
+    public String getBucketName() {
+        return bucketName;
+    }
+
+    @Override
     public int getChunkSizeBytes() {
         return chunkSizeBytes;
     }

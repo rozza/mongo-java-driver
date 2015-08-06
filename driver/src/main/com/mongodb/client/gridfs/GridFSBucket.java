@@ -37,6 +37,13 @@ import java.io.OutputStream;
 public interface GridFSBucket {
 
     /**
+     * The bucket name.
+     *
+     * @return the bucket name
+     */
+    String getBucketName();
+
+    /**
      * Sets the chunk size in bytes. Defaults to 255.
      *
      * @return the chunk size in bytes.

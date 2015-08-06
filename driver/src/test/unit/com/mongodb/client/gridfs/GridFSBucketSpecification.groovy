@@ -54,6 +54,23 @@ class GridFSBucketSpecification extends Specification {
 
     def codecRegistry = fromProviders([new ValueCodecProvider(),  new DocumentCodecProvider(), new BsonValueCodecProvider()])
 
+    def 'should return the correct bucket name'() {
+        given:
+        def database = Stub(MongoDatabase)
+
+        when:
+        def bucketName = new GridFSBucketImpl(database).getBucketName()
+
+        then:
+        bucketName == 'fs'
+
+        when:
+        bucketName = new GridFSBucketImpl(database, 'custom').getBucketName()
+
+        then:
+        bucketName == 'custom'
+    }
+
     def 'should behave correctly when using withChunkSizeBytes'() {
         given:
         def newChunkSize = 200
