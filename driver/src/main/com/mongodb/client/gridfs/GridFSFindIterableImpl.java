@@ -18,6 +18,7 @@ package com.mongodb.client.gridfs;
 
 import com.mongodb.Block;
 import com.mongodb.Function;
+import com.mongodb.MongoClient;
 import com.mongodb.MongoGridFSException;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoCursor;
@@ -40,11 +41,10 @@ import java.util.concurrent.TimeUnit;
 import static java.lang.String.format;
 
 class GridFSFindIterableImpl implements GridFSFindIterable {
-    private final CodecRegistry codecRegistry;
+    private static final CodecRegistry DEFAULT_CODEC_REGISTRY = MongoClient.getDefaultCodecRegistry();
     private final FindIterable<BsonDocument> underlying;
 
-    public GridFSFindIterableImpl(final CodecRegistry codecRegistry, final FindIterable<BsonDocument> underlying) {
-        this.codecRegistry = codecRegistry;
+    public GridFSFindIterableImpl(final FindIterable<BsonDocument> underlying) {
         this.underlying = underlying;
     }
 
@@ -126,7 +126,7 @@ class GridFSFindIterableImpl implements GridFSFindIterable {
                 int chunkSize = document.getInt32("chunkSize").getValue();
                 Date uploadDate = new Date(document.getDateTime("uploadDate").getValue());
                 String md5 = document.getString("md5").getValue();
-                Document metadata = codecRegistry.get(Document.class)
+                Document metadata = DEFAULT_CODEC_REGISTRY.get(Document.class)
                         .decode(new BsonDocumentReader(document.getDocument("metadata", new BsonDocument())),
                                 DecoderContext.builder().build());
 

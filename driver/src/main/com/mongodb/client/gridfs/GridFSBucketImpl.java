@@ -16,6 +16,7 @@
 
 package com.mongodb.client.gridfs;
 
+import com.mongodb.MongoClient;
 import com.mongodb.MongoGridFSException;
 import com.mongodb.ReadPreference;
 import com.mongodb.WriteConcern;
@@ -48,6 +49,8 @@ import static java.lang.String.format;
 
 @SuppressWarnings("deprecation")
 final class GridFSBucketImpl implements GridFSBucket {
+    private static final CodecRegistry DEFAULT_CODEC_REGISTRY = MongoClient.getDefaultCodecRegistry();
+
     private final MongoDatabase database;
     private final String bucketName;
     private final int chunkSizeBytes;
@@ -200,7 +203,7 @@ final class GridFSBucketImpl implements GridFSBucket {
 
     @Override
     public GridFSFindIterable find() {
-        return new GridFSFindIterableImpl(codecRegistry, filesCollection.find());
+        return new GridFSFindIterableImpl(filesCollection.find());
     }
 
     @Override
@@ -230,14 +233,14 @@ final class GridFSBucketImpl implements GridFSBucket {
 
     private MongoCollection<BsonDocument> getFilesCollection() {
         return database.getCollection(bucketName + ".files", BsonDocument.class)
-                .withCodecRegistry(codecRegistry)
+                .withCodecRegistry(DEFAULT_CODEC_REGISTRY)
                 .withReadPreference(readPreference)
                 .withWriteConcern(writeConcern);
     }
 
     private MongoCollection<BsonDocument> getChunksCollection() {
         return database.getCollection(bucketName + ".chunks", BsonDocument.class)
-                .withCodecRegistry(codecRegistry)
+                .withCodecRegistry(DEFAULT_CODEC_REGISTRY)
                 .withReadPreference(readPreference)
                 .withWriteConcern(writeConcern);
     }
@@ -246,11 +249,13 @@ final class GridFSBucketImpl implements GridFSBucket {
         if (!checkedIndexes) {
             if (filesCollection.withReadPreference(primary()).find()
                     .projection(new BsonDocument("_id", new BsonInt32(1))).first() == null) {
-                BsonDocument filesIndex = Indexes.ascending("filename", "uploadDate").toBsonDocument(BsonDocument.class, codecRegistry);
+                BsonDocument filesIndex = Indexes.ascending("filename", "uploadDate")
+                        .toBsonDocument(BsonDocument.class, DEFAULT_CODEC_REGISTRY);
                 if (!hasIndex(filesCollection, filesIndex)) {
                     filesCollection.createIndex(filesIndex);
                 }
-                BsonDocument chunksIndex = Indexes.ascending("files_id", "n").toBsonDocument(BsonDocument.class, codecRegistry);
+                BsonDocument chunksIndex = Indexes.ascending("files_id", "n")
+                        .toBsonDocument(BsonDocument.class, DEFAULT_CODEC_REGISTRY);
                 if (!hasIndex(chunksCollection, chunksIndex)) {
                     chunksCollection.createIndex(chunksIndex, new IndexOptions().unique(true));
                 }

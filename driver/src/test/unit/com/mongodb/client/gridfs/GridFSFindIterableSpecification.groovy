@@ -20,6 +20,7 @@ import com.mongodb.Block
 import com.mongodb.CursorType
 import com.mongodb.FindIterableImpl
 import com.mongodb.Function
+import com.mongodb.MongoClient
 import com.mongodb.MongoGridFSException
 import com.mongodb.MongoNamespace
 import com.mongodb.TestOperationExecutor
@@ -31,23 +32,19 @@ import org.bson.BsonDocument
 import org.bson.BsonDocumentReader
 import org.bson.BsonInt32
 import org.bson.Document
-import org.bson.codecs.BsonValueCodecProvider
 import org.bson.codecs.DecoderContext
 import org.bson.codecs.DocumentCodec
-import org.bson.codecs.DocumentCodecProvider
-import org.bson.codecs.ValueCodecProvider
 import spock.lang.Shared
 import spock.lang.Specification
 
 import static com.mongodb.CustomMatchers.isTheSameAs
 import static com.mongodb.ReadPreference.secondary
 import static java.util.concurrent.TimeUnit.MILLISECONDS
-import static org.bson.codecs.configuration.CodecRegistries.fromProviders
 import static spock.util.matcher.HamcrestSupport.expect
 
 class GridFSFindIterableSpecification extends Specification {
 
-    def codecRegistry = fromProviders([new ValueCodecProvider(),  new DocumentCodecProvider(), new BsonValueCodecProvider()])
+    def codecRegistry = MongoClient.getDefaultCodecRegistry()
     def readPreference = secondary()
     def namespace = new MongoNamespace('test', 'fs.files')
 
@@ -56,7 +53,7 @@ class GridFSFindIterableSpecification extends Specification {
         def executor = new TestOperationExecutor([null, null]);
         def underlying = new FindIterableImpl(namespace, Document, Document, codecRegistry, readPreference, executor,
                 new Document(), new FindOptions())
-        def findIterable = new GridFSFindIterableImpl(codecRegistry, underlying)
+        def findIterable = new GridFSFindIterableImpl(underlying)
 
         when: 'default input should be as expected'
         findIterable.iterator()
@@ -142,7 +139,7 @@ class GridFSFindIterableSpecification extends Specification {
         def executor = new TestOperationExecutor([cursor(), cursor(), cursor(), cursor()]);
         def underlying = new FindIterableImpl(namespace, Document, Document, codecRegistry, readPreference, executor,
                 new Document(), new FindOptions())
-        def mongoIterable = new GridFSFindIterableImpl(codecRegistry, underlying)
+        def mongoIterable = new GridFSFindIterableImpl(underlying)
 
         when:
         def firstResult = mongoIterable.first()
@@ -241,7 +238,7 @@ class GridFSFindIterableSpecification extends Specification {
         def executor = new TestOperationExecutor([cursor(), cursor(), cursor(), cursor()]);
         def underlying = new FindIterableImpl(namespace, Document, Document, codecRegistry, readPreference, executor,
                 new Document(), new FindOptions())
-        def mongoIterable = new GridFSFindIterableImpl(codecRegistry, underlying)
+        def mongoIterable = new GridFSFindIterableImpl(underlying)
 
         when:
         mongoIterable.first()

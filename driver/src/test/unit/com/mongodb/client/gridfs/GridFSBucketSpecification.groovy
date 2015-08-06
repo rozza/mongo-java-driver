@@ -343,7 +343,7 @@ class GridFSBucketSpecification extends Specification {
 
         then:
         1 * collection.find() >> findIterable
-        expect result, isTheSameAs(new GridFSFindIterableImpl(codecRegistry, findIterable))
+        expect result, isTheSameAs(new GridFSFindIterableImpl(findIterable))
 
         when:
         result = gridFSBucket.find(filter)
@@ -351,7 +351,7 @@ class GridFSBucketSpecification extends Specification {
         then:
         1 * collection.find() >> findIterable
         1 * findIterable.filter(filter)
-        expect result, isTheSameAs(new GridFSFindIterableImpl(codecRegistry, findIterable))
+        expect result, isTheSameAs(new GridFSFindIterableImpl(findIterable))
     }
 
     def 'should throw an exception if file not found when opening by name'() {
