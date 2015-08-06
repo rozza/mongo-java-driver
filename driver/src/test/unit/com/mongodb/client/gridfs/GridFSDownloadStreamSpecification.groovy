@@ -20,11 +20,9 @@ import com.mongodb.MongoGridFSException
 import com.mongodb.client.FindIterable
 import com.mongodb.client.MongoCollection
 import com.mongodb.client.gridfs.model.GridFSFile
-import org.bson.BsonBinary
-import org.bson.BsonDocument
-import org.bson.BsonInt32
 import org.bson.BsonObjectId
 import org.bson.Document
+import org.bson.types.Binary
 import org.bson.types.ObjectId
 import spock.lang.Specification
 
@@ -43,10 +41,10 @@ class GridFSDownloadStreamSpecification extends Specification {
         when:
         def twoBytes = new byte[2]
         def oneByte = new byte[1]
-        def findQuery = new BsonDocument('files_id', fileInfo.getId()).append('n', new BsonInt32(0))
-        def chunkDocument = new BsonDocument('files_id', fileInfo.getId())
-                .append('n', new BsonInt32(0))
-                .append('data', new BsonBinary(twoBytes))
+        def findQuery = new Document('files_id', fileInfo.getId()).append('n', 0)
+        def chunkDocument = new Document('files_id', fileInfo.getId())
+                .append('n', 0)
+                .append('data', new Binary(twoBytes))
 
         def findIterable = Mock(FindIterable)
         def chunksCollection = Mock(MongoCollection)
@@ -78,15 +76,15 @@ class GridFSDownloadStreamSpecification extends Specification {
 
         then:
         result == (oneByte[0] & 0xFF)
-        1 * chunksCollection.find(findQuery.append('n', new BsonInt32(1))) >> findIterable
-        1 * findIterable.first() >> chunkDocument.append('data', new BsonBinary(oneByte))
+        1 * chunksCollection.find(findQuery.append('n', 1)) >> findIterable
+        1 * findIterable.first() >> chunkDocument.append('data', new Binary(oneByte))
 
         when:
         result = downloadStream.read()
 
         then: 'extra chunk check'
         result == -1
-        1 * chunksCollection.find(findQuery.append('n', new BsonInt32(2))) >> findIterable
+        1 * chunksCollection.find(findQuery.append('n', 2)) >> findIterable
         1 * findIterable.first() >> null
 
         when:
@@ -104,13 +102,11 @@ class GridFSDownloadStreamSpecification extends Specification {
 
         def firstChunkBytes = 1..25 as byte[]
         def thirdChunkBytes = 51 .. 60 as byte[]
-        def findQueries = [new BsonDocument('files_id', fileInfo.getId()).append('n', new BsonInt32(0)),
-                           new BsonDocument('files_id', fileInfo.getId()).append('n', new BsonInt32(2))]
+        def findQueries = [new Document('files_id', fileInfo.getId()).append('n', 0),
+                           new Document('files_id', fileInfo.getId()).append('n', 2)]
         def chunkDocuments =
-                [new BsonDocument('files_id', fileInfo.getId()).append('n', new BsonInt32(0))
-                         .append('data', new BsonBinary(firstChunkBytes)),
-                 new BsonDocument('files_id', fileInfo.getId()).append('n', new BsonInt32(2))
-                         .append('data', new BsonBinary(thirdChunkBytes))]
+                [new Document('files_id', fileInfo.getId()).append('n', 0).append('data', new Binary(firstChunkBytes)),
+                 new Document('files_id', fileInfo.getId()).append('n', 2).append('data', new Binary(thirdChunkBytes))]
 
         def findIterable = Mock(FindIterable)
         def chunksCollection = Mock(MongoCollection)
@@ -211,17 +207,17 @@ class GridFSDownloadStreamSpecification extends Specification {
         def chunksCollection = Mock(MongoCollection)
         def findIterable = Mock(FindIterable)
 
-        def findQuery = new BsonDocument('files_id', fileInfo.getId()).append('n', new BsonInt32(0))
+        def findQuery = new Document('files_id', fileInfo.getId()).append('n', 0)
         def downloadStream = new GridFSDownloadStreamImpl(fileInfo, chunksCollection)
 
         def tenBytes = new byte[10]
-        def chunkDocument = new BsonDocument('files_id', fileInfo.getId())
-                .append('n', new BsonInt32(0))
-                .append('data', new BsonBinary(tenBytes))
+        def chunkDocument = new Document('files_id', fileInfo.getId())
+                .append('n', 0)
+                .append('data', new Binary(tenBytes))
 
-        def emptyChunkDocument = new BsonDocument('files_id', fileInfo.getId())
-                .append('n', new BsonInt32(1))
-                .append('data', new BsonBinary(new byte[0]))
+        def emptyChunkDocument = new Document('files_id', fileInfo.getId())
+                .append('n', 1)
+                .append('data', new Binary(new byte[0]))
 
         when:
         downloadStream.read(new byte[10])
@@ -234,7 +230,7 @@ class GridFSDownloadStreamSpecification extends Specification {
         downloadStream.read()
 
         then: 'extra chunk check'
-        1 * chunksCollection.find(findQuery.append('n', new BsonInt32(1))) >> findIterable
+        1 * chunksCollection.find(findQuery.append('n', 1)) >> findIterable
         1 * findIterable.first() >> emptyChunkDocument
 
         when:
@@ -264,10 +260,10 @@ class GridFSDownloadStreamSpecification extends Specification {
 
     def 'should throw if chunk data differs from the expected'() {
         given:
-        def findQuery = new BsonDocument('files_id', fileInfo.getId()).append('n', new BsonInt32(0))
-        def chunkDocument = new BsonDocument('files_id', fileInfo.getId())
-                .append('n', new BsonInt32(0))
-                .append('data', new BsonBinary(data))
+        def findQuery = new Document('files_id', fileInfo.getId()).append('n', 0)
+        def chunkDocument = new Document('files_id', fileInfo.getId())
+                .append('n', 0)
+                .append('data', new Binary(data))
 
         def findIterable = Mock(FindIterable)
         def chunksCollection = Mock(MongoCollection)
@@ -292,17 +288,12 @@ class GridFSDownloadStreamSpecification extends Specification {
         def chunksCollection = Mock(MongoCollection)
         def findIterable = Mock(FindIterable)
 
-        def findQuery = new BsonDocument('files_id', fileInfo.getId()).append('n', new BsonInt32(0))
+        def findQuery = new Document('files_id', fileInfo.getId()).append('n', 0)
         def downloadStream = new GridFSDownloadStreamImpl(fileInfo, chunksCollection)
 
         def tenBytes = new byte[10]
-        def chunkDocument = new BsonDocument('files_id', fileInfo.getId())
-                .append('n', new BsonInt32(0))
-                .append('data', new BsonBinary(tenBytes))
-
-        def badChunkDocument = new BsonDocument('files_id', fileInfo.getId())
-                .append('n', new BsonInt32(1))
-                .append('data', new BsonBinary(new byte[1]))
+        def chunkDocument = new Document('files_id', fileInfo.getId()).append('n', 0).append('data', new Binary(tenBytes))
+        def badChunkDocument = new Document('files_id', fileInfo.getId()).append('n', 1).append('data', new Binary(new byte[1]))
 
         when:
         downloadStream.read(new byte[10])
@@ -315,7 +306,7 @@ class GridFSDownloadStreamSpecification extends Specification {
         downloadStream.read()
 
         then:
-        1 * chunksCollection.find(findQuery.append('n', new BsonInt32(1))) >> findIterable
+        1 * chunksCollection.find(findQuery.append('n', 1)) >> findIterable
         1 * findIterable.first() >> badChunkDocument
 
         then:
@@ -326,12 +317,10 @@ class GridFSDownloadStreamSpecification extends Specification {
         def fileInfo = new GridFSFile(new BsonObjectId(new ObjectId()), 'filename', 0L, 10, new Date(), 'abc', new Document())
         def chunksCollection = Mock(MongoCollection)
         def findIterable = Mock(FindIterable)
-        def findQuery = new BsonDocument('files_id', fileInfo.getId()).append('n', new BsonInt32(0))
+        def findQuery = new Document('files_id', fileInfo.getId()).append('n', 0)
         def downloadStream = new GridFSDownloadStreamImpl(fileInfo, chunksCollection)
 
-        def badChunkDocument = new BsonDocument('files_id', fileInfo.getId())
-                .append('n', new BsonInt32(1))
-                .append('data', new BsonBinary(new byte[1]))
+        def badChunkDocument = new Document('files_id', fileInfo.getId()).append('n', 1).append('data', new Binary(new byte[1]))
 
         when:
         downloadStream.read(new byte[10])

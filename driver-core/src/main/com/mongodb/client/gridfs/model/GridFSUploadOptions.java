@@ -17,7 +17,6 @@
 package com.mongodb.client.gridfs.model;
 
 import org.bson.Document;
-import org.bson.conversions.Bson;
 
 /**
  * GridFS upload options
@@ -63,7 +62,7 @@ public final class GridFSUploadOptions {
      *
      * @return the user provided metadata for the file if set or null
      */
-    public Bson getMetadata() {
+    public Document getMetadata() {
         return metadata;
     }
 

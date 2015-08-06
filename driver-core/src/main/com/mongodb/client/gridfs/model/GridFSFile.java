@@ -43,8 +43,7 @@ public final class GridFSFile {
     private final Document metadata;
 
     // Deprecated values
-    private final String contentType;
-    private final List<String> aliases;
+    private final Document extraElements;
 
     /**
      * Creates a new GridFSFile
@@ -59,7 +58,7 @@ public final class GridFSFile {
      */
     public GridFSFile(final BsonValue id, final String filename, final long length, final int chunkSize, final Date uploadDate,
                       final String md5, final Document metadata) {
-        this(id, filename, length, chunkSize, uploadDate, md5, metadata, null, null);
+        this(id, filename, length, chunkSize, uploadDate, md5, metadata, null);
     }
 
     /**
@@ -74,11 +73,10 @@ public final class GridFSFile {
      * @param uploadDate the upload date of the file
      * @param md5 the hash of the files contents
      * @param metadata the optional metadata for the file
-     * @param contentType the optional contentType for the file
-     * @param aliases the optional aliases for the file
+     * @param extraElements any extra data stored in the document
      */
     public GridFSFile(final BsonValue id, final String filename, final long length, final int chunkSize, final Date uploadDate,
-                      final String md5, final Document metadata, final String contentType, final List<String> aliases) {
+                      final String md5, final Document metadata, final Document extraElements) {
         this.id = notNull("id", id);
         this.filename = notNull("filename", filename);
         this.length = notNull("length", length);
@@ -86,8 +84,7 @@ public final class GridFSFile {
         this.uploadDate = notNull("uploadDate", uploadDate);
         this.md5 = notNull("md5", md5);
         this.metadata = metadata;
-        this.contentType = contentType;
-        this.aliases = aliases;
+        this.extraElements = extraElements;
     }
 
     /**
@@ -159,32 +156,52 @@ public final class GridFSFile {
     /**
      * Any additional metadata stored along with the file
      *
-     * @return the metadata document
+     * @return the metadata document or null
      */
     public Document getMetadata() {
         return metadata;
     }
 
     /**
+     * All deprecated top level elements including any contentType or aliases data
+     *
+     * @return the extra elements document or null
+     * @deprecated any extra information should be stored in the metadata document.
+     */
+    @Deprecated
+    public Document getExtraElements() {
+        return extraElements;
+    }
+
+    /**
      * The content type of the file
      *
-     * @return the content type of the file or null
+     * @return the content type of the file
      * @deprecated content type information stored in the metadata document.
      */
     @Deprecated
     public String getContentType() {
-        return contentType;
+        if (extraElements != null && extraElements.containsKey("contentType")) {
+            return extraElements.getString("contentType");
+        } else {
+            throw new MongoGridFSException("No contentType data for this GridFS file");
+        }
     }
 
     /**
      * The aliases for the file
      *
-     * @return the aliases of the file or null
+     * @return the aliases of the file
      * @deprecated aliases should be stored in the metadata document.
      */
     @Deprecated
+    @SuppressWarnings("unchecked")
     public List<String> getAliases() {
-        return aliases;
+        if (extraElements != null && extraElements.containsKey("aliases")) {
+            return (List<String>) extraElements.get("aliases");
+        } else {
+            throw new MongoGridFSException("No aliases data for this GridFS file");
+        }
     }
 
     @Override
@@ -219,10 +236,7 @@ public final class GridFSFile {
         if (metadata != null ? !metadata.equals(that.metadata) : that.metadata != null) {
             return false;
         }
-        if (contentType != null ? !contentType.equals(that.contentType) : that.contentType != null) {
-            return false;
-        }
-        if (aliases != null ? !aliases.equals(that.aliases) : that.aliases != null) {
+        if (extraElements != null ? !extraElements.equals(that.extraElements) : that.extraElements != null) {
             return false;
         }
         return true;
@@ -237,8 +251,7 @@ public final class GridFSFile {
         result = 31 * result + uploadDate.hashCode();
         result = 31 * result + md5.hashCode();
         result = 31 * result + (metadata != null ? metadata.hashCode() : 0);
-        result = 31 * result + (contentType != null ? contentType.hashCode() : 0);
-        result = 31 * result + (aliases != null ? aliases.hashCode() : 0);
+        result = 31 * result + (extraElements != null ? extraElements.hashCode() : 0);
         return result;
     }
 
@@ -252,8 +265,7 @@ public final class GridFSFile {
                 + ", uploadDate=" + uploadDate
                 + ", md5='" + md5 + '\''
                 + ", metadata=" + metadata
-                + ", contentType='" + contentType + '\''
-                + ", aliases=" + aliases
+                + ", extraElements='" + extraElements + '\''
                 + '}';
     }
 }

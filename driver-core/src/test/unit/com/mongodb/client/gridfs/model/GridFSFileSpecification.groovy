@@ -23,7 +23,7 @@ import org.bson.Document
 import org.bson.types.ObjectId
 import spock.lang.Specification
 
-public class GridFSFileSpecification extends Specification {
+class GridFSFileSpecification extends Specification {
 
     def 'should return the expected valued'() {
         given:
@@ -36,9 +36,10 @@ public class GridFSFileSpecification extends Specification {
         def metadata = new Document('id', id)
         def contentType = 'text/txt'
         def aliases = ['fileb']
+        def extraElements = new Document('contentType', contentType).append('aliases', aliases)
 
         when:
-        def gridFSFile = new GridFSFile(id, filename, length, chunkSize, uploadDate, md5, metadata, contentType, aliases)
+        def gridFSFile = new GridFSFile(id, filename, length, chunkSize, uploadDate, md5, metadata, extraElements)
 
         then:
         gridFSFile.getId() == id
@@ -48,13 +49,14 @@ public class GridFSFileSpecification extends Specification {
         gridFSFile.getUploadDate() == uploadDate
         gridFSFile.getMD5() == md5
         gridFSFile.getMetadata() == metadata
+        gridFSFile.getExtraElements() == extraElements
         gridFSFile.getContentType() == contentType
         gridFSFile.getAliases() == aliases
     }
 
     def 'should throw an exception when using getObjectId with custom id types'() {
         given:
-        def gridFSFile = new GridFSFile(new BsonString('id'), 'test', 10L, 225, new Date(), '', new Document())
+        def gridFSFile = new GridFSFile(new BsonString('id'), 'test', 10L, 225, new Date(), '', null)
 
         when:
         gridFSFile.getObjectId()
@@ -62,4 +64,28 @@ public class GridFSFileSpecification extends Specification {
         then:
         thrown(MongoGridFSException)
     }
+
+    def 'should throw an exception if there is no contentType'() {
+        given:
+        def gridFSFile = new GridFSFile(new BsonString('id'), 'test', 10L, 225, new Date(), '', null, null)
+
+        when:
+        gridFSFile.getContentType()
+
+        then:
+        thrown(MongoGridFSException)
+    }
+
+
+    def 'should throw an exception if there are no aliases'() {
+        given:
+        def gridFSFile = new GridFSFile(new BsonString('id'), 'test', 10L, 225, new Date(), '', null, null)
+
+        when:
+        gridFSFile.getAliases()
+
+        then:
+        thrown(MongoGridFSException)
+    }
+
 }

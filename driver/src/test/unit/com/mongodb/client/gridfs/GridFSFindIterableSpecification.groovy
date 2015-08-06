@@ -21,7 +21,6 @@ import com.mongodb.CursorType
 import com.mongodb.FindIterableImpl
 import com.mongodb.Function
 import com.mongodb.MongoClient
-import com.mongodb.MongoGridFSException
 import com.mongodb.MongoNamespace
 import com.mongodb.TestOperationExecutor
 import com.mongodb.client.gridfs.model.GridFSFile
@@ -29,11 +28,10 @@ import com.mongodb.client.model.FindOptions
 import com.mongodb.operation.BatchCursor
 import com.mongodb.operation.FindOperation
 import org.bson.BsonDocument
-import org.bson.BsonDocumentReader
 import org.bson.BsonInt32
 import org.bson.Document
-import org.bson.codecs.DecoderContext
 import org.bson.codecs.DocumentCodec
+import org.bson.types.ObjectId
 import spock.lang.Shared
 import spock.lang.Specification
 
@@ -146,32 +144,33 @@ class GridFSFindIterableSpecification extends Specification {
         def expectedResult = cannedResults[0]
 
         then:
-        firstResult.getId() == expectedResult.get('_id');
-        firstResult.getFilename() == expectedResult.getString('filename').getValue()
-        firstResult.getLength() == expectedResult.getInt64('length').getValue()
-        firstResult.getChunkSize() == expectedResult.getInt32('chunkSize').getValue()
-        firstResult.getMD5() == expectedResult.getString('md5').getValue()
-        firstResult.getUploadDate() == new Date(expectedResult.getDateTime('uploadDate').getValue())
+        if (expectedResult.get('_id') instanceof ObjectId) {
+            firstResult.getId() == expectedResult.getObjectId('_id');
+        } else {
+            firstResult.getId() == new BsonInt32(expectedResult.getInteger('_id'));
+        }
+        firstResult.getFilename() == expectedResult.getString('filename')
+        firstResult.getLength() == expectedResult.getLong('length')
+        firstResult.getChunkSize() == expectedResult.getInteger('chunkSize')
+        firstResult.getMD5() == expectedResult.getString('md5')
+        firstResult.getUploadDate() == expectedResult.getDate('uploadDate')
 
-        if (expectedResult.get('_id').isObjectId()) {
-            firstResult.getObjectId() == expectedResult.getObjectId('_id').getValue();
+        if (expectedResult.get('_id') instanceof ObjectId) {
+            firstResult.getObjectId() == expectedResult.getObjectId('_id');
         }
         if (expectedResult.containsKey('metadata')) {
-            def metadata = codecRegistry.get(Document)
-                    .decode(new BsonDocumentReader(expectedResult.getDocument('metadata')), DecoderContext.builder().build())
-            firstResult.getMetadata() == metadata
+            firstResult.getMetadata() == expectedResult.get('metadata', Document)
         } else {
             firstResult.getMetadata() == new Document()
         }
         if (expectedResult.containsKey('contentType')) {
-            firstResult.getContentType() == expectedResult.getString('contentType').getValue()
-        } else {
-            firstResult.getContentType() == null
+            firstResult.getContentType() == expectedResult.getString('contentType')()
         }
         if (expectedResult.containsKey('aliases')) {
-            firstResult.getAliases() == expectedResult.getArray('aliases').iterator()*.getString().getValue()
-        } else {
-            firstResult.getAliases() == null
+            firstResult.getAliases() == (expectedResult.get('aliases') as List<String>).iterator()*.getString()()
+        }
+        if (expectedResult.containsKey('extraData')) {
+            firstResult.getExtraElements() == new Document('contentType', 'text/txt').append('extraData', [1, 2, 3])
         }
 
         when:
@@ -209,65 +208,30 @@ class GridFSFindIterableSpecification extends Specification {
         cannedResults << [toSpecCannedResults, legacyCannedResults]
     }
 
-    def 'should throw an exception when handling invalid aliases'() {
-        given:
-        def cannedResults = [BsonDocument.parse('''{ "_id" : { "$oid" : "000000000000000000000002" }, "filename" : "File 3",
-                                    "length" : { "$numberLong" : "1" },  "chunkSize" : 255, "uploadDate" : { "$date" : 1438679434090 },
-                                    "md5" : "d41d8cd98f00b204e9800998ecf8427e", "aliases" : ["File Three", 3] }''')]
-        def cursor = {
-            Stub(BatchCursor) {
-                def count = 0
-                def results;
-                def getResult = {
-                    count++
-                    results = count == 1 ? cannedResults : null
-                    results
-                }
-                next() >> {
-                    getResult()
-                }
-                hasNext() >> {
-                    count == 0
-                }
-
-            }
-        }
-        def executor = new TestOperationExecutor([cursor(), cursor(), cursor(), cursor()]);
-        def underlying = new FindIterableImpl(namespace, Document, Document, codecRegistry, readPreference, executor,
-                new Document(), new FindOptions())
-        def mongoIterable = new GridFSFindIterableImpl(underlying)
-
-        when:
-        mongoIterable.first()
-
-        then:
-        thrown(MongoGridFSException)
-    }
-
     @Shared
     def toSpecCannedResults = [
-            BsonDocument.parse('''{ "_id" : { "$oid" : "000000000000000000000001" }, "filename" : "File 1",
-                                    "length" : { "$numberLong" : "123" },  "chunkSize" : 255, "uploadDate" : { "$date" : 1438679434041 },
-                                    "md5" : "d41d8cd98f00b204e9800998ecf8427e" }'''),
-            BsonDocument.parse('''{ "_id" : { "$oid" : "000000000000000000000002" }, "filename" : "File 2",
-                                    "length" : { "$numberLong" : "99999" },  "chunkSize" : 255, "uploadDate" : { "$date" : 1438679434050 },
-                                    "md5" : "d41d8cd98f00b204e9800998ecf8427e" }'''),
-            BsonDocument.parse('''{ "_id" : { "$oid" : "000000000000000000000003" }, "filename" : "File 3",
-                                    "length" : { "$numberLong" : "1" },  "chunkSize" : 255, "uploadDate" : { "$date" : 1438679434090 },
-                                    "md5" : "d41d8cd98f00b204e9800998ecf8427e" }''')
+            Document.parse('''{ '_id' : { '$oid' : '000000000000000000000001' }, 'filename' : 'File 1',
+                                    'length' : { '$numberLong' : '123' },  'chunkSize' : 255, 'uploadDate' : { '$date' : 1438679434041 },
+                                    'md5' : 'd41d8cd98f00b204e9800998ecf8427e' }'''),
+            Document.parse('''{ '_id' : { '$oid' : '000000000000000000000002' }, 'filename' : 'File 2',
+                                    'length' : { '$numberLong' : '99999' },  'chunkSize' : 255, 'uploadDate' : { '$date' : 1438679434050 },
+                                    'md5' : 'd41d8cd98f00b204e9800998ecf8427e' }'''),
+            Document.parse('''{ '_id' : { '$oid' : '000000000000000000000003' }, 'filename' : 'File 3',
+                                    'length' : { '$numberLong' : '1' },  'chunkSize' : 255, 'uploadDate' : { '$date' : 1438679434090 },
+                                    'md5' : 'd41d8cd98f00b204e9800998ecf8427e' }''')
     ]
 
     @Shared
     def legacyCannedResults = [
-            BsonDocument.parse('''{ "_id" : 1, "filename" : "File 1",
-                                    "length" : { "$numberLong" : "123" },  "chunkSize" : 255, "uploadDate" : { "$date" : 1438679434041 },
-                                    "md5" : "d41d8cd98f00b204e9800998ecf8427e" }'''),
-            BsonDocument.parse('''{ "_id" : { "$oid" : "000000000000000000000001" }, "filename" : "File 2",
-                                    "length" : { "$numberLong" : "99999" },  "chunkSize" : 255, "uploadDate" : { "$date" : 1438679434050 },
-                                    "md5" : "d41d8cd98f00b204e9800998ecf8427e", "contentType" : "text/txt" }'''),
-            BsonDocument.parse('''{ "_id" : { "$oid" : "000000000000000000000002" }, "filename" : "File 3",
-                                    "length" : { "$numberLong" : "1" },  "chunkSize" : 255, "uploadDate" : { "$date" : 1438679434090 },
-                                    "md5" : "d41d8cd98f00b204e9800998ecf8427e", "aliases" : ["File Three", "Third File"] }''')
+            Document.parse('''{ '_id' : 1, 'filename' : 'File 1',
+                                    'length' : { '$numberLong' : '123' },  'chunkSize' : 255, 'uploadDate' : { '$date' : 1438679434041 },
+                                    'md5' : 'd41d8cd98f00b204e9800998ecf8427e' }'''),
+            Document.parse('''{ '_id' : { '$oid' : '000000000000000000000001' }, 'filename' : 'File 2',
+                                    'length' : { '$numberLong' : '99999' },  'chunkSize' : 255, 'uploadDate' : { '$date' : 1438679434050 },
+                                    'md5' : 'd41d8cd98f00b204e9800998ecf8427e', 'contentType' : 'text/txt', 'extraData' : [1, 2, 3] }'''),
+            Document.parse('''{ '_id' : { '$oid' : '000000000000000000000002' }, 'filename' : 'File 3',
+                                    'length' : { '$numberLong' : '1' },  'chunkSize' : 255, 'uploadDate' : { '$date' : 1438679434090 },
+                                    'md5' : 'd41d8cd98f00b204e9800998ecf8427e', 'aliases' : ['File Three', 'Third File'] }''')
     ]
 
     @Shared

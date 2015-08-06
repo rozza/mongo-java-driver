@@ -18,8 +18,8 @@ package com.mongodb.client.gridfs
 
 import com.mongodb.MongoGridFSException
 import com.mongodb.client.MongoCollection
-import org.bson.BsonDocument
-import org.bson.BsonString
+import org.bson.Document
+import org.bson.types.Binary
 import org.bson.types.ObjectId
 import spock.lang.Specification
 
@@ -28,7 +28,7 @@ import java.security.MessageDigest
 class GridFSUploadStreamSpecification extends Specification {
     def fileId = new ObjectId()
     def filename = 'filename'
-    def metadata = new BsonDocument()
+    def metadata = new Document()
 
     def 'should return the file id'() {
         when:
@@ -61,7 +61,7 @@ class GridFSUploadStreamSpecification extends Specification {
         given:
         def filesCollection = Mock(MongoCollection)
         def chunksCollection = Mock(MongoCollection)
-        def uploadStream = new GridFSUploadStreamImpl(filesCollection, chunksCollection, fileId, filename, 255, new BsonDocument())
+        def uploadStream = new GridFSUploadStreamImpl(filesCollection, chunksCollection, fileId, filename, 255, null)
 
         when:
         uploadStream.write('file content ' as byte[])
@@ -82,7 +82,7 @@ class GridFSUploadStreamSpecification extends Specification {
         def filesCollection = Mock(MongoCollection)
         def chunksCollection = Mock(MongoCollection)
         def content = 'file content ' as byte[]
-        def metadata = new BsonDocument('contentType', new BsonString('text/txt'))
+        def metadata = new Document('contentType', 'text/txt')
         def uploadStream = new GridFSUploadStreamImpl(filesCollection, chunksCollection, fileId, filename, 255, metadata)
 
         when:
@@ -90,20 +90,20 @@ class GridFSUploadStreamSpecification extends Specification {
         uploadStream.close()
 
         then:
-        1 * chunksCollection.insertOne { BsonDocument chunksData ->
-            chunksData.getObjectId('files_id').getValue() == fileId
-            chunksData.getInt32('n').getValue() == 0
-            chunksData.getBinary('data').getData() == content
+        1 * chunksCollection.insertOne { Document chunksData ->
+            chunksData.getObjectId('files_id') == fileId
+            chunksData.getInteger('n') == 0
+            chunksData.get('data', Binary).getData() == content
         }
 
         then:
-        1 * filesCollection.insertOne { BsonDocument fileData ->
-            fileData.getObjectId('_id').getValue() == fileId &&
-            fileData.getString('filename').getValue() == filename &&
-            fileData.getInt64('length').getValue() == content.length &&
-            fileData.getInt32('chunkSize').getValue() == 255 &&
-            fileData.getString('md5').getValue() == MessageDigest.getInstance('MD5').digest(content).encodeHex().toString()
-            fileData.getDocument('metadata') == metadata
+        1 * filesCollection.insertOne { Document fileData ->
+            fileData.getObjectId('_id') == fileId &&
+            fileData.getString('filename') == filename &&
+            fileData.getLong('length') == content.length as Long &&
+            fileData.getInteger('chunkSize') == 255 &&
+            fileData.getString('md5') == MessageDigest.getInstance('MD5').digest(content).encodeHex().toString()
+            fileData.get('metadata', Document) == metadata
         }
     }
 

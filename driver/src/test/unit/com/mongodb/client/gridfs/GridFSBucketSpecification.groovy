@@ -29,13 +29,11 @@ import com.mongodb.client.gridfs.model.GridFSDownloadByNameOptions
 import com.mongodb.client.gridfs.model.GridFSFile
 import com.mongodb.client.result.DeleteResult
 import com.mongodb.client.result.UpdateResult
-import org.bson.BsonBinary
-import org.bson.BsonDocument
-import org.bson.BsonInt32
 import org.bson.BsonObjectId
 import org.bson.BsonString
 import org.bson.Document
 import org.bson.codecs.DocumentCodecProvider
+import org.bson.types.Binary
 import org.bson.types.ObjectId
 import spock.lang.Specification
 import spock.lang.Unroll
@@ -187,9 +185,7 @@ class GridFSBucketSpecification extends Specification {
             1 * find() >> findIterable
         }
         def tenBytes = new byte[10]
-        def chunkDocument = new BsonDocument('files_id', fileInfo.getId())
-                .append('n', new BsonInt32(0))
-                .append('data', new BsonBinary(tenBytes))
+        def chunkDocument = new Document('files_id', fileInfo.getId()).append('n', 0).append('data', new Binary(tenBytes))
         def chunksCollection = Mock(MongoCollection)
         def gridFSBucket = new GridFSBucketImpl(Stub(MongoDatabase), 'fs', 255, Stub(ReadPreference), Stub(WriteConcern),
                 filesCollection, chunksCollection, true)
@@ -200,18 +196,14 @@ class GridFSBucketSpecification extends Specification {
         outputStream.close()
 
         then:
-        1 * findIterable.filter(new BsonDocument('_id', bsonFileId)) >> findIterable
+        1 * findIterable.filter(new Document('_id', bsonFileId)) >> findIterable
         1 * findIterable.map(_) >> findIterable
         1 * findIterable.first() >> fileInfo
-        1 * chunksCollection.find({ query ->
-            query.getInt32('n') == new BsonInt32(0)
-        }) >> findIterable
+        1 * chunksCollection.find({ query -> query.getInteger('n') == 0 }) >> findIterable
         1 * findIterable.first() >> chunkDocument
 
         then: 'extra chunk check'
-        1 * chunksCollection.find({ query ->
-            query.getInt32('n') == new BsonInt32(1)
-        }) >> findIterable
+        1 * chunksCollection.find({ query -> query.getInteger('n') == 1 }) >> findIterable
         1 * findIterable.first() >> null
 
         then:
@@ -221,15 +213,13 @@ class GridFSBucketSpecification extends Specification {
     def 'should download to stream using BsonValue'() {
         given:
         def bsonFileId = new BsonString('1')
-        def fileInfo = new GridFSFile(bsonFileId, 'filename', 10, 255, new Date(), '1234', new Document())
+        def fileInfo = new GridFSFile(bsonFileId, 'filename', 10L, 255, new Date(), '1234', new Document())
         def findIterable =  Mock(FindIterable)
         def filesCollection = Mock(MongoCollection) {
             1 * find() >> findIterable
         }
         def tenBytes = new byte[10]
-        def chunkDocument = new BsonDocument('files_id', fileInfo.getId())
-                .append('n', new BsonInt32(0))
-                .append('data', new BsonBinary(tenBytes))
+        def chunkDocument = new Document('files_id', fileInfo.getId()).append('n', 0).append('data', new Binary(tenBytes))
         def chunksCollection = Mock(MongoCollection)
         def gridFSBucket = new GridFSBucketImpl(Stub(MongoDatabase), 'fs', 255, Stub(ReadPreference), Stub(WriteConcern),
                 filesCollection, chunksCollection, true)
@@ -240,18 +230,14 @@ class GridFSBucketSpecification extends Specification {
         outputStream.close()
 
         then:
-        1 * findIterable.filter(new BsonDocument('_id', bsonFileId)) >> findIterable
+        1 * findIterable.filter(new Document('_id', bsonFileId)) >> findIterable
         1 * findIterable.map(_) >> findIterable
         1 * findIterable.first() >> fileInfo
-        1 * chunksCollection.find({ query ->
-            query.getInt32('n') == new BsonInt32(0)
-        }) >> findIterable
+        1 * chunksCollection.find({ query -> query.getInteger('n') == 0 }) >> findIterable
         1 * findIterable.first() >> chunkDocument
 
         then: 'extra chunk check'
-        1 * chunksCollection.find({ query ->
-            query.getInt32('n') == new BsonInt32(1)
-        }) >> findIterable
+        1 * chunksCollection.find({ query -> query.getInteger('n') == 1 }) >> findIterable
         1 * findIterable.first() >> null
 
         then:
@@ -269,9 +255,7 @@ class GridFSBucketSpecification extends Specification {
             1 * find() >> findIterable
         }
         def tenBytes = new byte[10]
-        def chunkDocument = new BsonDocument('files_id', fileInfo.getId())
-                .append('n', new BsonInt32(0))
-                .append('data', new BsonBinary(tenBytes))
+        def chunkDocument = new Document('files_id', fileInfo.getId()).append('n', 0).append('data', new Binary(tenBytes))
         def chunksCollection = Mock(MongoCollection)
         def gridFSBucket = new GridFSBucketImpl(Stub(MongoDatabase), 'fs', 255, Stub(ReadPreference), Stub(WriteConcern),
                 filesCollection, chunksCollection, true)
@@ -282,18 +266,14 @@ class GridFSBucketSpecification extends Specification {
         outputStream.close()
 
         then:
-        1 * findIterable.filter(new BsonDocument('filename', new BsonString(filename))) >> findIterable
+        1 * findIterable.filter(new Document('filename', filename)) >> findIterable
         1 * findIterable.map(_) >> findIterable
         1 * findIterable.first() >> fileInfo
-        1 * chunksCollection.find({ query ->
-            query.getInt32('n') == new BsonInt32(0)
-        }) >> findIterable
+        1 * chunksCollection.find({ query -> query.getInteger('n') == 0 }) >> findIterable
         1 * findIterable.first() >> chunkDocument
 
         then: 'extra chunk check'
-        1 * chunksCollection.find({ query ->
-            query.getInt32('n') == new BsonInt32(1)
-        }) >> findIterable
+        1 * chunksCollection.find({ query -> query.getInteger('n') == 1 }) >> findIterable
         1 * findIterable.first() >> null
 
         then:
@@ -316,7 +296,7 @@ class GridFSBucketSpecification extends Specification {
         gridFSBucket.openDownloadStream(fileId)
 
         then:
-        1 * findIterable.filter(new BsonDocument('_id', bsonFileId)) >> findIterable
+        1 * findIterable.filter(new Document('_id', bsonFileId)) >> findIterable
         1 * findIterable.map(_) >> findIterable
         1 * findIterable.first() >> null
 
@@ -343,9 +323,9 @@ class GridFSBucketSpecification extends Specification {
         def stream = gridFSBucket.openDownloadStreamByName(filename, new GridFSDownloadByNameOptions().revision(version))
 
         then:
-        1 * findIterable.filter(new BsonDocument('filename', new BsonString(filename))) >> findIterable
+        1 * findIterable.filter(new Document('filename', filename)) >> findIterable
         1 * findIterable.skip(skip) >> findIterable
-        1 * findIterable.sort(new BsonDocument('uploadDate', sortOrder)) >> findIterable
+        1 * findIterable.sort(new Document('uploadDate', sortOrder)) >> findIterable
         1 * findIterable.map(_) >> findIterable
         1 * findIterable.first() >> fileInfo
 
@@ -354,13 +334,13 @@ class GridFSBucketSpecification extends Specification {
 
         where:
         version | skip | sortOrder
-          0     |  0   | new BsonInt32(1)
-          1     |  1   | new BsonInt32(1)
-          2     |  2   | new BsonInt32(1)
-          3     |  3   | new BsonInt32(1)
-          -1    |  0   | new BsonInt32(-1)
-          -2    |  1   | new BsonInt32(-1)
-          -3    |  2   | new BsonInt32(-1)
+          0     |  0   | 1
+          1     |  1   | 1
+          2     |  2   | 1
+          3     |  3   | 1
+          -1    |  0   | -1
+          -2    |  1   | -1
+          -3    |  2   | -1
     }
 
     def 'should create the expected GridFSFindIterable'() {
@@ -368,7 +348,7 @@ class GridFSBucketSpecification extends Specification {
         def database = Mock(MongoDatabase)
         def collection = Mock(MongoCollection)
         def findIterable = Mock(FindIterable)
-        def filter = new BsonDocument('filename', new BsonString('filename'))
+        def filter = new Document('filename', 'filename')
         def gridFSBucket = new GridFSBucketImpl(database, 'fs', 255, Stub(ReadPreference), Stub(WriteConcern), collection,
                 Stub(MongoCollection), true)
 
@@ -402,9 +382,9 @@ class GridFSBucketSpecification extends Specification {
 
         then:
         1 * filesCollection.find() >> findIterable
-        1 * findIterable.filter(new BsonDocument('filename', new BsonString('filename'))) >> findIterable
+        1 * findIterable.filter(new Document('filename', 'filename')) >> findIterable
         1 * findIterable.skip(0) >> findIterable
-        1 * findIterable.sort(new BsonDocument('uploadDate', new BsonInt32(-1))) >> findIterable
+        1 * findIterable.sort(new Document('uploadDate', -1)) >> findIterable
         1 * findIterable.map(_) >> findIterable
         1 * findIterable.first() >> null
 
@@ -427,22 +407,22 @@ class GridFSBucketSpecification extends Specification {
         then:
         1 * filesCollection.withReadPreference(_) >> filesCollection
         1 * filesCollection.find() >> findIterable
-        1 * findIterable.projection(new BsonDocument('_id', new BsonInt32(1))) >> findIterable
+        1 * findIterable.projection(new Document('_id', 1)) >> findIterable
         1 * findIterable.first() >> null
 
         then:
-        1 * filesCollection.listIndexes(BsonDocument) >> listIndexesIterable
+        1 * filesCollection.listIndexes() >> listIndexesIterable
         1 * listIndexesIterable.into(_) >> []
 
         then:
-        1 * filesCollection.createIndex({ index -> index == BsonDocument.parse('{"filename": 1, "uploadDate": 1 }') })
+        1 * filesCollection.createIndex({ index -> index == Document.parse('{"filename": 1, "uploadDate": 1 }') })
 
         then:
-        1 * chunksCollection.listIndexes(BsonDocument) >> listIndexesIterable
+        1 * chunksCollection.listIndexes() >> listIndexesIterable
         1 * listIndexesIterable.into(_) >> []
 
         then:
-        1 * chunksCollection.createIndex({ index -> index == BsonDocument.parse('{"files_id": 1, "n": 1}') },
+        1 * chunksCollection.createIndex({ index -> index == Document.parse('{"files_id": 1, "n": 1}') },
                 { indexOptions -> indexOptions.isUnique() })
     }
 
@@ -461,21 +441,21 @@ class GridFSBucketSpecification extends Specification {
         then:
         1 * filesCollection.withReadPreference(_) >> filesCollection
         1 * filesCollection.find() >> findIterable
-        1 * findIterable.projection(new BsonDocument('_id', new BsonInt32(1))) >> findIterable
+        1 * findIterable.projection(new Document('_id', 1)) >> findIterable
         1 * findIterable.first() >> null
 
         then:
-        1 * filesCollection.listIndexes(BsonDocument) >> listIndexesIterable
-        1 * listIndexesIterable.into(_) >> [BsonDocument.parse('{"key": {"_id": 1}}'),
-                                            BsonDocument.parse('{"key": {"filename": 1, "uploadDate": 1 }}')]
+        1 * filesCollection.listIndexes() >> listIndexesIterable
+        1 * listIndexesIterable.into(_) >> [Document.parse('{"key": {"_id": 1}}'),
+                                            Document.parse('{"key": {"filename": 1, "uploadDate": 1 }}')]
 
         then:
         0 * filesCollection.createIndex(_)
 
         then:
-        1 * chunksCollection.listIndexes(BsonDocument) >> listIndexesIterable
-        1 * listIndexesIterable.into(_) >> [BsonDocument.parse('{"key": {"_id": 1}}'),
-                                            BsonDocument.parse('{"key": {"files_id": 1, "n": 1 }}')]
+        1 * chunksCollection.listIndexes() >> listIndexesIterable
+        1 * listIndexesIterable.into(_) >> [Document.parse('{"key": {"_id": 1}}'),
+                                            Document.parse('{"key": {"files_id": 1, "n": 1 }}')]
 
         then:
         0 * chunksCollection.createIndex(_)
@@ -493,10 +473,10 @@ class GridFSBucketSpecification extends Specification {
         gridFSBucket.delete(fileId)
 
         then: 'Delete from the files collection first'
-        1 * filesCollection.deleteOne(new BsonDocument('_id', new BsonObjectId(fileId))) >> DeleteResult.acknowledged(1)
+        1 * filesCollection.deleteOne(new Document('_id', new BsonObjectId(fileId))) >> DeleteResult.acknowledged(1)
 
         then:
-        1 * chunksCollection.deleteMany(new BsonDocument('files_id', new BsonObjectId(fileId)))
+        1 * chunksCollection.deleteMany(new Document('files_id', new BsonObjectId(fileId)))
     }
 
     def 'should throw an exception when deleting if no record in the files collection'() {
@@ -511,10 +491,10 @@ class GridFSBucketSpecification extends Specification {
         gridFSBucket.delete(fileId)
 
         then: 'Delete from the files collection first'
-        1 * filesCollection.deleteOne(new BsonDocument('_id', new BsonObjectId(fileId))) >> DeleteResult.acknowledged(0)
+        1 * filesCollection.deleteOne(new Document('_id', new BsonObjectId(fileId))) >> DeleteResult.acknowledged(0)
 
         then: 'Should still delete any orphan chunks'
-        1 * chunksCollection.deleteMany(new BsonDocument('files_id', new BsonObjectId(fileId)))
+        1 * chunksCollection.deleteMany(new Document('files_id', new BsonObjectId(fileId)))
 
         then:
         thrown(MongoGridFSException)
@@ -532,9 +512,9 @@ class GridFSBucketSpecification extends Specification {
         gridFSBucket.rename(fileId, newFilename)
 
         then:
-        1 * filesCollection.updateOne(new BsonDocument('_id', new BsonObjectId(fileId)),
-                new BsonDocument('$set',
-                        new BsonDocument('filename', new BsonString(newFilename)))) >> new UpdateResult.UnacknowledgedUpdateResult()
+        1 * filesCollection.updateOne(new Document('_id', fileId),
+                new Document('$set',
+                        new Document('filename', newFilename))) >> new UpdateResult.UnacknowledgedUpdateResult()
     }
 
     def 'should throw an exception renaming non existent file'() {

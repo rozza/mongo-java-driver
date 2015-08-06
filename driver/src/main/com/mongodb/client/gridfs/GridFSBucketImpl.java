@@ -26,14 +26,12 @@ import com.mongodb.client.gridfs.model.GridFSDownloadByNameOptions;
 import com.mongodb.client.gridfs.model.GridFSFile;
 import com.mongodb.client.gridfs.model.GridFSUploadOptions;
 import com.mongodb.client.model.IndexOptions;
-import com.mongodb.client.model.Indexes;
 import com.mongodb.client.result.DeleteResult;
 import com.mongodb.client.result.UpdateResult;
 import org.bson.BsonDocument;
-import org.bson.BsonInt32;
 import org.bson.BsonObjectId;
-import org.bson.BsonString;
 import org.bson.BsonValue;
+import org.bson.Document;
 import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.conversions.Bson;
 import org.bson.types.ObjectId;
@@ -56,8 +54,8 @@ final class GridFSBucketImpl implements GridFSBucket {
     private final int chunkSizeBytes;
     private final WriteConcern writeConcern;
     private final ReadPreference readPreference;
-    private final MongoCollection<BsonDocument> filesCollection;
-    private final MongoCollection<BsonDocument> chunksCollection;
+    private final MongoCollection<Document> filesCollection;
+    private final MongoCollection<Document> chunksCollection;
     private volatile boolean checkedIndexes;
 
     GridFSBucketImpl(final MongoDatabase database) {
@@ -75,8 +73,8 @@ final class GridFSBucketImpl implements GridFSBucket {
     }
 
     GridFSBucketImpl(final MongoDatabase database, final String bucketName, final int chunkSizeBytes, final ReadPreference readPreference,
-                     final WriteConcern writeConcern, final MongoCollection<BsonDocument> filesCollection,
-                     final MongoCollection<BsonDocument> chunksCollection, final boolean checkedIndexes) {
+                     final WriteConcern writeConcern, final MongoCollection<Document> filesCollection,
+                     final MongoCollection<Document> chunksCollection, final boolean checkedIndexes) {
         this.database = notNull("database", database);
         this.bucketName = notNull("bucketName", bucketName);
         this.chunkSizeBytes = chunkSizeBytes;
@@ -133,10 +131,7 @@ final class GridFSBucketImpl implements GridFSBucket {
     @Override
     public GridFSUploadStream openUploadStream(final String filename, final GridFSUploadOptions options) {
         int chunkSize = options.getChunkSizeBytes() == null ? chunkSizeBytes : options.getChunkSizeBytes();
-        BsonDocument metadata = null;
-        if (options.getMetadata() != null) {
-            metadata = options.getMetadata().toBsonDocument(BsonDocument.class, DEFAULT_CODEC_REGISTRY);
-        }
+        Document metadata = options.getMetadata() == null ? null : options.getMetadata();
         checkCreateIndex();
         return new GridFSUploadStreamImpl(filesCollection, chunksCollection, new ObjectId(), filename, chunkSize, metadata);
     }
@@ -238,23 +233,23 @@ final class GridFSBucketImpl implements GridFSBucket {
 
     @Override
     public void rename(final ObjectId id, final String newFilename) {
-        UpdateResult updateResult = filesCollection.updateOne(new BsonDocument("_id", new BsonObjectId(id)),
-                new BsonDocument("$set", new BsonDocument("filename", new BsonString(newFilename))));
+        UpdateResult updateResult = filesCollection.updateOne(new Document("_id", id),
+                new Document("$set", new Document("filename", newFilename)));
 
         if (updateResult.wasAcknowledged() && updateResult.getMatchedCount() == 0) {
             throw new MongoGridFSException(format("No file found with the ObjectId: %s", id));
         }
     }
 
-    private MongoCollection<BsonDocument> getFilesCollection() {
-        return database.getCollection(bucketName + ".files", BsonDocument.class)
+    private MongoCollection<Document> getFilesCollection() {
+        return database.getCollection(bucketName + ".files")
                 .withCodecRegistry(DEFAULT_CODEC_REGISTRY)
                 .withReadPreference(readPreference)
                 .withWriteConcern(writeConcern);
     }
 
-    private MongoCollection<BsonDocument> getChunksCollection() {
-        return database.getCollection(bucketName + ".chunks", BsonDocument.class)
+    private MongoCollection<Document> getChunksCollection() {
+        return database.getCollection(bucketName + ".chunks")
                 .withCodecRegistry(DEFAULT_CODEC_REGISTRY)
                 .withReadPreference(readPreference)
                 .withWriteConcern(writeConcern);
@@ -262,15 +257,12 @@ final class GridFSBucketImpl implements GridFSBucket {
 
     private void checkCreateIndex() {
         if (!checkedIndexes) {
-            if (filesCollection.withReadPreference(primary()).find()
-                    .projection(new BsonDocument("_id", new BsonInt32(1))).first() == null) {
-                BsonDocument filesIndex = Indexes.ascending("filename", "uploadDate")
-                        .toBsonDocument(BsonDocument.class, DEFAULT_CODEC_REGISTRY);
+            if (filesCollection.withReadPreference(primary()).find().projection(new Document("_id", 1)).first() == null) {
+                Document filesIndex = new Document("filename", 1).append("uploadDate", 1);
                 if (!hasIndex(filesCollection, filesIndex)) {
                     filesCollection.createIndex(filesIndex);
                 }
-                BsonDocument chunksIndex = Indexes.ascending("files_id", "n")
-                        .toBsonDocument(BsonDocument.class, DEFAULT_CODEC_REGISTRY);
+                Document chunksIndex = new Document("files_id", 1).append("n", 1);
                 if (!hasIndex(chunksCollection, chunksIndex)) {
                     chunksCollection.createIndex(chunksIndex, new IndexOptions().unique(true));
                 }
@@ -279,12 +271,11 @@ final class GridFSBucketImpl implements GridFSBucket {
         }
     }
 
-    private boolean hasIndex(final MongoCollection<BsonDocument> collection, final BsonDocument index) {
+    private boolean hasIndex(final MongoCollection<Document> collection, final Document index) {
         boolean hasIndex = false;
-        ArrayList<BsonDocument> indexes = collection.listIndexes(BsonDocument.class)
-                .into(new ArrayList<BsonDocument>());
-        for (BsonDocument indexDoc : indexes) {
-            if (indexDoc.getDocument("key").equals(index)) {
+        ArrayList<Document> indexes = collection.listIndexes().into(new ArrayList<Document>());
+        for (Document indexDoc : indexes) {
+            if (indexDoc.get("key", Document.class).equals(index)) {
                 hasIndex = true;
                 break;
             }
@@ -295,17 +286,16 @@ final class GridFSBucketImpl implements GridFSBucket {
     private GridFSFile getFileByName(final String filename, final GridFSDownloadByNameOptions options) {
         int revision = options.getRevision();
         int skip;
-        BsonInt32 sort;
+        int sort;
         if (revision >= 0) {
             skip = revision;
-            sort = new BsonInt32(1);
+            sort = 1;
         } else {
             skip = (-revision) - 1;
-            sort = new BsonInt32(-1);
+            sort = -1;
         }
 
-        GridFSFile fileInfo = find(new BsonDocument("filename", new BsonString(filename)))
-                .skip(skip).sort(new BsonDocument("uploadDate", sort)).first();
+        GridFSFile fileInfo = find(new Document("filename", filename)).skip(skip).sort(new Document("uploadDate", sort)).first();
         if (fileInfo == null) {
             throw new MongoGridFSException(format("No file found with the filename: %s and revision: %s", filename, revision));
         }
@@ -313,7 +303,7 @@ final class GridFSBucketImpl implements GridFSBucket {
     }
 
     private GridFSDownloadStream findTheFileInfoAndOpenDownloadStream(final BsonValue id) {
-        GridFSFile fileInfo = find(new BsonDocument("_id", id)).first();
+        GridFSFile fileInfo = find(new Document("_id", id)).first();
         if (fileInfo == null) {
             throw new MongoGridFSException(format("No file found with the id: %s", id));
         }

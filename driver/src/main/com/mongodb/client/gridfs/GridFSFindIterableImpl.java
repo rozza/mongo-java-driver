@@ -19,32 +19,32 @@ package com.mongodb.client.gridfs;
 import com.mongodb.Block;
 import com.mongodb.Function;
 import com.mongodb.MongoClient;
-import com.mongodb.MongoGridFSException;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoIterable;
 import com.mongodb.client.gridfs.model.GridFSFile;
 import org.bson.BsonDocument;
-import org.bson.BsonDocumentReader;
+import org.bson.BsonObjectId;
 import org.bson.BsonValue;
 import org.bson.Document;
-import org.bson.codecs.DecoderContext;
 import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.conversions.Bson;
+import org.bson.types.ObjectId;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
-import static java.lang.String.format;
+import static java.util.Arrays.asList;
 
 class GridFSFindIterableImpl implements GridFSFindIterable {
     private static final CodecRegistry DEFAULT_CODEC_REGISTRY = MongoClient.getDefaultCodecRegistry();
-    private final FindIterable<BsonDocument> underlying;
+    private final FindIterable<Document> underlying;
 
-    public GridFSFindIterableImpl(final FindIterable<BsonDocument> underlying) {
+    public GridFSFindIterableImpl(final FindIterable<Document> underlying) {
         this.underlying = underlying;
     }
 
@@ -117,39 +117,42 @@ class GridFSFindIterableImpl implements GridFSFindIterable {
 
     @SuppressWarnings("unchecked")
     private MongoIterable<GridFSFile> toGridFSFileIterable() {
-        return underlying.map(new Function<BsonDocument, GridFSFile>() {
+        return underlying.map(new Function<Document, GridFSFile>() {
             @Override
-            public GridFSFile apply(final BsonDocument document) {
-                BsonValue id = document.get("_id");
-                String filename = document.getString("filename").getValue();
-                long length = document.getInt64("length").getValue();
-                int chunkSize = document.getInt32("chunkSize").getValue();
-                Date uploadDate = new Date(document.getDateTime("uploadDate").getValue());
-                String md5 = document.getString("md5").getValue();
-                Document metadata = DEFAULT_CODEC_REGISTRY.get(Document.class)
-                        .decode(new BsonDocumentReader(document.getDocument("metadata", new BsonDocument())),
-                                DecoderContext.builder().build());
+            public GridFSFile apply(final Document document) {
+                BsonValue id = getId(document);
+                String filename = document.getString("filename");
+                long length = document.getLong("length");
+                int chunkSize = document.getInteger("chunkSize");
+                Date uploadDate = document.getDate("uploadDate");
+                String md5 = document.getString("md5");
 
-                boolean isLegacy = (!id.isObjectId() || document.containsKey("contentType") || document.containsKey("aliases"));
-                if (isLegacy) {
-                    String contentType = document.containsKey("contentType") ? document.getString("contentType").getValue() : null;
-                    List<String> aliases = null;
-                    if (document.containsKey("aliases")) {
-                        aliases = new ArrayList<String>();
-                        for (BsonValue bsonValue : document.getArray("aliases")) {
-                            if (!bsonValue.isString()) {
-                                throw new MongoGridFSException(format("Unsupported alias value in aliases: %s", bsonValue));
-                            } else {
-                                aliases.add(bsonValue.asString().getValue());
-                            }
-                        }
+                Document metadata = document.get("metadata", Document.class);
+                Set<String> extraElementKeys = new HashSet<String>(document.keySet());
+                extraElementKeys.removeAll(VALID_FIELDS);
+
+                if (extraElementKeys.size() > 0) {
+                    Document extraElements = new Document();
+                    for (String key: extraElementKeys) {
+                        extraElements.append(key, document.get(key));
                     }
-                    return new GridFSFile(id, filename, length, chunkSize, uploadDate, md5, metadata, contentType, aliases);
+                    return new GridFSFile(id, filename, length, chunkSize, uploadDate, md5, metadata, extraElements);
                 } else {
                     return new GridFSFile(id, filename, length, chunkSize, uploadDate, md5, metadata);
                 }
             }
         });
     }
+
+    private BsonValue getId(final Document document) {
+        Object rawId = document.get("_id");
+        if (rawId instanceof ObjectId) {
+            return new BsonObjectId((ObjectId) rawId);
+        } else {
+            return new Document("_id", document.get("_id")).toBsonDocument(BsonDocument.class, DEFAULT_CODEC_REGISTRY).get("_id");
+        }
+    }
+
+    private static final List<String> VALID_FIELDS = asList("_id", "filename", "length", "chunkSize", "uploadDate", "md5", "metadata");
 
 }

@@ -20,11 +20,7 @@ import com.mongodb.MongoGridFSException;
 import com.mongodb.client.MongoCollection;
 import org.bson.BsonBinary;
 import org.bson.BsonDateTime;
-import org.bson.BsonDocument;
-import org.bson.BsonInt32;
-import org.bson.BsonInt64;
-import org.bson.BsonObjectId;
-import org.bson.BsonString;
+import org.bson.Document;
 import org.bson.types.ObjectId;
 
 import java.security.MessageDigest;
@@ -34,12 +30,12 @@ import static com.mongodb.assertions.Assertions.notNull;
 import static com.mongodb.util.Util.toHex;
 
 final class GridFSUploadStreamImpl extends GridFSUploadStream {
-    private final MongoCollection<BsonDocument> filesCollection;
-    private final MongoCollection<BsonDocument> chunksCollection;
+    private final MongoCollection<Document> filesCollection;
+    private final MongoCollection<Document> chunksCollection;
     private final ObjectId fileId;
     private final String filename;
     private final int chunkSizeBytes;
-    private final BsonDocument metadata;
+    private final Document metadata;
     private final MessageDigest md5;
     private byte[] buffer;
     private long lengthInBytes;
@@ -48,8 +44,8 @@ final class GridFSUploadStreamImpl extends GridFSUploadStream {
 
     private volatile boolean closed = false;
 
-    GridFSUploadStreamImpl(final MongoCollection<BsonDocument> filesCollection, final MongoCollection<BsonDocument> chunksCollection,
-                           final ObjectId fileId, final String filename, final int chunkSizeBytes, final BsonDocument metadata) {
+    GridFSUploadStreamImpl(final MongoCollection<Document> filesCollection, final MongoCollection<Document> chunksCollection,
+                           final ObjectId fileId, final String filename, final int chunkSizeBytes, final Document metadata) {
         this.filesCollection = notNull("files collection", filesCollection);
         this.chunksCollection = notNull("chunks collection", chunksCollection);
         this.fileId = notNull("File Id", fileId);
@@ -127,12 +123,12 @@ final class GridFSUploadStreamImpl extends GridFSUploadStream {
             }
         }
         writeChunk();
-        BsonDocument fileDocument = new BsonDocument("_id", new BsonObjectId(fileId))
-                .append("length", new BsonInt64(lengthInBytes))
-                .append("chunkSize", new BsonInt32(chunkSizeBytes))
+        Document fileDocument = new Document("_id", fileId)
+                .append("length", lengthInBytes)
+                .append("chunkSize", chunkSizeBytes)
                 .append("uploadDate", new BsonDateTime(System.currentTimeMillis()))
-                .append("md5", new BsonString(toHex(md5.digest())))
-                .append("filename", new BsonString(filename));
+                .append("md5", toHex(md5.digest()))
+                .append("filename", filename);
 
         if (metadata != null && !metadata.isEmpty()) {
             fileDocument.append("metadata", metadata);
@@ -143,10 +139,7 @@ final class GridFSUploadStreamImpl extends GridFSUploadStream {
 
     private void writeChunk() {
         if (bufferOffset > 0) {
-            chunksCollection.insertOne(
-                    new BsonDocument("files_id", new BsonObjectId(fileId))
-                            .append("n", new BsonInt32(chunkIndex))
-                            .append("data", getData()));
+            chunksCollection.insertOne(new Document("files_id", fileId).append("n", chunkIndex).append("data", getData()));
             md5.update(buffer);
             chunkIndex++;
             bufferOffset = 0;

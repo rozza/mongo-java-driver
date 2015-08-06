@@ -19,17 +19,16 @@ package com.mongodb.client.gridfs;
 import com.mongodb.MongoGridFSException;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.gridfs.model.GridFSFile;
-import org.bson.BsonBinary;
-import org.bson.BsonDocument;
-import org.bson.BsonInt32;
 import org.bson.BsonValue;
+import org.bson.Document;
+import org.bson.types.Binary;
 
 import static com.mongodb.assertions.Assertions.notNull;
 import static java.lang.String.format;
 
 class GridFSDownloadStreamImpl extends GridFSDownloadStream {
     private final GridFSFile fileInfo;
-    private final MongoCollection<BsonDocument> chunksCollection;
+    private final MongoCollection<Document> chunksCollection;
     private final BsonValue fileId;
     private final long length;
     private final int chunkSizeInBytes;
@@ -41,7 +40,7 @@ class GridFSDownloadStreamImpl extends GridFSDownloadStream {
     private boolean eof;
     private volatile boolean closed;
 
-    GridFSDownloadStreamImpl(final GridFSFile fileInfo, final MongoCollection<BsonDocument> chunksCollection) {
+    GridFSDownloadStreamImpl(final GridFSFile fileInfo, final MongoCollection<Document> chunksCollection) {
         this.fileInfo = notNull("file information", fileInfo);
         this.chunksCollection = notNull("chunks collection", chunksCollection);
 
@@ -83,9 +82,9 @@ class GridFSDownloadStreamImpl extends GridFSDownloadStream {
             if (buffer != null) {
                 chunkToCheck += 1;
             }
-            BsonDocument chunk = getChunk(chunkToCheck);
+            Document chunk = getChunk(chunkToCheck);
             if (chunk != null) {
-                validateData(chunk.getBinary("data", new BsonBinary(new byte[0])).getData(), chunkToCheck);
+                validateData(chunk, chunkToCheck);
             }
             return -1;
         } else if (buffer == null) {
@@ -154,12 +153,16 @@ class GridFSDownloadStreamImpl extends GridFSDownloadStream {
         }
     }
 
-    private BsonDocument getChunk(final int chunkIndexToFetch) {
-        return chunksCollection.find(new BsonDocument("files_id", fileId)
-                .append("n", new BsonInt32(chunkIndexToFetch))).first();
+    private Document getChunk(final int chunkIndexToFetch) {
+        return chunksCollection.find(new Document("files_id", fileId).append("n", chunkIndexToFetch)).first();
     }
 
-    private byte[] validateData(final byte[] data, final int chunkIndex) {
+    private byte[] validateData(final Document chunk, final int chunkIndex) {
+        if (!(chunk.get("data") instanceof Binary)) {
+            throw new MongoGridFSException("Unexpected data format for the chunk");
+        }
+        byte[] data = ((Binary) chunk.get("data")).getData();
+
         long expectedDataLength = 0;
         boolean extraChunk = false;
         if (chunkIndex + 1 > numberOfChunks) {
@@ -181,14 +184,15 @@ class GridFSDownloadStreamImpl extends GridFSDownloadStream {
         return data;
     }
 
+    @SuppressWarnings("unchecked")
     private byte[] getBuffer(final int chunkIndexToFetch) {
-        BsonDocument chunk = getChunk(chunkIndexToFetch);
+        Document chunk = getChunk(chunkIndexToFetch);
 
         if (chunk == null) {
             throw new MongoGridFSException(format("Could not find file chunk for file_id: %s at chunk index %s.",
                         fileId, chunkIndexToFetch));
         } else {
-            return validateData(chunk.getBinary("data", new BsonBinary(new byte[0])).getData(), chunkIndexToFetch);
+            return validateData(chunk, chunkIndexToFetch);
         }
     }
 }
