@@ -16,6 +16,7 @@
 
 package com.mongodb.client.gridfs.model;
 
+import com.mongodb.MongoGridFSException;
 import org.bson.BsonValue;
 import org.bson.Document;
 import org.bson.types.ObjectId;
@@ -92,13 +93,13 @@ public final class GridFSFile {
     /**
      * The {@link ObjectId} for this file.
      *
-     * @return the id for this file or null if a custom id type has been used.
+     * @return the id for this file.
      */
     public ObjectId getObjectId() {
-        if (id.isObjectId()) {
-            return id.asObjectId().getValue();
+        if (!id.isObjectId()) {
+            throw new MongoGridFSException("Custom id type used for this GridFS file");
         }
-        return null;
+        return id.asObjectId().getValue();
     }
 
     /**

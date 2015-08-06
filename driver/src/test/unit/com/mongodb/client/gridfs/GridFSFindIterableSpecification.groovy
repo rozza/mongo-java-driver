@@ -155,10 +155,7 @@ class GridFSFindIterableSpecification extends Specification {
 
         if (expectedResult.get('_id').isObjectId()) {
             firstResult.getObjectId() == expectedResult.getObjectId('_id').getValue();
-        } else {
-            firstResult.getObjectId() == null
         }
-
         if (expectedResult.containsKey('metadata')) {
             def metadata = codecRegistry.get(Document)
                     .decode(new BsonDocumentReader(expectedResult.getDocument('metadata')), DecoderContext.builder().build())
