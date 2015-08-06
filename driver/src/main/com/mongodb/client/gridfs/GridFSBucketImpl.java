@@ -154,14 +154,26 @@ final class GridFSBucketImpl implements GridFSBucket {
         int chunkSize = options.getChunkSizeBytes() == null ? chunkSizeBytes : options.getChunkSizeBytes();
         byte[] buffer = new byte[chunkSize];
         int len;
+        MongoGridFSException savedThrowable = null;
         try {
             while ((len = source.read(buffer)) != -1) {
                 uploadStream.write(buffer, 0, len);
             }
         } catch (IOException e) {
-            throw new MongoGridFSException("IO Exception when reading from the InputStream", e);
+            savedThrowable = new MongoGridFSException("IO Exception when reading from the InputStream", e);
+        } catch (Throwable t) {
+            savedThrowable = new MongoGridFSException("Unexpected exception when reading stream and writing to GridFS", t);
         } finally {
-            uploadStream.close();
+            try {
+                uploadStream.close();
+            } catch (Throwable t) {
+                if (savedThrowable == null) {
+                    throw new MongoGridFSException("Unexpected exception when closing the GridFSUploadStream", t);
+                }
+            }
+            if (savedThrowable != null) {
+                throw savedThrowable;
+            }
         }
         return uploadStream.getFileId();
     }
@@ -313,14 +325,26 @@ final class GridFSBucketImpl implements GridFSBucket {
     private void downloadToStream(final GridFSDownloadStream downloadStream, final OutputStream destination) {
         byte[] buffer = new byte[downloadStream.getGridFSFile().getChunkSize()];
         int len;
+        MongoGridFSException savedThrowable = null;
         try {
             while ((len = downloadStream.read(buffer)) != -1) {
                 destination.write(buffer, 0, len);
             }
         } catch (IOException e) {
-            throw new MongoGridFSException("IO Exception when reading from the OutputStream", e);
+            savedThrowable = new MongoGridFSException("IO Exception when reading from the OutputStream", e);
+        } catch (Throwable t) {
+            savedThrowable = new MongoGridFSException("Unexpected Exception when reading GridFS and writing to the Stream", t);
         } finally {
-            downloadStream.close();
+            try {
+                downloadStream.close();
+            } catch (Throwable t) {
+                if (savedThrowable == null) {
+                    throw new MongoGridFSException("Unexpected exception when closing the GridFSDownloadStream", t);
+                }
+            }
+            if (savedThrowable != null) {
+                throw savedThrowable;
+            }
         }
     }
 }
