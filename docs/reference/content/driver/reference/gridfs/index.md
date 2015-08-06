@@ -86,7 +86,7 @@ GridFS will automatically create indexes on the files and chunks collections on 
 
 ## Finding files stored in GridFS
 
-To find what files are listed in the `GridFSBucket` use the [`find`]({{< apiref "com/mongodb/client/gridfs/GridFSBucket.html#find--">}}) method.
+To find the files stored in the `GridFSBucket` use the [`find`]({{< apiref "com/mongodb/client/gridfs/GridFSBucket.html#find--">}}) method.
 
 The following example prints out the filename of each file stored:
 
@@ -123,7 +123,7 @@ The [`downloadToStream`]({{< apiref "com/mongodb/client/gridfs/GridFSBucket.html
 The following example downloads a file into the provided `OutputStream`:
 
 ```java
-ByteArrayOutputStream streamToDownloadTo = new ByteArrayOutputStream();
+FileOutputStream streamToDownloadTo = new FileOutputStream("/tmp/mongodb-tutorial.pdf");
 gridFSBucket.downloadToStream(fileId, streamToDownloadTo);
 streamToDownloadTo.close();
 System.out.println(streamToDownloadTo.toString());
@@ -136,7 +136,7 @@ If you don't know the [`ObjectId`]({{< apiref "org/bson/types/ObjectId.html">}})
 The following example downloads the original version of the file named "mongodb-tutorial" into the `OutputStream`:
 
 ```java
-ByteArrayOutputStream streamToDownloadTo = new ByteArrayOutputStream();
+FileOutputStream streamToDownloadTo = new FileOutputStream("/tmp/mongodb-tutorial.pdf");
 GridFSDownloadByNameOptions downloadOptions = new GridFSDownloadByNameOptions().revision(0);
 gridFSBucket.downloadToStreamByName("mongodb-tutorial", streamToDownloadTo, downloadOptions);
 streamToDownloadTo.close();

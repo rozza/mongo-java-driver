@@ -31,11 +31,11 @@ import org.bson.Document;
 import org.bson.types.ObjectId;
 
 import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 
 import static com.mongodb.client.model.Filters.eq;
@@ -119,15 +119,14 @@ public class GridFS {
         /*
          * DownloadToStream
          */
-        ByteArrayOutputStream streamToDownloadTo = new ByteArrayOutputStream();
+        FileOutputStream streamToDownloadTo = new FileOutputStream("/tmp/mongodb-tutorial.txt");
         gridFSBucket.downloadToStream(fileId, streamToDownloadTo);
         streamToDownloadTo.close();
-        System.out.println(streamToDownloadTo.toString());
 
         /*
          * DownloadToStreamByName
          */
-        streamToDownloadTo = new ByteArrayOutputStream();
+        streamToDownloadTo = new FileOutputStream("/tmp/mongodb-tutorial.txt");
         GridFSDownloadByNameOptions downloadOptions = new GridFSDownloadByNameOptions().revision(0);
         gridFSBucket.downloadToStreamByName("mongodb-tutorial", streamToDownloadTo, downloadOptions);
         streamToDownloadTo.close();
