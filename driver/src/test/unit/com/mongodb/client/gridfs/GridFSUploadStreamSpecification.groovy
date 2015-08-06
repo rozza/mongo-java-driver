@@ -147,11 +147,5 @@ class GridFSUploadStreamSpecification extends Specification {
 
         then:
         thrown(MongoGridFSException)
-
-        when:
-        uploadStream.close()
-
-        then:
-        thrown(MongoGridFSException)
     }
 }
