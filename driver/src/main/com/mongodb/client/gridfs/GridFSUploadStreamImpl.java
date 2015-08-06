@@ -41,11 +41,12 @@ final class GridFSUploadStreamImpl extends GridFSUploadStream {
     private final int chunkSizeBytes;
     private final BsonDocument metadata;
     private final MessageDigest md5;
-    private boolean closed;
     private byte[] buffer;
     private long lengthInBytes;
     private int bufferOffset;
     private int chunkIndex;
+
+    private volatile boolean closed = false;
 
     GridFSUploadStreamImpl(final MongoCollection<BsonDocument> filesCollection, final MongoCollection<BsonDocument> chunksCollection,
                            final ObjectId fileId, final String filename, final int chunkSizeBytes, final BsonDocument metadata) {
@@ -118,9 +119,14 @@ final class GridFSUploadStreamImpl extends GridFSUploadStream {
 
     @Override
     public void close() {
-        checkClosed();
+        synchronized (this) {
+            if (closed) {
+                return;
+            } else {
+                closed = true;
+            }
+        }
         writeChunk();
-        closed = true;
         BsonDocument fileDocument = new BsonDocument("_id", new BsonObjectId(fileId))
                 .append("length", new BsonInt64(lengthInBytes))
                 .append("chunkSize", new BsonInt32(chunkSizeBytes))

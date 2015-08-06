@@ -39,7 +39,7 @@ class GridFSDownloadStreamImpl extends GridFSDownloadStream {
     private long currentPosition;
     private byte[] buffer = null;
     private boolean eof;
-    private boolean closed;
+    private volatile boolean closed;
 
     GridFSDownloadStreamImpl(final GridFSFile fileInfo, final MongoCollection<BsonDocument> chunksCollection) {
         this.fileInfo = notNull("file information", fileInfo);
@@ -141,8 +141,11 @@ class GridFSDownloadStreamImpl extends GridFSDownloadStream {
 
     @Override
     public void close() {
-        checkClosed();
-        closed = true;
+        synchronized (this) {
+            if (!closed) {
+                closed = true;
+            }
+        }
     }
 
     private void checkClosed() {
