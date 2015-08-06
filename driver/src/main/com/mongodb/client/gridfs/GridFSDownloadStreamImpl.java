@@ -74,6 +74,7 @@ class GridFSDownloadStreamImpl extends GridFSDownloadStream {
     @Override
     public int read(final byte[] b, final int off, final int len) {
         checkClosed();
+
         if (eof) {
             return -1;
         } if (currentPosition == length) {

@@ -262,12 +262,12 @@ class GridFSDownloadStreamSpecification extends Specification {
         thrown(MongoGridFSException)
     }
 
-    def 'should throw if chunk data is differs from the expected'() {
+    def 'should throw if chunk data differs from the expected'() {
         given:
         def findQuery = new BsonDocument('files_id', fileInfo.getId()).append('n', new BsonInt32(0))
         def chunkDocument = new BsonDocument('files_id', fileInfo.getId())
                 .append('n', new BsonInt32(0))
-                .append('data', new BsonBinary(new byte[1]))
+                .append('data', new BsonBinary(data))
 
         def findIterable = Mock(FindIterable)
         def chunksCollection = Mock(MongoCollection)
