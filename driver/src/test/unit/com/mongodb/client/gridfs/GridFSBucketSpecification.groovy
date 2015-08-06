@@ -436,7 +436,7 @@ class GridFSBucketSpecification extends Specification {
                 { indexOptions -> indexOptions.isUnique() })
     }
 
-    def 'should not create indexes if the already exist'() {
+    def 'should not create indexes if they already exist'() {
         given:
         def filesCollection = Mock(MongoCollection)
         def chunksCollection = Mock(MongoCollection)
