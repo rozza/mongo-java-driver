@@ -42,7 +42,8 @@ final class GridFSUploadStreamImpl extends GridFSUploadStream {
     private int bufferOffset;
     private int chunkIndex;
 
-    private volatile boolean closed = false;
+    private final Object closeLock = new Object();
+    private boolean closed = false;
 
     GridFSUploadStreamImpl(final MongoCollection<Document> filesCollection, final MongoCollection<Document> chunksCollection,
                            final ObjectId fileId, final String filename, final int chunkSizeBytes, final Document metadata) {
@@ -115,12 +116,11 @@ final class GridFSUploadStreamImpl extends GridFSUploadStream {
 
     @Override
     public void close() {
-        synchronized (this) {
+        synchronized (closeLock) {
             if (closed) {
                 return;
-            } else {
-                closed = true;
             }
+            closed = true;
         }
         writeChunk();
         Document fileDocument = new Document("_id", fileId)

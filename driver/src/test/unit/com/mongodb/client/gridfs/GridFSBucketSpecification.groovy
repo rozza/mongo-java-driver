@@ -128,7 +128,7 @@ class GridFSBucketSpecification extends Specification {
 
         then:
         expect stream, isTheSameAs(new GridFSUploadStreamImpl(filesCollection, chunksCollection, stream.getFileId(), 'filename',
-                255, null), ['md5'])
+                255, null), ['md5', 'closeLock'])
     }
 
     def 'should upload from stream'() {
@@ -172,7 +172,7 @@ class GridFSBucketSpecification extends Specification {
         1 * findIterable.first() >> fileInfo
 
         then:
-        expect stream, isTheSameAs(new GridFSDownloadStreamImpl(fileInfo, chunksCollection))
+        expect stream, isTheSameAs(new GridFSDownloadStreamImpl(fileInfo, chunksCollection), ['closeLock'])
     }
 
     def 'should download to stream'() {
@@ -330,7 +330,7 @@ class GridFSBucketSpecification extends Specification {
         1 * findIterable.first() >> fileInfo
 
         then:
-        expect stream, isTheSameAs(new GridFSDownloadStreamImpl(fileInfo, chunksCollection))
+        expect stream, isTheSameAs(new GridFSDownloadStreamImpl(fileInfo, chunksCollection), ['closeLock'])
 
         where:
         version | skip | sortOrder

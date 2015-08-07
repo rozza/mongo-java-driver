@@ -154,14 +154,14 @@ final class GridFSBucketImpl implements GridFSBucket {
             }
         } catch (IOException e) {
             savedThrowable = new MongoGridFSException("IO Exception when reading from the InputStream", e);
-        } catch (Throwable t) {
-            savedThrowable = new MongoGridFSException("Unexpected exception when reading stream and writing to GridFS", t);
+        } catch (Exception e) {
+            savedThrowable = new MongoGridFSException("Unexpected exception when reading stream and writing to GridFS", e);
         } finally {
             try {
                 uploadStream.close();
-            } catch (Throwable t) {
+            } catch (Exception e) {
                 if (savedThrowable == null) {
-                    throw new MongoGridFSException("Unexpected exception when closing the GridFSUploadStream", t);
+                    throw new MongoGridFSException("Unexpected exception when closing the GridFSUploadStream", e);
                 }
             }
             if (savedThrowable != null) {
@@ -320,15 +320,13 @@ final class GridFSBucketImpl implements GridFSBucket {
             }
         } catch (IOException e) {
             savedThrowable = new MongoGridFSException("IO Exception when reading from the OutputStream", e);
-        } catch (Throwable t) {
-            savedThrowable = new MongoGridFSException("Unexpected Exception when reading GridFS and writing to the Stream", t);
+        } catch (Exception e) {
+            savedThrowable = new MongoGridFSException("Unexpected Exception when reading GridFS and writing to the Stream", e);
         } finally {
             try {
                 downloadStream.close();
-            } catch (Throwable t) {
-                if (savedThrowable == null) {
-                    throw new MongoGridFSException("Unexpected exception when closing the GridFSDownloadStream", t);
-                }
+            } catch (Exception e) {
+                // Do nothing
             }
             if (savedThrowable != null) {
                 throw savedThrowable;
