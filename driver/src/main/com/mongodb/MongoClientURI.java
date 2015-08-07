@@ -225,7 +225,7 @@ public class MongoClientURI {
      * @return the URI
      */
     public String getURI() {
-        return proxied.getURI();
+        return proxied.getConnectionString();
     }
 
     /**
