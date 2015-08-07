@@ -137,7 +137,7 @@ class ConnectionStringSpecification extends Specification {
         cause                                       | connectionString
         'is not a connection string'                | 'hello world'
         'is a unix socket'                          | 'mongodb://%2Ftmp%2Fmongodb-27017.sock'
-        'is a missing the host'                     | 'mongodb://'
+        'is missing a host'                         | 'mongodb://'
         'has an empty host'                         | 'mongodb://localhost:27017,,localhost:27019'
         'has an malformed IPv6 host'                | 'mongodb://[::1'
         'has unescaped colons'                      | 'mongodb://locahost::1'

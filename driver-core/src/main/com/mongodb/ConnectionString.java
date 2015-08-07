@@ -221,7 +221,7 @@ public ConnectionString(final String connectionString) {
         if (idx > 0) {
             userInfo = userAndHostInformation.substring(0, idx);
             hostIdentifier = userAndHostInformation.substring(idx + 1);
-            int colonCount = countOccurances(userInfo, ":");
+            int colonCount = countOccurrences(userInfo, ":");
             if (userInfo.contains("@") || colonCount > 1) {
                 throw new IllegalArgumentException("The connection string contains invalid user information. "
                         + "If the username or password contains a colon (:) or an at-sign (@) then it must be urlencoded");
@@ -624,7 +624,7 @@ public ConnectionString(final String connectionString) {
                     validatePort(host, host.substring(idx + 2));
                 }
             } else {
-                int colonCount = countOccurances(host, ":");
+                int colonCount = countOccurrences(host, ":");
                 if (colonCount > 1) {
                     throw new IllegalArgumentException(format("The connection string contains an invalid host '%s'. "
                             + "Reserved characters such as ':' must be escaped according RFC 2396. "
@@ -655,7 +655,7 @@ public ConnectionString(final String connectionString) {
         }
     }
 
-    private int countOccurances(final String haystack, final String needle) {
+    private int countOccurrences(final String haystack, final String needle) {
         return haystack.length() - haystack.replace(needle, "").length();
     }
 
@@ -728,7 +728,7 @@ public ConnectionString(final String connectionString) {
      * Get the unparsed connection string.
      *
      * @return the connection string
-     * @deprecated use getConnectionString()
+     * deprecated use {@link #getConnectionString()}
      */
     @Deprecated
     public String getURI() {
