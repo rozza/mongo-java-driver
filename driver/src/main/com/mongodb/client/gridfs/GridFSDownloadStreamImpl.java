@@ -163,7 +163,7 @@ class GridFSDownloadStreamImpl extends GridFSDownloadStream {
         if (!(chunk.get("data") instanceof Binary)) {
             throw new MongoGridFSException("Unexpected data format for the chunk");
         }
-        byte[] data = ((Binary) chunk.get("data")).getData();
+        byte[] data = chunk.get("data", Binary.class).getData();
 
         long expectedDataLength = 0;
         boolean extraChunk = false;

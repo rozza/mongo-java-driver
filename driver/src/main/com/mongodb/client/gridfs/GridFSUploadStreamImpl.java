@@ -18,9 +18,9 @@ package com.mongodb.client.gridfs;
 
 import com.mongodb.MongoGridFSException;
 import com.mongodb.client.MongoCollection;
-import org.bson.BsonBinary;
 import org.bson.BsonDateTime;
 import org.bson.Document;
+import org.bson.types.Binary;
 import org.bson.types.ObjectId;
 
 import java.security.MessageDigest;
@@ -146,13 +146,13 @@ final class GridFSUploadStreamImpl extends GridFSUploadStream {
         }
     }
 
-    private BsonBinary getData() {
+    private Binary getData() {
         if (bufferOffset < chunkSizeBytes) {
             byte[] sizedBuffer = new byte[bufferOffset];
             System.arraycopy(buffer, 0, sizedBuffer, 0, bufferOffset);
             buffer = sizedBuffer;
         }
-        return new BsonBinary(buffer);
+        return new Binary(buffer);
     }
 
     private void checkClosed() {

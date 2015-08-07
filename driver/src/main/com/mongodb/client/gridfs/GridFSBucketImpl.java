@@ -44,11 +44,10 @@ import java.util.ArrayList;
 import static com.mongodb.ReadPreference.primary;
 import static com.mongodb.assertions.Assertions.notNull;
 import static java.lang.String.format;
+import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
 
 @SuppressWarnings("deprecation")
 final class GridFSBucketImpl implements GridFSBucket {
-    private static final CodecRegistry DEFAULT_CODEC_REGISTRY = MongoClient.getDefaultCodecRegistry();
-
     private final MongoDatabase database;
     private final String bucketName;
     private final int chunkSizeBytes;
@@ -56,6 +55,7 @@ final class GridFSBucketImpl implements GridFSBucket {
     private final ReadPreference readPreference;
     private final MongoCollection<Document> filesCollection;
     private final MongoCollection<Document> chunksCollection;
+    private final CodecRegistry codecRegistry;
     private volatile boolean checkedIndexes;
 
     GridFSBucketImpl(final MongoDatabase database) {
@@ -68,16 +68,18 @@ final class GridFSBucketImpl implements GridFSBucket {
         this.chunkSizeBytes = 255;
         this.writeConcern = database.getWriteConcern();
         this.readPreference = database.getReadPreference();
+        this.codecRegistry = getCodecRegistry();
         this.filesCollection = getFilesCollection();
         this.chunksCollection = getChunksCollection();
     }
 
-    GridFSBucketImpl(final MongoDatabase database, final String bucketName, final int chunkSizeBytes, final ReadPreference readPreference,
-                     final WriteConcern writeConcern, final MongoCollection<Document> filesCollection,
+    GridFSBucketImpl(final MongoDatabase database, final String bucketName, final int chunkSizeBytes, final CodecRegistry codecRegistry,
+                     final ReadPreference readPreference, final WriteConcern writeConcern, final MongoCollection<Document> filesCollection,
                      final MongoCollection<Document> chunksCollection, final boolean checkedIndexes) {
         this.database = notNull("database", database);
         this.bucketName = notNull("bucketName", bucketName);
         this.chunkSizeBytes = chunkSizeBytes;
+        this.codecRegistry = notNull("codecRegistry", codecRegistry);
         this.readPreference = notNull("readPreference", readPreference);
         this.writeConcern = notNull("writeConcern", writeConcern);
         this.checkedIndexes = checkedIndexes;
@@ -107,19 +109,19 @@ final class GridFSBucketImpl implements GridFSBucket {
 
     @Override
     public GridFSBucket withChunkSizeBytes(final int chunkSizeBytes) {
-        return new GridFSBucketImpl(database, bucketName, chunkSizeBytes, readPreference, writeConcern, filesCollection,
+        return new GridFSBucketImpl(database, bucketName, chunkSizeBytes, codecRegistry, readPreference, writeConcern, filesCollection,
                 chunksCollection, checkedIndexes);
     }
 
     @Override
     public GridFSBucket withReadPreference(final ReadPreference readPreference) {
-        return new GridFSBucketImpl(database, bucketName, chunkSizeBytes, readPreference, writeConcern, filesCollection,
+        return new GridFSBucketImpl(database, bucketName, chunkSizeBytes, codecRegistry, readPreference, writeConcern, filesCollection,
                 chunksCollection, checkedIndexes);
     }
 
     @Override
     public GridFSBucket withWriteConcern(final WriteConcern writeConcern) {
-        return new GridFSBucketImpl(database, bucketName, chunkSizeBytes, readPreference, writeConcern, filesCollection,
+        return new GridFSBucketImpl(database, bucketName, chunkSizeBytes, codecRegistry, readPreference, writeConcern, filesCollection,
                 chunksCollection, checkedIndexes);
     }
 
@@ -241,16 +243,20 @@ final class GridFSBucketImpl implements GridFSBucket {
         }
     }
 
+    private CodecRegistry getCodecRegistry() {
+        return fromRegistries(database.getCodecRegistry(), MongoClient.getDefaultCodecRegistry());
+    }
+
     private MongoCollection<Document> getFilesCollection() {
         return database.getCollection(bucketName + ".files")
-                .withCodecRegistry(DEFAULT_CODEC_REGISTRY)
+                .withCodecRegistry(codecRegistry)
                 .withReadPreference(readPreference)
                 .withWriteConcern(writeConcern);
     }
 
     private MongoCollection<Document> getChunksCollection() {
         return database.getCollection(bucketName + ".chunks")
-                .withCodecRegistry(DEFAULT_CODEC_REGISTRY)
+                .withCodecRegistry(MongoClient.getDefaultCodecRegistry())
                 .withReadPreference(readPreference)
                 .withWriteConcern(writeConcern);
     }
@@ -259,11 +265,11 @@ final class GridFSBucketImpl implements GridFSBucket {
         if (!checkedIndexes) {
             if (filesCollection.withReadPreference(primary()).find().projection(new Document("_id", 1)).first() == null) {
                 Document filesIndex = new Document("filename", 1).append("uploadDate", 1);
-                if (!hasIndex(filesCollection, filesIndex)) {
+                if (!hasIndex(filesCollection.withReadPreference(primary()), filesIndex)) {
                     filesCollection.createIndex(filesIndex);
                 }
                 Document chunksIndex = new Document("files_id", 1).append("n", 1);
-                if (!hasIndex(chunksCollection, chunksIndex)) {
+                if (!hasIndex(chunksCollection.withReadPreference(primary()), chunksIndex)) {
                     chunksCollection.createIndex(chunksIndex, new IndexOptions().unique(true));
                 }
             }
@@ -271,7 +277,7 @@ final class GridFSBucketImpl implements GridFSBucket {
         }
     }
 
-    private boolean hasIndex(final MongoCollection<Document> collection, final Document index) {
+    private boolean  hasIndex(final MongoCollection<Document> collection, final Document index) {
         boolean hasIndex = false;
         ArrayList<Document> indexes = collection.listIndexes().into(new ArrayList<Document>());
         for (Document indexDoc : indexes) {
