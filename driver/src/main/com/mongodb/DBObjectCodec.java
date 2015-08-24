@@ -72,7 +72,7 @@ public class DBObjectCodec implements CollectibleCodec<DBObject> {
     static BsonTypeClassMap createDefaultBsonTypeClassMap() {
         Map<BsonType, Class<?>> replacements = new HashMap<BsonType, Class<?>>();
         replacements.put(BsonType.REGULAR_EXPRESSION, Pattern.class);
-        replacements.put(BsonType.SYMBOL, String.class);
+        replacements.put(BsonType.SYMBOL, Symbol.class);
         replacements.put(BsonType.TIMESTAMP, BSONTimestamp.class);
 
         return new BsonTypeClassMap(replacements);
