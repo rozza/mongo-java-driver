@@ -95,6 +95,12 @@ import static java.util.Collections.singletonList;
  * <li>{@code false}: the driver does not send a getLastError command after every update.</li>
  * </ul>
  * </li>
+ * <li>{@code journal=true|false}
+ * <ul>
+ * <li>{@code true}: the driver waits for the server to group commit to the journal file on disk.</li>
+ * <li>{@code false}: the driver does not wait for the server to group commit to the journal file on disk.</li>
+ * </ul>
+ * </li>
  * <li>{@code w=wValue}
  * <ul>
  * <li>The driver adds { w : wValue } to the getLastError command. Implies {@code safe=true}.</li>
@@ -196,20 +202,20 @@ public ConnectionString(final String connectionString) {
                     + "Connection strings must start with '%s'", PREFIX));
         }
 
-        String unProcessedConnectionString = connectionString.substring(PREFIX.length());
+        String unprocessedConnectionString = connectionString.substring(PREFIX.length());
 
         // Split out the user and host information
         String userAndHostInformation = null;
-        int idx = unProcessedConnectionString.lastIndexOf("/");
+        int idx = unprocessedConnectionString.lastIndexOf("/");
         if (idx == -1) {
-            if (unProcessedConnectionString.contains("?")) {
+            if (unprocessedConnectionString.contains("?")) {
                 throw new IllegalArgumentException("The connection string contains options without trailing slash");
             }
-            userAndHostInformation = unProcessedConnectionString;
-            unProcessedConnectionString = "";
+            userAndHostInformation = unprocessedConnectionString;
+            unprocessedConnectionString = "";
         } else {
-            userAndHostInformation = unProcessedConnectionString.substring(0, idx);
-            unProcessedConnectionString = unProcessedConnectionString.substring(idx + 1);
+            userAndHostInformation = unprocessedConnectionString.substring(0, idx);
+            unprocessedConnectionString = unprocessedConnectionString.substring(idx + 1);
         }
 
         // Split the user and host information
@@ -242,13 +248,13 @@ public ConnectionString(final String connectionString) {
 
         // Process the authDB section
         String nsPart = null;
-        idx = unProcessedConnectionString.indexOf("?");
+        idx = unprocessedConnectionString.indexOf("?");
         if (idx == -1) {
-            nsPart = unProcessedConnectionString;
-            unProcessedConnectionString = "";
+            nsPart = unprocessedConnectionString;
+            unprocessedConnectionString = "";
         } else {
-            nsPart = unProcessedConnectionString.substring(0, idx);
-            unProcessedConnectionString = unProcessedConnectionString.substring(idx + 1);
+            nsPart = unprocessedConnectionString.substring(0, idx);
+            unprocessedConnectionString = unprocessedConnectionString.substring(idx + 1);
         }
         if (nsPart.length() > 0) {
             nsPart = urldecode(nsPart);
@@ -265,13 +271,9 @@ public ConnectionString(final String connectionString) {
             collection = null;
         }
 
-        Map<String, List<String>> optionsMap = parseOptions(unProcessedConnectionString);
+        Map<String, List<String>> optionsMap = parseOptions(unprocessedConnectionString);
         translateOptions(optionsMap);
-        try {
-            credentials = createCredentials(optionsMap, userName, password);
-        } catch (Throwable t) {
-            throw new IllegalArgumentException(format("The connection string contains invalid credentials. %s", t.getMessage()));
-        }
+        credentials = createCredentials(optionsMap, userName, password);
         warnOnUnsupportedOptions(optionsMap);
     }
 
@@ -586,12 +588,14 @@ public ConnectionString(final String connectionString) {
 
     private boolean parseBoolean(final String input, final String key) {
         String trimmedInput = input.trim();
-        if (input != "true" && LOGGER.isWarnEnabled()) {
-            LOGGER.warn(format("Deprecated boolean value ('%s') in the connection string for '%s', please update to %s=true",
-                    input, key, key));
+        boolean isTrue = trimmedInput.length() > 0 && (trimmedInput.equals("1") || trimmedInput.toLowerCase().equals("true")
+                || trimmedInput.toLowerCase().equals("yes"));
+
+        if ((!input.equals("true") && !input.equals("false")) && LOGGER.isWarnEnabled()) {
+            LOGGER.warn(format("Deprecated boolean value ('%s') in the connection string for '%s', please update to %s=%s",
+                    input, key, key, isTrue));
         }
-        return trimmedInput.length() > 0
-               && (trimmedInput.equals("1") || trimmedInput.toLowerCase().equals("true") || trimmedInput.toLowerCase().equals("yes"));
+        return isTrue;
     }
 
     private int parseInteger(final String input, final String key) {
@@ -611,7 +615,7 @@ public ConnectionString(final String connectionString) {
         for (String host : rawHosts) {
             if (host.length() == 0) {
                 throw new IllegalArgumentException(format("The connection string contains an empty host '%s'. ", rawHosts));
-            } else if (host.endsWith("sock")) {
+            } else if (host.endsWith(".sock")) {
                 throw new IllegalArgumentException(format("The connection string contains an invalid host '%s'. "
                         + "Unix Domain Socket which is not supported by the Java driver", host));
             } else if (host.startsWith("[")) {
