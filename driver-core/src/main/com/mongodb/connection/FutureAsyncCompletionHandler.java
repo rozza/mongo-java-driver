@@ -16,8 +16,11 @@
 
 package com.mongodb.connection;
 
+import com.mongodb.MongoException;
 import com.mongodb.MongoInternalException;
 import com.mongodb.MongoInterruptedException;
+import com.mongodb.MongoSocketOpenException;
+import com.mongodb.MongoSocketReadTimeoutException;
 
 import java.io.IOException;
 import java.util.concurrent.CountDownLatch;
@@ -61,6 +64,10 @@ class FutureAsyncCompletionHandler<T> implements AsyncCompletionHandler<T> {
         if (error != null) {
             if (error instanceof IOException) {
                 throw (IOException) error;
+            } else if (error instanceof MongoSocketReadTimeoutException) {
+                throw (MongoSocketReadTimeoutException) error;
+            } else if (error instanceof MongoSocketOpenException) {
+                throw (MongoSocketOpenException) error;
             } else {
                 throw new MongoInternalException(prefix + " the AsynchronousSocketChannelStream failed", error);
             }

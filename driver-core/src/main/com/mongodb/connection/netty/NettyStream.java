@@ -32,6 +32,7 @@ import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
+import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
@@ -41,7 +42,7 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.ssl.SslHandler;
 import io.netty.handler.timeout.ReadTimeoutException;
-import io.netty.handler.timeout.ReadTimeoutHandler;
+import io.netty.util.concurrent.EventExecutor;
 import org.bson.ByteBuf;
 
 import javax.net.ssl.SSLContext;
@@ -59,6 +60,7 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
  * A Stream implementation based on Netty 4.0.
  */
 final class NettyStream implements Stream {
+    private static String READ_HANDLER_NAME = "ReadTimeoutHandler";
     private final ServerAddress address;
     private final SocketSettings settings;
     private final SslSettings sslSettings;
@@ -122,7 +124,7 @@ final class NettyStream implements Stream {
                     }
                     ch.pipeline().addFirst("ssl", new SslHandler(engine, false));
                 }
-                ch.pipeline().addLast("readTimeoutHandler", new ReadTimeoutHandler(settings.getReadTimeout(MILLISECONDS), MILLISECONDS));
+                ch.pipeline().addLast(READ_HANDLER_NAME, new ReadTimeoutHandler(settings.getReadTimeout(MILLISECONDS)));
                 ch.pipeline().addLast(new InboundBufferHandler());
             }
         });
@@ -134,7 +136,7 @@ final class NettyStream implements Stream {
                     channel = channelFuture.channel();
                     handler.completed(null);
                 } else {
-                    handler.failed(future.cause());
+                    handler.failed(new MongoSocketOpenException("Exception opening socket", getAddress(), future.cause()));
                 }
             }
         });
@@ -177,6 +179,7 @@ final class NettyStream implements Stream {
 
     @Override
     public void readAsync(final int numBytes, final AsyncCompletionHandler<ByteBuf> handler) {
+        scheduleReadTimeout();
         ByteBuf buffer = null;
         Throwable exceptionResult = null;
         synchronized (this) {
@@ -208,9 +211,11 @@ final class NettyStream implements Stream {
             }
         }
         if (exceptionResult != null) {
+            disableReadTimeout();
             handler.failed(exceptionResult);
         }
         if (buffer != null) {
+            disableReadTimeout();
             handler.completed(buffer);
         }
     }
@@ -335,5 +340,48 @@ final class NettyStream implements Stream {
                 throw new MongoInterruptedException("Interrupted", e);
             }
         }
+    }
+
+
+    private void scheduleReadTimeout() {
+        adjustTimeout(false);
+    }
+
+    private void disableReadTimeout() {
+        adjustTimeout(true);
+    }
+
+    private void adjustTimeout(final boolean disable) {
+            ChannelHandler timeoutHandler = channel.pipeline().get(READ_HANDLER_NAME);
+            if (timeoutHandler != null && timeoutHandler instanceof ReadTimeoutHandler) {
+                final ReadTimeoutHandler readTimeoutHandler = (ReadTimeoutHandler) timeoutHandler;
+                final ChannelHandlerContext handlerContext = channel.pipeline().context(timeoutHandler);
+                EventExecutor executor = handlerContext.executor();
+
+                if (disable) {
+                    if (executor.inEventLoop()) {
+                        readTimeoutHandler.removeTimeout(handlerContext);
+                    } else {
+                        executor.submit(new Runnable() {
+                            @Override
+                            public void run() {
+                                readTimeoutHandler.removeTimeout(handlerContext);
+                            }
+                        });
+                    }
+                } else {
+                    if (executor.inEventLoop()) {
+                        readTimeoutHandler.scheduleTimeout(handlerContext);
+                    } else {
+                        executor.submit(new Runnable() {
+                            @Override
+                            public void run() {
+                                readTimeoutHandler.scheduleTimeout(handlerContext);
+                            }
+                        });
+                    }
+                }
+            }
+
     }
 }
