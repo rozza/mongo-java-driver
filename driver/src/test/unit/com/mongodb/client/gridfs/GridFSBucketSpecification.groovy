@@ -24,6 +24,7 @@ import com.mongodb.WriteConcern
 import com.mongodb.client.FindIterable
 import com.mongodb.client.ListIndexesIterable
 import com.mongodb.client.MongoCollection
+import com.mongodb.client.MongoCursor
 import com.mongodb.client.MongoDatabase
 import com.mongodb.client.gridfs.model.GridFSDownloadByNameOptions
 import com.mongodb.client.gridfs.model.GridFSFile
@@ -181,6 +182,7 @@ class GridFSBucketSpecification extends Specification {
         def fileId = new ObjectId()
         def bsonFileId = new BsonObjectId(fileId)
         def fileInfo = new GridFSFile(bsonFileId, 'filename', 10, 255, new Date(), '1234', new Document())
+        def mongoCursor = Mock(MongoCursor)
         def findIterable =  Mock(FindIterable)
         def filesCollection = Mock(MongoCollection) {
             1 * find() >> findIterable
@@ -200,12 +202,14 @@ class GridFSBucketSpecification extends Specification {
         1 * findIterable.filter(new Document('_id', bsonFileId)) >> findIterable
         1 * findIterable.map(_) >> findIterable
         1 * findIterable.first() >> fileInfo
-        1 * chunksCollection.find({ query -> query.getInteger('n') == 0 }) >> findIterable
-        1 * findIterable.first() >> chunkDocument
+        1 * chunksCollection.find(_) >> findIterable
+        1 * findIterable.sort(_) >> findIterable
+        1 * findIterable.iterator() >> mongoCursor
+        1 * mongoCursor.hasNext() >> true
+        1 * mongoCursor.next() >> chunkDocument
 
         then: 'extra chunk check'
-        1 * chunksCollection.find({ query -> query.getInteger('n') == 1 }) >> findIterable
-        1 * findIterable.first() >> null
+        1 * mongoCursor.hasNext() >> false
 
         then:
         outputStream.toByteArray() == tenBytes
@@ -215,6 +219,7 @@ class GridFSBucketSpecification extends Specification {
         given:
         def bsonFileId = new BsonString('1')
         def fileInfo = new GridFSFile(bsonFileId, 'filename', 10L, 255, new Date(), '1234', new Document())
+        def mongoCursor =  Mock(MongoCursor)
         def findIterable =  Mock(FindIterable)
         def filesCollection = Mock(MongoCollection) {
             1 * find() >> findIterable
@@ -234,12 +239,14 @@ class GridFSBucketSpecification extends Specification {
         1 * findIterable.filter(new Document('_id', bsonFileId)) >> findIterable
         1 * findIterable.map(_) >> findIterable
         1 * findIterable.first() >> fileInfo
-        1 * chunksCollection.find({ query -> query.getInteger('n') == 0 }) >> findIterable
-        1 * findIterable.first() >> chunkDocument
+        1 * chunksCollection.find(_) >> findIterable
+        1 * findIterable.sort(_) >> findIterable
+        1 * findIterable.iterator() >> mongoCursor
+        1 * mongoCursor.hasNext() >> true
+        1 * mongoCursor.next() >> chunkDocument
 
         then: 'extra chunk check'
-        1 * chunksCollection.find({ query -> query.getInteger('n') == 1 }) >> findIterable
-        1 * findIterable.first() >> null
+        1 * mongoCursor.hasNext() >> false
 
         then:
         outputStream.toByteArray() == tenBytes
@@ -251,6 +258,7 @@ class GridFSBucketSpecification extends Specification {
         def fileId = new ObjectId()
         def bsonFileId = new BsonObjectId(fileId)
         def fileInfo = new GridFSFile(bsonFileId, filename, 10, 255, new Date(), '1234', new Document())
+        def mongoCursor =  Mock(MongoCursor)
         def findIterable =  Mock(FindIterable)
         def filesCollection = Mock(MongoCollection) {
             1 * find() >> findIterable
@@ -268,14 +276,19 @@ class GridFSBucketSpecification extends Specification {
 
         then:
         1 * findIterable.filter(new Document('filename', filename)) >> findIterable
+        1 * findIterable.sort(_) >> findIterable
         1 * findIterable.map(_) >> findIterable
         1 * findIterable.first() >> fileInfo
-        1 * chunksCollection.find({ query -> query.getInteger('n') == 0 }) >> findIterable
-        1 * findIterable.first() >> chunkDocument
+
+        then:
+        1 * chunksCollection.find(_) >> findIterable
+        1 * findIterable.sort(_) >> findIterable
+        1 * findIterable.iterator() >> mongoCursor
+        1 * mongoCursor.hasNext() >> true
+        1 * mongoCursor.next() >> chunkDocument
 
         then: 'extra chunk check'
-        1 * chunksCollection.find({ query -> query.getInteger('n') == 1 }) >> findIterable
-        1 * findIterable.first() >> null
+        1 * mongoCursor.hasNext() >> false
 
         then:
         outputStream.toByteArray() == tenBytes

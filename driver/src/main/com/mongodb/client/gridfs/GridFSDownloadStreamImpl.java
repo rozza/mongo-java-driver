@@ -18,6 +18,7 @@ package com.mongodb.client.gridfs;
 
 import com.mongodb.MongoGridFSException;
 import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoCursor;
 import com.mongodb.client.gridfs.model.GridFSFile;
 import org.bson.BsonValue;
 import org.bson.Document;
@@ -33,6 +34,7 @@ class GridFSDownloadStreamImpl extends GridFSDownloadStream {
     private final long length;
     private final int chunkSizeInBytes;
     private final int numberOfChunks;
+    private MongoCursor<Document> cursor;
     private int chunkIndex;
     private int bufferOffset;
     private long currentPosition;
@@ -118,12 +120,14 @@ class GridFSDownloadStreamImpl extends GridFSDownloadStream {
             chunkIndex = numberOfChunks - 1;
             currentPosition = length;
             buffer = null;
+            cursor = null;
             return skipped;
         } else {
             int newChunkIndex = (int) Math.floor((float) skippedPosition / chunkSizeInBytes);
             if (chunkIndex != newChunkIndex) {
                 chunkIndex = newChunkIndex;
                 buffer = null;
+                cursor = null;
             }
             currentPosition += bytesToSkip;
             return bytesToSkip;
@@ -155,11 +159,25 @@ class GridFSDownloadStreamImpl extends GridFSDownloadStream {
         }
     }
 
-    private Document getChunk(final int chunkIndexToFetch) {
-        return chunksCollection.find(new Document("files_id", fileId).append("n", chunkIndexToFetch)).first();
+    private Document getChunk(final int startChunkIndex) {
+        if (cursor == null) {
+            cursor = chunksCollection.find(new Document("files_id", fileId).append("n", new Document("$gte", startChunkIndex)))
+                    .sort(new Document("n", 1)).iterator();
+        }
+        if (cursor.hasNext()) {
+            return cursor.next();
+        } else {
+            return null;
+        }
     }
 
     private byte[] validateData(final Document chunk, final int chunkIndex) {
+
+        if (chunk == null || chunk.getInteger("n") != chunkIndex) {
+            throw new MongoGridFSException(format("Could not find file chunk for file_id: %s at chunk index %s.",
+                    fileId, chunkIndex));
+        }
+
         if (!(chunk.get("data") instanceof Binary)) {
             throw new MongoGridFSException("Unexpected data format for the chunk");
         }
@@ -188,13 +206,6 @@ class GridFSDownloadStreamImpl extends GridFSDownloadStream {
 
     @SuppressWarnings("unchecked")
     private byte[] getBuffer(final int chunkIndexToFetch) {
-        Document chunk = getChunk(chunkIndexToFetch);
-
-        if (chunk == null) {
-            throw new MongoGridFSException(format("Could not find file chunk for file_id: %s at chunk index %s.",
-                        fileId, chunkIndexToFetch));
-        } else {
-            return validateData(chunk, chunkIndexToFetch);
-        }
+        return validateData(getChunk(chunkIndexToFetch), chunkIndexToFetch);
     }
 }
