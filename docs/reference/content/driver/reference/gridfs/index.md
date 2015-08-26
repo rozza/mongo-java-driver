@@ -21,9 +21,8 @@ When you query a GridFS store for a file, the driver or client will reassemble t
 For more information about GridFS see the [MongoDB GridFS documentation](http://docs.mongodb.org/manual/core/gridfs/).
 {{% /note %}}
 
-The following code snippets come from the `GridFS.java` example code
-that can be found with the [driver
-source]({{< srcref "driver/src/examples/gridfs/GridFS.java">}}).
+The following code snippets come from the `GridFSTour.java` example code
+that can be found with the [driver source]({{< srcref "driver/src/examples/gridfs/GridFSTour.java">}}).
 
 ## Connecting to GridFS
 

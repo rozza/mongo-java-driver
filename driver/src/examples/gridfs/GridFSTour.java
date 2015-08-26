@@ -31,7 +31,6 @@ import org.bson.Document;
 import org.bson.types.ObjectId;
 
 import java.io.ByteArrayInputStream;
-import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -43,7 +42,8 @@ import static com.mongodb.client.model.Filters.eq;
 /**
  * The GridFS code example see: https://mongodb.github.io/mongo-java-driver/3.1/driver/reference/gridfs
  */
-public class GridFS {
+public final class GridFSTour {
+
     /**
      * Run this main method to see the output of this quick example.
      *
@@ -166,5 +166,8 @@ public class GridFS {
 
 
         database.drop();
+    }
+
+    private GridFSTour() {
     }
 }
