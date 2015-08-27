@@ -69,6 +69,15 @@ final class GridFSUploadStreamImpl extends GridFSUploadStream {
     }
 
     @Override
+    public void abort() {
+        checkClosed();
+        synchronized (closeLock) {
+            closed = true;
+        }
+        chunksCollection.deleteMany(new Document("files_id", fileId));
+    }
+
+    @Override
     public void write(final int b) {
         byte[] byteArray = new byte[1];
         byteArray[0] = (byte) (0xFF & b);
