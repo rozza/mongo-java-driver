@@ -16,7 +16,9 @@
 
 package org.bson.codecs;
 
+import org.bson.BsonInvalidOperationException;
 import org.bson.BsonReader;
+import org.bson.BsonType;
 import org.bson.BsonWriter;
 
 /**
@@ -32,7 +34,11 @@ public class StringCodec implements Codec<String> {
 
     @Override
     public String decode(final BsonReader reader, final DecoderContext decoderContext) {
-        return reader.readString();
+        if (reader.getCurrentBsonType() == BsonType.SYMBOL) {
+            return reader.readSymbol();
+        } else {
+            return reader.readString();
+        }
     }
 
     @Override
