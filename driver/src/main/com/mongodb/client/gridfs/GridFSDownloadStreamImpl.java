@@ -63,9 +63,7 @@ class GridFSDownloadStreamImpl extends GridFSDownloadStream {
 
     @Override
     public GridFSDownloadStream batchSize(final int batchSize) {
-        if (batchSize != 0) {
-            isTrueArgument("batchSize cannot be negative", batchSize >= 0);
-        }
+        isTrueArgument("batchSize cannot be negative", batchSize >= 0);
         this.batchSize = batchSize;
         cursor = null;
         return this;
