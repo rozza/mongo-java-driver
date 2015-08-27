@@ -41,6 +41,8 @@ class GridFSDownloadStreamImpl extends GridFSDownloadStream {
     private int bufferOffset;
     private long currentPosition;
     private byte[] buffer = null;
+    private int markReadLimit;
+    private long markPosition;
     private boolean eof;
 
     private final Object closeLock = new Object();
@@ -152,6 +154,43 @@ class GridFSDownloadStreamImpl extends GridFSDownloadStream {
         } else {
             return buffer.length - bufferOffset;
         }
+    }
+
+    @Override
+    public void mark() {
+        mark(Integer.MAX_VALUE);
+    }
+
+    @Override
+    public synchronized void mark(final int readlimit) {
+        checkClosed();
+        markReadLimit = readlimit;
+        markPosition = currentPosition;
+    }
+
+    @Override
+    public synchronized void reset() {
+        checkClosed();
+        if (currentPosition == markPosition) {
+            return;
+        } else if (currentPosition > (markPosition + markReadLimit)) {
+            throw new MongoGridFSException("Mark readLimit has been exceeded, cannot reset");
+        }
+
+        eof = false;
+        bufferOffset = (int) markPosition % chunkSizeInBytes;
+        int markChunkIndex = (int) Math.floor((float) markPosition / chunkSizeInBytes);
+        if (markChunkIndex != chunkIndex) {
+            currentPosition = markPosition;
+            chunkIndex = markChunkIndex;
+            buffer = null;
+            cursor = null;
+        }
+    }
+
+    @Override
+    public boolean markSupported() {
+        return true;
     }
 
     @Override
