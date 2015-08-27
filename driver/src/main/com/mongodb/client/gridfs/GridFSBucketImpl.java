@@ -277,7 +277,7 @@ final class GridFSBucketImpl implements GridFSBucket {
         }
     }
 
-    private boolean  hasIndex(final MongoCollection<Document> collection, final Document index) {
+    private boolean hasIndex(final MongoCollection<Document> collection, final Document index) {
         boolean hasIndex = false;
         ArrayList<Document> indexes = collection.listIndexes().into(new ArrayList<Document>());
         for (Document indexDoc : indexes) {
