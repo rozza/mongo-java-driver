@@ -24,6 +24,7 @@ import org.bson.BsonValue;
 import org.bson.Document;
 import org.bson.types.Binary;
 
+import static com.mongodb.assertions.Assertions.isTrueArgument;
 import static com.mongodb.assertions.Assertions.notNull;
 import static java.lang.String.format;
 
@@ -35,6 +36,7 @@ class GridFSDownloadStreamImpl extends GridFSDownloadStream {
     private final int chunkSizeInBytes;
     private final int numberOfChunks;
     private MongoCursor<Document> cursor;
+    private int batchSize;
     private int chunkIndex;
     private int bufferOffset;
     private long currentPosition;
@@ -57,6 +59,16 @@ class GridFSDownloadStreamImpl extends GridFSDownloadStream {
     @Override
     public GridFSFile getGridFSFile() {
         return fileInfo;
+    }
+
+    @Override
+    public GridFSDownloadStream batchSize(final int batchSize) {
+        if (batchSize != 0) {
+            isTrueArgument("batchSize cannot be negative", batchSize >= 0);
+        }
+        this.batchSize = batchSize;
+        cursor = null;
+        return this;
     }
 
     @Override
@@ -162,13 +174,17 @@ class GridFSDownloadStreamImpl extends GridFSDownloadStream {
     private Document getChunk(final int startChunkIndex) {
         if (cursor == null) {
             cursor = chunksCollection.find(new Document("files_id", fileId).append("n", new Document("$gte", startChunkIndex)))
-                    .sort(new Document("n", 1)).iterator();
+                    .batchSize(batchSize).sort(new Document("n", 1)).iterator();
         }
+        Document chunk = null;
         if (cursor.hasNext()) {
-            return cursor.next();
-        } else {
-            return null;
+            chunk = cursor.next();
+            if (batchSize == 1) {
+                cursor = null;
+            }
         }
+
+        return chunk;
     }
 
     private byte[] validateData(final Document chunk, final int chunkIndex) {

@@ -204,6 +204,7 @@ class GridFSBucketSpecification extends Specification {
         1 * findIterable.first() >> fileInfo
         1 * chunksCollection.find(_) >> findIterable
         1 * findIterable.sort(_) >> findIterable
+        1 * findIterable.batchSize(_) >> findIterable
         1 * findIterable.iterator() >> mongoCursor
         1 * mongoCursor.hasNext() >> true
         1 * mongoCursor.next() >> chunkDocument
@@ -241,6 +242,7 @@ class GridFSBucketSpecification extends Specification {
         1 * findIterable.first() >> fileInfo
         1 * chunksCollection.find(_) >> findIterable
         1 * findIterable.sort(_) >> findIterable
+        1 * findIterable.batchSize(_) >> findIterable
         1 * findIterable.iterator() >> mongoCursor
         1 * mongoCursor.hasNext() >> true
         1 * mongoCursor.next() >> chunkDocument
@@ -283,6 +285,7 @@ class GridFSBucketSpecification extends Specification {
         then:
         1 * chunksCollection.find(_) >> findIterable
         1 * findIterable.sort(_) >> findIterable
+        1 * findIterable.batchSize(_) >> findIterable
         1 * findIterable.iterator() >> mongoCursor
         1 * mongoCursor.hasNext() >> true
         1 * mongoCursor.next() >> chunkDocument
