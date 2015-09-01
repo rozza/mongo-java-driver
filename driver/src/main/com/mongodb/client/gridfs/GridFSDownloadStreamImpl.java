@@ -99,7 +99,7 @@ class GridFSDownloadStreamImpl extends GridFSDownloadStream {
             }
             Document chunk = getChunk(chunkToCheck);
             if (chunk != null) {
-                getAndValidateData(chunk, chunkToCheck);
+                getBufferFromChunk(chunk, chunkToCheck);
             }
             return -1;
         } else if (buffer == null) {
@@ -202,11 +202,11 @@ class GridFSDownloadStreamImpl extends GridFSDownloadStream {
         return chunk;
     }
 
-    private byte[] getAndValidateData(final Document chunk, final int chunkIndex) {
+    private byte[] getBufferFromChunk(final Document chunk, final int expectedChunkIndex) {
 
-        if (chunk == null || chunk.getInteger("n") != chunkIndex) {
+        if (chunk == null || chunk.getInteger("n") != expectedChunkIndex) {
             throw new MongoGridFSException(format("Could not find file chunk for file_id: %s at chunk index %s.",
-                    fileId, chunkIndex));
+                    fileId, expectedChunkIndex));
         }
 
         if (!(chunk.get("data") instanceof Binary)) {
@@ -216,27 +216,26 @@ class GridFSDownloadStreamImpl extends GridFSDownloadStream {
 
         long expectedDataLength = 0;
         boolean extraChunk = false;
-        if (chunkIndex + 1 > numberOfChunks) {
+        if (expectedChunkIndex + 1 > numberOfChunks) {
             extraChunk = true;
-        } else if (chunkIndex + 1 == numberOfChunks) {
-            expectedDataLength = length - (chunkIndex * (long) chunkSizeInBytes);
+        } else if (expectedChunkIndex + 1 == numberOfChunks) {
+            expectedDataLength = length - (expectedChunkIndex * (long) chunkSizeInBytes);
         } else {
             expectedDataLength = chunkSizeInBytes;
         }
 
         if (extraChunk && data.length > expectedDataLength) {
             throw new MongoGridFSException(format("Extra chunk data for file_id: %s. Unexpected chunk at chunk index %s."
-                    + "The size was %s and it should be %s bytes.", fileId, chunkIndex, data.length, expectedDataLength));
+                    + "The size was %s and it should be %s bytes.", fileId, expectedChunkIndex, data.length, expectedDataLength));
         } else if (data.length != expectedDataLength) {
             throw new MongoGridFSException(format("Chunk size data length is not the expected size. "
                             + "The size was %s for file_id: %s chunk index %s it should be %s bytes.",
-                    data.length, fileId, chunkIndex, expectedDataLength));
+                    data.length, fileId, expectedChunkIndex, expectedDataLength));
         }
         return data;
     }
 
-    @SuppressWarnings("unchecked")
     private byte[] getBuffer(final int chunkIndexToFetch) {
-        return getAndValidateData(getChunk(chunkIndexToFetch), chunkIndexToFetch);
+        return getBufferFromChunk(getChunk(chunkIndexToFetch), chunkIndexToFetch);
     }
 }
