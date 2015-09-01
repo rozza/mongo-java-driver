@@ -446,6 +446,24 @@ class GridFSDownloadStreamSpecification extends Specification {
 
     }
 
+    def 'should not throw an exception when trying to mark post close'() {
+        given:
+        def downloadStream = new GridFSDownloadStreamImpl(fileInfo, Stub(MongoCollection))
+        downloadStream.close()
+
+        when:
+        downloadStream.mark()
+
+        then:
+        notThrown(MongoGridFSException)
+
+        when:
+        downloadStream.mark(1)
+
+        then:
+        notThrown(MongoGridFSException)
+    }
+
     def 'should handle negative skip value correctly '() {
         given:
         def downloadStream = new GridFSDownloadStreamImpl(fileInfo, Stub(MongoCollection))
@@ -536,53 +554,6 @@ class GridFSDownloadStreamSpecification extends Specification {
 
         then:
         0 * chunksCollection.find(_)
-    }
-
-    def 'should throw if resetting past readLimit'() {
-        given:
-        def fileInfo = new GridFSFile(new BsonObjectId(new ObjectId()), 'filename', 25L, 25, new Date(), 'abc', new Document())
-
-        def firstChunkBytes = 1..25 as byte[]
-
-        def chunkDocument = new Document('files_id', fileInfo.getId()).append('n', 0).append('data', new Binary(firstChunkBytes))
-
-        def mongoCursor = Mock(MongoCursor)
-        def findIterable = Mock(FindIterable)
-        def chunksCollection = Mock(MongoCollection)
-        def downloadStream = new GridFSDownloadStreamImpl(fileInfo, chunksCollection)
-
-        when:
-        def readByte = new byte[10]
-        downloadStream.read(readByte)
-
-        then:
-        1 * chunksCollection.find(_) >> findIterable
-        1 * findIterable.sort(_) >> findIterable
-        1 * findIterable.batchSize(0) >> findIterable
-        1 * findIterable.iterator() >> mongoCursor
-        1 * mongoCursor.hasNext() >> true
-        1 * mongoCursor.next() >> chunkDocument
-
-        then:
-        readByte == 1 .. 10 as byte[]
-
-        when:
-        downloadStream.mark(5)
-
-        then:
-        0 * chunksCollection.find(_)
-
-        when:
-        downloadStream.read(readByte)
-
-        then:
-        readByte == 11 .. 20 as byte[]
-
-        when:
-        downloadStream.reset()
-
-        then:
-        thrown(MongoGridFSException)
     }
 
     def 'should throw if trying to pass negative batchSize'() {
@@ -723,12 +694,6 @@ class GridFSDownloadStreamSpecification extends Specification {
 
         when:
         downloadStream.skip(10)
-
-        then:
-        thrown(MongoGridFSException)
-
-        when:
-        downloadStream.mark()
 
         then:
         thrown(MongoGridFSException)
