@@ -151,6 +151,61 @@ class GridFSBucketSpecification extends Specification {
         1 * filesCollection.insertOne(_)
     }
 
+    def 'should clean up any chunks when upload from stream throws an IOException'() {
+        given:
+        def filesCollection = Mock(MongoCollection)
+        def chunksCollection = Mock(MongoCollection)
+        def gridFSBucket = new GridFSBucketImpl(Stub(MongoDatabase), 'fs', 255, Stub(CodecRegistry), Stub(ReadPreference),
+                Stub(WriteConcern), filesCollection, chunksCollection, true)
+        def contentBytes = 'content' as byte[]
+        def inputStream = Mock(InputStream) {
+            2 * read(_) >> 255 >> { throw new IOException('stream failure') }
+        }
+
+        when:
+        gridFSBucket.uploadFromStream('filename', inputStream)
+
+        then:
+        1 * chunksCollection.insertOne(_)
+
+        then:
+        1 * chunksCollection.deleteMany(_)
+
+        then:
+        0 * filesCollection.insertOne(_)
+
+        then:
+        def exception = thrown(MongoGridFSException)
+        exception.getMessage() == 'IOException when reading from the InputStream'
+    }
+
+    def 'should not clean up any chunks when upload throws an exception'() {
+        given:
+        def filesCollection = Mock(MongoCollection)
+        def chunksCollection = Mock(MongoCollection)
+        def gridFSBucket = new GridFSBucketImpl(Stub(MongoDatabase), 'fs', 255, Stub(CodecRegistry), Stub(ReadPreference),
+                Stub(WriteConcern), filesCollection, chunksCollection, true)
+        def contentBytes = 'content' as byte[]
+        def inputStream = Mock(InputStream) {
+            2 * read(_) >> 255 >> { throw new MongoGridFSException('Alternative failure') }
+        }
+
+        when:
+        gridFSBucket.uploadFromStream('filename', inputStream)
+
+        then:
+        1 * chunksCollection.insertOne(_)
+
+        then:
+        0 * chunksCollection.deleteMany(_)
+
+        then:
+        0 * filesCollection.insertOne(_)
+
+        then:
+        def exception = thrown(MongoGridFSException)
+        exception.getMessage() ==  'Unexpected exception when reading stream and writing to GridFS'
+    }
 
     def 'should create the expected GridFSDownloadStream'() {
         given:
