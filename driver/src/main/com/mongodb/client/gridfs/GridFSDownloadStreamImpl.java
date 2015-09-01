@@ -44,6 +44,7 @@ class GridFSDownloadStreamImpl extends GridFSDownloadStream {
     private boolean eof;
 
     private final Object closeLock = new Object();
+    private final Object cursorLock = new Object();
     private boolean closed = false;
 
     GridFSDownloadStreamImpl(final GridFSFile fileInfo, final MongoCollection<Document> chunksCollection) {
@@ -65,7 +66,7 @@ class GridFSDownloadStreamImpl extends GridFSDownloadStream {
     public GridFSDownloadStream batchSize(final int batchSize) {
         isTrueArgument("batchSize cannot be negative", batchSize >= 0);
         this.batchSize = batchSize;
-        cursor = null;
+        discardCursor();
         return this;
     }
 
@@ -98,7 +99,7 @@ class GridFSDownloadStreamImpl extends GridFSDownloadStream {
             }
             Document chunk = getChunk(chunkToCheck);
             if (chunk != null) {
-                validateData(chunk, chunkToCheck);
+                getAndValidateData(chunk, chunkToCheck);
             }
             return -1;
         } else if (buffer == null) {
@@ -130,14 +131,14 @@ class GridFSDownloadStreamImpl extends GridFSDownloadStream {
             chunkIndex = numberOfChunks - 1;
             currentPosition = length;
             buffer = null;
-            cursor = null;
+            discardCursor();
             return skipped;
         } else {
             int newChunkIndex = (int) Math.floor((float) skippedPosition / chunkSizeInBytes);
             if (chunkIndex != newChunkIndex) {
                 chunkIndex = newChunkIndex;
                 buffer = null;
-                cursor = null;
+                discardCursor();
             }
             currentPosition += bytesToSkip;
             return bytesToSkip;
@@ -160,12 +161,24 @@ class GridFSDownloadStreamImpl extends GridFSDownloadStream {
             if (!closed) {
                 closed = true;
             }
+            discardCursor();
         }
     }
 
     private void checkClosed() {
-        if (closed) {
-            throw new MongoGridFSException("The InputStream has been closed");
+        synchronized (closeLock) {
+            if (closed) {
+                throw new MongoGridFSException("The InputStream has been closed");
+            }
+        }
+    }
+
+    private void discardCursor() {
+        synchronized (cursorLock) {
+            if (cursor != null) {
+                cursor.close();
+                cursor = null;
+            }
         }
     }
 
@@ -178,14 +191,18 @@ class GridFSDownloadStreamImpl extends GridFSDownloadStream {
         if (cursor.hasNext()) {
             chunk = cursor.next();
             if (batchSize == 1) {
-                cursor = null;
+                discardCursor();
+            }
+            if (chunk.getInteger("n") != chunkIndex) {
+                throw new MongoGridFSException(format("Could not find file chunk for file_id: %s at chunk index %s.",
+                        fileId, startChunkIndex));
             }
         }
 
         return chunk;
     }
 
-    private byte[] validateData(final Document chunk, final int chunkIndex) {
+    private byte[] getAndValidateData(final Document chunk, final int chunkIndex) {
 
         if (chunk == null || chunk.getInteger("n") != chunkIndex) {
             throw new MongoGridFSException(format("Could not find file chunk for file_id: %s at chunk index %s.",
@@ -220,6 +237,6 @@ class GridFSDownloadStreamImpl extends GridFSDownloadStream {
 
     @SuppressWarnings("unchecked")
     private byte[] getBuffer(final int chunkIndexToFetch) {
-        return validateData(getChunk(chunkIndexToFetch), chunkIndexToFetch);
+        return getAndValidateData(getChunk(chunkIndexToFetch), chunkIndexToFetch);
     }
 }
