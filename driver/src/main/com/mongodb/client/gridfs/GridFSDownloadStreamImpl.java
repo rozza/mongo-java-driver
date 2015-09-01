@@ -179,9 +179,9 @@ class GridFSDownloadStreamImpl extends GridFSDownloadStream {
 
         eof = false;
         bufferOffset = (int) markPosition % chunkSizeInBytes;
+        currentPosition = markPosition;
         int markChunkIndex = (int) Math.floor((float) markPosition / chunkSizeInBytes);
         if (markChunkIndex != chunkIndex) {
-            currentPosition = markPosition;
             chunkIndex = markChunkIndex;
             buffer = null;
             cursor = null;

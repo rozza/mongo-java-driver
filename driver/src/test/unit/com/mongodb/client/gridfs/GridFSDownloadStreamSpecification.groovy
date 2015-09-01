@@ -360,6 +360,12 @@ class GridFSDownloadStreamSpecification extends Specification {
         1 * mongoCursor.hasNext() >> true
         1 * mongoCursor.next() >> chunkDocuments[1]
 
+        when: 'check read to EOF'
+        def result = downloadStream.read(readByte)
+
+        then:
+        result == -1
+
         when:
         downloadStream.reset()
 
