@@ -157,8 +157,6 @@ final class GridFSBucketImpl implements GridFSBucket {
         } catch (IOException e) {
             uploadStream.abort();
             throw new MongoGridFSException("IOException when reading from the InputStream", e);
-        } catch (Exception e) {
-            throw new MongoGridFSException("Unexpected exception when reading stream and writing to GridFS", e);
         }
         return uploadStream.getFileId();
     }
