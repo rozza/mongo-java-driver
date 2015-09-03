@@ -43,8 +43,14 @@ import java.util.List;
 
 /**
  * The MongoCollection interface.
- * <p>
- Note: Additions to this interface will not be considered to break binary compatibility.
+ *
+ * <p>Note: Additions to this interface will not be considered to break binary compatibility.</p>
+ *
+ * <p>MongoCollection is generic allowing for different types to represent {@code Documents}. Any custom classes must have a
+ * {@link org.bson.codecs.Codec} registered in the {@link CodecRegistry}. The default {@code CodecRegistry} includes built-in support for:
+ * {@link org.bson.BsonDocument} and {@link Document}. For more information see the Mongo Java Driver
+ * <a href="http://mongodb.github.io/mongo-java-driver/" target="_blank">documentation</a>.
+ * </p>
  *
  * @param <TDocument> The type that this collection will encode documents from and decode documents to.
  * @since 3.0
