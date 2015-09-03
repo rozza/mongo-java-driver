@@ -64,10 +64,8 @@ class FutureAsyncCompletionHandler<T> implements AsyncCompletionHandler<T> {
         if (error != null) {
             if (error instanceof IOException) {
                 throw (IOException) error;
-            } else if (error instanceof MongoSocketReadTimeoutException) {
-                throw (MongoSocketReadTimeoutException) error;
-            } else if (error instanceof MongoSocketOpenException) {
-                throw (MongoSocketOpenException) error;
+            } else if (error instanceof MongoException) {
+                throw (MongoException) error;
             } else {
                 throw new MongoInternalException(prefix + " the AsynchronousSocketChannelStream failed", error);
             }

@@ -15,6 +15,7 @@
  */
 
 package com.mongodb.connection
+
 import category.Slow
 import com.mongodb.MongoSocketOpenException
 import com.mongodb.MongoSocketReadTimeoutException
@@ -43,10 +44,8 @@ class AsyncStreamTimeoutsSpecification extends OperationFunctionalSpecification 
     static SocketSettings readSocketSettings = SocketSettings.builder().readTimeout(5, TimeUnit.SECONDS).build();
 
     @Unroll
-    def 'should the #description should throw a MongoSocketOpenException on failing to open'() {
+    def 'should throw a MongoSocketOpenException when the #description Stream fails to open'() {
         given:
-        new Socket()
-
         def connection = new InternalStreamConnectionFactory(streamFactory, getCredentialList(), new NoOpConnectionListener())
                 .create(new ServerId(new ClusterId(), new ServerAddress(new InetSocketAddress("192.168.255.255", 27017))));
 
@@ -63,7 +62,7 @@ class AsyncStreamTimeoutsSpecification extends OperationFunctionalSpecification 
     }
 
     @Unroll
-    def 'should the #description should throw a MongoSocketReadTimeoutException'() {
+    def 'should throw a MongoSocketReadTimeoutException with the #description stream'() {
         given:
         def connection = new InternalStreamConnectionFactory(streamFactory, getCredentialList(), new NoOpConnectionListener())
                 .create(new ServerId(new ClusterId(), getPrimary()))

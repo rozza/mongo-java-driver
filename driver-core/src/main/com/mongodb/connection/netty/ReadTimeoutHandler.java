@@ -24,6 +24,7 @@ import io.netty.handler.timeout.ReadTimeoutException;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
+import static com.mongodb.assertions.Assertions.isTrueArgument;
 import static com.mongodb.assertions.Assertions.notNull;
 
 /**
@@ -33,21 +34,18 @@ import static com.mongodb.assertions.Assertions.notNull;
 final class ReadTimeoutHandler extends ChannelInboundHandlerAdapter {
     private final long readTimeout;
     private volatile ScheduledFuture<?> timeout;
-    private volatile long lastReadTime;
 
     public ReadTimeoutHandler(final long readTimeout) {
+        isTrueArgument("readTimeout must be greater than zero.", readTimeout > 0);
         this.readTimeout = readTimeout;
     }
 
     void scheduleTimeout(final ChannelHandlerContext ctx) {
-        if (readTimeout > 0) {
-            lastReadTime = System.currentTimeMillis();
-            timeout = ctx.executor().schedule(new ReadTimeoutTask(ctx), readTimeout, TimeUnit.MILLISECONDS);
-        }
+        timeout = ctx.executor().schedule(new ReadTimeoutTask(ctx), readTimeout, TimeUnit.MILLISECONDS);
     }
 
     void removeTimeout(final ChannelHandlerContext ctx) {
-        if (readTimeout > 0 && ctx.channel().eventLoop().inEventLoop()) {
+        if (ctx.channel().eventLoop().inEventLoop()) {
             if (timeout != null) {
                 timeout.cancel(false);
             }
@@ -64,22 +62,13 @@ final class ReadTimeoutHandler extends ChannelInboundHandlerAdapter {
 
         @Override
         public void run() {
-            if (!ctx.channel().isOpen()) {
-                return;
-            }
-
-            long currentTime = System.nanoTime();
-            long nextDelay = readTimeout - (currentTime - lastReadTime);
-            if (nextDelay <= 0) {
+            if (ctx.channel().isOpen()) {
                 try {
                     ctx.fireExceptionCaught(ReadTimeoutException.INSTANCE);
                     ctx.close();
                 } catch (Throwable t) {
                     ctx.fireExceptionCaught(t);
                 }
-            } else {
-                // Read occurred before the timeout - set a new timeout with shorter delay.
-                timeout = ctx.executor().schedule(this, nextDelay, TimeUnit.MILLISECONDS);
             }
         }
     }

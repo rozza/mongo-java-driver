@@ -16,6 +16,7 @@
 
 package com.mongodb.connection.netty;
 
+import com.mongodb.MongoException;
 import com.mongodb.MongoInternalException;
 import com.mongodb.MongoInterruptedException;
 import com.mongodb.MongoSocketOpenException;
@@ -124,7 +125,10 @@ final class NettyStream implements Stream {
                     }
                     ch.pipeline().addFirst("ssl", new SslHandler(engine, false));
                 }
-                ch.pipeline().addLast(READ_HANDLER_NAME, new ReadTimeoutHandler(settings.getReadTimeout(MILLISECONDS)));
+                int readTimeout = settings.getReadTimeout(MILLISECONDS);
+                if (readTimeout > 0) {
+                    ch.pipeline().addLast(READ_HANDLER_NAME, new ReadTimeoutHandler(readTimeout));
+                }
                 ch.pipeline().addLast(new InboundBufferHandler());
             }
         });
@@ -327,10 +331,8 @@ final class NettyStream implements Stream {
                 if (throwable != null) {
                     if (throwable instanceof IOException) {
                         throw (IOException) throwable;
-                    } else if (throwable instanceof MongoSocketReadTimeoutException) {
-                        throw (MongoSocketReadTimeoutException) throwable;
-                    } else if (throwable instanceof MongoSocketOpenException) {
-                        throw (MongoSocketOpenException) throwable;
+                    } else if (throwable instanceof MongoException) {
+                        throw (MongoException) throwable;
                     } else {
                         throw new MongoInternalException("Exception thrown from Netty Stream", throwable);
                     }
@@ -353,7 +355,7 @@ final class NettyStream implements Stream {
 
     private void adjustTimeout(final boolean disable) {
             ChannelHandler timeoutHandler = channel.pipeline().get(READ_HANDLER_NAME);
-            if (timeoutHandler != null && timeoutHandler instanceof ReadTimeoutHandler) {
+            if (timeoutHandler != null) {
                 final ReadTimeoutHandler readTimeoutHandler = (ReadTimeoutHandler) timeoutHandler;
                 final ChannelHandlerContext handlerContext = channel.pipeline().context(timeoutHandler);
                 EventExecutor executor = handlerContext.executor();
