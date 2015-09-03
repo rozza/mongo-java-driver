@@ -287,13 +287,54 @@ System.out.println(myDoc.toJson());
 ## Projecting fields
 
 Sometimes we don't need all the data contained in a document, the [`Projections`]({{< relref "builders/projections.md">}})
-helpers help build the projection parameter for the
-find operation.  Below we'll sort the collection, exclude the `_id` field and output the first
-matching document:
+helpers help build the projection parameter for the find operation.  Below we'll sort the collection, exclude the `_id` field by using the 
+[`Projections.excludeId`]({{< relref "builders/projections.md#exclusion">}}) and output the first matching document:
 
 ```java
 myDoc = collection.find().projection(excludeId()).first();
 System.out.println(myDoc.toJson());
+```
+## Aggregations
+
+Sometimes we need to aggregate the data stored in MongoDB.  The aggregation framework, performs stage-based aggregation and requires 
+a list of aggregation operators.  The most basic pipeline stages provide filters that operate like queries and document transformations 
+that modify the form of the output document.  
+
+Below we'll do a simple two step transformation that will calculate the value of `i * 10`. First we find all Documents 
+where `i > 0` by using the [`Aggregates.match`]({{< relref "builders/aggregation.md#match" >}}) 
+helper. Then we reshape the document by using the [`Aggregates.project`]({{< relref "builders/aggregation.md#project" >}}) helper. 
+In the projection we use the [`$multiply`]({{< docsref "reference/operator/aggregation/multiply/" >}}) operator to calculate the new value:
+
+```java
+myDoc = collection.aggregate(asList(
+    match(gt("i", 0)),
+    project(and(new Document("I", new Document("$multiply", asList("$i", 10))),
+                excludeId())))
+).first();
+System.out.println(myDoc.toJson());
+```
+
+{{% note %}}
+Not all aggregation operators have specific helpers, see the [`Aggregation`]({{< relref "builders/aggregation.md" >}}) builders 
+documentation for more information on the supported helpers.
+{{% /note %}}
+
+
+Other pipeline operations provide tools for grouping and sorting documents by specific field or fields as well as tools for aggregating the
+contents of arrays, including arrays of documents. In addition, pipeline stages can use operators for tasks such as calculating the average 
+or concatenating a string.
+
+Below we sum up all the values of the `i` field by using the [`Aggregates.group`]({{< relref "builders/aggregation.md#group" >}}) helper
+along with the [`Accumulators.sum`]({{< apiref "com/mongodb/client/model/Accumulators#sum-java.lang.String-TExpression-" >}}) helper. We 
+then use the `project` helper to remove the `_id` field:
+
+```java
+myDoc = collection.aggregate(asList(
+    group(null, sum("total", "$i")), 
+    project(and(include("total"), excludeId())))
+).first();
+System.out.println(myDoc.toJson());
+
 ```
 
 ## Updating documents
