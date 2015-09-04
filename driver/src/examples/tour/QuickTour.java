@@ -173,12 +173,11 @@ public class QuickTour {
         System.out.println(myDoc.toJson());
 
         // Aggregation
-        myDoc = collection.aggregate(asList(
+        collection.aggregate(asList(
                         match(gt("i", 0)),
                         project(and(new Document("ITimes10", new Document("$multiply", asList("$i", 10))),
                                 excludeId())))
-        ).first();
-        System.out.println(myDoc.toJson());
+        ).forEach(printBlock);
 
         myDoc = collection.aggregate(asList(
                 group(null, sum("total", "$i")),

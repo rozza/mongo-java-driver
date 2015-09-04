@@ -306,12 +306,11 @@ helper. Then we reshape the document by using the [`Aggregates.project`]({{< rel
 In the projection we use the [`$multiply`]({{< docsref "reference/operator/aggregation/multiply/" >}}) operator to calculate the new value:
 
 ```java
-myDoc = collection.aggregate(asList(
+collection.aggregate(asList(
     match(gt("i", 0)),
     project(and(new Document("ITimes10", new Document("$multiply", asList("$i", 10))),
                 excludeId())))
-).first();
-System.out.println(myDoc.toJson());
+).forEach(printBlock);
 ```
 
 {{% note %}}
