@@ -17,6 +17,7 @@
 package tour;
 
 import com.mongodb.Block;
+import com.mongodb.ReadPreference;
 import com.mongodb.async.SingleResultCallback;
 import com.mongodb.async.client.MongoClient;
 import com.mongodb.async.client.MongoClients;
@@ -158,7 +159,7 @@ public class QuickTourAdmin {
         });
 
         // Run a command
-        database.runCommand(new Document("buildInfo", 1), new SingleResultCallback<Document>() {
+        database.runCommand(new Document("buildInfo", 1), ReadPreference.primary() , new SingleResultCallback<Document>() {
             @Override
             public void onResult(final Document buildInfo, final Throwable t) {
                 System.out.println(buildInfo);

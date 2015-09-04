@@ -223,10 +223,16 @@ For more information about text search see the [text index]({{< docsref "/core/i
 ## Running a command
 
 While not all commands have a specific helper, however you can run any [command]({{< docsref "/reference/command">}})
-by using the [`runCommand()`](http://api.mongodb.org/java/3.0/?com/mongodb/async/client/MongoDatabase.html#runCommand-org.bson.conversions.Bson-com.mongodb.ReadPreference-com.mongodb.async.SingleResultCallback-) method.  Here we call the [buildInfo]({{ docsref "reference/command/buildInfo" }}) command:
+by using the [`runCommand`]({{< apiref "com/mongodb/async/client/MongoDatabase.html#runCommand-org.bson.conversions.Bson-com.mongodb.ReadPreference-">}}
+
+{{% note class="important" %}}
+Where `runCommand` takes a `readPreference` it should only be used for read commands.
+{{% /note %}}
+
+Here we call the [buildInfo]({{ docsref "reference/command/buildInfo" }}) command:
 
 ```java
-database.runCommand(new Document("buildInfo", 1), new SingleResultCallback<Document>() {
+database.runCommand(new Document("buildInfo", 1), ReadPreference.primary() , new SingleResultCallback<Document>() {
     @Override
     public void onResult(final Document buildInfo, final Throwable t) {
         System.out.println(buildInfo);

@@ -18,6 +18,7 @@ package tour;
 
 import com.mongodb.MongoClient;
 import com.mongodb.MongoClientURI;
+import com.mongodb.ReadPreference;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.CreateCollectionOptions;
@@ -105,7 +106,7 @@ public class QuickTourAdmin {
         System.out.println("Highest scoring document: " + myDoc.toJson());
 
         // Run a command
-        Document buildInfo = database.runCommand(new Document("buildInfo", 1));
+        Document buildInfo = database.runCommand(new Document("buildInfo", 1), ReadPreference.primary());
         System.out.println(buildInfo);
 
         // release resources
