@@ -314,10 +314,9 @@ collection.aggregate(asList(
 ```
 
 {{% note %}}
-Not all aggregation operators have specific helpers, see the [`Aggregation`]({{< relref "builders/aggregation.md" >}}) builders 
-documentation for more information on the supported helpers.
+Use the [`Aggregates`]({{< relref "builders/aggregation.md">}}) and [`Accumulators`]({{< relref "builders/aggregation.md#group" >}}) helpers
+helpers for simple and concise ways of building up aggregation stages.
 {{% /note %}}
-
 
 Other pipeline operations provide tools for grouping and sorting documents by specific field or fields as well as tools for aggregating the
 contents of arrays, including arrays of documents. In addition, pipeline stages can use operators for tasks such as calculating the average 
