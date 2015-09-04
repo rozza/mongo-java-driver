@@ -293,7 +293,8 @@ will eventually print just one document:
 
 
 {{% note %}}
-Use the [Filters]({{< apiref "com/mongodb/client/model/Filters">}}), [Sorts]({{< apiref "com/mongodb/client/model/Sorts">}}) and [Projections]({{< apiref "com/mongodb/client/model/Projections">}})
+Use the [`Filters`]({{< relref "builders/filters.md">}}), [`Sorts`]({{< relref "builders/sorts.md">}}),
+[`Projections`]({{< relref "builders/projections.md">}}) and [`Updates`]({{< relref "builders/updates.md">}})
 helpers for simple and concise ways of building up queries.
 {{% /note %}}
 
@@ -317,10 +318,9 @@ collection.find(and(gt("i", 50), lte("i", 100))).forEach(printDocumentBlock, cal
 
 ## Sorting documents
 
-We can also use the [Sorts]({{< apiref "com/mongodb/client/model/Sorts">}}) helpers to sort documents.
-We add a sort to a find query by calling the `sort()` method on a `FindIterable`.  Below we use the [`exists()`]({{ < apiref "com/mongodb/client/model/Filters.html#exists-java.lang.String-">}}) helper and sort
-[`descending("i")`]({{ < apiref "com/mongodb/client/model/Sorts.html#exists-java.lang.String-">}}) helper to
-sort our documents:
+We can also use the [Sorts]({{< relref "builders/sorts.md">}}) helpers to sort documents.
+We add a sort to a find query by calling the `sort()` method on a `FindIterable`.  Below we use the [`exists()`]({{< relref "builders/filters.md#elements">}}) helper and sort
+[`descending("i")`]({{< relref "builders/sorts.md#descending">}}) helper to sort our documents:
 
 ```java
 collection.find(exists("i")).sort(descending("i")).first(printDocument);
@@ -328,7 +328,7 @@ collection.find(exists("i")).sort(descending("i")).first(printDocument);
 
 ## Projecting fields
 
-Sometimes we don't need all the data contained in a document. The [Projections]({{< apiref "com/mongodb/client/model/Projections">}}) 
+Sometimes we don't need all the data contained in a document. The [Projections]({{< relref "builders/projections.md">}}) 
 helpers can be used to build the projection parameter for the find operation and limit the fields returned.  
 Below we'll sort the collection, exclude the `_id` field and output the first matching document:
 
@@ -342,10 +342,10 @@ There are numerous [update operators](http://docs.mongodb.org/manual/reference/o
 supported by MongoDB.
 
 To update at most a single document (may be 0 if none match the filter), use the [`updateOne`]({{< apiref "com/mongodb/async/client/MongoCollection.html#updateOne-org.bson.conversions.Bson-org.bson.conversions.Bson-">}})
-method to specify the filter and the update document.  Here we update the first document that meets the filter `i` equals `10` and set the value of `i` to `110`:
+method to specify the filter and the update document. Here we use the [`Updates.set`]({{< relref "builders/updates.md#set">}}) helper to update the first document that meets the filter `i` equals `10` and set the value of `i` to `110`:
 
 ```java
-collection.updateOne(eq("i", 10), new Document("$set", new Document("i", 110)),
+collection.updateOne(eq("i", 10), set("i", 110),
     new SingleResultCallback<UpdateResult>() {
         @Override
         public void onResult(final UpdateResult result, final Throwable t) {
@@ -355,11 +355,11 @@ collection.updateOne(eq("i", 10), new Document("$set", new Document("i", 110)),
 ```
 
 To update all documents matching the filter use the [`updateMany`]({{< apiref "com/mongodb/async/client/MongoCollection.html#updateMany-org.bson.conversions.Bson-org.bson.conversions.Bson-">}})
-method.  Here we increment the value of `i` by `100` where `i`
-is less than `100`.
+method. Here we use the [`Updates.inc`]({{< relref "builders/updates.md#increment">}}) helper to increment the value of `i` by `100` 
+where `i` is less than `100`.
 
 ```java
-collection.updateMany(lt("i", 100), new Document("$inc", new Document("i", 100)),
+collection.updateMany(lt("i", 100), inc("i", 100),
     new SingleResultCallback<UpdateResult>() {
         @Override
         public void onResult(final UpdateResult result, final Throwable t) {
