@@ -35,7 +35,6 @@ import org.bson.Document;
 import java.util.ArrayList;
 import java.util.List;
 
-import static com.mongodb.client.model.Accumulators.multiply;
 import static com.mongodb.client.model.Accumulators.sum;
 import static com.mongodb.client.model.Aggregates.group;
 import static com.mongodb.client.model.Aggregates.match;
@@ -176,7 +175,7 @@ public class QuickTour {
         // Aggregation
         myDoc = collection.aggregate(asList(
                         match(gt("i", 0)),
-                        project(and(new Document("I", new Document("$multiply", asList("$i", 10))),
+                        project(and(new Document("ITimes10", new Document("$multiply", asList("$i", 10))),
                                 excludeId())))
         ).first();
         System.out.println(myDoc.toJson());

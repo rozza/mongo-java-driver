@@ -296,9 +296,9 @@ System.out.println(myDoc.toJson());
 ```
 ## Aggregations
 
-Sometimes we need to aggregate the data stored in MongoDB.  The aggregation framework, performs stage-based aggregation and requires 
-a list of aggregation operators.  The most basic pipeline stages provide filters that operate like queries and document transformations 
-that modify the form of the output document.  
+Sometimes we need to aggregate the data stored in MongoDB.  The aggregation framework performs stage-based aggregation and requires 
+a list of aggregation operators. The most basic pipeline stages provide filters that operate like queries and document transformations 
+that modify the structure of the output document.
 
 Below we'll do a simple two step transformation that will calculate the value of `i * 10`. First we find all Documents 
 where `i > 0` by using the [`Aggregates.match`]({{< relref "builders/aggregation.md#match" >}}) 
@@ -308,7 +308,7 @@ In the projection we use the [`$multiply`]({{< docsref "reference/operator/aggre
 ```java
 myDoc = collection.aggregate(asList(
     match(gt("i", 0)),
-    project(and(new Document("I", new Document("$multiply", asList("$i", 10))),
+    project(and(new Document("ITimes10", new Document("$multiply", asList("$i", 10))),
                 excludeId())))
 ).first();
 System.out.println(myDoc.toJson());
