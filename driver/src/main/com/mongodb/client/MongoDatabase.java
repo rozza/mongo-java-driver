@@ -107,6 +107,8 @@ public interface MongoDatabase {
     /**
      * Executes the given command in the context of the current database with a read preference of {@link ReadPreference#primary()}.
      *
+     * <p>Use for write commands eg: {@code create}, {@code createIndexes}, {@code dropDatabase}</p>
+     *
      * @param command the command to be run
      * @return the command result
      */
@@ -114,6 +116,8 @@ public interface MongoDatabase {
 
     /**
      * Executes the given command in the context of the current database with the given read preference.
+     *
+     * <p>Use for read commands eg: {@code dbStats}, {@code profile}, {@code isMaster}</p>
      *
      * @param command        the command to be run
      * @param readPreference the {@link ReadPreference} to be used when executing the command
@@ -124,6 +128,8 @@ public interface MongoDatabase {
     /**
      * Executes the given command in the context of the current database with a read preference of {@link ReadPreference#primary()}.
      *
+     * <p>Use for write commands eg: {@code create}, {@code createIndexes}, {@code dropDatabase}</p>
+     *
      * @param command     the command to be run
      * @param resultClass the default class to cast any documents returned from the database into.
      * @param <TResult> the type of the class to use instead of {@code Document}.
@@ -133,6 +139,8 @@ public interface MongoDatabase {
 
     /**
      * Executes the given command in the context of the current database with the given read preference.
+     *
+     * <p>Use for read commands eg: {@code dbStats}, {@code profile}, {@code isMaster}</p>
      *
      * @param command        the command to be run
      * @param readPreference the {@link ReadPreference} to be used when executing the command
