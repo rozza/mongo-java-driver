@@ -19,6 +19,7 @@ package com.mongodb.connection
 import category.Slow
 import com.mongodb.MongoException
 import com.mongodb.MongoSocketReadException
+import com.mongodb.MongoSocketReadTimeoutException
 import com.mongodb.MongoSocketWriteException
 import com.mongodb.MongoTimeoutException
 import com.mongodb.MongoWaitQueueFullException
@@ -237,6 +238,143 @@ class DefaultPooledConnectionProviderSpecification extends Specification {
 
         then:
         numberOfConnectionsCreated == 5
+    }
+
+    def 'should expire connection after MongoSocketReadTimeoutException'() throws InterruptedException {
+        given:
+        int numberOfConnectionsCreated = 0
+        def mockConnectionFactory = Mock(InternalConnectionFactory)
+        mockConnectionFactory.create(_) >> {
+            numberOfConnectionsCreated++
+            Mock(InternalConnection) {
+                boolean closed = false
+                receiveMessage(_) >> {
+                    closed = true
+                    throw new MongoSocketReadTimeoutException('', SERVER_ID.address, new IOException())
+                }
+                isClosed() >> { closed }
+                getDescription() >> { new ConnectionDescription(SERVER_ID) }
+            }
+        }
+
+        provider = new DefaultConnectionPool(SERVER_ID, mockConnectionFactory,
+                builder().maxSize(2).maxWaitQueueSize(1).build(), new NoOpConnectionPoolListener())
+
+        when:
+        def c1 = provider.get()
+        def c2 = provider.get()
+
+        and:
+        c1.close()
+        c2.close()
+        provider.get().close()
+
+        then:
+        numberOfConnectionsCreated == 2
+
+        when:
+        c1 = provider.get()
+        c2 = provider.get()
+        c2.receiveMessage(1)
+
+        then:
+        thrown(MongoSocketReadTimeoutException)
+        !c1.isClosed()
+        c2.isClosed()
+
+        when:
+        c1.close()
+        c2.close()
+
+        then:
+        numberOfConnectionsCreated == 2
+
+        when:
+        c1 = provider.get()
+        c2 = provider.get()
+
+        then:
+        !c1.isClosed()
+        !c2.isClosed()
+        numberOfConnectionsCreated == 3
+
+        when:
+        c1.close()
+        c2.close()
+        provider.get().close()
+
+        then:
+        numberOfConnectionsCreated == 3
+    }
+
+    def 'should expire connection after MongoSocketReadTimeoutException asynchronously'()  {
+        given:
+        int numberOfConnectionsCreated = 0
+
+        def mockConnectionFactory = Mock(InternalConnectionFactory)
+        mockConnectionFactory.create(_) >> {
+            numberOfConnectionsCreated++
+            Mock(InternalConnection) {
+                boolean closed = false
+                receiveMessageAsync(_, _) >> {
+                    closed = true
+                    it[1].onResult(null, new MongoSocketReadTimeoutException('', SERVER_ID.address, new IOException()))
+                };
+                isClosed() >> { closed }
+                getDescription() >> { new ConnectionDescription(SERVER_ID) }
+            }
+        }
+
+        provider = new DefaultConnectionPool(SERVER_ID, mockConnectionFactory,
+                builder().maxSize(2).maxWaitQueueSize(1).build(), new NoOpConnectionPoolListener())
+
+
+        when:
+        def c1 = provider.get()
+        def c2 = provider.get()
+
+        and:
+        c1.close()
+        c2.close()
+        provider.get().close()
+
+        then:
+        numberOfConnectionsCreated == 2
+
+        when:
+        c1 = provider.get()
+        c2 = provider.get()
+        def e;
+        c2.receiveMessageAsync(1) { result, t -> e = t }
+
+        then:
+        e instanceof MongoSocketReadTimeoutException
+        !c1.isClosed()
+        c2.isClosed()
+
+        when:
+        c1.close()
+        c2.close()
+
+        then:
+        numberOfConnectionsCreated == 2
+
+        when:
+        c1 = provider.get()
+        c2 = provider.get()
+
+        then:
+        !c1.isClosed()
+        !c2.isClosed()
+        numberOfConnectionsCreated == 3
+
+        when:
+        c1.close()
+        c2.close()
+        provider.get().close()
+
+        then:
+        numberOfConnectionsCreated == 3
     }
 
     def 'should have size of 0 with default settings'() {
