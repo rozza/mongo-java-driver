@@ -40,13 +40,16 @@ final class ReadTimeoutHandler extends ChannelInboundHandlerAdapter {
     }
 
     void scheduleTimeout(final ChannelHandlerContext ctx) {
-        timeout = ctx.executor().schedule(new ReadTimeoutTask(ctx), readTimeout, TimeUnit.MILLISECONDS);
+        if (timeout == null) {
+            timeout = ctx.executor().schedule(new ReadTimeoutTask(ctx), readTimeout, TimeUnit.MILLISECONDS);
+        }
     }
 
     void removeTimeout(final ChannelHandlerContext ctx) {
         if (ctx.channel().eventLoop().inEventLoop()) {
             if (timeout != null) {
                 timeout.cancel(false);
+                timeout = null;
             }
         }
     }
