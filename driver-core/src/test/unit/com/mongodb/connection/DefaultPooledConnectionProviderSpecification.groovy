@@ -35,6 +35,7 @@ import java.util.concurrent.CountDownLatch
 import static com.mongodb.connection.ConnectionPoolSettings.builder
 import static java.util.concurrent.TimeUnit.MILLISECONDS
 import static java.util.concurrent.TimeUnit.MINUTES
+import static java.util.concurrent.TimeUnit.SECONDS
 
 class DefaultPooledConnectionProviderSpecification extends Specification {
     private static final ServerId SERVER_ID = new ServerId(new ClusterId(), new ServerAddress())
@@ -258,7 +259,7 @@ class DefaultPooledConnectionProviderSpecification extends Specification {
         }
 
         provider = new DefaultConnectionPool(SERVER_ID, mockConnectionFactory,
-                builder().maxSize(2).maxWaitQueueSize(1).build(), new NoOpConnectionPoolListener())
+                builder().maxSize(2).maxWaitQueueSize(1).maxWaitTime(5, SECONDS).build(), new NoOpConnectionPoolListener())
 
         when:
         def c1 = provider.get()
@@ -284,7 +285,6 @@ class DefaultPooledConnectionProviderSpecification extends Specification {
 
         when:
         c1.close()
-        c2.close()
 
         then:
         numberOfConnectionsCreated == 2
@@ -326,7 +326,7 @@ class DefaultPooledConnectionProviderSpecification extends Specification {
         }
 
         provider = new DefaultConnectionPool(SERVER_ID, mockConnectionFactory,
-                builder().maxSize(2).maxWaitQueueSize(1).build(), new NoOpConnectionPoolListener())
+                builder().maxSize(2).maxWaitQueueSize(1).maxWaitTime(5, SECONDS).build(), new NoOpConnectionPoolListener())
 
 
         when:
@@ -354,7 +354,6 @@ class DefaultPooledConnectionProviderSpecification extends Specification {
 
         when:
         c1.close()
-        c2.close()
 
         then:
         numberOfConnectionsCreated == 2
