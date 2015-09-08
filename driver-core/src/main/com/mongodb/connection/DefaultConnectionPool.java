@@ -342,16 +342,12 @@ class DefaultConnectionPool implements ConnectionPool {
      * @param t          the exception
      */
     private void incrementGenerationOnSocketException(final InternalConnection connection, final Throwable t) {
-        if (t instanceof MongoSocketException) {
-            if (t instanceof MongoSocketReadTimeoutException) {
-                connection.close();
-            } else {
-                if (LOGGER.isWarnEnabled()) {
-                    LOGGER.warn(format("Got socket exception on connection [%s] to %s. All connections to %s will be closed.",
-                            getId(connection), serverId.getAddress(), serverId.getAddress()));
-                }
-                invalidate();
+        if (t instanceof MongoSocketException && !(t instanceof MongoSocketReadTimeoutException)) {
+            if (LOGGER.isWarnEnabled()) {
+                LOGGER.warn(format("Got socket exception on connection [%s] to %s. All connections to %s will be closed.",
+                                   getId(connection), serverId.getAddress(), serverId.getAddress()));
             }
+            invalidate();
         }
     }
 
