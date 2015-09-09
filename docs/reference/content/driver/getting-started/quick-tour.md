@@ -296,44 +296,37 @@ System.out.println(myDoc.toJson());
 ```
 ## Aggregations
 
-Sometimes we need to aggregate the data stored in MongoDB.  The aggregation framework performs stage-based aggregation and requires 
-a list of aggregation operators. The most basic pipeline stages provide filters that operate like queries and document transformations 
-that modify the structure of the output document.
-
+Sometimes we need to aggregate the data stored in MongoDB. The [`Aggregates`]({{< relref "builders/aggregation.md" >}}) helper provides 
+builders for each of type of aggregation stage. 
+ 
 Below we'll do a simple two step transformation that will calculate the value of `i * 10`. First we find all Documents 
 where `i > 0` by using the [`Aggregates.match`]({{< relref "builders/aggregation.md#match" >}}) 
-helper. Then we reshape the document by using the [`Aggregates.project`]({{< relref "builders/aggregation.md#project" >}}) helper. 
-In the projection we use the [`$multiply`]({{< docsref "reference/operator/aggregation/multiply/" >}}) operator to calculate the new value:
+helper. Then we reshape the document by using [`Aggregates.project`]({{< relref "builders/aggregation.md#project" >}}) 
+in conjunction with the [`$multiply`]({{< docsref "reference/operator/aggregation/multiply/" >}}) operator to calculate the "`ITimes10`" 
+value:
 
 ```java
 collection.aggregate(asList(
-    match(gt("i", 0)),
-    project(and(new Document("ITimes10", new Document("$multiply", asList("$i", 10))),
-                excludeId())))
+        match(gt("i", 0)),
+        project(Document.parse("{ITimes10: {$multiply: ['$i', 10]}}")))
 ).forEach(printBlock);
 ```
 
-{{% note %}}
-Use the [`Aggregates`]({{< relref "builders/aggregation.md">}}) and [`Accumulators`]({{< relref "builders/aggregation.md#group" >}}) helpers
-helpers for simple and concise ways of building up aggregation stages.
-{{% /note %}}
-
-Other pipeline operations provide tools for grouping and sorting documents by specific field or fields as well as tools for aggregating the
-contents of arrays, including arrays of documents. In addition, pipeline stages can use operators for tasks such as calculating the average 
-or concatenating a string.
-
-Below we sum up all the values of the `i` field by using the [`Aggregates.group`]({{< relref "builders/aggregation.md#group" >}}) helper
-along with the [`Accumulators.sum`]({{< apiref "com/mongodb/client/model/Accumulators#sum-java.lang.String-TExpression-" >}}) helper. We 
-then use the `project` helper to remove the `_id` field:
+For [`$group`]({{< relref "builders/aggregation.md#group" >}}) operations use the 
+[`Accumulators`]({{< apiref "com/mongodb/client/model/Accumulators" >}}) helper for any 
+[accumulator operations]({{< docsref "reference/operator/aggregation/group/#accumulator-operator" >}}). Below we sum up all the values of 
+`i` by using the [`Aggregates.group`]({{< relref "builders/aggregation.md#group" >}}) helper in conjunction with the 
+[`Accumulators.sum`]({{< apiref "com/mongodb/client/model/Accumulators#sum-java.lang.String-TExpression-" >}}) helper:
 
 ```java
-myDoc = collection.aggregate(asList(
-    group(null, sum("total", "$i")), 
-    project(and(include("total"), excludeId())))
-).first();
+myDoc = collection.aggregate(singletonList(group(null, sum("total", "$i")))).first();
 System.out.println(myDoc.toJson());
-
 ```
+
+{{% note %}}
+Currently, there are no helpers for [aggregation expressions]({{< docsref "meta/aggregation-quick-reference/#aggregation-expressions" >}}). 
+Use the [`Document.parse()`]({{< relref "bson/extended-json.md" >}}) helper to quickly build aggregation expressions from extended JSON.
+{{% /note %}}
 
 ## Updating documents
 

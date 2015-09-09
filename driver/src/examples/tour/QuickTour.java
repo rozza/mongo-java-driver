@@ -33,6 +33,7 @@ import com.mongodb.client.result.UpdateResult;
 import org.bson.Document;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import static com.mongodb.client.model.Accumulators.sum;
@@ -174,15 +175,11 @@ public class QuickTour {
 
         // Aggregation
         collection.aggregate(asList(
-                        match(gt("i", 0)),
-                        project(and(new Document("ITimes10", new Document("$multiply", asList("$i", 10))),
-                                excludeId())))
+                match(gt("i", 0)),
+                project(Document.parse("{ITimes10: {$multiply: ['$i', 10]}}")))
         ).forEach(printBlock);
 
-        myDoc = collection.aggregate(asList(
-                group(null, sum("total", "$i")),
-                project(and(include("total"), excludeId())))
-        ).first();
+        myDoc = collection.aggregate(singletonList(group(null, sum("total", "$i")))).first();
         System.out.println(myDoc.toJson());
 
         // Update One
