@@ -254,47 +254,34 @@ class AggregateOperationSpecification extends OperationFunctionalSpecification {
 
     def 'should use the ReadBindings readPreference to set slaveOK'() {
         given:
-        def dbName = 'db'
-        def collectionName = 'coll'
-        def namespace = new MongoNamespace(dbName, collectionName)
-        def readBinding = Mock(ReadBinding)
-        def readPreference = Mock(ReadPreference)
-        def connectionSource = Mock(ConnectionSource)
         def connection = Mock(Connection)
-        def connectionDescription = Mock(ConnectionDescription)
-        def inlineResult = BsonDocument.parse('{ok: 1.0}').append('result', new BsonArrayWrapper([]))
-        def cursorResult = BsonDocument.parse('{ok: 1.0}')
-                .append('cursor', new BsonDocument('id', new BsonInt64(0)).append('ns', new BsonString('db.coll'))
-                .append('firstBatch', new BsonArrayWrapper([])))
-        def operation = new AggregateOperation(namespace, [], new BsonDocumentCodec())
+        def readPreference = Stub(ReadPreference) {
+            isSlaveOk() >> slaveOk
+        }
+        def connectionSource = Stub(ConnectionSource) {
+            getConnection() >> connection
+        }
+        def readBinding = Stub(ReadBinding) {
+            getReadConnectionSource() >> connectionSource
+            getReadPreference() >> readPreference
+        }
+        def operation = new AggregateOperation(helper.namespace, [], new BsonDocumentCodec())
 
         when:
         operation.execute(readBinding)
 
         then:
-        1 * readBinding.getReadConnectionSource() >> connectionSource
-        1 * readBinding.getReadPreference() >> readPreference
-        1 * connectionSource.getConnection() >> connection
-        4 * connection.getDescription() >> connectionDescription
-        3 * connectionDescription.getServerVersion() >> new ServerVersion([2, 4, 0])
-        1 * readPreference.slaveOk >> slaveOk
-        1 * connection.command(dbName, _, slaveOk, _, _) >> inlineResult
+        _ * connection.getDescription() >> helper.twoFourConnectionDescription
+        1 * connection.command(helper.dbName, _, slaveOk, _, _) >> helper.inlineResult
         1 * connection.release()
-        1 * connectionSource.release()
 
         when: '2.6.0'
         operation.execute(readBinding)
 
         then:
-        1 * readBinding.getReadConnectionSource() >> connectionSource
-        1 * readBinding.getReadPreference() >> readPreference
-        1 * connectionSource.getConnection() >> connection
-        4 * connection.getDescription() >> connectionDescription
-        3 * connectionDescription.getServerVersion() >> new ServerVersion([2, 6, 0])
-        1 * readPreference.slaveOk >> slaveOk
-        1 * connection.command(dbName, _, slaveOk, _, _) >> cursorResult
+        _ * connection.getDescription() >> helper.twoSixConnectionDescription
+        1 * connection.command(helper.dbName, _, slaveOk, _, _) >> helper.cursorResult
         1 * connection.release()
-        1 * connectionSource.release()
 
         where:
         slaveOk << [true, false]
@@ -302,51 +289,53 @@ class AggregateOperationSpecification extends OperationFunctionalSpecification {
 
     def 'should use the AsyncReadBindings readPreference to set slaveOK'() {
         given:
-        def dbName = 'db'
-        def collectionName = 'coll'
-        def namespace = new MongoNamespace(dbName, collectionName)
-        def readBinding = Mock(AsyncReadBinding)
-        def readPreference = Mock(ReadPreference)
-        def connectionSource = Mock(AsyncConnectionSource)
+        def readPreference = Stub(ReadPreference) {
+            isSlaveOk() >> slaveOk
+        }
         def connection = Mock(AsyncConnection)
-        def connectionDescription = Mock(ConnectionDescription)
-        def inlineResult = BsonDocument.parse('{ok: 1.0}').append('result', new BsonArrayWrapper([]))
-        def cursorResult = BsonDocument.parse('{ok: 1.0}')
-                .append('cursor', new BsonDocument('id', new BsonInt64(0)).append('ns', new BsonString('db.coll'))
-                .append('firstBatch', new BsonArrayWrapper([])))
-        def operation = new AggregateOperation(namespace, [], new BsonDocumentCodec())
+        def connectionSource = Stub(AsyncConnectionSource) {
+            getConnection(_) >> { it[0].onResult(connection, null) }
+        }
+        def readBinding = Stub(AsyncReadBinding) {
+            getReadPreference() >> readPreference
+            getReadConnectionSource(_) >> { it[0].onResult(connectionSource, null) }
+        }
+        def operation = new AggregateOperation(helper.namespace, [], new BsonDocumentCodec())
 
         when:
         operation.executeAsync(readBinding, Stub(SingleResultCallback))
 
         then:
-        1 * readBinding.getReadPreference() >> readPreference
-        1 * readBinding.getReadConnectionSource(_) >> { it[0].onResult(connectionSource, null) }
-        1 * connectionSource.getConnection(_) >> { it[0].onResult(connection, null) }
-        4 * connection.getDescription() >> connectionDescription
-        3 * connectionDescription.getServerVersion() >> new ServerVersion([2, 4, 0])
-        1 * readPreference.slaveOk >> slaveOk
-        1 * connection.commandAsync(dbName, _, slaveOk, _, _, _) >> { it[5].onResult(inlineResult, null) }
+        _ * connection.getDescription() >> helper.twoFourConnectionDescription
+        1 * connection.commandAsync(helper.dbName, _, slaveOk, _, _, _) >> { it[5].onResult(helper.inlineResult, null) }
         1 * connection.release()
-        1 * connectionSource.release()
 
         when: '2.6.0'
         operation.executeAsync(readBinding, Stub(SingleResultCallback))
 
         then:
-        1 * readBinding.getReadPreference() >> readPreference
-        1 * readBinding.getReadConnectionSource(_) >> { it[0].onResult(connectionSource, null) }
-        1 * connectionSource.getConnection(_) >> { it[0].onResult(connection, null) }
-        4 * connection.getDescription() >> connectionDescription
-        3 * connectionDescription.getServerVersion() >> new ServerVersion([2, 6, 0])
-        1 * readPreference.slaveOk >> slaveOk
-        1 * connection.commandAsync(dbName, _, slaveOk, _, _, _) >> { it[5].onResult(cursorResult, null) }
+        _ * connection.getDescription() >> helper.twoSixConnectionDescription
+        1 * connection.commandAsync(helper.dbName, _, slaveOk, _, _, _) >> { it[5].onResult(helper.cursorResult, null) }
         1 * connection.release()
-        1 * connectionSource.release()
 
         where:
         slaveOk << [true, false]
     }
+
+    def helper = [
+            dbName: 'db',
+            namespace: new MongoNamespace('db', 'coll'),
+            twoFourConnectionDescription: Stub(ConnectionDescription) {
+                getServerVersion() >> new ServerVersion([2, 4, 0])
+            },
+            twoSixConnectionDescription : Stub(ConnectionDescription) {
+                getServerVersion() >> new ServerVersion([2, 6, 0])
+            },
+            inlineResult: BsonDocument.parse('{ok: 1.0}').append('result', new BsonArrayWrapper([])),
+            cursorResult: BsonDocument.parse('{ok: 1.0}')
+                    .append('cursor', new BsonDocument('id', new BsonInt64(0)).append('ns', new BsonString('db.coll'))
+                    .append('firstBatch', new BsonArrayWrapper([])))
+    ]
 
     private static List<Boolean> useCursorOptions() {
         [null, true, false]

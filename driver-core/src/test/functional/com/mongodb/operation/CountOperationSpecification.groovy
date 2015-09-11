@@ -260,28 +260,26 @@ class CountOperationSpecification extends OperationFunctionalSpecification {
 
     def 'should use the ReadBindings readPreference to set slaveOK'() {
         given:
-        def dbName = 'db'
-        def collectionName = 'coll'
-        def namespace = new MongoNamespace(dbName, collectionName)
-        def readBinding = Mock(ReadBinding)
-        def readPreference = Mock(ReadPreference)
-        def connectionSource = Mock(ConnectionSource)
         def connection = Mock(Connection)
-        def connectionDescription = Mock(ConnectionDescription)
-        def operation = new CountOperation(namespace).filter(BsonDocument.parse('{a: 1}'))
+        def readPreference = Stub(ReadPreference) {
+            isSlaveOk() >> slaveOk
+        }
+        def connectionSource = Stub(ConnectionSource) {
+            getConnection() >> connection
+        }
+        def readBinding = Stub(ReadBinding) {
+            getReadConnectionSource() >> connectionSource
+            getReadPreference() >> readPreference
+        }
+        def operation = new CountOperation(helper.namespace).filter(BsonDocument.parse('{a: 1}'))
 
         when:
         operation.execute(readBinding)
 
         then:
-        1 * readBinding.getReadConnectionSource() >> connectionSource
-        1 * readBinding.getReadPreference() >> readPreference
-        1 * connectionSource.getConnection() >> connection
-        1 * connection.getDescription() >> connectionDescription
-        1 * readPreference.slaveOk >> slaveOk
-        1 * connection.command(dbName, _, slaveOk, _, _) >> BsonDocument.parse('{ok: 1.0, n: 10}')
+        _ * connection.getDescription() >> helper.connectionDescription
+        1 * connection.command(helper.dbName, _, slaveOk, _, _) >> helper.commandResult
         1 * connection.release()
-        1 * connectionSource.release()
 
         where:
         slaveOk << [true, false]
@@ -289,31 +287,35 @@ class CountOperationSpecification extends OperationFunctionalSpecification {
 
     def 'should use the AsyncReadBindings readPreference to set slaveOK'() {
         given:
-        def dbName = 'db'
-        def collectionName = 'coll'
-        def namespace = new MongoNamespace(dbName, collectionName)
-        def readBinding = Mock(AsyncReadBinding)
-        def readPreference = Mock(ReadPreference)
-        def connectionSource = Mock(AsyncConnectionSource)
         def connection = Mock(AsyncConnection)
-        def connectionDescription = Mock(ConnectionDescription)
-        def operation = new CountOperation(namespace).filter(BsonDocument.parse('{a: 1}'))
+        def connectionSource = Stub(AsyncConnectionSource) {
+            getConnection(_) >> { it[0].onResult(connection, null) }
+        }
+        def readPreference = Stub(ReadPreference) {
+            isSlaveOk() >> slaveOk
+        }
+        def readBinding = Stub(AsyncReadBinding) {
+            getReadPreference() >> readPreference
+            getReadConnectionSource(_) >> { it[0].onResult(connectionSource, null) }
+        }
+        def operation = new CountOperation(helper.namespace).filter(BsonDocument.parse('{a: 1}'))
 
         when:
         operation.executeAsync(readBinding, Stub(SingleResultCallback))
 
         then:
-        1 * readBinding.getReadPreference() >> readPreference
-        1 * readBinding.getReadConnectionSource(_) >> { it[0].onResult(connectionSource, null) }
-        1 * connectionSource.getConnection(_) >> { it[0].onResult(connection, null) }
-        1 * connection.getDescription() >> connectionDescription
-        1 * readPreference.slaveOk >> slaveOk
-        1 * connection.commandAsync(dbName, _, slaveOk, _, _, _) >> { it[5].onResult( BsonDocument.parse('{ok: 1.0, n: 10}'), null) }
+        _ * connection.getDescription() >> helper.connectionDescription
+        1 * connection.commandAsync(helper.dbName, _, slaveOk, _, _, _) >> { it[5].onResult(helper.commandResult, null) }
         1 * connection.release()
-        1 * connectionSource.release()
 
         where:
         slaveOk << [true, false]
     }
 
+    def helper = [
+        dbName: 'db',
+        namespace: new MongoNamespace('db', 'coll'),
+        commandResult: BsonDocument.parse('{ok: 1.0, n: 10}'),
+        connectionDescription: Stub(ConnectionDescription)
+    ]
 }

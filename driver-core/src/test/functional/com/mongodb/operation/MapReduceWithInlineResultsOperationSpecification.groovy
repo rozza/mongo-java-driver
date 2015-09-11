@@ -87,35 +87,27 @@ class MapReduceWithInlineResultsOperationSpecification extends OperationFunction
 
     def 'should use the ReadBindings readPreference to set slaveOK'() {
         given:
-        def dbName = 'db'
-        def collectionName = 'coll'
-        def namespace = new MongoNamespace(dbName, collectionName)
-        def decoder = Stub(Decoder)
-        def readBinding = Mock(ReadBinding)
-        def readPreference = Mock(ReadPreference)
-        def connectionSource = Mock(ConnectionSource)
         def connection = Mock(Connection)
-        def connectionDescription = Mock(ConnectionDescription)
-        def commandResult = BsonDocument.parse('{ok: 1.0, counts: {input: 1, emit: 1, output: 1}, timeMillis: 1}')
-                .append('results', new BsonArrayWrapper([]))
-        def operation = new MapReduceWithInlineResultsOperation<Document>( namespace, new BsonJavaScript('function(){ }'),
-                new BsonJavaScript('function(key, values){ }'), decoder)
+        def readPreference = Stub(ReadPreference) {
+            isSlaveOk() >> slaveOk
+        }
+        def connectionSource = Stub(ConnectionSource) {
+            getConnection() >> connection
+        }
+        def readBinding = Stub(ReadBinding) {
+            getReadConnectionSource() >> connectionSource
+            getReadPreference() >> readPreference
+        }
+        def operation = new MapReduceWithInlineResultsOperation<Document>(helper.namespace, new BsonJavaScript('function(){ }'),
+                new BsonJavaScript('function(key, values){ }'), helper.decoder)
 
         when:
         operation.execute(readBinding)
 
         then:
-        1 * readBinding.getReadConnectionSource() >> connectionSource
-        1 * readBinding.getReadPreference() >> readPreference
-        1 * connectionSource.getConnection() >> connection
-        2 * connection.getDescription() >> connectionDescription
-        1 * readPreference.slaveOk >> slaveOk
-        1 * connection.command(_, _, slaveOk, _, _) >> commandResult
-        1 * connectionSource.retain()
-        1 * connectionDescription.getServerType()
-        1 * connectionDescription.getServerAddress()
+        _ * connection.getDescription() >> helper.connectionDescription
+        1 * connection.command(helper.dbName, _, slaveOk, _, _) >> helper.commandResult
         1 * connection.release()
-        1 * connectionSource.release()
 
         where:
         slaveOk << [true, false]
@@ -123,35 +115,38 @@ class MapReduceWithInlineResultsOperationSpecification extends OperationFunction
 
     def 'should use the AsyncReadBindings readPreference to set slaveOK'() {
         given:
-        def dbName = 'db'
-        def collectionName = 'coll'
-        def namespace = new MongoNamespace(dbName, collectionName)
-        def decoder = Stub(Decoder)
-        def readBinding = Mock(AsyncReadBinding)
-        def readPreference = Mock(ReadPreference)
-        def connectionSource = Mock(AsyncConnectionSource)
         def connection = Mock(AsyncConnection)
-        def connectionDescription = Mock(ConnectionDescription)
-        def commandResult = BsonDocument.parse('{ok: 1.0, counts: {input: 1, emit: 1, output: 1}, timeMillis: 1}')
-                .append('results', new BsonArrayWrapper([]))
-        def operation = new MapReduceWithInlineResultsOperation<Document>( namespace, new BsonJavaScript('function(){ }'),
-                new BsonJavaScript('function(key, values){ }'), decoder)
+        def connectionSource = Stub(AsyncConnectionSource) {
+            getConnection(_) >> { it[0].onResult(connection, null) }
+        }
+        def readPreference = Stub(ReadPreference) {
+            isSlaveOk() >> slaveOk
+        }
+        def readBinding = Stub(AsyncReadBinding) {
+            getReadPreference() >> readPreference
+            getReadConnectionSource(_) >> { it[0].onResult(connectionSource, null) }
+        }
+        def operation = new MapReduceWithInlineResultsOperation<Document>(helper.namespace, new BsonJavaScript('function(){ }'),
+                new BsonJavaScript('function(key, values){ }'), helper.decoder)
 
         when:
         operation.executeAsync(readBinding, Stub(SingleResultCallback))
 
         then:
-        1 * readBinding.getReadPreference() >> readPreference
-        1 * readBinding.getReadConnectionSource(_) >> { it[0].onResult(connectionSource, null) }
-        1 * connectionSource.getConnection(_) >> { it[0].onResult(connection, null) }
-        1 * readPreference.slaveOk >> slaveOk
-        1 * connection.getDescription() >> connectionDescription
-        1 * connectionDescription.getServerType()
-        1 * connection.commandAsync(_, _, slaveOk, _, _, _) >> { it[6].onResult(commandResult, _) }
+        _ * connection.getDescription() >> helper.connectionDescription
+        1 * connection.commandAsync(helper.dbName, _, slaveOk, _, _, _) >> { it[5].onResult(helper.commandResult, null) }
+        1 * connection.release()
 
         where:
         slaveOk << [true, false]
     }
 
-
+    def helper = [
+            dbName: 'db',
+            namespace: new MongoNamespace('db', 'coll'),
+            decoder: Stub(Decoder),
+            commandResult: BsonDocument.parse('{ok: 1.0, counts: {input: 1, emit: 1, output: 1}, timeMillis: 1}')
+                    .append('results', new BsonArrayWrapper([])),
+            connectionDescription: Stub(ConnectionDescription)
+    ]
 }

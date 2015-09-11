@@ -447,4 +447,10 @@ class FindOperationSpecification extends OperationFunctionalSpecification {
         where:
         slaveOk << [true, false]
     }
+
+    def helper = [
+        namespace: new MongoNamespace('db', 'coll'),
+        queryResult: Stub(QueryResult),
+        connectionDescription: Stub(ConnectionDescription)
+    ]
 }

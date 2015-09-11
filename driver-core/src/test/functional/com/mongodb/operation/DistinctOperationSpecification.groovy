@@ -261,30 +261,26 @@ class DistinctOperationSpecification extends OperationFunctionalSpecification {
 
     def 'should use the ReadBindings readPreference to set slaveOK'() {
         given:
-        def dbName = 'db'
-        def collectionName = 'coll'
-        def namespace = new MongoNamespace(dbName, collectionName)
-        def decoder = Stub(Decoder)
-        def readBinding = Mock(ReadBinding)
-        def readPreference = Mock(ReadPreference)
-        def connectionSource = Mock(ConnectionSource)
         def connection = Mock(Connection)
-        def connectionDescription = Mock(ConnectionDescription)
-        def commandResult = BsonDocument.parse('{ok: 1.0}').append('values', new BsonArrayWrapper([]))
-        def operation = new DistinctOperation(namespace, 'name', decoder)
+        def readPreference = Stub(ReadPreference) {
+            isSlaveOk() >> slaveOk
+        }
+        def connectionSource = Stub(ConnectionSource) {
+            getConnection() >> connection
+        }
+        def readBinding = Stub(ReadBinding) {
+            getReadConnectionSource() >> connectionSource
+            getReadPreference() >> readPreference
+        }
+        def operation = new DistinctOperation(helper.namespace, 'name', helper.decoder)
 
         when:
         operation.execute(readBinding)
 
         then:
-        1 * readBinding.getReadConnectionSource() >> connectionSource
-        1 * readBinding.getReadPreference() >> readPreference
-        1 * connectionSource.getConnection() >> connection
-        2 * connection.getDescription() >> connectionDescription
-        1 * readPreference.slaveOk >> slaveOk
-        1 * connection.command(dbName, _, slaveOk, _, _) >> commandResult
+        _ * connection.getDescription() >> helper.connectionDescription
+        1 * connection.command(helper.dbName, _, slaveOk, _, _) >> helper.commandResult
         1 * connection.release()
-        1 * connectionSource.release()
 
         where:
         slaveOk << [true, false]
@@ -292,32 +288,36 @@ class DistinctOperationSpecification extends OperationFunctionalSpecification {
 
     def 'should use the AsyncReadBindings readPreference to set slaveOK'() {
         given:
-        def dbName = 'db'
-        def collectionName = 'coll'
-        def namespace = new MongoNamespace(dbName, collectionName)
-        def decoder = Stub(Decoder)
-        def readBinding = Mock(AsyncReadBinding)
-        def readPreference = Mock(ReadPreference)
-        def connectionSource = Mock(AsyncConnectionSource)
         def connection = Mock(AsyncConnection)
-        def connectionDescription = Mock(ConnectionDescription)
-        def commandResult = BsonDocument.parse('{ok: 1.0}').append('values', new BsonArrayWrapper([]))
-        def operation = new DistinctOperation(namespace, 'name', decoder)
+        def connectionSource = Stub(AsyncConnectionSource) {
+            getConnection(_) >> { it[0].onResult(connection, null) }
+        }
+        def readPreference = Stub(ReadPreference) {
+            isSlaveOk() >> slaveOk
+        }
+        def readBinding = Stub(AsyncReadBinding) {
+            getReadPreference() >> readPreference
+            getReadConnectionSource(_) >> { it[0].onResult(connectionSource, null) }
+        }
+        def operation = new DistinctOperation(helper.namespace, 'name', helper.decoder)
 
         when:
         operation.executeAsync(readBinding, Stub(SingleResultCallback))
 
         then:
-        1 * readBinding.getReadPreference() >> readPreference
-        1 * readBinding.getReadConnectionSource(_) >> { it[0].onResult(connectionSource, null) }
-        1 * connectionSource.getConnection(_) >> { it[0].onResult(connection, null) }
-        2 * connection.getDescription() >> connectionDescription
-        1 * readPreference.slaveOk >> slaveOk
-        1 * connection.commandAsync(dbName, _, slaveOk, _, _, _) >> { it[5].onResult( commandResult, null) }
+        _ * connection.getDescription() >> helper.connectionDescription
+        1 * connection.commandAsync(helper.dbName, _, slaveOk, _, _, _) >> { it[5].onResult(helper.commandResult, null) }
         1 * connection.release()
-        1 * connectionSource.release()
 
         where:
         slaveOk << [true, false]
     }
+
+    def helper = [
+        dbName: 'db',
+        namespace: new MongoNamespace('db', 'coll'),
+        decoder: Stub(Decoder),
+        commandResult: BsonDocument.parse('{ok: 1.0}').append('values', new BsonArrayWrapper([])),
+        connectionDescription: Stub(ConnectionDescription)
+    ]
 }
