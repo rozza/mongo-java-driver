@@ -20,14 +20,29 @@ import category.Async
 import com.mongodb.MongoExecutionTimeoutException
 import com.mongodb.MongoNamespace
 import com.mongodb.OperationFunctionalSpecification
+import com.mongodb.ReadPreference
 import com.mongodb.async.AsyncBatchCursor
 import com.mongodb.async.FutureResultCallback
+import com.mongodb.async.SingleResultCallback
+import com.mongodb.binding.AsyncConnectionSource
+import com.mongodb.binding.AsyncReadBinding
+import com.mongodb.binding.ConnectionSource
+import com.mongodb.binding.ReadBinding
 import com.mongodb.client.model.CreateCollectionOptions
+import com.mongodb.connection.AsyncConnection
+import com.mongodb.connection.Connection
+import com.mongodb.connection.ConnectionDescription
+import com.mongodb.connection.QueryResult
+import com.mongodb.connection.ServerDescription
+import com.mongodb.connection.ServerVersion
 import org.bson.BsonBoolean
 import org.bson.BsonDocument
+import org.bson.BsonDouble
+import org.bson.BsonInt64
 import org.bson.BsonRegularExpression
 import org.bson.BsonString
 import org.bson.Document
+import org.bson.codecs.Decoder
 import org.bson.codecs.DocumentCodec
 import org.junit.experimental.categories.Category
 import spock.lang.IgnoreIf
@@ -355,6 +370,110 @@ class ListCollectionsOperationSpecification extends OperationFunctionalSpecifica
 
         cleanup:
         disableMaxTimeFailPoint()
+    }
+
+    def 'should use the ReadBindings readPreference to set slaveOK'() {
+        given:
+        def dbName = 'db'
+        def collectionName = 'coll'
+        def namespace = new MongoNamespace(dbName, collectionName)
+        def decoder = Stub(Decoder)
+        def readBinding = Mock(ReadBinding)
+        def readPreference = Mock(ReadPreference)
+        def connectionSource = Mock(ConnectionSource)
+        def connection = Mock(Connection)
+        def connectionDescription = Mock(ConnectionDescription)
+        def queryResult = Mock(QueryResult)
+        def commandResult = new BsonDocument('ok', new BsonDouble(1.0))
+                .append('cursor', new BsonDocument('id', new BsonInt64(1)).append('ns', new BsonString('db.coll'))
+                .append('firstBatch', new BsonArrayWrapper([])))
+        def operation = new ListCollectionsOperation(dbName, decoder)
+
+        when:
+        operation.execute(readBinding)
+
+        then:
+        1 * readBinding.getReadConnectionSource() >> connectionSource
+        2 * readBinding.getReadPreference() >> readPreference
+        1 * connectionSource.getConnection() >> connection
+        2 * connection.getDescription() >> connectionDescription
+        1 * connectionDescription.getServerVersion() >> new ServerVersion([2, 6, 0])
+        1 * readPreference.slaveOk >> slaveOk
+        1 * connection.query(_, _, _, _, _, slaveOk, _, _, _, _, _, _) >> queryResult
+        1 * queryResult.getNamespace() >> namespace
+        2 * queryResult.getResults() >> []
+        1 * connection.release()
+        1 * connectionSource.release()
+
+        when: '3.0.0'
+        operation.execute(readBinding)
+
+        then:
+        1 * readBinding.getReadConnectionSource() >> connectionSource
+        1 * readBinding.getReadPreference() >> readPreference
+        1 * connectionSource.getConnection() >> connection
+        2 * connection.getDescription() >> connectionDescription
+        1 * connectionDescription.getServerVersion() >> new ServerVersion([3, 0, 0])
+        1 * readPreference.slaveOk >> slaveOk
+        1 * connection.command(_, _, slaveOk, _, _) >> commandResult
+        1 * connectionSource.retain()
+        1 * connectionDescription.getServerType()
+        1 * connectionSource.getServerDescription() >> Stub(ServerDescription)
+        1 * connection.release()
+        1 * connectionSource.release()
+
+        where:
+        slaveOk << [true, false]
+    }
+
+    def 'should use the AsyncReadBindings readPreference to set slaveOK'() {
+        given:
+        def dbName = 'db'
+        def collectionName = 'coll'
+        def namespace = new MongoNamespace(dbName, collectionName)
+        def decoder = Stub(Decoder)
+        def readBinding = Mock(AsyncReadBinding)
+        def readPreference = Mock(ReadPreference)
+        def connectionSource = Mock(AsyncConnectionSource)
+        def connection = Mock(AsyncConnection)
+        def connectionDescription = Mock(ConnectionDescription)
+        def queryResult = Mock(QueryResult)
+        def commandResult = new BsonDocument('ok', new BsonDouble(1.0))
+                .append('cursor', new BsonDocument('id', new BsonInt64(1)).append('ns', new BsonString('db.coll'))
+                .append('firstBatch', new BsonArrayWrapper([])))
+        def operation = new ListCollectionsOperation(dbName, decoder)
+
+        when:
+        operation.executeAsync(readBinding, Stub(SingleResultCallback))
+
+        then:
+        2 * readBinding.getReadPreference() >> readPreference
+        1 * readBinding.getReadConnectionSource(_) >> { it[0].onResult(connectionSource, null) }
+        1 * connectionSource.getConnection(_) >> { it[0].onResult(connection, null) }
+        2 * connection.getDescription() >> connectionDescription
+        1 * connectionDescription.getServerVersion() >> new ServerVersion([2, 6, 0])
+        1 * readPreference.slaveOk >> slaveOk
+        1 * connection.queryAsync(_, _, _, _, _, slaveOk, _, _, _, _, _, _, _) >> { it[12].onResult(queryResult, null) }
+        1 * queryResult.getNamespace() >> namespace
+        1 * queryResult.getResults() >> []
+        1 * connection.release()
+        1 * connectionSource.release()
+
+        when: '3.0.0'
+        operation.executeAsync(readBinding, Stub(SingleResultCallback))
+
+        then:
+        1 * readBinding.getReadPreference() >> readPreference
+        1 * readBinding.getReadConnectionSource(_) >> { it[0].onResult(connectionSource, null) }
+        1 * connectionSource.getConnection(_) >> { it[0].onResult(connection, null) }
+        2 * connection.getDescription() >> connectionDescription
+        1 * connectionDescription.getServerVersion() >> new ServerVersion([3, 0, 0])
+        1 * readPreference.slaveOk >> slaveOk
+        1 * connection.commandAsync(_, _, slaveOk, _, _, _) >> { it[6].onResult(commandResult, _) }
+        1 * connectionDescription.getServerType()
+
+        where:
+        slaveOk << [true, false]
     }
 
     private void addSeveralIndexes() {

@@ -20,8 +20,18 @@ import category.Async
 import com.mongodb.ExplainVerbosity
 import com.mongodb.MongoException
 import com.mongodb.MongoExecutionTimeoutException
+import com.mongodb.MongoNamespace
 import com.mongodb.OperationFunctionalSpecification
+import com.mongodb.ReadPreference
+import com.mongodb.async.SingleResultCallback
+import com.mongodb.binding.AsyncConnectionSource
+import com.mongodb.binding.AsyncReadBinding
+import com.mongodb.binding.ConnectionSource
+import com.mongodb.binding.ReadBinding
 import com.mongodb.bulk.IndexRequest
+import com.mongodb.connection.AsyncConnection
+import com.mongodb.connection.Connection
+import com.mongodb.connection.ConnectionDescription
 import org.bson.BsonDocument
 import org.bson.BsonInt32
 import org.bson.BsonString
@@ -246,6 +256,64 @@ class CountOperationSpecification extends OperationFunctionalSpecification {
 
         then:
         result.getNumber('ok').intValue() == 1
+    }
+
+    def 'should use the ReadBindings readPreference to set slaveOK'() {
+        given:
+        def dbName = 'db'
+        def collectionName = 'coll'
+        def namespace = new MongoNamespace(dbName, collectionName)
+        def readBinding = Mock(ReadBinding)
+        def readPreference = Mock(ReadPreference)
+        def connectionSource = Mock(ConnectionSource)
+        def connection = Mock(Connection)
+        def connectionDescription = Mock(ConnectionDescription)
+        def operation = new CountOperation(namespace).filter(BsonDocument.parse('{a: 1}'))
+
+        when:
+        operation.execute(readBinding)
+
+        then:
+        1 * readBinding.getReadConnectionSource() >> connectionSource
+        1 * readBinding.getReadPreference() >> readPreference
+        1 * connectionSource.getConnection() >> connection
+        1 * connection.getDescription() >> connectionDescription
+        1 * readPreference.slaveOk >> slaveOk
+        1 * connection.command(dbName, _, slaveOk, _, _) >> BsonDocument.parse('{ok: 1.0, n: 10}')
+        1 * connection.release()
+        1 * connectionSource.release()
+
+        where:
+        slaveOk << [true, false]
+    }
+
+    def 'should use the AsyncReadBindings readPreference to set slaveOK'() {
+        given:
+        def dbName = 'db'
+        def collectionName = 'coll'
+        def namespace = new MongoNamespace(dbName, collectionName)
+        def readBinding = Mock(AsyncReadBinding)
+        def readPreference = Mock(ReadPreference)
+        def connectionSource = Mock(AsyncConnectionSource)
+        def connection = Mock(AsyncConnection)
+        def connectionDescription = Mock(ConnectionDescription)
+        def operation = new CountOperation(namespace).filter(BsonDocument.parse('{a: 1}'))
+
+        when:
+        operation.executeAsync(readBinding, Stub(SingleResultCallback))
+
+        then:
+        1 * readBinding.getReadPreference() >> readPreference
+        1 * readBinding.getReadConnectionSource(_) >> { it[0].onResult(connectionSource, null) }
+        1 * connectionSource.getConnection(_) >> { it[0].onResult(connection, null) }
+        1 * connection.getDescription() >> connectionDescription
+        1 * readPreference.slaveOk >> slaveOk
+        1 * connection.commandAsync(dbName, _, slaveOk, _, _, _) >> { it[5].onResult( BsonDocument.parse('{ok: 1.0, n: 10}'), null) }
+        1 * connection.release()
+        1 * connectionSource.release()
+
+        where:
+        slaveOk << [true, false]
     }
 
 }

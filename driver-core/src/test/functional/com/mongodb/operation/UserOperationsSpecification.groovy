@@ -22,12 +22,22 @@ import com.mongodb.MongoCredential
 import com.mongodb.MongoServerException
 import com.mongodb.MongoTimeoutException
 import com.mongodb.OperationFunctionalSpecification
+import com.mongodb.ReadPreference
+import com.mongodb.async.SingleResultCallback
+import com.mongodb.binding.AsyncConnectionSource
+import com.mongodb.binding.AsyncReadBinding
+import com.mongodb.binding.ConnectionSource
+import com.mongodb.binding.ReadBinding
 import com.mongodb.bulk.InsertRequest
+import com.mongodb.connection.AsyncConnection
 import com.mongodb.connection.ClusterSettings
 import com.mongodb.connection.Connection
+import com.mongodb.connection.ConnectionDescription
 import com.mongodb.connection.ConnectionPoolSettings
 import com.mongodb.connection.DefaultClusterFactory
+import com.mongodb.connection.QueryResult
 import com.mongodb.connection.ServerSettings
+import com.mongodb.connection.ServerVersion
 import com.mongodb.connection.SocketSettings
 import com.mongodb.connection.SocketStreamFactory
 import com.mongodb.connection.StreamFactory
@@ -307,6 +317,99 @@ class UserOperationsSpecification extends OperationFunctionalSpecification {
         new DropUserOperation('admin', roCredential.userName).execute(getBinding())
         cluster?.close()
     }
+
+
+    def 'should use the ReadBindings readPreference to set slaveOK'() {
+        given:
+        def dbName = 'db'
+        def readBinding = Mock(ReadBinding)
+        def readPreference = Mock(ReadPreference)
+        def connectionSource = Mock(ConnectionSource)
+        def connection = Mock(Connection)
+        def connectionDescription = Mock(ConnectionDescription)
+        def queryResult = Mock(QueryResult)
+        def commandResult = BsonDocument.parse('{ok: 1.0, users: []}')
+        def operation = new UserExistsOperation(dbName, 'user')
+
+        when:
+        operation.execute(readBinding)
+
+        then:
+        1 * readBinding.getReadConnectionSource() >> connectionSource
+        1 * readBinding.getReadPreference() >> readPreference
+        1 * connectionSource.getConnection() >> connection
+        1 * connection.getDescription() >> connectionDescription
+        1 * connectionDescription.getServerVersion() >> new ServerVersion([2, 4, 0])
+        1 * readPreference.slaveOk >> slaveOk
+        1 * connection.query(_, _, _, _, _, slaveOk, _, _, _, _, _, _) >> queryResult
+        1 * queryResult.getResults() >> []
+        1 * connection.release()
+        1 * connectionSource.release()
+
+        when: '2.6.0'
+        operation.execute(readBinding)
+
+        then:
+        1 * readBinding.getReadConnectionSource() >> connectionSource
+        1 * readBinding.getReadPreference() >> readPreference
+        1 * connectionSource.getConnection() >> connection
+        2 * connection.getDescription() >> connectionDescription
+        1 * connectionDescription.getServerVersion() >> new ServerVersion([2, 6, 0])
+        1 * connectionDescription.getServerType()
+        1 * readPreference.slaveOk >> slaveOk
+        1 * connection.command(_, _, slaveOk, _, _) >> commandResult
+        1 * connection.release()
+        1 * connectionSource.release()
+
+        where:
+        slaveOk << [true, false]
+    }
+
+    def 'should use the AsyncReadBindings readPreference to set slaveOK'() {
+        given:
+        def dbName = 'db'
+        def readBinding = Mock(AsyncReadBinding)
+        def readPreference = Mock(ReadPreference)
+        def connectionSource = Mock(AsyncConnectionSource)
+        def connection = Mock(AsyncConnection)
+        def connectionDescription = Mock(ConnectionDescription)
+        def queryResult = Mock(QueryResult)
+        def commandResult = BsonDocument.parse('{ok: 1.0, users: []}')
+        def operation = new UserExistsOperation(dbName, 'user')
+
+        when:
+        operation.executeAsync(readBinding, Stub(SingleResultCallback))
+
+        then:
+        1 * readBinding.getReadConnectionSource(_) >> { it[0].onResult(connectionSource, null) }
+        1 * connectionSource.getConnection(_) >> { it[0].onResult(connection, null) }
+        1 * readBinding.getReadPreference() >> readPreference
+        1 * connection.getDescription() >> connectionDescription
+        1 * connectionDescription.getServerVersion() >> new ServerVersion([2, 4, 0])
+        1 * readPreference.slaveOk >> slaveOk
+        1 * connection.queryAsync(_, _, _, _, _, slaveOk, _, _, _, _, _, _, _) >> { it[12].onResult(queryResult, null) }
+        1 * queryResult.getResults() >> []
+        1 * connection.release()
+        1 * connectionSource.release()
+
+        when: '2.6.0'
+        operation.executeAsync(readBinding, Stub(SingleResultCallback))
+
+        then:
+        1 * readBinding.getReadPreference() >> readPreference
+        1 * readBinding.getReadConnectionSource(_) >> { it[0].onResult(connectionSource, null) }
+        1 * connectionSource.getConnection(_) >> { it[0].onResult(connection, null) }
+        2 * connection.getDescription() >> connectionDescription
+        1 * connectionDescription.getServerVersion() >> new ServerVersion([2, 6, 0])
+        1 * readPreference.slaveOk >> slaveOk
+        1 * connection.commandAsync(_, _, slaveOk, _, _, _) >> { it[6].onResult(commandResult, _) }
+        1 * connectionDescription.getServerType()
+        1 * connectionSource.release()
+
+        where:
+        slaveOk << [true, false]
+    }
+
 
     def getCluster() {
         getCluster(credential)

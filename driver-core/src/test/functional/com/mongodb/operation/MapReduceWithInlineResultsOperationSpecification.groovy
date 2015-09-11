@@ -17,7 +17,6 @@
 package com.mongodb.operation
 
 import category.Async
-import category.Slow
 import com.mongodb.Block
 import com.mongodb.MongoNamespace
 import com.mongodb.OperationFunctionalSpecification
@@ -27,71 +26,63 @@ import com.mongodb.binding.AsyncConnectionSource
 import com.mongodb.binding.AsyncReadBinding
 import com.mongodb.binding.ConnectionSource
 import com.mongodb.binding.ReadBinding
+import com.mongodb.client.test.CollectionHelper
 import com.mongodb.connection.AsyncConnection
 import com.mongodb.connection.Connection
 import com.mongodb.connection.ConnectionDescription
 import org.bson.BsonDocument
+import org.bson.BsonJavaScript
 import org.bson.Document
 import org.bson.codecs.Decoder
 import org.bson.codecs.DocumentCodec
 import org.junit.experimental.categories.Category
-import spock.lang.IgnoreIf
 
-import java.util.concurrent.ConcurrentHashMap
-
-import static com.mongodb.ClusterFixture.executeAsync
 import static com.mongodb.ClusterFixture.getBinding
-import static com.mongodb.ClusterFixture.isSharded
 import static com.mongodb.ClusterFixture.loopCursor
-import static com.mongodb.ClusterFixture.serverVersionAtLeast
-import static java.util.Arrays.asList
-import static org.junit.Assert.assertTrue
 
-@IgnoreIf({ isSharded() || !serverVersionAtLeast(asList(2, 6, 0)) })
-@Category(Slow)
-class ParallelCollectionScanOperationSpecification extends OperationFunctionalSpecification {
-    Map<Integer, Boolean> ids = [] as ConcurrentHashMap
+class MapReduceWithInlineResultsOperationSpecification extends OperationFunctionalSpecification {
+    private final documentCodec = new DocumentCodec()
+    def mapReduceOperation = new MapReduceWithInlineResultsOperation<Document>(
+            getNamespace(),
+            new BsonJavaScript('function(){ emit( this.name , 1 ); }'),
+            new BsonJavaScript('function(key, values){ return values.length; }'),
+            documentCodec)
 
-    def 'setup'() {
-        (1..2000).each {
-            ids.put(it, true)
-            getCollectionHelper().insertDocuments(new DocumentCodec(), new Document('_id', it))
-        }
+    def expectedResults = [['_id': 'Pete', 'value': 2.0] as Document,
+                           ['_id': 'Sam', 'value': 1.0] as Document]
+
+    def setup() {
+        CollectionHelper<Document> helper = new CollectionHelper<Document>(documentCodec, getNamespace())
+        Document pete = new Document('name', 'Pete').append('job', 'handyman')
+        Document sam = new Document('name', 'Sam').append('job', 'plumber')
+        Document pete2 = new Document('name', 'Pete').append('job', 'electrician')
+        helper.insertDocuments(new DocumentCodec(), pete, sam, pete2)
     }
 
-    def 'should visit all documents'() {
+
+    def 'should return the correct results'() {
         when:
-        def cursors = new ParallelCollectionScanOperation<Document>(getNamespace(), 3, new DocumentCodec())
-                .batchSize(500).execute(getBinding())
+        MapReduceBatchCursor<Document> results = mapReduceOperation.execute(getBinding())
 
         then:
-        cursors.size() <= 3
-
-        when:
-        cursors.each { batchCursor -> batchCursor.each { cursor -> cursor.each { doc -> ids.remove(doc.getInteger('_id')) } } }
-
-        then:
-        ids.isEmpty()
+        results.iterator().next() == expectedResults
     }
 
     @Category(Async)
-    def 'should visit all documents asynchronously'() {
+    def 'should return the correct results asynchronously'() {
         when:
-        def cursors = executeAsync(new ParallelCollectionScanOperation<Document>(getNamespace(), 3, new DocumentCodec()).batchSize(500))
-
-        then:
-        cursors.size() <= 3
-
-        when:
-        loopCursor(cursors, new Block<Document>() {
+        List<Document> docList = []
+        loopCursor(mapReduceOperation, new Block<Document>() {
             @Override
-            void apply(final Document document) {
-                assertTrue(ids.remove((Integer) document.get('_id')))
+            void apply(final Document value) {
+                if (value != null) {
+                    docList += value
+                }
             }
-        })
+        });
 
         then:
-        ids.isEmpty()
+        docList.iterator().toList() == expectedResults
     }
 
     def 'should use the ReadBindings readPreference to set slaveOK'() {
@@ -105,8 +96,10 @@ class ParallelCollectionScanOperationSpecification extends OperationFunctionalSp
         def connectionSource = Mock(ConnectionSource)
         def connection = Mock(Connection)
         def connectionDescription = Mock(ConnectionDescription)
-        def commandResult = BsonDocument.parse('{ok: 1.0, cursors: []}')
-        def operation = new ParallelCollectionScanOperation<Document>(namespace, 2, decoder)
+        def commandResult = BsonDocument.parse('{ok: 1.0, counts: {input: 1, emit: 1, output: 1}, timeMillis: 1}')
+                .append('results', new BsonArrayWrapper([]))
+        def operation = new MapReduceWithInlineResultsOperation<Document>( namespace, new BsonJavaScript('function(){ }'),
+                new BsonJavaScript('function(key, values){ }'), decoder)
 
         when:
         operation.execute(readBinding)
@@ -115,10 +108,12 @@ class ParallelCollectionScanOperationSpecification extends OperationFunctionalSp
         1 * readBinding.getReadConnectionSource() >> connectionSource
         1 * readBinding.getReadPreference() >> readPreference
         1 * connectionSource.getConnection() >> connection
-        1 * connection.getDescription() >> connectionDescription
-        1 * connectionDescription.getServerType()
+        2 * connection.getDescription() >> connectionDescription
         1 * readPreference.slaveOk >> slaveOk
         1 * connection.command(_, _, slaveOk, _, _) >> commandResult
+        1 * connectionSource.retain()
+        1 * connectionDescription.getServerType()
+        1 * connectionDescription.getServerAddress()
         1 * connection.release()
         1 * connectionSource.release()
 
@@ -137,8 +132,10 @@ class ParallelCollectionScanOperationSpecification extends OperationFunctionalSp
         def connectionSource = Mock(AsyncConnectionSource)
         def connection = Mock(AsyncConnection)
         def connectionDescription = Mock(ConnectionDescription)
-        def commandResult = BsonDocument.parse('{ok: 1.0, cursors: []}')
-        def operation = new ParallelCollectionScanOperation<Document>(namespace, 2, decoder)
+        def commandResult = BsonDocument.parse('{ok: 1.0, counts: {input: 1, emit: 1, output: 1}, timeMillis: 1}')
+                .append('results', new BsonArrayWrapper([]))
+        def operation = new MapReduceWithInlineResultsOperation<Document>( namespace, new BsonJavaScript('function(){ }'),
+                new BsonJavaScript('function(key, values){ }'), decoder)
 
         when:
         operation.executeAsync(readBinding, Stub(SingleResultCallback))
@@ -147,12 +144,14 @@ class ParallelCollectionScanOperationSpecification extends OperationFunctionalSp
         1 * readBinding.getReadPreference() >> readPreference
         1 * readBinding.getReadConnectionSource(_) >> { it[0].onResult(connectionSource, null) }
         1 * connectionSource.getConnection(_) >> { it[0].onResult(connection, null) }
+        1 * readPreference.slaveOk >> slaveOk
         1 * connection.getDescription() >> connectionDescription
         1 * connectionDescription.getServerType()
-        1 * readPreference.slaveOk >> slaveOk
         1 * connection.commandAsync(_, _, slaveOk, _, _, _) >> { it[6].onResult(commandResult, _) }
 
         where:
         slaveOk << [true, false]
     }
+
+
 }
