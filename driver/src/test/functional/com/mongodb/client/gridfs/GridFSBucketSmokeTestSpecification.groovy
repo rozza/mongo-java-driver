@@ -460,4 +460,24 @@ class GridFSBucketSmokeTestSpecification extends FunctionalSpecification {
         then:
         readByte == 501 .. 1000 as byte[]
     }
+
+    def 'should drop the bucket'() {
+        given:
+        def filename = 'myFile'
+        def newFileName = 'newFileName'
+
+        when:
+        gridFSBucket.uploadFromStream(filename, new ByteArrayInputStream('Hello GridFS' as byte[]))
+
+        then:
+        filesCollection.count() == 1
+        chunksCollection.count() == 1
+
+        when:
+        gridFSBucket.drop()
+
+        then:
+        filesCollection.count() == 0
+        chunksCollection.count() == 0
+    }
 }
