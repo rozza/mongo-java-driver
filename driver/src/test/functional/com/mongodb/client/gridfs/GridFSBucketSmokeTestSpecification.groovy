@@ -462,18 +462,15 @@ class GridFSBucketSmokeTestSpecification extends FunctionalSpecification {
     }
 
     def 'should drop the bucket'() {
-        when:
+        given:
         gridFSBucket.uploadFromStream('fileName', new ByteArrayInputStream('Hello GridFS' as byte[]))
-
-        then:
-        filesCollection.count() == 1
-        chunksCollection.count() == 1
 
         when:
         gridFSBucket.drop()
+        def collectionNames = mongoDatabase.listCollectionNames().into([])
 
         then:
-        filesCollection.count() == 0
-        chunksCollection.count() == 0
+        !collectionNames.contains(filesCollection.getNamespace().collectionName)
+        !collectionNames.contains(chunksCollection.getNamespace().collectionName)
     }
 }
