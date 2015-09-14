@@ -460,4 +460,17 @@ class GridFSBucketSmokeTestSpecification extends FunctionalSpecification {
         then:
         readByte == 501 .. 1000 as byte[]
     }
+
+    def 'should drop the bucket'() {
+        given:
+        gridFSBucket.uploadFromStream('fileName', new ByteArrayInputStream('Hello GridFS' as byte[]))
+
+        when:
+        gridFSBucket.drop()
+        def collectionNames = mongoDatabase.listCollectionNames().into([])
+
+        then:
+        !collectionNames.contains(filesCollection.getNamespace().collectionName)
+        !collectionNames.contains(chunksCollection.getNamespace().collectionName)
+    }
 }
