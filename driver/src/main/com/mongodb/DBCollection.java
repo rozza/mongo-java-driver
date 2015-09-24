@@ -1004,56 +1004,6 @@ public class DBCollection {
      * Group documents in a collection by the specified key and performs simple aggregation functions such as computing counts and sums.
      * This is analogous to a {@code SELECT ... GROUP BY} statement in SQL.
      *
-     * @param keyf    the function that creates a "key object" for use as the grouping key
-     * @param cond    specifies the selection criteria to determine which documents in the collection to process
-     * @param initial initializes the aggregation result document
-     * @param reduce  specifies an $reduce function, that operates on the documents during the grouping operation
-     * @return a document with the grouped records as well as the command meta-data
-     * @mongodb.driver.manual reference/command/group/ Group Command
-     */
-    public DBObject group(final String keyf, final DBObject cond, final DBObject initial, final String reduce) {
-        return group(keyf, cond, initial, reduce, null);
-    }
-
-    /**
-     * Group documents in a collection by the specified key and performs simple aggregation functions such as computing counts and sums.
-     * This is analogous to a {@code SELECT ... GROUP BY} statement in SQL.
-     *
-     * @param keyf     the function that creates a "key object" for use as the grouping key
-     * @param cond     specifies the selection criteria to determine which documents in the collection to process
-     * @param initial  initializes the aggregation result document
-     * @param reduce   specifies an $reduce Javascript function, that operates on the documents during the grouping operation
-     * @param finalize specifies a Javascript function that runs each item in the result set before final value will be returned
-     * @return a document with the grouped records as well as the command meta-data
-     * @mongodb.driver.manual reference/command/group/ Group Command
-     */
-    public DBObject group(final String keyf, final DBObject cond, final DBObject initial, final String reduce,
-                          final String finalize) {
-        return group(keyf, cond, initial, reduce, finalize, getReadPreference());
-    }
-
-    /**
-     * Group documents in a collection by the specified key and performs simple aggregation functions such as computing counts and sums.
-     * This is analogous to a {@code SELECT ... GROUP BY} statement in SQL.
-     *
-     * @param keyf           the function that creates a "key object" for use as the grouping key
-     * @param cond           specifies the selection criteria to determine which documents in the collection to process
-     * @param initial        initializes the aggregation result document
-     * @param reduce         specifies an $reduce Javascript function, that operates on the documents during the grouping operation
-     * @param finalize       specifies a Javascript function that runs each item in the result set before final value will be returned
-     * @param readPreference {@link ReadPreference} to be used for this operation
-     * @return a document with the grouped records as well as the command meta-data
-     * @mongodb.driver.manual reference/command/group/ Group Command
-     */
-    public DBObject group(final String keyf, final DBObject cond, final DBObject initial, final String reduce,
-                          final String finalize, final ReadPreference readPreference) {
-        return group(new GroupCommand(this, keyf, cond, initial, reduce, finalize), readPreference);
-    }
-
-    /**
-     * Group documents in a collection by the specified key and performs simple aggregation functions such as computing counts and sums.
-     * This is analogous to a {@code SELECT ... GROUP BY} statement in SQL.
-     *
      * @param cmd the group command
      * @return a document with the grouped records as well as the command meta-data
      * @mongodb.driver.manual reference/command/group/ Group Command
