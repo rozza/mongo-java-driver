@@ -24,6 +24,8 @@ import static com.mongodb.ClusterFixture.serverVersionAtLeast
 import static com.mongodb.client.model.Accumulators.addToSet
 import static com.mongodb.client.model.Accumulators.avg
 import static com.mongodb.client.model.Accumulators.first
+import static com.mongodb.client.model.Accumulators.stdDevPop
+import static com.mongodb.client.model.Accumulators.stdDevSamp
 import static com.mongodb.client.model.Aggregates.group
 import static com.mongodb.client.model.Accumulators.last
 import static com.mongodb.client.model.Aggregates.limit
@@ -134,6 +136,18 @@ class AggregatesFunctionalSpecification extends OperationFunctionalSpecification
 
         aggregate([group('$z', addToSet('acc', '$z'))]) == [new Document('_id', true).append('acc', [true]),
                                                             new Document('_id', false).append('acc', [false])]
+    }
+
+    @IgnoreIf({ !serverVersionAtLeast(asList(3, 1, 8)) })
+    def '$stdDev'() {
+        when:
+        def results = aggregate([group(null, stdDevPop('stdDevPop', '$x'), stdDevSamp('stdDevSamp', '$x'))]).first()
+
+        then:
+        results.keySet().containsAll(['_id', 'stdDevPop', 'stdDevSamp'])
+        results.get('_id') == null
+        results.getDouble('stdDevPop').round(10) == new Double(Math.sqrt(2 / 3)).round(10)
+        results.get('stdDevSamp') == 1.0
     }
 
     @IgnoreIf({ !serverVersionAtLeast(asList(2, 6, 0)) })
