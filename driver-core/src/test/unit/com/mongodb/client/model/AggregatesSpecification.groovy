@@ -122,6 +122,19 @@ class AggregatesSpecification extends Specification {
                      stdDevPop('stdDevPop', '$quantity'),
                      stdDevSamp('stdDevSamp', '$quantity')
         )) == groupDocument
+
+        toBson(group(null, [
+                sum('sum', parse('{ $multiply: [ "$price", "$quantity" ] }')),
+                avg('avg', '$quantity'),
+                min('min', '$quantity'),
+                max('max', '$quantity'),
+                first('first', '$quantity'),
+                last('last', '$quantity'),
+                push('all', '$quantity'),
+                addToSet('unique', '$quantity'),
+                stdDevPop('stdDevPop', '$quantity'),
+                stdDevSamp('stdDevSamp', '$quantity')
+        ])) == groupDocument
     }
 
     def toBson(Bson bson) {

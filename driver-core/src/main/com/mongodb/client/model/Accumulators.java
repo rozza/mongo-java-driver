@@ -141,7 +141,7 @@ public final class Accumulators {
      * Gets a field name for a $group operation representing the sample standard deviation of the values of the given expression
      * when applied to all members of the group.
      *
-     * <p>Use if the values encompasses the entire population of data you want to represent and do not wish to generalize about
+     * <p>Use if the values encompass the entire population of data you want to represent and do not wish to generalize about
      * a larger population.</p>
      *
      * @param fieldName the field name
@@ -160,7 +160,7 @@ public final class Accumulators {
      * Gets a field name for a $group operation representing the sample standard deviation of the values of the given expression
      * when applied to all members of the group.
      *
-     * <p>Use if the values encompasses a sample of a population of data from which to generalize about the population.</p>
+     * <p>Use if the values encompass a sample of a population of data from which to generalize about the population.</p>
      *
      * @param fieldName the field name
      * @param expression the expression
