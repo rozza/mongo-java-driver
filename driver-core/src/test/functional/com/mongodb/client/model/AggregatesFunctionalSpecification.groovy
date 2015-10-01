@@ -112,6 +112,25 @@ class AggregatesFunctionalSpecification extends OperationFunctionalSpecification
                                                                                   new Document('a', 6)]
     }
 
+    @IgnoreIf({ !serverVersionAtLeast(asList(3, 1, 8)) })
+    def '$unwindPreserveNullsAndEmptyArrays'() {
+        given:
+        getCollectionHelper().drop()
+        getCollectionHelper().insertDocuments(new Document('a', [1]), new Document('a', null), new Document('a', []))
+
+        when:
+        def results = aggregate([project(fields(include('a'), excludeId())), unwind('$a', false)])
+
+        then:
+        results == [new Document('a', 1)]
+
+        when:
+        results = aggregate([project(fields(include('a'), excludeId())), unwind('$a', true)])
+
+        then:
+        results == [new Document('a', 1), new Document('a', null), new Document('a', [])]
+    }
+
     def '$group'() {
         expect:
         aggregate([group(null)]) == [new Document('_id', null)]

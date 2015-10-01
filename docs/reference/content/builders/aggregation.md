@@ -122,6 +122,13 @@ This example outputs, for each document, a document for each element in the `siz
 unwind("$sizes")
 ```
 
+Available with MongoDB 3.2, this example also includes any documents that have a `null` value for the `$sizes` field or where the `$sizes`
+list is empty:
+
+```java
+unwind("$sizes", true)
+```
+
 ### Out
 
 The [`$out`]({{< docsref "reference/operator/aggregation/out/" >}}) pipeline stage outputs all documents to the specified 

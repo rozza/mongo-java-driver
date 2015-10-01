@@ -79,6 +79,8 @@ class AggregatesSpecification extends Specification {
     def 'should render $unwind'() {
         expect:
         toBson(unwind('$sizes')) == parse('{ $unwind : "$sizes" }')
+        toBson(unwind('$sizes', false)) == parse('{ $unwind : { path : "$sizes", preserveNullAndEmptyArrays : false } }')
+        toBson(unwind('$sizes', true)) == parse('{ $unwind : { path : "$sizes", preserveNullAndEmptyArrays : true } }')
     }
 
     def 'should render $out'() {
