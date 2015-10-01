@@ -28,6 +28,7 @@ import com.mongodb.client.MongoCursor
 import com.mongodb.client.MongoDatabase
 import com.mongodb.client.gridfs.model.GridFSDownloadByNameOptions
 import com.mongodb.client.gridfs.model.GridFSFile
+import com.mongodb.client.gridfs.model.GridFSUploadOptions
 import com.mongodb.client.result.DeleteResult
 import com.mongodb.client.result.UpdateResult
 import org.bson.BsonObjectId
@@ -120,6 +121,8 @@ class GridFSBucketSpecification extends Specification {
 
     def 'should create the expected GridFSUploadStream'() {
         given:
+        def fileId = new ObjectId()
+        def metaData = new Document('meta', 123)
         def filesCollection = Stub(MongoCollection)
         def chunksCollection = Stub(MongoCollection)
         def gridFSBucket = new GridFSBucketImpl(Stub(MongoDatabase), 'fs', 255, Stub(CodecRegistry), Stub(ReadPreference),
@@ -131,6 +134,13 @@ class GridFSBucketSpecification extends Specification {
         then:
         expect stream, isTheSameAs(new GridFSUploadStreamImpl(filesCollection, chunksCollection, stream.getFileId(), 'filename',
                 255, null), ['md5', 'closeLock'])
+
+        when:
+        stream = gridFSBucket.openUploadStream('filename', new GridFSUploadOptions().fileId(fileId).chunkSizeBytes(1024).metadata(metaData))
+
+        then:
+        expect stream, isTheSameAs(new GridFSUploadStreamImpl(filesCollection, chunksCollection, fileId, 'filename',
+                1024, metaData), ['md5', 'closeLock'])
     }
 
     def 'should upload from stream'() {

@@ -134,7 +134,8 @@ final class GridFSBucketImpl implements GridFSBucket {
     public GridFSUploadStream openUploadStream(final String filename, final GridFSUploadOptions options) {
         int chunkSize = options.getChunkSizeBytes() == null ? chunkSizeBytes : options.getChunkSizeBytes();
         checkCreateIndex();
-        return new GridFSUploadStreamImpl(filesCollection, chunksCollection, new ObjectId(), filename, chunkSize, options.getMetadata());
+        return new GridFSUploadStreamImpl(filesCollection, chunksCollection, options.getFileId(), filename, chunkSize,
+                options.getMetadata());
     }
 
     @Override
