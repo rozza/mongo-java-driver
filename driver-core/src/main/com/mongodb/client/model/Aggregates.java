@@ -14,6 +14,7 @@
 
 package com.mongodb.client.model;
 
+import org.bson.BsonBoolean;
 import org.bson.BsonDocument;
 import org.bson.BsonDocumentWriter;
 import org.bson.BsonInt32;
@@ -152,6 +153,20 @@ public final class Aggregates {
         return new BsonDocument("$unwind", new BsonString(fieldName));
     }
 
+    /**
+     * Creates a $unwind pipeline stage for the specified field name, which must be prefixed by a {@code '$'} sign.
+     *
+     * @param fieldName the field name, prefixed by a {@code '$' sign}
+     * @param preserveNullAndEmptyArrays preserve null values and empty arrays
+     * @return the $unwind pipeline stage
+     * @mongodb.driver.manual reference/operator/aggregation/unwind/ $unwind
+     * @mongodb.server.release 3.2
+     * @since 3.2
+     */
+    public static Bson unwind(final String fieldName, final boolean preserveNullAndEmptyArrays) {
+        return new BsonDocument("$unwind", new BsonDocument("path", new BsonString(fieldName))
+                .append("preserveNullAndEmptyArrays", new BsonBoolean(preserveNullAndEmptyArrays)));
+    }
 
     /**
      * Creates a $out pipeline stage for the specified filter
