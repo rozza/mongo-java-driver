@@ -17,6 +17,7 @@
 package com.mongodb.client.gridfs.model;
 
 import org.bson.Document;
+import org.bson.types.ObjectId;
 
 /**
  * GridFS upload options
@@ -26,6 +27,7 @@ import org.bson.Document;
  * @since 3.1
  */
 public final class GridFSUploadOptions {
+    private ObjectId fileId;
     private Integer chunkSizeBytes;
     private Document metadata;
 
@@ -33,6 +35,7 @@ public final class GridFSUploadOptions {
      * Construct a new instance.
      */
     public GridFSUploadOptions() {
+        fileId = new ObjectId();
     }
 
     /**
@@ -76,5 +79,26 @@ public final class GridFSUploadOptions {
         this.metadata = metadata;
         return this;
     }
+
+    /**
+     * Gets the fileId to use for the uploaded file
+     *
+     * @return the fileId
+     */
+    public ObjectId getFileId() {
+        return fileId;
+    }
+
+    /**
+     * Sets fileId for the uploaded file
+     *
+     * @param fileId the fileId to use for the uploaded file
+     * @return this
+     */
+    public GridFSUploadOptions fileId(final ObjectId fileId) {
+        this.fileId = fileId;
+        return this;
+    }
+
 
 }
