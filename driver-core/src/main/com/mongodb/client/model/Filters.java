@@ -434,6 +434,94 @@ public final class Filters {
     }
 
     /**
+     * Creates a filter that matches all documents matching the given the search term with the given case sensitive flag.
+     *
+     * @param search        the search term
+     * @param caseSensitive the case sensitive search flag, for use with version 3 of the text index.
+     * @return the filter
+     * @mongodb.driver.manual reference/operator/query/text $text
+     * @since 3.2
+     * @mongodb.server.release 3.2
+     */
+    public static Bson text(final String search, final boolean caseSensitive) {
+        notNull("search", search);
+        return text(search, null, caseSensitive);
+    }
+
+    /**
+     * Creates a filter that matches all documents matching the given search term with the given case sensitive flag and using the given
+     * language.
+     *
+     * @param search        the search term
+     * @param language      the language to use for stop words
+     * @param caseSensitive the case sensitive search flag, for use with version 3 of the text index.
+     * @return the filter
+     * @mongodb.driver.manual reference/operator/query/text $text
+     * @since 3.2
+     * @mongodb.server.release 3.2
+     */
+    public static Bson text(final String search, final String language, final boolean caseSensitive) {
+        notNull("search", search);
+        return new Bson() {
+            @Override
+            public <TDocument> BsonDocument toBsonDocument(final Class<TDocument> documentClass, final CodecRegistry codecRegistry) {
+                BsonDocument searchDocument = new BsonDocument("$search", new BsonString(search));
+                if (language != null) {
+                    searchDocument.put("$language", new BsonString(language));
+                }
+                searchDocument.put("$caseSensitive", new BsonBoolean(caseSensitive));
+                return new BsonDocument("$text", searchDocument);
+            }
+        };
+    }
+
+    /**
+     * Creates a filter that matches all documents matching the given search term with the given case sensitive flag and the given
+     * diacritic sensitive flag.
+     *
+     * @param search             the search term
+     * @param caseSensitive      the case sensitive search flag, for use with version 3 of the text index.
+     * @param diacriticSensitive the diacritic sensitive search flag, for use with version 3 of the text index.
+     * @return the filter
+     * @mongodb.driver.manual reference/operator/query/text $text
+     * @since 3.2
+     * @mongodb.server.release 3.2
+     */
+    public static Bson text(final String search, final boolean caseSensitive, final boolean diacriticSensitive) {
+        notNull("search", search);
+        return text(search, null, caseSensitive, diacriticSensitive);
+    }
+
+    /**
+     * Creates a filter that matches all documents matching the given search term with the given case and diacritic sensitive flags and
+     * using the given language.
+     *
+     * @param search             the search term
+     * @param language           the language to use for stop words
+     * @param caseSensitive      the case sensitive search flag, for use with version 3 of the text index.
+     * @param diacriticSensitive the diacritic sensitive search flag, for use with version 3 of the text index.
+     * @return the filter
+     * @mongodb.driver.manual reference/operator/query/text $text
+     * @since 3.2
+     * @mongodb.server.release 3.2
+     */
+    public static Bson text(final String search, final String language, final boolean caseSensitive, final boolean diacriticSensitive) {
+        notNull("search", search);
+        return new Bson() {
+            @Override
+            public <TDocument> BsonDocument toBsonDocument(final Class<TDocument> documentClass, final CodecRegistry codecRegistry) {
+                BsonDocument searchDocument = new BsonDocument("$search", new BsonString(search));
+                if (language != null) {
+                    searchDocument.put("$language", new BsonString(language));
+                }
+                searchDocument.put("$caseSensitive", new BsonBoolean(caseSensitive));
+                searchDocument.put("$diacriticSensitive", new BsonBoolean(diacriticSensitive));
+                return new BsonDocument("$text", searchDocument);
+            }
+        };
+    }
+
+    /**
      * Creates a filter that matches all documents for which the given expression is true.
      *
      * @param javaScriptExpression the JavaScript expression

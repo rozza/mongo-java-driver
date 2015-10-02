@@ -205,9 +205,47 @@ class FiltersFunctionalSpecification extends OperationFunctionalSpecification {
 
     @IgnoreIf({ !serverVersionAtLeast([2, 6, 0]) })
     def 'should render $text'() {
-        expect:
-        find(text('I love MongoDB')) == []
-        find(text('I love MongoDB', 'English')) == []
+        when:
+        def textDocument = new Document('_id', 4).append('y', 'mongoDB for GIANT ideas')
+        collectionHelper.insertDocuments(textDocument)
+
+        then:
+        find(text('GIANT')) == [textDocument]
+        find(text('GIANT', 'English')) == [textDocument]
+    }
+
+    @IgnoreIf({ !serverVersionAtLeast([3, 1, 8]) })
+    def 'should render $text with caseSensitivity'() {
+        when:
+        def textDocument = new Document('_id', 4).append('y', 'mongoDB for GIANT ideas')
+        collectionHelper.insertDocuments(textDocument)
+
+        then:
+        find(text('giant')) == [textDocument]
+        find(text('giant', false)) == [textDocument]
+        find(text('giant', true)) == []
+        find(text('giant', 'English', true)) == []
+    }
+
+    @IgnoreIf({ !serverVersionAtLeast([3, 1, 8]) })
+    def 'should render $text with diacriticSensitivity'() {
+        given:
+        collectionHelper.drop()
+        getCollectionHelper().createIndex(new Document('y', 'text'), 'portuguese')
+
+        when:
+        def textDocument = new Document('_id', 1).append('y', 'mongodb para idéias GIGANTES')
+        collectionHelper.insertDocuments(textDocument)
+
+        then:
+        find(text('idéias', true, true)) == [textDocument]
+        find(text('ideias')) == [textDocument]
+        find(text('ideias', false)) == [textDocument]
+        find(text('ideias', false, false)) == [textDocument]
+        find(text('ideias', false, true)) == []
+        find(text('ideias', true, true)) == []
+        find(text('idéias', 'english', true)) == []
+        find(text('idéias', 'english', true, true)) == []
     }
 
     def 'should render $regex'() {

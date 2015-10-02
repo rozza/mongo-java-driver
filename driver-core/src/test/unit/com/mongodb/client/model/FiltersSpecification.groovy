@@ -213,8 +213,13 @@ class FiltersSpecification extends Specification {
 
     def 'should render $text'() {
         expect:
-        toBson(text('I love MongoDB')) == parse('{$text : {$search : "I love MongoDB"} }')
-        toBson(text('I love MongoDB', 'English')) == parse('{$text : {$search : "I love MongoDB", $language : "English"} }')
+        toBson(text('mongoDB for GIANT ideas')) == parse('{$text: {$search: "mongoDB for GIANT ideas"} }')
+        toBson(text('mongoDB for GIANT ideas', 'English')) == parse('{$text: {$search: "mongoDB for GIANT ideas", $language : "English"}}')
+        toBson(text('mongoDB for GIANT ideas', true)) == parse('{$text : {$search : "mongoDB for GIANT ideas", $caseSensitive : true} }')
+        toBson(text('mongoDB for GIANT ideas', 'English', true)) == parse('{$text : {$search : "mongoDB for GIANT ideas", '
+                + '$language : "English", $caseSensitive : true} }')
+        toBson(text('mongoDB para idéias GIGANTES', 'portuguese', true, true)) == parse('{$text : {$search : "mongoDB para idéias '
+                + 'GIGANTES", $language : "portuguese", $caseSensitive : true, $diacriticSensitive : true} }')
     }
 
     def 'should render $regex'() {
