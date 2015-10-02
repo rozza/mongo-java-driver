@@ -195,7 +195,7 @@ class FiltersFunctionalSpecification extends OperationFunctionalSpecification {
         find(type('x', BsonType.INT32)) == [a, b, c]
         find(type('x', BsonType.ARRAY)) == []
     }
-
+    
     @IgnoreIf({ !serverVersionAtLeast([3, 1, 7]) })
     def 'should render $type with a string type representation'() {
         expect:
@@ -203,6 +203,8 @@ class FiltersFunctionalSpecification extends OperationFunctionalSpecification {
         find(type('x', 'array')) == []
     }
 
+
+    @SuppressWarnings('deprecated')
     @IgnoreIf({ !serverVersionAtLeast([2, 6, 0]) })
     def 'should render $text'() {
         when:
@@ -211,42 +213,29 @@ class FiltersFunctionalSpecification extends OperationFunctionalSpecification {
 
         then:
         find(text('GIANT')) == [textDocument]
-        find(text('GIANT', 'English')) == [textDocument]
+        find(text('GIANT', 'english')) == [textDocument]
+        find(text('GIANT', new TextSearchOptions().language('english'))) == [textDocument]
     }
 
     @IgnoreIf({ !serverVersionAtLeast([3, 1, 8]) })
-    def 'should render $text with caseSensitivity'() {
-        when:
-        def textDocument = new Document('_id', 4).append('y', 'mongoDB for GIANT ideas')
-        collectionHelper.insertDocuments(textDocument)
-
-        then:
-        find(text('giant')) == [textDocument]
-        find(text('giant', false)) == [textDocument]
-        find(text('giant', true)) == []
-        find(text('giant', 'English', true)) == []
-    }
-
-    @IgnoreIf({ !serverVersionAtLeast([3, 1, 8]) })
-    def 'should render $text with diacriticSensitivity'() {
+    def 'should render $text with 3.2 options'() {
         given:
         collectionHelper.drop()
-        getCollectionHelper().createIndex(new Document('y', 'text'), 'portuguese')
+        getCollectionHelper().createIndex(new Document('desc', 'text'), 'portuguese')
 
         when:
-        def textDocument = new Document('_id', 1).append('y', 'mongodb para idéias GIGANTES')
+        def textDocument = new Document('_id', 1).append('desc', 'mongodb para idéias GIGANTES')
         collectionHelper.insertDocuments(textDocument)
 
         then:
-        find(text('idéias', true, true)) == [textDocument]
-        find(text('ideias')) == [textDocument]
-        find(text('ideias', false)) == [textDocument]
-        find(text('ideias', false, false)) == [textDocument]
-        find(text('ideias', false, true)) == []
-        find(text('ideias', true, true)) == []
-        find(text('idéias', 'english', true)) == []
-        find(text('idéias', 'english', true, true)) == []
+        find(text('idéias')) == [textDocument]
+        find(text('ideias', new TextSearchOptions())) == [textDocument]
+        find(text('ideias', new TextSearchOptions().caseSensitive(false).diacriticSensitive(false))) == [textDocument]
+        find(text('IDéIAS', new TextSearchOptions().caseSensitive(false).diacriticSensitive(true))) == [textDocument]
+        find(text('ideias', new TextSearchOptions().caseSensitive(true).diacriticSensitive(true))) == []
+        find(text('idéias', new TextSearchOptions().language('english'))) == []
     }
+
 
     def 'should render $regex'() {
         expect:

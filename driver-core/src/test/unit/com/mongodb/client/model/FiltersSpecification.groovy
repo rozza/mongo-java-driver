@@ -211,15 +211,24 @@ class FiltersSpecification extends Specification {
         toBson(type('a', 'number')) == parse('{a : {$type : "number"} }')
     }
 
+    @SuppressWarnings('deprecated')
     def 'should render $text'() {
         expect:
         toBson(text('mongoDB for GIANT ideas')) == parse('{$text: {$search: "mongoDB for GIANT ideas"} }')
-        toBson(text('mongoDB for GIANT ideas', 'English')) == parse('{$text: {$search: "mongoDB for GIANT ideas", $language : "English"}}')
-        toBson(text('mongoDB for GIANT ideas', true)) == parse('{$text : {$search : "mongoDB for GIANT ideas", $caseSensitive : true} }')
-        toBson(text('mongoDB for GIANT ideas', 'English', true)) == parse('{$text : {$search : "mongoDB for GIANT ideas", '
-                + '$language : "English", $caseSensitive : true} }')
-        toBson(text('mongoDB para idéias GIGANTES', 'portuguese', true, true)) == parse('{$text : {$search : "mongoDB para idéias '
-                + 'GIGANTES", $language : "portuguese", $caseSensitive : true, $diacriticSensitive : true} }')
+        toBson(text('mongoDB for GIANT ideas', 'english')) == parse('{$text: {$search: "mongoDB for GIANT ideas", $language : "english"}}')
+        toBson(text('mongoDB for GIANT ideas', new TextSearchOptions().language('english'))) == parse('''
+            {$text : {$search : "mongoDB for GIANT ideas", $language : "english"} }'''
+        )
+        toBson(text('mongoDB for GIANT ideas', new TextSearchOptions().caseSensitive(true))) == parse('''
+            {$text : {$search : "mongoDB for GIANT ideas", $caseSensitive : true} }'''
+        )
+        toBson(text('mongoDB for GIANT ideas', new TextSearchOptions().diacriticSensitive(true))) == parse('''
+            {$text : {$search : "mongoDB for GIANT ideas", $diacriticSensitive : true} }'''
+        )
+        toBson(text('mongoDB for GIANT ideas', new TextSearchOptions().language('english').caseSensitive(true)
+                .diacriticSensitive(true))) == parse('''
+            {$text : {$search : "mongoDB for GIANT ideas", $language : "english", $caseSensitive : true, $diacriticSensitive : true} }'''
+        )
     }
 
     def 'should render $regex'() {
