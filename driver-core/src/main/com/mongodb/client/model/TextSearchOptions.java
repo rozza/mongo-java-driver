@@ -22,11 +22,11 @@ package com.mongodb.client.model;
  * @mongodb.driver.manual reference/operator/query/text $text
  * @since 3.2
  */
-public class TextSearchOptions {
+public final class TextSearchOptions {
 
     private String language;
-    private Boolean caseSensitive;
-    private Boolean diacriticSensitive;
+    private boolean caseSensitive;
+    private boolean diacriticSensitive;
 
     /**
      * Returns the language to be used with the text search
@@ -54,7 +54,7 @@ public class TextSearchOptions {
      * @return the case-sensitive flag if set or null
      * @mongodb.server.release 3.2
      */
-    public Boolean getCaseSensitive() {
+    public boolean getCaseSensitive() {
         return caseSensitive;
     }
 
@@ -76,7 +76,7 @@ public class TextSearchOptions {
      * @return the diacritic-sensitive flag if set or null
      * @mongodb.server.release 3.2
      */
-    public Boolean getDiacriticSensitive() {
+    public boolean getDiacriticSensitive() {
         return diacriticSensitive;
     }
 
