@@ -162,11 +162,28 @@ class CreateCollectionOperationSpecification extends OperationFunctionalSpecific
         }
     }
 
+    @IgnoreIf({ !serverVersionAtLeast(asList(3, 1, 8)) })
+    def 'should allow indexOptionDefaults'() {
+        given:
+        assert !collectionNameExists(getCollectionName())
+        def indexOptions = BsonDocument.parse('{ storageEngine: { mmapv1 : {} }}')
+
+        when:
+        new CreateCollectionOperation(getDatabaseName(), getCollectionName())
+                .indexOptionDefaults(indexOptions)
+                .execute(getBinding())
+
+        then:
+        getCollectionInfo(getCollectionName()).get('options').get('indexOptionDefaults') == indexOptions
+    }
+
+
+    def getCollectionInfo(String collectionName) {
+        new ListCollectionsOperation(databaseName, new DocumentCodec()).filter(new BsonDocument('name',
+                new BsonString(collectionName))).execute(getBinding()).tryNext()?.head()
+    }
+
     def collectionNameExists(String collectionName) {
-        def cursor = new ListCollectionsOperation(databaseName, new DocumentCodec()).execute(getBinding())
-        if (!cursor.hasNext()) {
-            return false
-        }
-        cursor.next()*.get('name').contains(collectionName)
+        getCollectionInfo(collectionName) != null
     }
 }

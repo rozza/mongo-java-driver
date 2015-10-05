@@ -156,7 +156,8 @@ class MongoDatabaseImpl implements MongoDatabase {
                 .autoIndex(createCollectionOptions.isAutoIndex())
                 .maxDocuments(createCollectionOptions.getMaxDocuments())
                 .usePowerOf2Sizes(createCollectionOptions.isUsePowerOf2Sizes())
-                .storageEngineOptions(toBsonDocument(createCollectionOptions.getStorageEngineOptions())));
+                .storageEngineOptions(toBsonDocument(createCollectionOptions.getStorageEngineOptions()))
+                .indexOptionDefaults(toBsonDocument(createCollectionOptions.getIndexOptionDefaults())));
     }
 
     private BsonDocument toBsonDocument(final Bson document) {
