@@ -157,15 +157,21 @@ public final class Aggregates {
      * Creates a $unwind pipeline stage for the specified field name, which must be prefixed by a {@code '$'} sign.
      *
      * @param fieldName the field name, prefixed by a {@code '$' sign}
-     * @param preserveNullAndEmptyArrays preserve null values and empty arrays
+     * @param unwindOptions options for the unwind pipeline stage
      * @return the $unwind pipeline stage
      * @mongodb.driver.manual reference/operator/aggregation/unwind/ $unwind
      * @mongodb.server.release 3.2
      * @since 3.2
      */
-    public static Bson unwind(final String fieldName, final boolean preserveNullAndEmptyArrays) {
-        return new BsonDocument("$unwind", new BsonDocument("path", new BsonString(fieldName))
-                .append("preserveNullAndEmptyArrays", new BsonBoolean(preserveNullAndEmptyArrays)));
+    public static Bson unwind(final String fieldName, final UnwindOptions unwindOptions) {
+        BsonDocument options = new BsonDocument("path", new BsonString(fieldName));
+        if (unwindOptions.isPreserveNullAndEmptyArrays() != null) {
+            options.append("preserveNullAndEmptyArrays", BsonBoolean.valueOf(unwindOptions.isPreserveNullAndEmptyArrays()));
+        }
+        if (unwindOptions.getIncludeArrayIndex() != null) {
+            options.append("preserveNullAndEmptyArrays", new BsonString(unwindOptions.getIncludeArrayIndex()));
+        }
+        return new BsonDocument("$unwind", options);
     }
 
     /**

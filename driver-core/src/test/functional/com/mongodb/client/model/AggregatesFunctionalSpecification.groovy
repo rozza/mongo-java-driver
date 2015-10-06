@@ -115,22 +115,24 @@ class AggregatesFunctionalSpecification extends OperationFunctionalSpecification
     }
 
     @IgnoreIf({ !serverVersionAtLeast(asList(3, 1, 8)) })
-    def '$unwindPreserveNullsAndEmptyArrays'() {
+    def '$unwind with UnwindOptions'() {
         given:
         getCollectionHelper().drop()
         getCollectionHelper().insertDocuments(new Document('a', [1]), new Document('a', null), new Document('a', []))
 
         when:
-        def results = aggregate([project(fields(include('a'), excludeId())), unwind('$a', false)])
+        def results = aggregate([project(fields(include('a'), excludeId())), unwind('$a', options)])
 
         then:
-        results == [new Document('a', 1)]
+        results == expectedResults
 
-        when:
-        results = aggregate([project(fields(include('a'), excludeId())), unwind('$a', true)])
-
-        then:
-        results == [new Document('a', 1), new Document('a', null), new Document('a', [])]
+        where:
+        options                                                     | expectedResults
+        new UnwindOptions()                                         | [new Document('a', 1)]
+        new UnwindOptions().setPreserveNullAndEmptyArrays(true)     | [new Document('a', 1), new Document('a', null), new Document('a', [])]
+        new UnwindOptions()
+                .setPreserveNullAndEmptyArrays(true)
+                .setIncludeArrayIndex('b')                          | [new Document('a', 1), new Document('a', null), new Document('a', [])]
     }
 
     def '$group'() {
