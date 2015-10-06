@@ -177,7 +177,7 @@ public class CreateIndexesOperation implements AsyncWriteOperation<Void>, WriteO
         if (request.isUnique()) {
             index.append("unique", BsonBoolean.TRUE);
         }
-        if (request.isSparse()) {
+        if (request.isSparse() && request.getPartialFilterExpression() == null) {
             index.append("sparse", BsonBoolean.TRUE);
         }
         if (request.getExpireAfter(TimeUnit.SECONDS) != null) {
@@ -218,6 +218,9 @@ public class CreateIndexesOperation implements AsyncWriteOperation<Void>, WriteO
         }
         if (request.getStorageEngine() != null) {
             index.append("storageEngine", request.getStorageEngine());
+        }
+        if (request.getPartialFilterExpression() != null) {
+            index.append("partialFilterExpression", request.getPartialFilterExpression());
         }
         return index;
     }
