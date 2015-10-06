@@ -40,13 +40,20 @@ class CreateCollectionOperationSpecification extends OperationFunctionalSpecific
 
         then:
         !operation.isCapped()
-        operation.sizeInBytes == 0
+        operation.getSizeInBytes() == 0
         operation.isAutoIndex()
         operation.getMaxDocuments() == 0
-        operation.usePowerOf2Sizes == null
+        operation.isUsePowerOf2Sizes() == null
+        operation.getStorageEngineOptions() == null
+        operation.getIndexOptionDefaults() == null
     }
 
     def 'should set optional values correctly'(){
+        given:
+        def storageEngineOptions = BsonDocument.parse('{ mmapv1 : {}}')
+        def indexOptionDefaults = BsonDocument.parse('{ storageEngine: { mmapv1 : {} }}')
+
+
         when:
         CreateCollectionOperation operation = new CreateCollectionOperation(getDatabaseName(), getCollectionName())
             .autoIndex(false)
@@ -54,13 +61,17 @@ class CreateCollectionOperationSpecification extends OperationFunctionalSpecific
             .sizeInBytes(1000)
             .maxDocuments(1000)
             .usePowerOf2Sizes(true)
+            .storageEngineOptions(storageEngineOptions)
+            .indexOptionDefaults(indexOptionDefaults)
 
         then:
         operation.isCapped()
         operation.sizeInBytes == 1000
         !operation.isAutoIndex()
         operation.getMaxDocuments() == 1000
-        operation.usePowerOf2Sizes == true
+        operation.isUsePowerOf2Sizes() == true
+        operation.getStorageEngineOptions() == storageEngineOptions
+        operation.getIndexOptionDefaults() == indexOptionDefaults
     }
 
     def 'should create a collection'() {
@@ -166,15 +177,15 @@ class CreateCollectionOperationSpecification extends OperationFunctionalSpecific
     def 'should allow indexOptionDefaults'() {
         given:
         assert !collectionNameExists(getCollectionName())
-        def indexOptions = BsonDocument.parse('{ storageEngine: { mmapv1 : {} }}')
+        def indexOptionDefaults = BsonDocument.parse('{ storageEngine: { mmapv1 : {} }}')
 
         when:
         new CreateCollectionOperation(getDatabaseName(), getCollectionName())
-                .indexOptionDefaults(indexOptions)
+                .indexOptionDefaults(indexOptionDefaults)
                 .execute(getBinding())
 
         then:
-        getCollectionInfo(getCollectionName()).get('options').get('indexOptionDefaults') == indexOptions
+        getCollectionInfo(getCollectionName()).get('options').get('indexOptionDefaults') == indexOptionDefaults
     }
 
 

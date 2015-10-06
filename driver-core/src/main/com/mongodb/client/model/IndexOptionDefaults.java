@@ -16,8 +16,6 @@
 
 package com.mongodb.client.model;
 
-import org.bson.BsonDocument;
-import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.conversions.Bson;
 
 /**
@@ -27,7 +25,7 @@ import org.bson.conversions.Bson;
  * @mongodb.driver.manual reference/command/createIndexes Index options
  * @mongodb.server.release 3.2
  */
-public class IndexOptionDefaults implements Bson {
+public final class IndexOptionDefaults {
     private Bson storageEngine;
 
     /**
@@ -48,14 +46,5 @@ public class IndexOptionDefaults implements Bson {
     public IndexOptionDefaults storageEngine(final Bson storageEngine) {
         this.storageEngine = storageEngine;
         return this;
-    }
-
-    @Override
-    public <TDocument> BsonDocument toBsonDocument(final Class<TDocument> tDocumentClass, final CodecRegistry codecRegistry) {
-        if (storageEngine == null) {
-            return null;
-        } else {
-            return new BsonDocument("storageEngine", storageEngine.toBsonDocument(BsonDocument.class, codecRegistry));
-        }
     }
 }

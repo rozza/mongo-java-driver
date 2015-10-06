@@ -31,7 +31,7 @@ public class CreateCollectionOptions {
     private long sizeInBytes;
     private Boolean usePowerOf2Sizes;
     private Bson storageEngineOptions;
-    private IndexOptionDefaults indexOptionDefaults;
+    private IndexOptionDefaults indexOptionDefaults = new IndexOptionDefaults();
 
     /**
      * Gets if auto-index is enabled
@@ -149,7 +149,7 @@ public class CreateCollectionOptions {
     }
 
     /**
-     * Sets the index option defaults for the collection
+     * Sets the storage engine options document defaults for the collection
      *
      * @param storageEngineOptions the storage engine options
      * @return this
