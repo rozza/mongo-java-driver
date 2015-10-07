@@ -177,7 +177,7 @@ public class CreateIndexesOperation implements AsyncWriteOperation<Void>, WriteO
         if (request.isUnique()) {
             index.append("unique", BsonBoolean.TRUE);
         }
-        if (request.isSparse() && request.getPartialFilterExpression() == null) {
+        if (request.isSparse()) {
             index.append("sparse", BsonBoolean.TRUE);
         }
         if (request.getExpireAfter(TimeUnit.SECONDS) != null) {
