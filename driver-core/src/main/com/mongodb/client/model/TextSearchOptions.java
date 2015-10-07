@@ -25,8 +25,8 @@ package com.mongodb.client.model;
 public final class TextSearchOptions {
 
     private String language;
-    private boolean caseSensitive;
-    private boolean diacriticSensitive;
+    private Boolean caseSensitive;
+    private Boolean diacriticSensitive;
 
     /**
      * Returns the language to be used with the text search
@@ -54,7 +54,7 @@ public final class TextSearchOptions {
      * @return the case-sensitive flag if set or null
      * @mongodb.server.release 3.2
      */
-    public boolean getCaseSensitive() {
+    public Boolean getCaseSensitive() {
         return caseSensitive;
     }
 
@@ -65,7 +65,7 @@ public final class TextSearchOptions {
      * @return this
      * @mongodb.server.release 3.2
      */
-    public TextSearchOptions caseSensitive(final boolean caseSensitive) {
+    public TextSearchOptions caseSensitive(final Boolean caseSensitive) {
         this.caseSensitive = caseSensitive;
         return this;
     }
@@ -76,7 +76,7 @@ public final class TextSearchOptions {
      * @return the diacritic-sensitive flag if set or null
      * @mongodb.server.release 3.2
      */
-    public boolean getDiacriticSensitive() {
+    public Boolean getDiacriticSensitive() {
         return diacriticSensitive;
     }
 
@@ -87,7 +87,7 @@ public final class TextSearchOptions {
      * @return this
      * @mongodb.server.release 3.2
      */
-    public TextSearchOptions diacriticSensitive(final boolean diacriticSensitive) {
+    public TextSearchOptions diacriticSensitive(final Boolean diacriticSensitive) {
         this.diacriticSensitive = diacriticSensitive;
         return this;
     }

@@ -445,11 +445,11 @@ public final class Filters {
                 if (textSearchOptions.getLanguage() != null) {
                     searchDocument.put("$language", new BsonString(textSearchOptions.getLanguage()));
                 }
-                if (textSearchOptions.getCaseSensitive()) {
-                    searchDocument.put("$caseSensitive", new BsonBoolean(true));
+                if (textSearchOptions.getCaseSensitive() != null) {
+                    searchDocument.put("$caseSensitive", BsonBoolean.valueOf(textSearchOptions.getCaseSensitive()));
                 }
-                if (textSearchOptions.getDiacriticSensitive()) {
-                    searchDocument.put("$diacriticSensitive", new BsonBoolean(true));
+                if (textSearchOptions.getDiacriticSensitive() != null) {
+                    searchDocument.put("$diacriticSensitive", BsonBoolean.valueOf(textSearchOptions.getDiacriticSensitive()));
                 }
                 return new BsonDocument("$text", searchDocument);
             }

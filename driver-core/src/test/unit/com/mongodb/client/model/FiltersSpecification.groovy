@@ -222,12 +222,12 @@ class FiltersSpecification extends Specification {
         toBson(text('mongoDB for GIANT ideas', new TextSearchOptions().caseSensitive(true))) == parse('''
             {$text : {$search : "mongoDB for GIANT ideas", $caseSensitive : true} }'''
         )
-        toBson(text('mongoDB for GIANT ideas', new TextSearchOptions().diacriticSensitive(true))) == parse('''
-            {$text : {$search : "mongoDB for GIANT ideas", $diacriticSensitive : true} }'''
+        toBson(text('mongoDB for GIANT ideas', new TextSearchOptions().diacriticSensitive(false))) == parse('''
+            {$text : {$search : "mongoDB for GIANT ideas", $diacriticSensitive : false} }'''
         )
-        toBson(text('mongoDB for GIANT ideas', new TextSearchOptions().language('english').caseSensitive(true)
+        toBson(text('mongoDB for GIANT ideas', new TextSearchOptions().language('english').caseSensitive(false)
                 .diacriticSensitive(true))) == parse('''
-            {$text : {$search : "mongoDB for GIANT ideas", $language : "english", $caseSensitive : true, $diacriticSensitive : true} }'''
+            {$text : {$search : "mongoDB for GIANT ideas", $language : "english", $caseSensitive : false, $diacriticSensitive : true} }'''
         )
     }
 
