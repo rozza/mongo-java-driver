@@ -169,14 +169,14 @@ Available with MongoDB 3.2 the version 3 of the text index allows case sensitive
 `abstract` field containing the exact term `coffee`:
 
 ```java
-text("coffee", true)
+text("coffee", new TextSearchOptions().caseSensitive(true))
 ```
 
 Available with MongoDB 3.2 the version 3 of the text index allows diacritic sensitive searches, this example selects documents that 
 have an `abstract` field containing the exact term `café`:
 
 ```java
-text("café", true, true)
+text("café", new TextSearchOptions().diacriticSensitive(true))
 ```
 
 ### Geospatial
