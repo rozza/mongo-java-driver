@@ -165,15 +165,15 @@ containing the term `coffee`:
 text("coffee")
 ```
 
-Available with MongoDB 3.2 the version 3 of the text index allows case sensitive searches, this example selects documents that have an 
+Available with MongoDB 3.2, a version 3 text index allows case-sensitive searches. This example selects documents that have an 
 `abstract` field containing the exact term `coffee`:
 
 ```java
 text("coffee", new TextSearchOptions().caseSensitive(true))
 ```
 
-Available with MongoDB 3.2 the version 3 of the text index allows diacritic sensitive searches, this example selects documents that 
-have an `abstract` field containing the exact term `café`:
+Available with MongoDB 3.2, a version 3 text index allows diacritic-sensitive searches. This example selects documents that have an 
+`abstract` field containing the exact term `café`:
 
 ```java
 text("café", new TextSearchOptions().diacriticSensitive(true))
