@@ -23,6 +23,7 @@ import static java.lang.String.format;
  * Determines how strictly MongoDB applies the validation rules to existing documents during an insert or update.
  *
  * @since 3.2
+ * @mongodb.server.release 3.2
  */
 public enum ValidationLevel {
 

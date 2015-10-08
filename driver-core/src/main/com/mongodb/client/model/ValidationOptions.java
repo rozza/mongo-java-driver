@@ -18,8 +18,6 @@ package com.mongodb.client.model;
 
 import org.bson.conversions.Bson;
 
-import static com.mongodb.assertions.Assertions.notNull;
-
 /**
  * Validation options for documents being inserted or updated in a collection
  *
@@ -28,8 +26,8 @@ import static com.mongodb.assertions.Assertions.notNull;
  */
 public final class ValidationOptions {
     private Bson validator;
-    private ValidationLevel validationLevel = ValidationLevel.STRICT;
-    private ValidationAction validationAction = ValidationAction.ERROR;
+    private ValidationLevel validationLevel;
+    private ValidationAction validationAction;
 
     /**
      * Gets the validation rules if set or null.
@@ -55,8 +53,6 @@ public final class ValidationOptions {
      * Gets the {@link ValidationLevel} that determines how strictly MongoDB applies the validation rules to existing documents during an
      * insert or update.
      *
-     * <p>Defaults to {@link ValidationLevel#STRICT}</p>
-     *
      * @return the ValidationLevel.
      */
     public ValidationLevel getValidationLevel() {
@@ -78,8 +74,6 @@ public final class ValidationOptions {
     /**
      * Gets the {@link ValidationAction}.
      *
-     * <p>Defaults to {@link ValidationAction#ERROR}</p>
-     *
      * @return the ValidationAction.
      */
     public ValidationAction getValidationAction() {
@@ -94,7 +88,7 @@ public final class ValidationOptions {
      * @return this
      */
     public ValidationOptions validationAction(final ValidationAction validationAction) {
-        this.validationAction = notNull("validationAction", validationAction);
+        this.validationAction = validationAction;
         return this;
     }
 }

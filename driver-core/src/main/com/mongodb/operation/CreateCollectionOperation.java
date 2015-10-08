@@ -48,8 +48,8 @@ public class CreateCollectionOperation implements AsyncWriteOperation<Void>, Wri
     private BsonDocument storageEngineOptions;
     private BsonDocument indexOptionDefaults;
     private BsonDocument validator;
-    private ValidationLevel validationLevel = ValidationLevel.STRICT;
-    private ValidationAction validationAction = ValidationAction.ERROR;
+    private ValidationLevel validationLevel = null;
+    private ValidationAction validationAction = null;
 
     /**
      * Construct a new instance.
@@ -255,9 +255,7 @@ public class CreateCollectionOperation implements AsyncWriteOperation<Void>, Wri
      * Gets the {@link ValidationLevel} that determines how strictly MongoDB applies the validation rules to existing documents during an
      * insert or update.
      *
-     * <p>Defaults to {@link ValidationLevel#STRICT}</p>
-     *
-     * @return the ValidationLevel
+     * @return the ValidationLevel if set or null
      * @since 3.2
      * @mongodb.server.release 3.2
      */
@@ -275,16 +273,14 @@ public class CreateCollectionOperation implements AsyncWriteOperation<Void>, Wri
      * @mongodb.server.release 3.2
      */
     public CreateCollectionOperation validationLevel(final ValidationLevel validationLevel) {
-        this.validationLevel = notNull("validationLevel", validationLevel);
+        this.validationLevel = validationLevel;
         return this;
     }
 
     /**
      * Gets the {@link ValidationAction}.
      *
-     * <p>Defaults to {@link ValidationAction#ERROR}</p>
-     *
-     * @return the ValidationAction
+     * @return the ValidationAction if set or null
      * @since 3.2
      * @mongodb.server.release 3.2
      */
@@ -302,7 +298,7 @@ public class CreateCollectionOperation implements AsyncWriteOperation<Void>, Wri
      * @mongodb.server.release 3.2
      */
     public CreateCollectionOperation validationAction(final ValidationAction validationAction) {
-        this.validationAction = notNull("validationAction", validationAction);
+        this.validationAction = validationAction;
         return this;
     }
 
@@ -337,7 +333,11 @@ public class CreateCollectionOperation implements AsyncWriteOperation<Void>, Wri
         }
         if (validator != null) {
             document.put("validator", validator);
+        }
+        if (validationLevel != null) {
             document.put("validationLevel", new BsonString(validationLevel.getValue()));
+        }
+        if (validationAction != null) {
             document.put("validationAction", new BsonString(validationAction.getValue()));
         }
         return document;

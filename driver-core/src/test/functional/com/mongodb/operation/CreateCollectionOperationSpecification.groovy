@@ -50,8 +50,8 @@ class CreateCollectionOperationSpecification extends OperationFunctionalSpecific
         operation.getStorageEngineOptions() == null
         operation.getIndexOptionDefaults() == null
         operation.getValidator() == null
-        operation.getValidationLevel() == ValidationLevel.STRICT
-        operation.getValidationAction() == ValidationAction.ERROR
+        operation.getValidationLevel() == null
+        operation.getValidationAction() == null
     }
 
     def 'should set optional values correctly'(){

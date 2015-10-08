@@ -167,7 +167,11 @@ class MongoDatabaseImpl implements MongoDatabase {
         ValidationOptions validationOptions = createCollectionOptions.getValidationOptions();
         if (validationOptions.getValidator() != null) {
             operation.validator(toBsonDocument(validationOptions.getValidator()));
+        }
+        if (validationOptions.getValidationLevel() != null) {
             operation.validationLevel(validationOptions.getValidationLevel());
+        }
+        if (validationOptions.getValidationAction() != null) {
             operation.validationAction(validationOptions.getValidationAction());
         }
         executor.execute(operation);

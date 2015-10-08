@@ -294,8 +294,8 @@ public class DB {
         BsonDocument storageEngineOptions = null;
         BsonDocument indexOptionDefaults = null;
         BsonDocument validator = null;
-        ValidationLevel validationLevel = ValidationLevel.STRICT;
-        ValidationAction validationAction = ValidationAction.ERROR;
+        ValidationLevel validationLevel = null;
+        ValidationAction validationAction = null;
 
         if (options.get("capped") != null) {
             capped = (Boolean) options.get("capped");
