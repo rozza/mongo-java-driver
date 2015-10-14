@@ -114,6 +114,7 @@ public interface AsyncConnection extends ReferenceCounted {
      * @param bypassDocumentValidation the bypassDocumentValidation flag
      * @param inserts                  the inserts
      * @param callback                 the callback to be passed the bulk write result
+     * @since 3.2
      */
     void insertCommandAsync(MongoNamespace namespace, boolean ordered, WriteConcern writeConcern, Boolean bypassDocumentValidation,
                             List<InsertRequest> inserts, SingleResultCallback<BulkWriteResult> callback);
@@ -142,6 +143,7 @@ public interface AsyncConnection extends ReferenceCounted {
      * @param bypassDocumentValidation the bypassDocumentValidation flag
      * @param updates                  the updates
      * @param callback                 the callback to be passed the BulkWriteResult
+     * @since 3.2
      */
     void updateCommandAsync(MongoNamespace namespace, boolean ordered, WriteConcern writeConcern, Boolean bypassDocumentValidation,
                             List<UpdateRequest> updates, SingleResultCallback<BulkWriteResult> callback);

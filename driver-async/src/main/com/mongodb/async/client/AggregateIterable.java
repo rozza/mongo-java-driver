@@ -82,6 +82,7 @@ public interface AggregateIterable<TResult> extends MongoIterable<TResult> {
      *
      * @param bypassDocumentValidation If true, allows the write to opt-out of document level validation.
      * @return this
+     * @since 3.2
      * @mongodb.driver.manual reference/command/aggregate/ Aggregation
      * @mongodb.server.release 3.2
      */

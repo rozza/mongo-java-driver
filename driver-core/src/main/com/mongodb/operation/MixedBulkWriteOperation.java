@@ -58,7 +58,6 @@ import static com.mongodb.internal.async.ErrorHandlingResultCallback.errorHandli
 import static com.mongodb.operation.OperationHelper.AsyncCallableWithConnection;
 import static com.mongodb.operation.OperationHelper.CallableWithConnection;
 import static com.mongodb.operation.OperationHelper.releasingCallback;
-import static com.mongodb.operation.OperationHelper.serverIsAtLeastVersionThreeDotTwo;
 import static com.mongodb.operation.OperationHelper.withConnection;
 import static java.lang.String.format;
 import static java.util.Arrays.asList;
@@ -135,6 +134,8 @@ public class MixedBulkWriteOperation implements AsyncWriteOperation<BulkWriteRes
      * Gets the the bypass document level validation flag
      *
      * @return the bypass document level validation flag
+     * @since 3.2
+     * @mongodb.server.release 3.2
      */
     public Boolean getBypassDocumentValidation() {
         return bypassDocumentValidation;
@@ -145,6 +146,8 @@ public class MixedBulkWriteOperation implements AsyncWriteOperation<BulkWriteRes
      *
      * @param bypassDocumentValidation If true, allows the write to opt-out of document level validation.
      * @return this
+     * @since 3.2
+     * @mongodb.server.release 3.2
      */
     public MixedBulkWriteOperation bypassDocumentValidation(final Boolean bypassDocumentValidation) {
         this.bypassDocumentValidation = bypassDocumentValidation;
@@ -243,15 +246,10 @@ public class MixedBulkWriteOperation implements AsyncWriteOperation<BulkWriteRes
     }
 
     private Iterable<Run> getRunGenerator(final ConnectionDescription connectionDescription) {
-        Boolean bypassValidation = null;
-        if (serverIsAtLeastVersionThreeDotTwo(connectionDescription)) {
-            bypassValidation = bypassDocumentValidation;
-        }
-
         if (ordered) {
-            return new OrderedRunGenerator(connectionDescription, bypassValidation);
+            return new OrderedRunGenerator(connectionDescription, bypassDocumentValidation);
         } else {
-            return new UnorderedRunGenerator(connectionDescription, bypassValidation);
+            return new UnorderedRunGenerator(connectionDescription, bypassDocumentValidation);
         }
     }
 

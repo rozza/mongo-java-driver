@@ -389,12 +389,12 @@ public class MapReduceToCollectionOperation implements AsyncWriteOperation<MapRe
         return this;
     }
 
-
     /**
      * Gets the bypass document level validation flag
      *
      * @return the bypass document level validation flag
      * @since 3.2
+     * @mongodb.server.release 3.2
      */
     public Boolean getBypassDocumentValidation() {
         return bypassDocumentValidation;
@@ -407,9 +407,8 @@ public class MapReduceToCollectionOperation implements AsyncWriteOperation<MapRe
      *
      * @param bypassDocumentValidation If true, allows the write to opt-out of document level validation.
      * @return this
-     * @since 3.2
-     * @mongodb.driver.manual reference/command/aggregate/ Aggregation
-     * @mongodb.server.release 3.2
+
+
      */
     public MapReduceToCollectionOperation bypassDocumentValidation(final Boolean bypassDocumentValidation) {
         this.bypassDocumentValidation = bypassDocumentValidation;
