@@ -60,11 +60,11 @@ public final class UnwindOptions {
     /**
      * Sets the field to be used to store the array index of the unwound item
      *
-     * @param includeArrayIndex the field to be used to store the array index of the unwound item
+     * @param arrayIndexFieldName the field to be used to store the array index of the unwound item
      * @return this
      */
-    public UnwindOptions includeArrayIndex(final String includeArrayIndex) {
-        this.includeArrayIndex = includeArrayIndex;
+    public UnwindOptions includeArrayIndex(final String arrayIndexFieldName) {
+        this.includeArrayIndex = arrayIndexFieldName;
         return this;
     }
 }
