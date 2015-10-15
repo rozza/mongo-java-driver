@@ -25,6 +25,8 @@ import org.bson.conversions.Bson;
 import java.util.Arrays;
 import java.util.List;
 
+import static org.bson.assertions.Assertions.notNull;
+
 /**
  * Builders for aggregation pipeline stages.
  *
@@ -184,6 +186,7 @@ public final class Aggregates {
      * @since 3.2
      */
     public static Bson unwind(final String fieldName, final UnwindOptions unwindOptions) {
+        notNull("unwindOptions", unwindOptions);
         BsonDocument options = new BsonDocument("path", new BsonString(fieldName));
         if (unwindOptions.isPreserveNullAndEmptyArrays() != null) {
             options.append("preserveNullAndEmptyArrays", BsonBoolean.valueOf(unwindOptions.isPreserveNullAndEmptyArrays()));
