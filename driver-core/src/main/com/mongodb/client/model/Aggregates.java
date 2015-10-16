@@ -184,6 +184,7 @@ public final class Aggregates {
      * @return the $unwind pipeline stage
      * @mongodb.driver.manual reference/operator/aggregation/unwind/ $unwind
      * @since 3.2
+     * @mongodb.server.release 3.2
      */
     public static Bson unwind(final String fieldName, final UnwindOptions unwindOptions) {
         notNull("unwindOptions", unwindOptions);
