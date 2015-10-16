@@ -407,8 +407,8 @@ public class MapReduceToCollectionOperation implements AsyncWriteOperation<MapRe
      *
      * @param bypassDocumentValidation If true, allows the write to opt-out of document level validation.
      * @return this
-
-
+     * @since 3.2
+     * @mongodb.server.release 3.2
      */
     public MapReduceToCollectionOperation bypassDocumentValidation(final Boolean bypassDocumentValidation) {
         this.bypassDocumentValidation = bypassDocumentValidation;
