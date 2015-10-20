@@ -1019,7 +1019,7 @@ public class MongoClientOptions {
          * @mongodb.server.release 3.2
          */
         public Builder readConcern(final ReadConcern readConcern) {
-            this.readConcern = readConcern;
+            this.readConcern = notNull("readConcern", readConcern);
             return this;
         }
 

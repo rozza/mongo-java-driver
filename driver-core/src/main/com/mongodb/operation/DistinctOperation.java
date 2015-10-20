@@ -220,8 +220,8 @@ public class DistinctOperation<T> implements AsyncReadOperation<AsyncBatchCursor
         cmd.put("key", new BsonString(fieldName));
         putIfNotNull(cmd, "query", filter);
         putIfNotZero(cmd, "maxTimeMS", maxTimeMS);
-        if (readConcern.getValue() != null) {
-            cmd.put("readConcern", new BsonDocument("level", new BsonString(readConcern.getValue())));
+        if (!readConcern.isServerDefault()) {
+            cmd.putAll(readConcern.asDocument());
         }
         return cmd;
     }

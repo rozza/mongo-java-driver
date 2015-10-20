@@ -277,8 +277,8 @@ public class CountOperation implements AsyncReadOperation<Long>, ReadOperation<L
         putIfNotZero(document, "skip", skip);
         putIfNotNull(document, "hint", hint);
         putIfNotZero(document, "maxTimeMS", maxTimeMS);
-        if (readConcern.getValue() != null) {
-            document.put("readConcern", new BsonDocument("level", new BsonString(readConcern.getValue())));
+        if (!readConcern.isServerDefault()) {
+            document.putAll(readConcern.asDocument());
         }
         return document;
     }

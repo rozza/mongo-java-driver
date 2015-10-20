@@ -300,8 +300,8 @@ public class AggregateOperation<T> implements AsyncReadOperation<AsyncBatchCurso
         if (allowDiskUse != null) {
             commandDocument.put("allowDiskUse", BsonBoolean.valueOf(allowDiskUse));
         }
-        if (readConcern.getValue() != null) {
-            commandDocument.put("readConcern", new BsonDocument("level", new BsonString(readConcern.getValue())));
+        if (!readConcern.isServerDefault()) {
+            commandDocument.putAll(readConcern.asDocument());
         }
 
         return commandDocument;

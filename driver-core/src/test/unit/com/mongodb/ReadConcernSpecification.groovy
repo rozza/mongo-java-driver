@@ -16,37 +16,41 @@
 
 package com.mongodb
 
+import org.bson.BsonDocument
 import spock.lang.Specification
 
 class ReadConcernSpecification extends Specification {
 
-    def 'should return the expected string value'() {
+    def 'should have the expected read concern levels'() {
         expect:
-        readConcern.getValue() == expectedString
+        staticValue == expected
 
         where:
-        readConcern             | expectedString
-        ReadConcern.DEFAULT     | null
-        ReadConcern.LOCAL       | 'local'
-        ReadConcern.MAJORITY    | 'majority'
+        staticValue             | expected
+        ReadConcern.DEFAULT     | new ReadConcern(ReadConcernLevel.DEFAULT)
+        ReadConcern.LOCAL       | new ReadConcern(ReadConcernLevel.LOCAL)
+        ReadConcern.MAJORITY    | new ReadConcern(ReadConcernLevel.MAJORITY)
     }
 
-    def 'should support valid string representations'() {
+    def 'should create the expected Documents'() {
         expect:
-        ReadConcern.fromString(readConcernLevel) instanceof ReadConcern
+        staticValue.asDocument() == expected
 
         where:
-        readConcernLevel << ['local', 'majority', 'LOCAL', 'MAJORITY']
+        staticValue             | expected
+        ReadConcern.DEFAULT     | BsonDocument.parse('{readConcern: {}}')
+        ReadConcern.LOCAL       | BsonDocument.parse('{readConcern: {level: "local"}}')
+        ReadConcern.MAJORITY    | BsonDocument.parse('{readConcern: {level: "majority"}}')
     }
 
-    def 'should throw an illegal Argument exception for invalid values'() {
-        when:
-        ReadConcern.fromString(readConcernLevel)
-
-        then:
-        thrown(IllegalArgumentException)
+    def 'should have the correct value for isServerDefault'() {
+        expect:
+        staticValue.isServerDefault() == expected
 
         where:
-        readConcernLevel << [null, 'pickThree']
+        staticValue             | expected
+        ReadConcern.DEFAULT     | true
+        ReadConcern.LOCAL       | false
+        ReadConcern.MAJORITY    | false
     }
 }

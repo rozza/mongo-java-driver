@@ -424,8 +424,8 @@ public class MapReduceWithInlineResultsOperation<T> implements AsyncReadOperatio
         putIfNotZero(commandDocument, "limit", getLimit());
         putIfNotZero(commandDocument, "maxTimeMS", getMaxTime(MILLISECONDS));
         putIfTrue(commandDocument, "jsMode", isJsMode());
-        if (readConcern.getValue() != null) {
-            commandDocument.put("readConcern", new BsonDocument("level", new BsonString(readConcern.getValue())));
+        if (!readConcern.isServerDefault()) {
+            commandDocument.putAll(readConcern.asDocument());
         }
         return commandDocument;
     }

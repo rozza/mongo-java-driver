@@ -54,7 +54,9 @@ class GridFSBucketSpecification extends Specification {
 
     def 'should return the correct bucket name'() {
         given:
-        def database = Stub(MongoDatabase)
+        def database = Stub(MongoDatabase) {
+            getReadConcern() >> ReadConcern.DEFAULT
+        }
 
         when:
         def bucketName = new GridFSBucketImpl(database).getBucketName()
@@ -72,7 +74,9 @@ class GridFSBucketSpecification extends Specification {
     def 'should behave correctly when using withChunkSizeBytes'() {
         given:
         def newChunkSize = 200
-        def database = Stub(MongoDatabase)
+        def database = Stub(MongoDatabase) {
+            getReadConcern() >> ReadConcern.DEFAULT
+        }
 
         when:
         def gridFSBucket = new GridFSBucketImpl(database).withChunkSizeBytes(newChunkSize)
@@ -84,7 +88,9 @@ class GridFSBucketSpecification extends Specification {
     def 'should behave correctly when using withReadPreference'() {
         given:
         def newReadPreference = primary()
-        def database = Stub(MongoDatabase)
+        def database = Stub(MongoDatabase) {
+            getReadConcern() >> ReadConcern.DEFAULT
+        }
 
         when:
         def gridFSBucket = new GridFSBucketImpl(database).withReadPreference(newReadPreference)
@@ -96,7 +102,9 @@ class GridFSBucketSpecification extends Specification {
     def 'should behave correctly when using withWriteConcern'() {
         given:
         def newWriteConcern = WriteConcern.MAJORITY
-        def database = Stub(MongoDatabase)
+        def database = Stub(MongoDatabase) {
+            getReadConcern() >> ReadConcern.DEFAULT
+        }
 
         when:
         def gridFSBucket = new GridFSBucketImpl(database).withWriteConcern(newWriteConcern)
@@ -108,7 +116,9 @@ class GridFSBucketSpecification extends Specification {
     def 'should behave correctly when using withReadConcern'() {
         given:
         def newReadConcern = ReadConcern.MAJORITY
-        def database = Stub(MongoDatabase)
+        def database = Stub(MongoDatabase) {
+            getReadConcern() >> ReadConcern.DEFAULT
+        }
 
         when:
         def gridFSBucket = new GridFSBucketImpl(database).withReadConcern(newReadConcern)

@@ -16,8 +16,10 @@
 
 package com.mongodb;
 
+import org.bson.BsonDocument;
+import org.bson.BsonString;
+
 import static com.mongodb.assertions.Assertions.notNull;
-import static java.lang.String.format;
 
 /**
  * The readConcern option allows clients to choose a level of isolation for their reads.
@@ -28,48 +30,81 @@ import static java.lang.String.format;
  * @mongodb.server.release 3.2
  * @since 3.2
  */
-public enum ReadConcern {
+public final class ReadConcern {
+    private final ReadConcernLevel readConcernLevel;
+
+    /**
+     * Construct a new read concern
+     *
+     * @param readConcernLevel the read concern level
+     */
+    public ReadConcern(final ReadConcernLevel readConcernLevel) {
+        this.readConcernLevel = notNull("readConcernLevel", readConcernLevel);
+    }
 
     /**
      * Use the servers default read concern.
      */
-    DEFAULT(null),
+    public static final ReadConcern DEFAULT = new ReadConcern(ReadConcernLevel.DEFAULT);
 
     /**
      * Return the node's most recent copy of data. Provides no guarantee that the data has been written to a majority of the nodes.
      */
-    LOCAL("local"),
+    public static final ReadConcern LOCAL = new ReadConcern(ReadConcernLevel.LOCAL);
 
     /**
      * Return the node's most recent copy of the data confirmed as having been written to a majority of the nodes.
      */
-    MAJORITY("majority");
+    public static final ReadConcern MAJORITY = new ReadConcern(ReadConcernLevel.MAJORITY);
 
-    private final String value;
-    ReadConcern(final String readConcernLevel) {
-        this.value = readConcernLevel;
-    }
 
     /**
-     * @return the String representation of the read concern level that the MongoDB server understands or null for the default
+     * @return true if this is the server default read concern
      */
-    public String getValue() {
-        return value;
+    public boolean isServerDefault() {
+        return readConcernLevel.equals(ReadConcernLevel.DEFAULT);
     }
 
     /**
-     * Returns the ReadConcern from the string read concern level.
+     * Gets this read concern as a document.
      *
-     * @param readConcernLevel the read concern level string.
-     * @return the read concern
+     * @return The read concern as a BsonDocument
      */
-    public static ReadConcern fromString(final String readConcernLevel) {
-        notNull("readConcernLevel", readConcernLevel);
-        for (ReadConcern level : ReadConcern.values()) {
-            if (readConcernLevel.equalsIgnoreCase(level.value)) {
-                return level;
-            }
+    public BsonDocument asDocument() {
+        BsonDocument readConcern = new BsonDocument();
+        if (!isServerDefault()){
+            readConcern.put("level", new BsonString(readConcernLevel.getValue()));
         }
-        throw new IllegalArgumentException(format("'%s' is not a valid readConcernLevel", readConcernLevel));
+        return new BsonDocument("readConcern", readConcern);
+    }
+
+    @Override
+    public boolean equals(final Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null) {
+            return false;
+        }
+        if (getClass() != o.getClass()) {
+            return false;
+        }
+        ReadConcern that = (ReadConcern) o;
+        if (readConcernLevel != that.readConcernLevel) {
+            return false;
+        }
+        return true;
+    }
+
+    @Override
+    public int hashCode() {
+        return readConcernLevel != null ? readConcernLevel.hashCode() : 0;
+    }
+
+    @Override
+    public String toString() {
+        return "ReadConcern{"
+                + "readConcernLevel=" + readConcernLevel
+                + "}";
     }
 }

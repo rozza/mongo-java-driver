@@ -225,8 +225,8 @@ public class ParallelCollectionScanOperation<T> implements AsyncReadOperation<Li
     private BsonDocument getCommand() {
         BsonDocument document = new BsonDocument("parallelCollectionScan", new BsonString(namespace.getCollectionName()))
                .append("numCursors", new BsonInt32(getNumCursors()));
-        if (readConcern.getValue() != null) {
-            document.put("readConcern", new BsonDocument("level", new BsonString(readConcern.getValue())));
+        if (!readConcern.isServerDefault()) {
+            document.putAll(readConcern.asDocument());
         }
         return document;
     }

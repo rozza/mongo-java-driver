@@ -357,7 +357,7 @@ public ConnectionString(final String connectionString) {
             } else if (key.equals("replicaset")) {
                 requiredReplicaSetName = value;
             } else if (key.equals("readconcernlevel")) {
-                readConcern = ReadConcern.fromString(value);
+                readConcern = new ReadConcern(ReadConcernLevel.fromString(value));
             }
         }
 
