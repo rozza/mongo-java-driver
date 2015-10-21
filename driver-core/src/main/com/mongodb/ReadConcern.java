@@ -19,6 +19,8 @@ package com.mongodb;
 import org.bson.BsonDocument;
 import org.bson.BsonString;
 
+import static com.mongodb.assertions.Assertions.notNull;
+
 /**
  * The readConcern option allows clients to choose a level of isolation for their reads.
  *
@@ -34,13 +36,13 @@ public final class ReadConcern {
      * @param readConcernLevel the read concern level
      */
     public ReadConcern(final ReadConcernLevel readConcernLevel) {
-        this.readConcernLevel = readConcernLevel;
+        this.readConcernLevel = notNull("readConcernLevel", readConcernLevel);
     }
 
     /**
      * Use the servers default read concern.
      */
-    public static final ReadConcern DEFAULT = new ReadConcern(null);
+    public static final ReadConcern DEFAULT = new ReadConcern();
 
     /**
      * Return the node's most recent copy of data. Provides no guarantee that the data has been written to a majority of the nodes.
@@ -94,5 +96,9 @@ public final class ReadConcern {
     @Override
     public int hashCode() {
         return readConcernLevel != null ? readConcernLevel.hashCode() : 0;
+    }
+
+    private ReadConcern() {
+        this.readConcernLevel = null;
     }
 }

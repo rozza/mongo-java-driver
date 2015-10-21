@@ -27,7 +27,7 @@ class ReadConcernSpecification extends Specification {
 
         where:
         staticValue             | expected
-        ReadConcern.DEFAULT     | new ReadConcern(null)
+        ReadConcern.DEFAULT     | new ReadConcern()
         ReadConcern.LOCAL       | new ReadConcern(ReadConcernLevel.LOCAL)
         ReadConcern.MAJORITY    | new ReadConcern(ReadConcernLevel.MAJORITY)
     }
