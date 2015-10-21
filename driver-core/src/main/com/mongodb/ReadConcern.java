@@ -22,9 +22,6 @@ import org.bson.BsonString;
 /**
  * The readConcern option allows clients to choose a level of isolation for their reads.
  *
- * The WiredTiger storage engine, introduces the readConcern option for replica sets and replica set shards.  Allowing clients to choose a
- * level of isolation for their reads.
- *
  * @mongodb.server.release 3.2
  * @since 3.2
  */
