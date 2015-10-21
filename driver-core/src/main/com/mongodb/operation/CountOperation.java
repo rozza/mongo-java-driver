@@ -278,7 +278,7 @@ public class CountOperation implements AsyncReadOperation<Long>, ReadOperation<L
         putIfNotNull(document, "hint", hint);
         putIfNotZero(document, "maxTimeMS", maxTimeMS);
         if (!readConcern.isServerDefault()) {
-            document.putAll(readConcern.asDocument());
+            document.put("readConcern", readConcern.asDocument());
         }
         return document;
     }

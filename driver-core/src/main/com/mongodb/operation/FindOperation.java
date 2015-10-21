@@ -745,7 +745,7 @@ public class FindOperation<T> implements AsyncReadOperation<AsyncBatchCursor<T>>
         }
 
         if (!readConcern.isServerDefault()) {
-            document.putAll(readConcern.asDocument());
+            document.put("readConcern", readConcern.asDocument());
         }
 
         return document;

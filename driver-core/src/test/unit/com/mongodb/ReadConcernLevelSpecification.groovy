@@ -26,7 +26,6 @@ class ReadConcernLevelSpecification extends Specification {
 
         where:
         readConcernLevel             | expectedString
-        ReadConcernLevel.DEFAULT     | ''
         ReadConcernLevel.LOCAL       | 'local'
         ReadConcernLevel.MAJORITY    | 'majority'
     }

@@ -221,7 +221,7 @@ public class DistinctOperation<T> implements AsyncReadOperation<AsyncBatchCursor
         putIfNotNull(cmd, "query", filter);
         putIfNotZero(cmd, "maxTimeMS", maxTimeMS);
         if (!readConcern.isServerDefault()) {
-            cmd.putAll(readConcern.asDocument());
+            cmd.put("readConcern", readConcern.asDocument());
         }
         return cmd;
     }

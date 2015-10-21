@@ -31,11 +31,6 @@ import static java.lang.String.format;
 public enum ReadConcernLevel {
 
     /**
-     * Use the servers default read concern.
-     */
-    DEFAULT(""),
-
-    /**
      * Return the node's most recent copy of data. Provides no guarantee that the data has been written to a majority of the nodes.
      */
     LOCAL("local"),
@@ -71,12 +66,5 @@ public enum ReadConcernLevel {
             }
         }
         throw new IllegalArgumentException(format("'%s' is not a valid readConcernLevel", readConcernLevel));
-    }
-
-    @Override
-    public String toString() {
-        return "ReadConcernLevel{"
-                + "value='" + value + "'"
-                + "}";
     }
 }

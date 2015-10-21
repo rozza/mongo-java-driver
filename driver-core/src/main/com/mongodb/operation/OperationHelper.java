@@ -80,7 +80,7 @@ final class OperationHelper {
     }
 
     static void checkValidReadConcern(final Connection connection, final ReadConcern readConcern) {
-        if (!serverIsAtLeastVersionThreeDotTwo(connection.getDescription()) && !readConcern.equals(ReadConcern.DEFAULT)) {
+        if (!serverIsAtLeastVersionThreeDotTwo(connection.getDescription()) && !readConcern.isServerDefault()) {
             throw new IllegalArgumentException(format("Unsupported ReadConcern : '%s'", readConcern.asDocument().toJson()));
         }
     }
@@ -88,7 +88,7 @@ final class OperationHelper {
     static void checkValidReadConcern(final AsyncConnection connection, final ReadConcern readConcern,
                                       final AsyncCallableWithConnection callable) {
         Throwable throwable = null;
-        if (!serverIsAtLeastVersionThreeDotTwo(connection.getDescription()) && !readConcern.equals(ReadConcern.DEFAULT)) {
+        if (!serverIsAtLeastVersionThreeDotTwo(connection.getDescription()) && !readConcern.isServerDefault()) {
             throwable = new IllegalArgumentException(format("Unsupported ReadConcern : '%s'", readConcern.asDocument().toJson()));
         }
         callable.call(connection, throwable);
@@ -97,7 +97,7 @@ final class OperationHelper {
     static void checkValidReadConcern(final AsyncConnectionSource source, final AsyncConnection connection, final ReadConcern readConcern,
                                       final AsyncCallableWithConnectionAndSource callable) {
         Throwable throwable = null;
-        if (!serverIsAtLeastVersionThreeDotTwo(connection.getDescription()) && !readConcern.equals(ReadConcern.DEFAULT)) {
+        if (!serverIsAtLeastVersionThreeDotTwo(connection.getDescription()) && !readConcern.isServerDefault()) {
             throwable = new IllegalArgumentException(format("Unsupported ReadConcern : '%s'", readConcern.asDocument().toJson()));
         }
         callable.call(source, connection, throwable);

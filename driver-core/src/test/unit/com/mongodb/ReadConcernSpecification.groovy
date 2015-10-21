@@ -27,7 +27,7 @@ class ReadConcernSpecification extends Specification {
 
         where:
         staticValue             | expected
-        ReadConcern.DEFAULT     | new ReadConcern(ReadConcernLevel.DEFAULT)
+        ReadConcern.DEFAULT     | new ReadConcern(null)
         ReadConcern.LOCAL       | new ReadConcern(ReadConcernLevel.LOCAL)
         ReadConcern.MAJORITY    | new ReadConcern(ReadConcernLevel.MAJORITY)
     }
@@ -38,9 +38,9 @@ class ReadConcernSpecification extends Specification {
 
         where:
         staticValue             | expected
-        ReadConcern.DEFAULT     | BsonDocument.parse('{readConcern: {}}')
-        ReadConcern.LOCAL       | BsonDocument.parse('{readConcern: {level: "local"}}')
-        ReadConcern.MAJORITY    | BsonDocument.parse('{readConcern: {level: "majority"}}')
+        ReadConcern.DEFAULT     | BsonDocument.parse('{}')
+        ReadConcern.LOCAL       | BsonDocument.parse('{level: "local"}')
+        ReadConcern.MAJORITY    | BsonDocument.parse('{level: "majority"}')
     }
 
     def 'should have the correct value for isServerDefault'() {
