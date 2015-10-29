@@ -26,8 +26,11 @@ import org.bson.BsonType;
 import org.bson.types.ObjectId;
 import org.junit.Test;
 
+import java.util.Date;
+
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 
 public class JsonReaderTest {
@@ -110,11 +113,31 @@ public class JsonReaderTest {
     }
 
     @Test
+    public void testDateTimeNow() {
+        long currentTime = new Date().getTime();
+        String json = "Date()";
+        bsonReader = new JsonReader(json);
+        assertEquals(BsonType.DATE_TIME, bsonReader.readBsonType());
+        assertTrue(bsonReader.readDateTime() >= currentTime);
+        assertEquals(AbstractBsonReader.State.DONE, bsonReader.getState());
+    }
+
+    @Test
     public void testDateTimeShell() {
         String json = "ISODate(\"1970-01-01T00:00:00Z\")";
         bsonReader = new JsonReader(json);
         assertEquals(BsonType.DATE_TIME, bsonReader.readBsonType());
         assertEquals(0, bsonReader.readDateTime());
+        assertEquals(AbstractBsonReader.State.DONE, bsonReader.getState());
+    }
+
+    @Test
+    public void testDateTimeShellNow() {
+        long currentTime = new Date().getTime();
+        String json = "ISODate()";
+        bsonReader = new JsonReader(json);
+        assertEquals(BsonType.DATE_TIME, bsonReader.readBsonType());
+        assertTrue(bsonReader.readDateTime() >= currentTime);
         assertEquals(AbstractBsonReader.State.DONE, bsonReader.getState());
     }
 
