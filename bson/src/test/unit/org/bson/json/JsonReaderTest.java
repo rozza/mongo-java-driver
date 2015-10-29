@@ -113,31 +113,11 @@ public class JsonReaderTest {
     }
 
     @Test
-    public void testDateTimeNow() {
-        long currentTime = new Date().getTime();
-        String json = "Date()";
-        bsonReader = new JsonReader(json);
-        assertEquals(BsonType.DATE_TIME, bsonReader.readBsonType());
-        assertTrue(bsonReader.readDateTime() >= currentTime);
-        assertEquals(AbstractBsonReader.State.DONE, bsonReader.getState());
-    }
-
-    @Test
     public void testDateTimeShell() {
         String json = "ISODate(\"1970-01-01T00:00:00Z\")";
         bsonReader = new JsonReader(json);
         assertEquals(BsonType.DATE_TIME, bsonReader.readBsonType());
         assertEquals(0, bsonReader.readDateTime());
-        assertEquals(AbstractBsonReader.State.DONE, bsonReader.getState());
-    }
-
-    @Test
-    public void testDateTimeShellNow() {
-        long currentTime = new Date().getTime();
-        String json = "ISODate()";
-        bsonReader = new JsonReader(json);
-        assertEquals(BsonType.DATE_TIME, bsonReader.readBsonType());
-        assertTrue(bsonReader.readDateTime() >= currentTime);
         assertEquals(AbstractBsonReader.State.DONE, bsonReader.getState());
     }
 
@@ -727,22 +707,43 @@ public class JsonReaderTest {
 
     @Test
     public void testEmptyDateTimeConstructorWithNew() {
+        long currentTime = new Date().getTime();
         String json = "new Date()";
         bsonReader = new JsonReader(json);
         assertEquals(BsonType.DATE_TIME, bsonReader.readBsonType());
-        bsonReader.readDateTime();
+        assertTrue(bsonReader.readDateTime() >= currentTime);
         assertEquals(AbstractBsonReader.State.DONE, bsonReader.getState());
     }
 
     @Test
     public void testEmptyDateTimeConstructor() {
+        long currentTime = new Date().getTime();
         String json = "Date()";
         bsonReader = new JsonReader(json);
         assertEquals(BsonType.DATE_TIME, bsonReader.readBsonType());
-        bsonReader.readDateTime();
+        assertTrue(bsonReader.readDateTime() >= currentTime);
         assertEquals(AbstractBsonReader.State.DONE, bsonReader.getState());
     }
 
+    @Test
+    public void testEmptyISODateTimeConstructorWithNew() {
+        long currentTime = new Date().getTime();
+        String json = "new ISODate()";
+        bsonReader = new JsonReader(json);
+        assertEquals(BsonType.DATE_TIME, bsonReader.readBsonType());
+        assertTrue(bsonReader.readDateTime() >= currentTime);
+        assertEquals(AbstractBsonReader.State.DONE, bsonReader.getState());
+    }
+
+    @Test
+    public void testEmptyISODateTimeConstructor() {
+        long currentTime = new Date().getTime();
+        String json = "ISODate()";
+        bsonReader = new JsonReader(json);
+        assertEquals(BsonType.DATE_TIME, bsonReader.readBsonType());
+        assertTrue(bsonReader.readDateTime() >= currentTime);
+        assertEquals(AbstractBsonReader.State.DONE, bsonReader.getState());
+    }
 
     @Test
     public void testRegExp() {
