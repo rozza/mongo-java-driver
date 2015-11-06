@@ -129,7 +129,7 @@ class GridFSBucketSpecification extends Specification {
 
     def 'should get defaults from MongoDatabase'() {
         given:
-        def defaultChunkSize = 255
+        def defaultChunkSize = 255 * 1024
         def database = new MongoDatabaseImpl('test', fromProviders(new DocumentCodecProvider()), secondary(), WriteConcern.ACKNOWLEDGED,
                 readConcern, new TestOperationExecutor([]))
 
