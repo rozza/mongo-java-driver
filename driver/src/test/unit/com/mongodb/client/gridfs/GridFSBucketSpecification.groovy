@@ -461,6 +461,21 @@ class GridFSBucketSpecification extends Specification {
 
     def 'should create the expected GridFSFindIterable'() {
         given:
+        def collection = Mock(MongoCollection)
+        def findIterable = Mock(FindIterable)
+        def gridFSBucket = new GridFSBucketImpl('fs', 255, collection, Stub(MongoCollection))
+
+
+        when:
+        def result = gridFSBucket.find()
+
+        then:
+        1 * collection.find() >> findIterable
+        expect result, isTheSameAs(new GridFSFindIterableImpl(findIterable))
+    }
+
+    def 'should execute the expected FindOperation when finding a file'() {
+        given:
         def executor = new TestOperationExecutor([Stub(BatchCursor), Stub(BatchCursor)])
         def database = databaseWithExecutor(executor)
         def gridFSBucket = new GridFSBucketImpl(database)
