@@ -381,13 +381,7 @@ class MongoIterableSubscriptionSpecification extends Specification {
         observe(getMongoIterable(getFailingCursor(failImmediately))).subscribe(observer)
 
         when:
-        observer.requestMore(2)
-
-        then:
-        observer.assertNoTerminalEvent()
-
-        when:
-        observer.requestMore(1)
+        observer.requestMore(3)
 
         then:
         observer.assertTerminalEvent()
