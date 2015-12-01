@@ -33,7 +33,6 @@ import org.bson.BsonDocument;
 import org.bson.BsonObjectId;
 import org.bson.BsonValue;
 import org.bson.Document;
-import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.conversions.Bson;
 import org.bson.types.ObjectId;
 
@@ -45,19 +44,15 @@ import java.util.ArrayList;
 import static com.mongodb.ReadPreference.primary;
 import static com.mongodb.assertions.Assertions.notNull;
 import static java.lang.String.format;
-import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
 
 @SuppressWarnings("deprecation")
 final class GridFSBucketImpl implements GridFSBucket {
+    private static final int DEFAULT_CHUNKSIZE_BYTES = 255 * 1024;
     private final MongoDatabase database;
     private final String bucketName;
     private final int chunkSizeBytes;
-    private final WriteConcern writeConcern;
-    private final ReadConcern readConcern;
-    private final ReadPreference readPreference;
     private final MongoCollection<Document> filesCollection;
     private final MongoCollection<Document> chunksCollection;
-    private final CodecRegistry codecRegistry;
     private volatile boolean checkedIndexes;
 
     GridFSBucketImpl(final MongoDatabase database) {
@@ -65,30 +60,23 @@ final class GridFSBucketImpl implements GridFSBucket {
     }
 
     GridFSBucketImpl(final MongoDatabase database, final String bucketName) {
-        this.database = notNull("database", database);
-        this.bucketName = notNull("bucketName", bucketName);
-        this.chunkSizeBytes = 255 * 1024;
-        this.writeConcern = database.getWriteConcern();
-        this.readConcern = database.getReadConcern();
-        this.readPreference = database.getReadPreference();
-        this.codecRegistry = getCodecRegistry();
-        this.filesCollection = getFilesCollection();
-        this.chunksCollection = getChunksCollection();
+        this(notNull("database", database), notNull("bucketName", bucketName), DEFAULT_CHUNKSIZE_BYTES, database.getReadPreference(),
+                database.getReadConcern(), database.getWriteConcern());
     }
 
-    GridFSBucketImpl(final MongoDatabase database, final String bucketName, final int chunkSizeBytes, final CodecRegistry codecRegistry,
-                     final ReadPreference readPreference, final WriteConcern writeConcern, final ReadConcern readConcern,
-                     final MongoCollection<Document> filesCollection, final MongoCollection<Document> chunksCollection,
-                     final boolean checkedIndexes) {
+    GridFSBucketImpl(final MongoDatabase database, final String bucketName, final int chunkSizeBytes, final ReadPreference readPreference,
+                     final ReadConcern readConcern, final WriteConcern writeConcern) {
+        this(database, bucketName, chunkSizeBytes,
+                getFilesCollection(database, bucketName, readPreference, readConcern, writeConcern),
+                getChunksCollection(database, bucketName, readPreference, readConcern, writeConcern));
+    }
+
+    GridFSBucketImpl(final MongoDatabase database, final String bucketName, final int chunkSizeBytes,
+                     final MongoCollection<Document> filesCollection, final MongoCollection<Document> chunksCollection) {
         this.database = notNull("database", database);
         this.bucketName = notNull("bucketName", bucketName);
         this.chunkSizeBytes = chunkSizeBytes;
-        this.codecRegistry = notNull("codecRegistry", codecRegistry);
-        this.readPreference = notNull("readPreference", readPreference);
-        this.writeConcern = notNull("writeConcern", writeConcern);
-        this.readConcern = notNull("readConcern", readConcern);
-        this.checkedIndexes = checkedIndexes;
-        this.filesCollection =  notNull("filesCollection", filesCollection);
+        this.filesCollection = notNull("filesCollection", filesCollection);
         this.chunksCollection = notNull("chunksCollection", chunksCollection);
     }
 
@@ -104,41 +92,37 @@ final class GridFSBucketImpl implements GridFSBucket {
 
     @Override
     public ReadPreference getReadPreference() {
-        return readPreference;
+        return filesCollection.getReadPreference();
     }
 
     @Override
     public WriteConcern getWriteConcern() {
-        return writeConcern;
+        return filesCollection.getWriteConcern();
     }
 
     @Override
     public ReadConcern getReadConcern() {
-        return readConcern;
+        return filesCollection.getReadConcern();
     }
 
     @Override
     public GridFSBucket withChunkSizeBytes(final int chunkSizeBytes) {
-        return new GridFSBucketImpl(database, bucketName, chunkSizeBytes, codecRegistry, readPreference, writeConcern, readConcern,
-                filesCollection, chunksCollection, checkedIndexes);
+        return new GridFSBucketImpl(database, bucketName, chunkSizeBytes, getReadPreference(), getReadConcern(), getWriteConcern());
     }
 
     @Override
     public GridFSBucket withReadPreference(final ReadPreference readPreference) {
-        return new GridFSBucketImpl(database, bucketName, chunkSizeBytes, codecRegistry, readPreference, writeConcern, readConcern,
-                filesCollection, chunksCollection, checkedIndexes);
+        return new GridFSBucketImpl(database, bucketName, chunkSizeBytes, readPreference, getReadConcern(), getWriteConcern());
     }
 
     @Override
     public GridFSBucket withWriteConcern(final WriteConcern writeConcern) {
-        return new GridFSBucketImpl(database, bucketName, chunkSizeBytes, codecRegistry, readPreference, writeConcern, readConcern,
-                filesCollection, chunksCollection, checkedIndexes);
+        return new GridFSBucketImpl(database, bucketName, chunkSizeBytes, getReadPreference(), getReadConcern(), writeConcern);
     }
 
     @Override
     public GridFSBucket withReadConcern(final ReadConcern readConcern) {
-        return new GridFSBucketImpl(database, bucketName, chunkSizeBytes, codecRegistry, readPreference, writeConcern, readConcern,
-                filesCollection, chunksCollection, checkedIndexes);
+        return new GridFSBucketImpl(database, bucketName, chunkSizeBytes, getReadPreference(), readConcern, getWriteConcern());
     }
 
     @Override
@@ -252,21 +236,25 @@ final class GridFSBucketImpl implements GridFSBucket {
         chunksCollection.drop();
     }
 
-    private CodecRegistry getCodecRegistry() {
-        return fromRegistries(database.getCodecRegistry(), MongoClient.getDefaultCodecRegistry());
+    private static MongoCollection<Document> getFilesCollection(final MongoDatabase database, final String bucketName,
+                                                                final ReadPreference readPreference, final ReadConcern readConcern,
+                                                                final WriteConcern writeConcern) {
+        return getCollection(database, bucketName + ".files", readPreference, readConcern, writeConcern);
     }
 
-    private MongoCollection<Document> getFilesCollection() {
-        return database.getCollection(bucketName + ".files")
-                .withCodecRegistry(codecRegistry)
-                .withReadPreference(readPreference)
-                .withWriteConcern(writeConcern);
+    private static MongoCollection<Document> getChunksCollection(final MongoDatabase database, final String bucketName,
+                                                                 final ReadPreference readPreference, final ReadConcern readConcern,
+                                                                 final WriteConcern writeConcern) {
+        return getCollection(database, bucketName + ".chunks", readPreference, readConcern, writeConcern);
     }
 
-    private MongoCollection<Document> getChunksCollection() {
-        return database.getCollection(bucketName + ".chunks")
+    private static MongoCollection<Document> getCollection(final MongoDatabase database, final String collectionName,
+                                                           final ReadPreference readPreference, final ReadConcern readConcern,
+                                                           final WriteConcern writeConcern) {
+        return database.getCollection(collectionName)
                 .withCodecRegistry(MongoClient.getDefaultCodecRegistry())
                 .withReadPreference(readPreference)
+                .withReadConcern(readConcern)
                 .withWriteConcern(writeConcern);
     }
 
