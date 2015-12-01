@@ -87,36 +87,62 @@ class GridFSBucketSpecification extends Specification {
 
     def 'should behave correctly when using withReadPreference'() {
         given:
+        def filesCollection = Mock(MongoCollection)
+        def chunksCollection = Mock(MongoCollection)
         def newReadPreference = secondary()
 
         when:
-        def gridFSBucket = new GridFSBucketImpl(database).withReadPreference(newReadPreference)
+        def gridFSBucket = new GridFSBucketImpl('fs', 255, filesCollection, chunksCollection).withReadPreference(newReadPreference)
 
         then:
-        gridFSBucket.getReadPreference() == newReadPreference
+        1 * filesCollection.withReadPreference(newReadPreference) >> filesCollection
+        1 * chunksCollection.withReadPreference(newReadPreference) >> chunksCollection
+
+        when:
+        gridFSBucket.getReadConcern()
+
+        then:
+        1 * filesCollection.getReadConcern()
     }
 
     def 'should behave correctly when using withWriteConcern'() {
         given:
+        def filesCollection = Mock(MongoCollection)
+        def chunksCollection = Mock(MongoCollection)
         def newWriteConcern = WriteConcern.MAJORITY
 
         when:
-        def gridFSBucket = new GridFSBucketImpl(database).withWriteConcern(newWriteConcern)
+        def gridFSBucket = new GridFSBucketImpl('fs', 255, filesCollection, chunksCollection).withWriteConcern(newWriteConcern)
 
         then:
-        gridFSBucket.getWriteConcern() == newWriteConcern
+        1 * filesCollection.withWriteConcern(newWriteConcern) >> filesCollection
+        1 * chunksCollection.withWriteConcern(newWriteConcern) >> chunksCollection
+
+        when:
+        gridFSBucket.getWriteConcern()
+
+        then:
+        1 * filesCollection.getWriteConcern()
     }
 
     def 'should behave correctly when using withReadConcern'() {
         given:
+        def filesCollection = Mock(MongoCollection)
+        def chunksCollection = Mock(MongoCollection)
         def newReadConcern = ReadConcern.MAJORITY
 
-
         when:
-        def gridFSBucket = new GridFSBucketImpl(database).withReadConcern(newReadConcern)
+        def gridFSBucket = new GridFSBucketImpl('fs', 255, filesCollection, chunksCollection).withReadConcern(newReadConcern)
 
         then:
-        gridFSBucket.getReadConcern() == newReadConcern
+        1 * filesCollection.withReadConcern(newReadConcern) >> filesCollection
+        1 * chunksCollection.withReadConcern(newReadConcern) >> chunksCollection
+
+        when:
+        gridFSBucket.getReadConcern()
+
+        then:
+        1 * filesCollection.getReadConcern() >> newReadConcern
     }
 
     def 'should get defaults from MongoDatabase'() {
