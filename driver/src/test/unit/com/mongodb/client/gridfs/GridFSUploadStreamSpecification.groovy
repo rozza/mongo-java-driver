@@ -18,6 +18,7 @@ package com.mongodb.client.gridfs
 
 import com.mongodb.MongoGridFSException
 import com.mongodb.client.MongoCollection
+import com.mongodb.client.gridfs.model.GridFSFile
 import org.bson.Document
 import org.bson.types.Binary
 import org.bson.types.ObjectId
@@ -97,13 +98,13 @@ class GridFSUploadStreamSpecification extends Specification {
         }
 
         then:
-        1 * filesCollection.insertOne { Document fileData ->
-            fileData.getObjectId('_id') == fileId &&
-            fileData.getString('filename') == filename &&
-            fileData.getLong('length') == content.length as Long &&
-            fileData.getInteger('chunkSize') == 255 &&
-            fileData.getString('md5') == MessageDigest.getInstance('MD5').digest(content).encodeHex().toString()
-            fileData.get('metadata', Document) == metadata
+        1 * filesCollection.insertOne { GridFSFile fileData ->
+            fileData.getId() == fileId &&
+            fileData.getFilename() == filename &&
+            fileData.getLength() == content.length as Long &&
+            fileData.getChunkSize() == 255 &&
+            fileData.getMD5() == MessageDigest.getInstance('MD5').digest(content).encodeHex().toString()
+            fileData.getMetadata() == metadata
         }
     }
 
