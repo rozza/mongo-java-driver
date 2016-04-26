@@ -122,61 +122,87 @@ final class GridFSDownloadStreamImpl implements GridFSDownloadStream {
             return;
         } else if (currentPosition == fileInfo.getLength()) {
             releaseReadingLock();
-            callback.onResult(-1, null);
+            errorHandlingCallback.onResult(-1, null);
             return;
         }
-
-        int amountToRead = dst.remaining();
-        if (fileInfo.getLength() < amountToRead) {
-            amountToRead = (int) fileInfo.getLength();
-        }
-        read(amountToRead, dst, errorHandlingCallback);
+        checkAndFetchResults(0, dst, new SingleResultCallback<Integer>() {
+            @Override
+            public void onResult(final Integer result, final Throwable t) {
+                releaseReadingLock();
+                errorHandlingCallback.onResult(result, t);
+            }
+        });
     }
 
-    private void read(final int amountRead, final ByteBuffer dst, final SingleResultCallback<Integer> callback) {
+    private void checkAndFetchResults(final int amountRead, final ByteBuffer dst, final SingleResultCallback<Integer> callback) {
         if (currentPosition == fileInfo.getLength() || dst.remaining() == 0) {
-            releaseReadingLock();
             callback.onResult(amountRead, null);
-            return;
-        }
-
-        boolean fetchBuffer = false;
-        if (buffer == null) {
-            fetchBuffer = true;
-        } else if (bufferOffset == buffer.length) {
-            chunkIndex += 1;
-            bufferOffset = 0;
-            fetchBuffer = true;
-        }
-
-        final RecursiveReadCallback recursiveCallback = new RecursiveReadCallback(amountRead, dst, callback);
-        if (fetchBuffer) {
-            getBuffer(chunkIndex, new SingleResultCallback<byte[]>() {
+        } else if (!resultsQueue.isEmpty()) {
+            processResults(amountRead, dst, callback);
+        } else if (cursor == null) {
+            chunksCollection.find(new Document("files_id", fileInfo.getId())
+                    .append("n", new Document("$gte", chunkIndex)))
+                    .batchSize(batchSize).sort(new Document("n", 1))
+                    .batchCursor(new SingleResultCallback<AsyncBatchCursor<Document>>() {
+                        @Override
+                        public void onResult(final AsyncBatchCursor<Document> result, final Throwable t) {
+                            if (t != null) {
+                                callback.onResult(null, t);
+                            } else if (result == null) {
+                                chunkNotFound(chunkIndex, callback);
+                            } else {
+                                cursor = result;
+                                checkAndFetchResults(amountRead, dst, callback);
+                            }
+                        }
+                    });
+        } else {
+            cursor.next(new SingleResultCallback<List<Document>>() {
                 @Override
-                public void onResult(final byte[] result, final Throwable t) {
+                public void onResult(final List<Document> result, final Throwable t) {
                     if (t != null) {
-                        releaseReadingLock();
                         callback.onResult(null, t);
+                    } else if (result == null || result.isEmpty()) {
+                        chunkNotFound(chunkIndex, callback);
                     } else {
-                        buffer = result;
-                        readFromBuffer(dst, recursiveCallback);
+                        resultsQueue.addAll(result);
+                        if (batchSize == 1) {
+                            discardCursor();
+                        }
+                        processResults(amountRead, dst, callback);
                     }
                 }
             });
-        } else {
-            readFromBuffer(dst, recursiveCallback);
         }
     }
 
-    private void readFromBuffer(final ByteBuffer dst, final SingleResultCallback<Void> callback) {
-        int amountToCopy = dst.remaining();
-        if (amountToCopy > buffer.length - bufferOffset) {
-            amountToCopy = buffer.length - bufferOffset;
+    private void processResults(final int previousAmountRead, final ByteBuffer dst, final SingleResultCallback<Integer> callback) {
+        ChunkDataOrError chunkOrError = new ChunkDataOrError();
+        int amountRead = previousAmountRead;
+        while (currentPosition < fileInfo.getLength() && dst.remaining() > 0 && !resultsQueue.isEmpty()) {
+            if (buffer == null || bufferOffset == buffer.length) {
+                getBufferFromChunk(resultsQueue.poll(), chunkIndex, chunkOrError);
+                if (chunkOrError.hasError()) {
+                    callback.onResult(null, chunkOrError.getError());
+                    return;
+                } else {
+                    buffer = chunkOrError.getBuffer();
+                    bufferOffset = 0;
+                    chunkIndex += 1;
+                }
+            }
+
+            int amountToCopy = dst.remaining();
+            if (amountToCopy > buffer.length - bufferOffset) {
+                amountToCopy = buffer.length - bufferOffset;
+            }
+            dst.put(buffer, bufferOffset, amountToCopy);
+            bufferOffset += amountToCopy;
+            currentPosition += amountToCopy;
+            amountRead += amountToCopy;
         }
-        dst.put(buffer, bufferOffset, amountToCopy);
-        bufferOffset += amountToCopy;
-        currentPosition += amountToCopy;
-        callback.onResult(null, null);
+
+        checkAndFetchResults(amountRead, dst, callback);
     }
 
     @Override
@@ -204,48 +230,6 @@ final class GridFSDownloadStreamImpl implements GridFSDownloadStream {
             hasInfo = fileInfo != null;
         }
         return hasInfo;
-    }
-
-    private void getChunk(final int startChunkIndex, final SingleResultCallback<Document> callback) {
-        if (resultsQueue.isEmpty()) {
-            if (cursor == null) {
-                chunksCollection.find(new Document("files_id", fileInfo.getId())
-                        .append("n", new Document("$gte", startChunkIndex)))
-                        .batchSize(batchSize).sort(new Document("n", 1))
-                        .batchCursor(new SingleResultCallback<AsyncBatchCursor<Document>>() {
-                            @Override
-                            public void onResult(final AsyncBatchCursor<Document> result, final Throwable t) {
-                                if (t != null) {
-                                    callback.onResult(null, t);
-                                } else if (result == null) {
-                                    chunkNotFound(startChunkIndex, callback);
-                                } else {
-                                    cursor = result;
-                                    getChunk(startChunkIndex, callback);
-                                }
-                            }
-                        });
-            } else {
-                cursor.next(new SingleResultCallback<List<Document>>() {
-                    @Override
-                    public void onResult(final List<Document> result, final Throwable t) {
-                        if (t != null) {
-                            callback.onResult(null, t);
-                        } else if (result == null || result.isEmpty()) {
-                            chunkNotFound(startChunkIndex, callback);
-                        } else {
-                            resultsQueue.addAll(result);
-                            if (batchSize == 1) {
-                                discardCursor();
-                            }
-                            getChunk(startChunkIndex, callback);
-                        }
-                    }
-                });
-            }
-        } else {
-            callback.onResult(resultsQueue.poll(), null);
-        }
     }
 
     private <T> void chunkNotFound(final int startChunkIndex, final SingleResultCallback<T> callback) {
@@ -277,19 +261,6 @@ final class GridFSDownloadStreamImpl implements GridFSDownloadStream {
         } else {
             callback.onResult(data, null);
         }
-    }
-
-    private void getBuffer(final int chunkIndexToFetch, final SingleResultCallback<byte[]> callback) {
-        getChunk(chunkIndexToFetch, new SingleResultCallback<Document>() {
-            @Override
-            public void onResult(final Document result, final Throwable t) {
-                if (t != null) {
-                    callback.onResult(null, t);
-                } else {
-                    getBufferFromChunk(result, chunkIndexToFetch, callback);
-                }
-            }
-        });
     }
 
     private <A> boolean tryGetReadingLock(final SingleResultCallback<A> callback) {
@@ -344,24 +315,25 @@ final class GridFSDownloadStreamImpl implements GridFSDownloadStream {
         callback.onResult(null, new MongoGridFSException("The AsyncInputStream does not support concurrent reading."));
     }
 
-    private class RecursiveReadCallback implements SingleResultCallback<Void> {
-        private final int amountRead;
-        private final ByteBuffer dst;
-        private final SingleResultCallback<Integer> callback;
+    private static class ChunkDataOrError implements SingleResultCallback<byte []> {
+        private byte [] buffer = null;
+        private Throwable error = null;
 
-        public RecursiveReadCallback(final int amountRead, final ByteBuffer dst, final SingleResultCallback<Integer> callback) {
-            this.amountRead = amountRead;
-            this.dst = dst;
-            this.callback = callback;
+        public void onResult(final byte [] result, final Throwable t) {
+            buffer = result;
+            error = t;
         }
 
-        @Override
-        public void onResult(final Void result, final Throwable t) {
-            if (t != null) {
-                callback.onResult(null, t);
-            } else {
-                read(amountRead, dst, callback);
-            }
+        public byte[] getBuffer() {
+            return buffer;
+        }
+
+        public Throwable getError() {
+            return error;
+        }
+
+        public boolean hasError() {
+            return error != null;
         }
     }
 }
