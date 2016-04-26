@@ -14,26 +14,9 @@
  * limitations under the License.
  */
 
-package com.mongodb.client.gridfs.model;
-
-import org.bson.codecs.Codec;
-import org.bson.codecs.configuration.CodecProvider;
-import org.bson.codecs.configuration.CodecRegistry;
-
 /**
- * A provider of codecs for {@link GridFSFile}s.
+ * This package contains codecs for use with GridFS
  *
  * @since 3.3
  */
-public final class GridFSFileCodecProvider implements CodecProvider {
-
-    @Override
-    @SuppressWarnings("unchecked")
-    public <T> Codec<T> get(final Class<T> clazz, final CodecRegistry registry) {
-        if (clazz.equals(GridFSFile.class)) {
-            return (Codec<T>) new GridFSFileCodec(registry);
-        } else {
-            return null;
-        }
-    }
-}
+package com.mongodb.client.gridfs.codecs;

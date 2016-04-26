@@ -14,8 +14,9 @@
  * limitations under the License.
  */
 
-package com.mongodb.client.gridfs.model;
+package com.mongodb.client.gridfs.codecs;
 
+import com.mongodb.client.gridfs.model.GridFSFile;
 import org.bson.BsonDateTime;
 import org.bson.BsonDocument;
 import org.bson.BsonDocumentReader;
@@ -40,18 +41,24 @@ import static com.mongodb.assertions.Assertions.notNull;
 import static java.util.Arrays.asList;
 
 
-final class GridFSFileCodec implements Codec<GridFSFile> {
-    private static final BsonDocumentCodec BSON_DOCUMENT_CODEC = new BsonDocumentCodec();
+/**
+ * A codec for GridFS Files
+ *
+ * @since 3.3
+ */
+public final class GridFSFileCodec implements Codec<GridFSFile> {
     private static final List<String> VALID_FIELDS = asList("_id", "filename", "length", "chunkSize", "uploadDate", "md5", "metadata");
     private final Codec<Document> documentCodec;
+    private final Codec<BsonDocument> bsonDocumentCodec;
 
     public GridFSFileCodec(final CodecRegistry registry) {
         this.documentCodec = notNull("DocumentCodec", notNull("registry", registry).get(Document.class));
+        this.bsonDocumentCodec = notNull("BsonDocumentCodec", registry.get(BsonDocument.class));
     }
 
     @Override
     public GridFSFile decode(final BsonReader reader, final DecoderContext decoderContext) {
-        BsonDocument bsonDocument = BSON_DOCUMENT_CODEC.decode(reader, decoderContext);
+        BsonDocument bsonDocument = bsonDocumentCodec.decode(reader, decoderContext);
 
         BsonValue id = bsonDocument.get("_id");
         String filename = bsonDocument.getString("filename").getValue();
@@ -72,6 +79,7 @@ final class GridFSFileCodec implements Codec<GridFSFile> {
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     public void encode(final BsonWriter writer, final GridFSFile value, final EncoderContext encoderContext) {
         BsonDocument bsonDocument = new BsonDocument();
         bsonDocument.put("_id", value.getId());
@@ -86,7 +94,12 @@ final class GridFSFileCodec implements Codec<GridFSFile> {
             bsonDocument.put("metadata", new BsonDocumentWrapper<Document>(metadata, documentCodec));
         }
 
-        BSON_DOCUMENT_CODEC.encode(writer, bsonDocument, encoderContext);
+        Document extraElements = value.getExtraElements();
+        if (extraElements != null) {
+            bsonDocument.putAll(new BsonDocumentWrapper<Document>(extraElements, documentCodec));
+        }
+
+        bsonDocumentCodec.encode(writer, bsonDocument, encoderContext);
     }
 
     @Override

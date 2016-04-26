@@ -14,8 +14,9 @@
  * limitations under the License.
  */
 
-package com.mongodb.client.gridfs.model
+package com.mongodb.client.gridfs.codecs
 
+import com.mongodb.client.gridfs.model.GridFSFile
 import org.bson.codecs.BsonValueCodecProvider
 import org.bson.codecs.DocumentCodecProvider
 import org.bson.codecs.ValueCodecProvider

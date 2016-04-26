@@ -1,11 +1,11 @@
 /*
- * Copyright (c) 2008-2014 MongoDB, Inc.
+ * Copyright 2016 MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *   http://www.apache.org/licenses/LICENSE-2.0
+ *    http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -14,10 +14,9 @@
  * limitations under the License.
  */
 
-package org.bson.codecs
+package com.mongodb.client.gridfs.codecs
 
 import com.mongodb.client.gridfs.model.GridFSFile
-import com.mongodb.client.gridfs.model.GridFSFileCodec
 import org.bson.BsonBinaryReader
 import org.bson.BsonBinaryWriter
 import org.bson.BsonObjectId
@@ -25,6 +24,13 @@ import org.bson.BsonString
 import org.bson.BsonType
 import org.bson.ByteBufNIO
 import org.bson.Document
+import org.bson.codecs.BsonTypeClassMap
+import org.bson.codecs.BsonValueCodecProvider
+import org.bson.codecs.Codec
+import org.bson.codecs.DecoderContext
+import org.bson.codecs.DocumentCodecProvider
+import org.bson.codecs.EncoderContext
+import org.bson.codecs.ValueCodecProvider
 import org.bson.codecs.configuration.CodecRegistry
 import org.bson.io.BasicOutputBuffer
 import org.bson.io.ByteBufferBsonInput
@@ -40,7 +46,7 @@ class GridFSFileCodecSpecification extends Specification {
 
     static final REGISTRY = fromProviders([new BsonValueCodecProvider(), new ValueCodecProvider(), new DocumentCodecProvider()])
     static final BSONTYPESREGISTRY = fromRegistries(
-            fromProviders(new DocumentCodecProvider(new BsonTypeClassMap([(BsonType.STRING) : BsonString]))), REGISTRY)
+            fromProviders(new DocumentCodecProvider(new BsonTypeClassMap([(BsonType.STRING): BsonString]))), REGISTRY)
     static final CODEC = new GridFSFileCodec(REGISTRY)
     static final ID = new BsonObjectId(new ObjectId())
     static final FILENAME = 'filename'
@@ -58,7 +64,9 @@ class GridFSFileCodecSpecification extends Specification {
         where:
         original << [
             new GridFSFile(ID, FILENAME, LENGTH, CHUNKSIZE, UPLOADDATE, MD5, null, null),
-            new GridFSFile(ID, FILENAME, LENGTH, CHUNKSIZE, UPLOADDATE, MD5, METADATA, null)
+            new GridFSFile(ID, FILENAME, LENGTH, CHUNKSIZE, UPLOADDATE, MD5, METADATA, null),
+            new GridFSFile(ID, FILENAME, LENGTH, CHUNKSIZE, UPLOADDATE, MD5, null, EXTRAELEMENTS),
+            new GridFSFile(ID, FILENAME, LENGTH, CHUNKSIZE, UPLOADDATE, MD5, METADATA, EXTRAELEMENTS)
         ]
 
     }
@@ -74,12 +82,6 @@ class GridFSFileCodecSpecification extends Specification {
 
         then:
         gridFSFileFromDocument == expected
-    }
-
-    def 'it should not encode extra elements'() {
-        expect:
-        roundTripped(new GridFSFile(ID, FILENAME, LENGTH, CHUNKSIZE, UPLOADDATE, MD5, METADATA, EXTRAELEMENTS)) ==
-                new GridFSFile(ID, FILENAME, LENGTH, CHUNKSIZE, UPLOADDATE, MD5, METADATA)
     }
 
     def 'it should use the users codec for metadata / extra elements'() {
