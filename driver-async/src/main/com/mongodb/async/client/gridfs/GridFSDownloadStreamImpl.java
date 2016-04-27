@@ -148,8 +148,6 @@ final class GridFSDownloadStreamImpl implements GridFSDownloadStream {
                         public void onResult(final AsyncBatchCursor<Document> result, final Throwable t) {
                             if (t != null) {
                                 callback.onResult(null, t);
-                            } else if (result == null) {
-                                chunkNotFound(chunkIndex, callback);
                             } else {
                                 cursor = result;
                                 checkAndFetchResults(amountRead, dst, callback);
@@ -163,7 +161,7 @@ final class GridFSDownloadStreamImpl implements GridFSDownloadStream {
                     if (t != null) {
                         callback.onResult(null, t);
                     } else if (result == null || result.isEmpty()) {
-                        chunkNotFound(chunkIndex, callback);
+                        callback.onResult(null, chunkNotFound(chunkIndex));
                     } else {
                         resultsQueue.addAll(result);
                         if (batchSize == 1) {
@@ -177,11 +175,10 @@ final class GridFSDownloadStreamImpl implements GridFSDownloadStream {
     }
 
     private void processResults(final int previousAmountRead, final ByteBuffer dst, final SingleResultCallback<Integer> callback) {
-        ChunkDataOrError chunkOrError = new ChunkDataOrError();
         int amountRead = previousAmountRead;
         while (currentPosition < fileInfo.getLength() && dst.remaining() > 0 && !resultsQueue.isEmpty()) {
             if (buffer == null || bufferOffset == buffer.length) {
-                getBufferFromChunk(resultsQueue.poll(), chunkIndex, chunkOrError);
+                ChunkDataOrError chunkOrError = getBufferFromChunk(resultsQueue.poll(), chunkIndex);
                 if (chunkOrError.hasError()) {
                     callback.onResult(null, chunkOrError.getError());
                     return;
@@ -232,18 +229,19 @@ final class GridFSDownloadStreamImpl implements GridFSDownloadStream {
         return hasInfo;
     }
 
-    private <T> void chunkNotFound(final int startChunkIndex, final SingleResultCallback<T> callback) {
-        callback.onResult(null, new MongoGridFSException(format("Could not find file chunk for file_id: %s at chunk index %s.",
-                fileInfo.getId(), startChunkIndex)));
+    private MongoGridFSException chunkNotFound(final int chunkIndex) {
+        return new MongoGridFSException(format("Could not find file chunk for files_id: %s at chunk index %s.", fileInfo.getId(),
+                chunkIndex));
     }
 
-    private void getBufferFromChunk(final Document chunk, final int expectedChunkIndex, final SingleResultCallback<byte[]> callback) {
+    private ChunkDataOrError getBufferFromChunk(final Document chunk, final int expectedChunkIndex) {
+        ChunkDataOrError chunkOrError = new ChunkDataOrError();
         if (chunk == null || chunk.getInteger("n") != expectedChunkIndex) {
-            chunkNotFound(expectedChunkIndex, callback);
-            return;
+            chunkOrError.set(null, chunkNotFound(expectedChunkIndex));
+            return chunkOrError;
         } else if (!(chunk.get("data") instanceof Binary)) {
-            callback.onResult(null, new MongoGridFSException("Unexpected data format for the chunk"));
-            return;
+            chunkOrError.set(null, new MongoGridFSException("Unexpected data format for the chunk"));
+            return chunkOrError;
         }
         byte[] data = chunk.get("data", Binary.class).getData();
 
@@ -255,11 +253,13 @@ final class GridFSDownloadStreamImpl implements GridFSDownloadStream {
         }
 
         if (data.length != expectedDataLength) {
-            callback.onResult(null, new MongoGridFSException(format("Chunk size data length is not the expected size. "
+            chunkOrError.set(null, new MongoGridFSException(format("Chunk size data length is not the expected size. "
                     + "The size was %s for file_id: %s chunk index %s it should be %s bytes.", data.length, fileInfo.getId(),
                     expectedChunkIndex, expectedDataLength)));
+            return chunkOrError;
         } else {
-            callback.onResult(data, null);
+            chunkOrError.set(data, null);
+            return chunkOrError;
         }
     }
 
@@ -315,11 +315,11 @@ final class GridFSDownloadStreamImpl implements GridFSDownloadStream {
         callback.onResult(null, new MongoGridFSException("The AsyncInputStream does not support concurrent reading."));
     }
 
-    private static class ChunkDataOrError implements SingleResultCallback<byte []> {
+    private static class ChunkDataOrError {
         private byte [] buffer = null;
         private Throwable error = null;
 
-        public void onResult(final byte [] result, final Throwable t) {
+        public void set(final byte [] result, final Throwable t) {
             buffer = result;
             error = t;
         }

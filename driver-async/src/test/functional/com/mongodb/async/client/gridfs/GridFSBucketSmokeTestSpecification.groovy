@@ -16,6 +16,7 @@
 
 package com.mongodb.async.client.gridfs
 
+import category.Slow
 import com.mongodb.MongoGridFSException
 import com.mongodb.async.client.FunctionalSpecification
 import com.mongodb.async.client.MongoClients
@@ -27,6 +28,7 @@ import org.bson.Document
 import org.bson.UuidRepresentation
 import org.bson.codecs.UuidCodec
 import org.bson.types.ObjectId
+import org.junit.experimental.categories.Category
 import spock.lang.Unroll
 
 import java.nio.ByteBuffer
@@ -120,13 +122,14 @@ class GridFSBucketSmokeTestSpecification extends FunctionalSpecification {
         'a large file to stream' | true       | 5          | false
     }
 
+    @Category(Slow)
     def 'should round trip with small chunks'() {
         given:
-        def contentBytes = new byte[1024 * 500];
+        def contentSize = 1024 * 500
+        def chunkSize = 10
+        def contentBytes = new byte[contentSize];
         new SecureRandom().nextBytes(contentBytes);
-        def expectedLength = contentBytes.length as Long
-        def expectedMD5 = MessageDigest.getInstance('MD5').digest(contentBytes).encodeHex().toString()
-        def options = new GridFSUploadOptions().chunkSizeBytes(10)
+        def options = new GridFSUploadOptions().chunkSizeBytes(chunkSize)
         ObjectId fileId
 
         when:
@@ -134,27 +137,56 @@ class GridFSBucketSmokeTestSpecification extends FunctionalSpecification {
 
         then:
         run(filesCollection.&count) == 1
-        run(chunksCollection.&count) == (1024 * 500) / 10
-
-        when:
-        def fileInfo = run(gridFSBucket.find().filter(eq('_id', fileId)).&first)
-
-        then:
-        fileInfo.getId().getValue() == fileId
-        fileInfo.getChunkSize() == options.getChunkSizeBytes()
-        fileInfo.getLength() == expectedLength
-        fileInfo.getMD5() == expectedMD5
-        fileInfo.getMetadata() == null
+        run(chunksCollection.&count) == contentSize / chunkSize
 
         when:
         def outStream = new ByteArrayOutputStream();
         def asyncOutputStream = toAsyncOutputStream(outStream);
-
-        def fileLength = run(gridFSBucket.&downloadToStream, fileId, asyncOutputStream)
+        run(gridFSBucket.&downloadToStream, fileId, asyncOutputStream)
 
         then:
-        fileLength == expectedLength
         outStream.toByteArray() == contentBytes
+    }
+
+    @Category(Slow)
+    def 'should round trip with data larger than the internal bufferSize'() {
+        given:
+        def contentSize = 1024 * 1024 * 5
+        def chunkSize = 1024 * 1024
+        def contentBytes = new byte[contentSize];
+        new SecureRandom().nextBytes(contentBytes);
+        def options = new GridFSUploadOptions().chunkSizeBytes(chunkSize)
+        ObjectId fileId
+
+        when:
+        fileId = run(gridFSBucket.&uploadFromStream, 'myFile', toAsyncInputStream(contentBytes), options);
+
+        then:
+        run(filesCollection.&count) == 1
+        run(chunksCollection.&count) == contentSize / chunkSize
+
+        when:
+        def outStream = new ByteArrayOutputStream();
+        def asyncOutputStream = toAsyncOutputStream(outStream);
+        run(gridFSBucket.&downloadToStream, fileId, asyncOutputStream)
+
+        then:
+        outStream.toByteArray() == contentBytes
+    }
+
+    def 'should throw a chunk not found error when there are no chunks'() {
+        given:
+        def contentSize = 1024 * 1024
+        def contentBytes = new byte[contentSize]
+        new SecureRandom().nextBytes(contentBytes)
+
+        when:
+        def fileId = run(gridFSBucket.&uploadFromStream, 'myFile', toAsyncInputStream(contentBytes));
+        run(chunksCollection.&deleteMany, eq('files_id', fileId))
+        run(gridFSBucket.openDownloadStream(fileId).&read, ByteBuffer.allocate(contentSize))
+
+        then:
+        thrown(MongoGridFSException)
     }
 
     def 'should read across chunks'() {
@@ -207,6 +239,9 @@ class GridFSBucketSmokeTestSpecification extends FunctionalSpecification {
 
         then:
         fileBuffer.array() == contentBytes
+
+        then:
+        run(downloadStream.&close) == null
     }
 
     def 'should round trip with a batchSize of 1'() {
