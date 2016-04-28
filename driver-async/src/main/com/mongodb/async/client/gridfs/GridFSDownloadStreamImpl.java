@@ -235,13 +235,10 @@ final class GridFSDownloadStreamImpl implements GridFSDownloadStream {
     }
 
     private ChunkDataOrError getBufferFromChunk(final Document chunk, final int expectedChunkIndex) {
-        ChunkDataOrError chunkOrError = new ChunkDataOrError();
         if (chunk == null || chunk.getInteger("n") != expectedChunkIndex) {
-            chunkOrError.set(null, chunkNotFound(expectedChunkIndex));
-            return chunkOrError;
+            return new ChunkDataOrError(null, chunkNotFound(expectedChunkIndex));
         } else if (!(chunk.get("data") instanceof Binary)) {
-            chunkOrError.set(null, new MongoGridFSException("Unexpected data format for the chunk"));
-            return chunkOrError;
+            return new ChunkDataOrError(null, new MongoGridFSException("Unexpected data format for the chunk"));
         }
         byte[] data = chunk.get("data", Binary.class).getData();
 
@@ -253,13 +250,11 @@ final class GridFSDownloadStreamImpl implements GridFSDownloadStream {
         }
 
         if (data.length != expectedDataLength) {
-            chunkOrError.set(null, new MongoGridFSException(format("Chunk size data length is not the expected size. "
+            return new ChunkDataOrError(null, new MongoGridFSException(format("Chunk size data length is not the expected size. "
                     + "The size was %s for file_id: %s chunk index %s it should be %s bytes.", data.length, fileInfo.getId(),
                     expectedChunkIndex, expectedDataLength)));
-            return chunkOrError;
         } else {
-            chunkOrError.set(data, null);
-            return chunkOrError;
+            return new ChunkDataOrError(data, null);
         }
     }
 
@@ -319,7 +314,7 @@ final class GridFSDownloadStreamImpl implements GridFSDownloadStream {
         private byte [] buffer = null;
         private Throwable error = null;
 
-        public void set(final byte [] result, final Throwable t) {
+        public ChunkDataOrError(final byte [] result, final Throwable t) {
             buffer = result;
             error = t;
         }
