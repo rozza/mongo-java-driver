@@ -171,7 +171,7 @@ class GridFSBucketSpecification extends Specification {
         def stream = gridFSBucket.openUploadStream('filename')
 
         then:
-        expect stream, isTheSameAs(new GridFSUploadStreamImpl(filesCollection, chunksCollection, stream.getFileId(), 'filename',
+        expect stream, isTheSameAs(new GridFSUploadStreamImpl(filesCollection, chunksCollection, stream.getId(), 'filename',
                 255, null), ['md5', 'closeLock'])
     }
 
@@ -629,18 +629,27 @@ class GridFSBucketSpecification extends Specification {
 
     def 'should rename a file'() {
         given:
-        def fileId = new ObjectId()
+        def id = new ObjectId()
+        def fileId = new BsonObjectId(id)
         def filesCollection = Mock(MongoCollection)
         def newFilename = 'newFilename'
         def gridFSBucket = new GridFSBucketImpl('fs', 255, filesCollection, Stub(MongoCollection))
 
         when:
+        gridFSBucket.rename(id, newFilename)
+
+        then:
+        1 * filesCollection.updateOne(new BsonDocument('_id', fileId),
+                new BsonDocument('$set',
+                        new BsonDocument('filename', new BsonString(newFilename)))) >> new UpdateResult.UnacknowledgedUpdateResult()
+
+        when:
         gridFSBucket.rename(fileId, newFilename)
 
         then:
-        1 * filesCollection.updateOne(new Document('_id', fileId),
-                new Document('$set',
-                        new Document('filename', newFilename))) >> new UpdateResult.UnacknowledgedUpdateResult()
+        1 * filesCollection.updateOne(new BsonDocument('_id', fileId),
+                new BsonDocument('$set',
+                        new BsonDocument('filename', new BsonString(newFilename)))) >> new UpdateResult.UnacknowledgedUpdateResult()
     }
 
     def 'should throw an exception renaming non existent file'() {

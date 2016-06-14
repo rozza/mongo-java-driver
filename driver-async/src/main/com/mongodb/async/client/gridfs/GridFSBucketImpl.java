@@ -33,6 +33,7 @@ import com.mongodb.diagnostics.logging.Logger;
 import com.mongodb.diagnostics.logging.Loggers;
 import org.bson.BsonDocument;
 import org.bson.BsonObjectId;
+import org.bson.BsonString;
 import org.bson.BsonValue;
 import org.bson.Document;
 import org.bson.conversions.Bson;
@@ -46,7 +47,7 @@ import static com.mongodb.internal.async.ErrorHandlingResultCallback.errorHandli
 import static java.lang.String.format;
 import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
 
-@SuppressWarnings("deprecation")
+
 final class GridFSBucketImpl implements GridFSBucket {
     private static final Logger LOGGER = Loggers.getLogger("client.gridfs");
     private static final int DEFAULT_CHUNKSIZE_BYTES = 255 * 1024;
@@ -132,9 +133,19 @@ final class GridFSBucketImpl implements GridFSBucket {
 
     @Override
     public GridFSUploadStream openUploadStream(final String filename, final GridFSUploadOptions options) {
+        return openUploadStreamWithId(new BsonObjectId(), filename, options);
+    }
+
+    @Override
+    public GridFSUploadStream openUploadStreamWithId(final BsonValue id, final String filename) {
+        return openUploadStreamWithId(id, filename, new GridFSUploadOptions());
+    }
+
+    @Override
+    public GridFSUploadStream openUploadStreamWithId(final BsonValue id, final String filename, final GridFSUploadOptions options) {
         notNull("filename", filename);
         int chunkSize = options.getChunkSizeBytes() == null ? chunkSizeBytes : options.getChunkSizeBytes();
-        return new GridFSUploadStreamImpl(filesCollection, chunksCollection, new ObjectId(), filename, chunkSize, options.getMetadata(),
+        return new GridFSUploadStreamImpl(filesCollection, chunksCollection, id, filename, chunkSize, options.getMetadata(),
                 new GridFSIndexCheckImpl(filesCollection, chunksCollection));
     }
 
@@ -146,12 +157,34 @@ final class GridFSBucketImpl implements GridFSBucket {
     @Override
     public void uploadFromStream(final String filename, final AsyncInputStream source, final GridFSUploadOptions options,
                                  final SingleResultCallback<ObjectId> callback) {
+        final BsonObjectId id = new BsonObjectId();
+        uploadFromStreamWithId(id, filename, source, options, new SingleResultCallback<Void>() {
+            @Override
+            public void onResult(final Void result, final Throwable t) {
+                if (t != null) {
+                    callback.onResult(null, t);
+                } else {
+                    callback.onResult(id.getValue(), null);
+                }
+            }
+        });
+    }
+
+    @Override
+    public void uploadFromStreamWithId(final BsonValue id, final String filename, final AsyncInputStream source,
+                                       final SingleResultCallback<Void> callback) {
+        uploadFromStreamWithId(id, filename, source, new GridFSUploadOptions(), callback);
+    }
+
+    @Override
+    public void uploadFromStreamWithId(final BsonValue id, final String filename, final AsyncInputStream source,
+                                       final GridFSUploadOptions options, final SingleResultCallback<Void> callback) {
         notNull("filename", filename);
         notNull("source", source);
         notNull("options", options);
         notNull("callback", callback);
         int chunkSize = options.getChunkSizeBytes() == null ? chunkSizeBytes : options.getChunkSizeBytes();
-        readAndWriteInputStream(source, openUploadStream(filename, options), ByteBuffer.allocate(chunkSize),
+        readAndWriteInputStream(source, openUploadStreamWithId(id, filename, options), ByteBuffer.allocate(chunkSize),
                 errorHandlingCallback(callback, LOGGER));
     }
 
@@ -224,16 +257,21 @@ final class GridFSBucketImpl implements GridFSBucket {
 
     @Override
     public void delete(final ObjectId id, final SingleResultCallback<Void> callback) {
+        delete(new BsonObjectId(id), callback);
+    }
+
+    @Override
+    public void delete(final BsonValue id, final SingleResultCallback<Void> callback) {
         notNull("id", id);
         notNull("callback", callback);
         final SingleResultCallback<Void> errHandlingCallback = errorHandlingCallback(callback, LOGGER);
-        filesCollection.deleteOne(new BsonDocument("_id", new BsonObjectId(id)), new SingleResultCallback<DeleteResult>() {
+        filesCollection.deleteOne(new BsonDocument("_id", id), new SingleResultCallback<DeleteResult>() {
             @Override
             public void onResult(final DeleteResult filesResult, final Throwable t) {
                 if (t != null) {
                     errHandlingCallback.onResult(null, t);
                 } else {
-                    chunksCollection.deleteMany(new BsonDocument("files_id", new BsonObjectId(id)),
+                    chunksCollection.deleteMany(new BsonDocument("files_id", id),
                             new SingleResultCallback<DeleteResult>() {
                                 @Override
                                 public void onResult(final DeleteResult chunksResult, final Throwable t) {
@@ -254,11 +292,17 @@ final class GridFSBucketImpl implements GridFSBucket {
 
     @Override
     public void rename(final ObjectId id, final String newFilename, final SingleResultCallback<Void> callback) {
+        rename(new BsonObjectId(id), newFilename, callback);
+    }
+
+    @Override
+    public void rename(final BsonValue id, final String newFilename, final SingleResultCallback<Void> callback) {
         notNull("id", id);
         notNull("newFilename", newFilename);
         notNull("callback", callback);
         final SingleResultCallback<Void> errHandlingCallback = errorHandlingCallback(callback, LOGGER);
-        filesCollection.updateOne(new Document("_id", id), new Document("$set", new Document("filename", newFilename)),
+        filesCollection.updateOne(new BsonDocument("_id", id), new BsonDocument("$set",
+                new BsonDocument("filename", new BsonString(newFilename))),
                 new SingleResultCallback<UpdateResult>() {
 
                     @Override
@@ -333,7 +377,7 @@ final class GridFSBucketImpl implements GridFSBucket {
     }
 
     private void readAndWriteInputStream(final AsyncInputStream source, final GridFSUploadStream uploadStream, final ByteBuffer buffer,
-                                         final SingleResultCallback<ObjectId> callback) {
+                                         final SingleResultCallback<Void> callback) {
         buffer.clear();
         source.read(buffer, new SingleResultCallback<Integer>() {
             @Override
@@ -366,16 +410,7 @@ final class GridFSBucketImpl implements GridFSBucket {
                         }
                     });
                 } else {
-                    uploadStream.close(new SingleResultCallback<Void>() {
-                        @Override
-                        public void onResult(final Void result, final Throwable t) {
-                            if (t != null) {
-                                callback.onResult(null, t);
-                            } else {
-                                callback.onResult(uploadStream.getFileId(), null);
-                            }
-                        }
-                    });
+                    uploadStream.close(callback);
                 }
             }
         });

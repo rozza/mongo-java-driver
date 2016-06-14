@@ -126,7 +126,7 @@ public final class GridFSTour {
             @Override
             public void onResult(final Integer result, final Throwable t) {
                 uploadLatch2.countDown();
-                System.out.println("The fileId of the uploaded file is: " + uploadStream.getFileId().toHexString());
+                System.out.println("The fileId of the uploaded file is: " + uploadStream.getObjectId().toHexString());
 
                 uploadStream.close(new SingleResultCallback<Void>() {
                     @Override

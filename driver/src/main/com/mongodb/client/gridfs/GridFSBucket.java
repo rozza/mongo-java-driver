@@ -139,6 +139,37 @@ public interface GridFSBucket {
     GridFSUploadStream openUploadStream(String filename, GridFSUploadOptions options);
 
     /**
+     * Opens a Stream that the application can write the contents of the file to.
+     *<p>
+     * As the application writes the contents to the returned Stream, the contents are uploaded as chunks in the chunks collection. When
+     * the application signals it is done writing the contents of the file by calling close on the returned Stream, a files collection
+     * document is created in the files collection.
+     *</p>
+     *
+     * @param id the custom id value of the file
+     * @param filename the filename for the stream
+     * @return the GridFSUploadStream that provides the ObjectId for the file to be uploaded and the Stream to which the
+     *          application will write the contents.
+     */
+    GridFSUploadStream openUploadStreamWithId(BsonValue id, String filename);
+
+    /**
+     * Opens a Stream that the application can write the contents of the file to.
+     *<p>
+     * As the application writes the contents to the returned Stream, the contents are uploaded as chunks in the chunks collection. When
+     * the application signals it is done writing the contents of the file by calling close on the returned Stream, a files collection
+     * document is created in the files collection.
+     *</p>
+     *
+     * @param id the custom id value of the file
+     * @param filename the filename for the stream
+     * @param options the GridFSUploadOptions
+     * @return the GridFSUploadStream that includes the _id for the file to be uploaded and the Stream to which the
+     *          application will write the contents.
+     */
+    GridFSUploadStream openUploadStreamWithId(BsonValue id, String filename, GridFSUploadOptions options);
+
+    /**
      * Uploads a user file to a GridFS bucket.
      *<p>
      * Reads the contents of the user file from the {@code Stream} and uploads it as chunks in the chunks collection. After all the
@@ -166,6 +197,33 @@ public interface GridFSBucket {
     ObjectId uploadFromStream(String filename, InputStream source, GridFSUploadOptions options);
 
     /**
+     * Uploads a user file to a GridFS bucket.
+     *<p>
+     * Reads the contents of the user file from the {@code Stream} and uploads it as chunks in the chunks collection. After all the
+     * chunks have been uploaded, it creates a files collection document for {@code filename} in the files collection.
+     *</p>
+     *
+     * @param id the custom id value of the file
+     * @param filename the filename for the stream
+     * @param source the Stream providing the file data
+     */
+    void uploadFromStreamWithId(BsonValue id, String filename, InputStream source);
+
+    /**
+     * Uploads a user file to a GridFS bucket.
+     * <p>
+     * Reads the contents of the user file from the {@code Stream} and uploads it as chunks in the chunks collection. After all the
+     * chunks have been uploaded, it creates a files collection document for {@code filename} in the files collection.
+     * </p>
+     *
+     * @param id the custom id value of the file
+     * @param filename the filename for the stream
+     * @param source the Stream providing the file data
+     * @param options the GridFSUploadOptions
+     */
+    void uploadFromStreamWithId(BsonValue id, String filename, InputStream source, GridFSUploadOptions options);
+
+    /**
      * Opens a Stream from which the application can read the contents of the stored file specified by {@code id}.
      *
      * @param id the ObjectId of the file to be put into a stream.
@@ -186,9 +244,7 @@ public interface GridFSBucket {
      *
      * @param id the custom id value of the file, to be put into a stream.
      * @return the stream
-     * @deprecated using custom id values for with GridFS is no longer supported
      */
-    @Deprecated
     GridFSDownloadStream openDownloadStream(BsonValue id);
 
     /**
@@ -196,9 +252,7 @@ public interface GridFSBucket {
      *
      * @param id the custom id of the file, to be written to the destination stream
      * @param destination the destination stream
-     * @deprecated using custom id values for with GridFS is no longer supported
      */
-    @Deprecated
     void downloadToStream(BsonValue id, OutputStream destination);
 
     /**
@@ -271,12 +325,26 @@ public interface GridFSBucket {
     void delete(ObjectId id);
 
     /**
+     * Given a {@code id}, delete this stored file's files collection document and associated chunks from a GridFS bucket.
+     * @param id the id of the file to be deleted
+     */
+    void delete(BsonValue id);
+
+    /**
      * Renames the stored file with the specified {@code id}.
      *
      * @param id the id of the file in the files collection to rename
      * @param newFilename the new filename for the file
      */
     void rename(ObjectId id, String newFilename);
+
+    /**
+     * Renames the stored file with the specified {@code id}.
+     *
+     * @param id the id of the file in the files collection to rename
+     * @param newFilename the new filename for the file
+     */
+    void rename(BsonValue id, String newFilename);
 
     /**
      * Drops the data associated with this bucket from the database.

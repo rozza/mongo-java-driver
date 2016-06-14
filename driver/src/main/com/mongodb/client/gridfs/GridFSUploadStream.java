@@ -17,6 +17,7 @@
 package com.mongodb.client.gridfs;
 
 import com.mongodb.annotations.NotThreadSafe;
+import org.bson.BsonValue;
 import org.bson.types.ObjectId;
 
 import java.io.OutputStream;
@@ -38,8 +39,24 @@ public abstract class GridFSUploadStream extends OutputStream {
      * Gets the {@link ObjectId} for the file to be uploaded
      *
      * @return the ObjectId for the file to be uploaded
+     * @deprecated use getObjectId() instead.
      */
+    @Deprecated
     public abstract ObjectId getFileId();
+
+    /**
+     * Gets the {@link ObjectId} for the file to be uploaded or throws an error if an alternative BsonType has been used for the id.
+     *
+     * @return the ObjectId for the file to be uploaded
+     */
+    public abstract ObjectId getObjectId();
+
+    /**
+     * Gets the {@link BsonValue} for the file to be uploaded
+     *
+     * @return the BsonValue for the file to be uploaded
+     */
+    public abstract BsonValue getId();
 
     /**
      * Aborts the upload and deletes any data.

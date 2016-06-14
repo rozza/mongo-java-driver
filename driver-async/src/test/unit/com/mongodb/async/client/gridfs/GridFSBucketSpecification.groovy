@@ -176,7 +176,7 @@ class GridFSBucketSpecification extends Specification {
         def stream = gridFSBucket.openUploadStream('filename')
 
         then:
-        expect stream, isTheSameAs(new GridFSUploadStreamImpl(filesCollection, chunksCollection, stream.getFileId(), 'filename', 255,
+        expect stream, isTheSameAs(new GridFSUploadStreamImpl(filesCollection, chunksCollection, stream.getId(), 'filename', 255,
                 null, new GridFSIndexCheckImpl(filesCollection, chunksCollection)), ['md5', 'closeAndWritingLock'])
     }
 

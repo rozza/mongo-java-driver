@@ -93,7 +93,7 @@ public final class GridFSTour {
         GridFSUploadStream uploadStream = gridFSBucket.openUploadStream("sampleData");
         uploadStream.write(data);
         uploadStream.close();
-        System.out.println("The fileId of the uploaded file is: " + uploadStream.getFileId().toHexString());
+        System.out.println("The fileId of the uploaded file is: " + uploadStream.getObjectId().toHexString());
 
         /*
          * Find documents

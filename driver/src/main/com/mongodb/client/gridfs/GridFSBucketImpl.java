@@ -31,6 +31,7 @@ import com.mongodb.client.result.DeleteResult;
 import com.mongodb.client.result.UpdateResult;
 import org.bson.BsonDocument;
 import org.bson.BsonObjectId;
+import org.bson.BsonString;
 import org.bson.BsonValue;
 import org.bson.Document;
 import org.bson.conversions.Bson;
@@ -46,7 +47,6 @@ import static com.mongodb.assertions.Assertions.notNull;
 import static java.lang.String.format;
 import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
 
-@SuppressWarnings("deprecation")
 final class GridFSBucketImpl implements GridFSBucket {
     private static final int DEFAULT_CHUNKSIZE_BYTES = 255 * 1024;
     private final String bucketName;
@@ -128,9 +128,19 @@ final class GridFSBucketImpl implements GridFSBucket {
 
     @Override
     public GridFSUploadStream openUploadStream(final String filename, final GridFSUploadOptions options) {
+        return openUploadStreamWithId(new BsonObjectId(), filename, options);
+    }
+
+    @Override
+    public GridFSUploadStream openUploadStreamWithId(final BsonValue id, final String filename) {
+        return openUploadStreamWithId(id, filename, new GridFSUploadOptions());
+    }
+
+    @Override
+    public GridFSUploadStream openUploadStreamWithId(final BsonValue id, final String filename, final GridFSUploadOptions options) {
         int chunkSize = options.getChunkSizeBytes() == null ? chunkSizeBytes : options.getChunkSizeBytes();
         checkCreateIndex();
-        return new GridFSUploadStreamImpl(filesCollection, chunksCollection, new ObjectId(), filename, chunkSize, options.getMetadata());
+        return new GridFSUploadStreamImpl(filesCollection, chunksCollection, id, filename, chunkSize, options.getMetadata());
     }
 
     @Override
@@ -140,7 +150,20 @@ final class GridFSBucketImpl implements GridFSBucket {
 
     @Override
     public ObjectId uploadFromStream(final String filename, final InputStream source, final GridFSUploadOptions options) {
-        GridFSUploadStream uploadStream = openUploadStream(filename, options);
+        ObjectId id = new ObjectId();
+        uploadFromStreamWithId(new BsonObjectId(id), filename, source, options);
+        return id;
+    }
+
+    @Override
+    public void uploadFromStreamWithId(final BsonValue id, final String filename, final InputStream source) {
+        uploadFromStreamWithId(id, filename, source, new GridFSUploadOptions());
+    }
+
+    @Override
+    public void uploadFromStreamWithId(final BsonValue id, final String filename, final InputStream source, final
+    GridFSUploadOptions options) {
+        GridFSUploadStream uploadStream = openUploadStreamWithId(id, filename, options);
         int chunkSize = options.getChunkSizeBytes() == null ? chunkSizeBytes : options.getChunkSizeBytes();
         byte[] buffer = new byte[chunkSize];
         int len;
@@ -153,7 +176,6 @@ final class GridFSBucketImpl implements GridFSBucket {
             uploadStream.abort();
             throw new MongoGridFSException("IOException when reading from the InputStream", e);
         }
-        return uploadStream.getFileId();
     }
 
     @Override
@@ -208,21 +230,31 @@ final class GridFSBucketImpl implements GridFSBucket {
 
     @Override
     public void delete(final ObjectId id) {
-        DeleteResult result = filesCollection.deleteOne(new BsonDocument("_id", new BsonObjectId(id)));
-        chunksCollection.deleteMany(new BsonDocument("files_id", new BsonObjectId(id)));
+        delete(new BsonObjectId(id));
+    }
+
+    @Override
+    public void delete(final BsonValue id) {
+        DeleteResult result = filesCollection.deleteOne(new BsonDocument("_id", id));
+        chunksCollection.deleteMany(new BsonDocument("files_id", id));
 
         if (result.wasAcknowledged() && result.getDeletedCount() == 0) {
-            throw new MongoGridFSException(format("No file found with the ObjectId: %s", id));
+            throw new MongoGridFSException(format("No file found with the id: %s", id));
         }
     }
 
     @Override
     public void rename(final ObjectId id, final String newFilename) {
-        UpdateResult updateResult = filesCollection.updateOne(new Document("_id", id),
-                new Document("$set", new Document("filename", newFilename)));
+        rename(new BsonObjectId(id), newFilename);
+    }
+
+    @Override
+    public void rename(final BsonValue id, final String newFilename) {
+        UpdateResult updateResult = filesCollection.updateOne(new BsonDocument("_id", id),
+                new BsonDocument("$set", new BsonDocument("filename", new BsonString(newFilename))));
 
         if (updateResult.wasAcknowledged() && updateResult.getMatchedCount() == 0) {
-            throw new MongoGridFSException(format("No file found with the ObjectId: %s", id));
+            throw new MongoGridFSException(format("No file found with the id: %s", id));
         }
     }
 

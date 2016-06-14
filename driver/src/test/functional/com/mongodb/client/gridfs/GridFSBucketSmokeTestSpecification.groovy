@@ -24,12 +24,14 @@ import com.mongodb.client.gridfs.model.GridFSDownloadByNameOptions
 import com.mongodb.client.gridfs.model.GridFSFile
 import com.mongodb.client.gridfs.model.GridFSUploadOptions
 import org.bson.BsonDocument
+import org.bson.BsonString
 import org.bson.Document
 import org.bson.UuidRepresentation
 import org.bson.codecs.UuidCodec
 import org.bson.types.ObjectId
 import spock.lang.Unroll
 
+import java.nio.ByteBuffer
 import java.security.MessageDigest
 
 import static com.mongodb.Fixture.getDefaultDatabaseName
@@ -78,7 +80,7 @@ class GridFSBucketSmokeTestSpecification extends FunctionalSpecification {
             def outputStream = gridFSBucket.openUploadStream('myFile')
             outputStream.write(contentBytes)
             outputStream.close()
-            fileId = outputStream.getFileId()
+            fileId = outputStream.getObjectId()
         }
 
         then:
@@ -147,6 +149,35 @@ class GridFSBucketSmokeTestSpecification extends FunctionalSpecification {
 
         then:
         gridFSContentBytes == contentBytes
+    }
+
+    def 'should handle custom ids'() {
+        given:
+        def content = multiChunkString
+        def contentBytes = content as byte[]
+        def fileId = new BsonString('myFile')
+        def byteBuffer = ByteBuffer.allocate(contentBytes.length)
+        byte[] gridFSContentBytes
+
+        when:
+        gridFSBucket.uploadFromStreamWithId(fileId, 'myFile', new ByteArrayInputStream(contentBytes));
+        gridFSContentBytes = gridFSBucket.openDownloadStream(fileId).batchSize(1).getBytes()
+
+        then:
+        gridFSContentBytes == contentBytes
+
+        when:
+        gridFSBucket.rename(fileId, 'newName')
+
+        then:
+        gridFSBucket.openDownloadStreamByName('newName').getBytes() == contentBytes
+
+        when:
+        gridFSBucket.delete(fileId)
+
+        then:
+        filesCollection.count() == 0
+        chunksCollection.count() == 0
     }
 
     def 'should use custom uploadOptions when uploading' () {
