@@ -36,12 +36,25 @@ import static com.mongodb.assertions.Assertions.notNull;
 public class NettyStreamFactoryFactory implements StreamFactoryFactory {
 
     private final EventLoopGroup eventLoopGroup;
-    private final Class<? extends SocketChannel> channelType;
+    private final Class<? extends SocketChannel> socketChannelClass;
     private final ByteBufAllocator allocator;
+
+    /**
+     * Construct an instance with the given {@code EventLoopGroup} and {@code ByteBufAllocator}.
+     *
+     * @param eventLoopGroup the non-null event loop group
+     * @param allocator the non-null byte buf allocator
+     * @deprecated Use {@link NettyStreamFactoryFactory#builder()} instead to construct the {@code  NettyStreamFactoryFactory}.
+     */
+    @Deprecated
+    public NettyStreamFactoryFactory(final EventLoopGroup eventLoopGroup, final ByteBufAllocator allocator) {
+        this(builder().eventLoopGroup(eventLoopGroup).allocator(allocator));
+    }
 
     /**
      * Gets a builder for an instance of {@code NettyStreamFactoryFactory}.
      * @return the builder
+     * @since 3.3
      */
     public static Builder builder() {
         return new Builder();
@@ -49,11 +62,18 @@ public class NettyStreamFactoryFactory implements StreamFactoryFactory {
 
     /**
      * A builder for an instance of {@code NettyStreamFactoryFactory}.
+     *
+     * @since 3.3
      */
     public static final class Builder {
-        private ByteBufAllocator allocator = ByteBufAllocator.DEFAULT;
-        private Class<? extends SocketChannel> channelType = NioSocketChannel.class;
-        private EventLoopGroup eventLoopGroup; // do not prematurely create the event loop
+        private ByteBufAllocator allocator;
+        private Class<? extends SocketChannel> socketChannelClass;
+        private EventLoopGroup eventLoopGroup;
+
+        private Builder() {
+            allocator(ByteBufAllocator.DEFAULT);
+            socketChannelClass(NioSocketChannel.class);
+        }
 
         /**
          * Sets the allocator.
@@ -67,13 +87,13 @@ public class NettyStreamFactoryFactory implements StreamFactoryFactory {
         }
 
         /**
-         * Sets the channel type.
+         * Sets the socket channel class
          *
-         * @param channelType the class which is used to create channel instances from
+         * @param socketChannelClass the socket channel class
          * @return this
          */
-        public Builder channelType(final Class<? extends SocketChannel> channelType) {
-            this.channelType = notNull("channelType", channelType);
+        public Builder socketChannelClass(final Class<? extends SocketChannel> socketChannelClass) {
+            this.socketChannelClass = notNull("socketChannelClass", socketChannelClass);
             return this;
         }
 
@@ -99,21 +119,21 @@ public class NettyStreamFactoryFactory implements StreamFactoryFactory {
 
     @Override
     public StreamFactory create(final SocketSettings socketSettings, final SslSettings sslSettings) {
-        return new NettyStreamFactory(socketSettings, sslSettings, eventLoopGroup, channelType, allocator);
+        return new NettyStreamFactory(socketSettings, sslSettings, eventLoopGroup, socketChannelClass, allocator);
     }
 
     @Override
     public String toString() {
         return "NettyStreamFactoryFactory{"
                 + "eventLoopGroup=" + eventLoopGroup
-                + ", channelType=" + channelType
+                + ", socketChannelClass=" + socketChannelClass
                 + ", allocator=" + allocator
                 + '}';
     }
 
-    NettyStreamFactoryFactory(final Builder builder) {
+    private NettyStreamFactoryFactory(final Builder builder) {
         allocator = builder.allocator;
-        channelType = builder.channelType;
+        socketChannelClass = builder.socketChannelClass;
         if (builder.eventLoopGroup != null) {
             eventLoopGroup = builder.eventLoopGroup;
         } else {

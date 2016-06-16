@@ -65,7 +65,7 @@ final class NettyStream implements Stream {
     private final SocketSettings settings;
     private final SslSettings sslSettings;
     private final EventLoopGroup workerGroup;
-    private final Class<? extends SocketChannel> channelType;
+    private final Class<? extends SocketChannel> socketChannelClass;
     private final ByteBufAllocator allocator;
 
     private volatile boolean isClosed;
@@ -76,13 +76,13 @@ final class NettyStream implements Stream {
     private volatile Throwable pendingException;
 
     public NettyStream(final ServerAddress address, final SocketSettings settings, final SslSettings sslSettings,
-                       final EventLoopGroup workerGroup, final Class<? extends SocketChannel> channelType,
+                       final EventLoopGroup workerGroup, final Class<? extends SocketChannel> socketChannelClass,
                        final ByteBufAllocator allocator) {
         this.address = address;
         this.settings = settings;
         this.sslSettings = sslSettings;
         this.workerGroup = workerGroup;
-        this.channelType = channelType;
+        this.socketChannelClass = socketChannelClass;
         this.allocator = allocator;
     }
 
@@ -102,7 +102,7 @@ final class NettyStream implements Stream {
     public void openAsync(final AsyncCompletionHandler<Void> handler) {
         Bootstrap bootstrap = new Bootstrap();
         bootstrap.group(workerGroup);
-        bootstrap.channel(channelType);
+        bootstrap.channel(socketChannelClass);
 
         bootstrap.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, settings.getConnectTimeout(MILLISECONDS));
         bootstrap.option(ChannelOption.TCP_NODELAY, true);
