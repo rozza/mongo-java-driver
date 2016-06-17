@@ -21,7 +21,7 @@ import com.mongodb.ReadPreference;
 import com.mongodb.WriteConcern;
 import com.mongodb.annotations.ThreadSafe;
 import com.mongodb.async.SingleResultCallback;
-import com.mongodb.client.gridfs.model.GridFSDownloadByNameOptions;
+import com.mongodb.client.gridfs.model.GridFSDownloadOptions;
 import com.mongodb.client.gridfs.model.GridFSUploadOptions;
 import org.bson.BsonValue;
 import org.bson.conversions.Bson;
@@ -148,7 +148,7 @@ public interface GridFSBucket {
      * @return the GridFSUploadStream that provides the ObjectId for the file to be uploaded and the Stream to which the
      * application will write the contents.
      */
-    GridFSUploadStream openUploadStreamWithId(BsonValue id, String filename);
+    GridFSUploadStream openUploadStream(BsonValue id, String filename);
 
     /**
      * Opens a AsyncOutputStream that the application can write the contents of the file to.
@@ -164,7 +164,7 @@ public interface GridFSBucket {
      * @return the GridFSUploadStream that provides the ObjectId for the file to be uploaded and the Stream to which the
      * application will write the contents.
      */
-    GridFSUploadStream openUploadStreamWithId(BsonValue id, String filename, GridFSUploadOptions options);
+    GridFSUploadStream openUploadStream(BsonValue id, String filename, GridFSUploadOptions options);
 
     /**
      * Uploads a user file to a GridFS bucket.
@@ -205,7 +205,7 @@ public interface GridFSBucket {
      * @param source   the Stream providing the file data
      * @param callback with the ObjectId of the uploaded file.
      */
-    void uploadFromStreamWithId(BsonValue id, String filename, AsyncInputStream source, SingleResultCallback<Void> callback);
+    void uploadFromStream(BsonValue id, String filename, AsyncInputStream source, SingleResultCallback<Void> callback);
 
     /**
      * Uploads a user file to a GridFS bucket.
@@ -220,8 +220,8 @@ public interface GridFSBucket {
      * @param options  the GridFSUploadOptions
      * @param callback with the ObjectId of the uploaded file.
      */
-    void uploadFromStreamWithId(BsonValue id, String filename, AsyncInputStream source, GridFSUploadOptions options,
-                                SingleResultCallback<Void> callback);
+    void uploadFromStream(BsonValue id, String filename, AsyncInputStream source, GridFSUploadOptions options,
+                          SingleResultCallback<Void> callback);
 
     /**
      * Opens a AsyncInputStream from which the application can read the contents of the stored file specified by {@code id}.
@@ -266,7 +266,7 @@ public interface GridFSBucket {
      * @param filename the name of the file to be downloaded
      * @return the stream
      */
-    GridFSDownloadStream openDownloadStreamByName(String filename);
+    GridFSDownloadStream openDownloadStream(String filename);
 
     /**
      * Opens a Stream from which the application can read the contents of the stored file specified by {@code filename} and the revision
@@ -276,7 +276,7 @@ public interface GridFSBucket {
      * @param options  the download options
      * @return the stream
      */
-    GridFSDownloadStream openDownloadStreamByName(String filename, GridFSDownloadByNameOptions options);
+    GridFSDownloadStream openDownloadStream(String filename, GridFSDownloadOptions options);
 
     /**
      * Downloads the contents of the latest version of the stored file specified by {@code filename} and writes the contents to
@@ -286,7 +286,7 @@ public interface GridFSBucket {
      * @param destination the destination stream
      * @param callback    the callback that is completed once the file has been downloaded
      */
-    void downloadToStreamByName(String filename, AsyncOutputStream destination, SingleResultCallback<Long> callback);
+    void downloadToStream(String filename, AsyncOutputStream destination, SingleResultCallback<Long> callback);
 
     /**
      * Downloads the contents of the stored file specified by {@code filename} and by the revision in {@code options} and writes the
@@ -297,8 +297,8 @@ public interface GridFSBucket {
      * @param options     the download options
      * @param callback    the callback that is completed once the file has been downloaded
      */
-    void downloadToStreamByName(String filename, AsyncOutputStream destination, GridFSDownloadByNameOptions options,
-                                SingleResultCallback<Long> callback);
+    void downloadToStream(String filename, AsyncOutputStream destination, GridFSDownloadOptions options,
+                          SingleResultCallback<Long> callback);
 
     /**
      * Finds all documents in the files collection.

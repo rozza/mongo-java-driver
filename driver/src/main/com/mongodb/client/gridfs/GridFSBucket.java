@@ -21,6 +21,7 @@ import com.mongodb.ReadPreference;
 import com.mongodb.WriteConcern;
 import com.mongodb.annotations.ThreadSafe;
 import com.mongodb.client.gridfs.model.GridFSDownloadByNameOptions;
+import com.mongodb.client.gridfs.model.GridFSDownloadOptions;
 import com.mongodb.client.gridfs.model.GridFSUploadOptions;
 import org.bson.BsonValue;
 import org.bson.conversions.Bson;
@@ -35,6 +36,7 @@ import java.io.OutputStream;
  * @since 3.1
  */
 @ThreadSafe
+@SuppressWarnings("deprecation")
 public interface GridFSBucket {
 
     /**
@@ -151,7 +153,7 @@ public interface GridFSBucket {
      * @return the GridFSUploadStream that provides the ObjectId for the file to be uploaded and the Stream to which the
      *          application will write the contents.
      */
-    GridFSUploadStream openUploadStreamWithId(BsonValue id, String filename);
+    GridFSUploadStream openUploadStream(BsonValue id, String filename);
 
     /**
      * Opens a Stream that the application can write the contents of the file to.
@@ -167,7 +169,7 @@ public interface GridFSBucket {
      * @return the GridFSUploadStream that includes the _id for the file to be uploaded and the Stream to which the
      *          application will write the contents.
      */
-    GridFSUploadStream openUploadStreamWithId(BsonValue id, String filename, GridFSUploadOptions options);
+    GridFSUploadStream openUploadStream(BsonValue id, String filename, GridFSUploadOptions options);
 
     /**
      * Uploads a user file to a GridFS bucket.
@@ -207,7 +209,7 @@ public interface GridFSBucket {
      * @param filename the filename for the stream
      * @param source the Stream providing the file data
      */
-    void uploadFromStreamWithId(BsonValue id, String filename, InputStream source);
+    void uploadFromStream(BsonValue id, String filename, InputStream source);
 
     /**
      * Uploads a user file to a GridFS bucket.
@@ -221,7 +223,7 @@ public interface GridFSBucket {
      * @param source the Stream providing the file data
      * @param options the GridFSUploadOptions
      */
-    void uploadFromStreamWithId(BsonValue id, String filename, InputStream source, GridFSUploadOptions options);
+    void uploadFromStream(BsonValue id, String filename, InputStream source, GridFSUploadOptions options);
 
     /**
      * Opens a Stream from which the application can read the contents of the stored file specified by {@code id}.
@@ -256,32 +258,14 @@ public interface GridFSBucket {
     void downloadToStream(BsonValue id, OutputStream destination);
 
     /**
-     * Opens a Stream from which the application can read the contents of the latest version of the stored file specified by the
-     * {@code filename}.
-     *
-     * @param filename the name of the file to be downloaded
-     * @return the stream
-     */
-    GridFSDownloadStream openDownloadStreamByName(String filename);
-
-    /**
-     * Opens a Stream from which the application can read the contents of the stored file specified by {@code filename} and the revision
-     * in {@code options}.
-     *
-     * @param filename the name of the file to be downloaded
-     * @param options the download options
-     * @return the stream
-     */
-    GridFSDownloadStream openDownloadStreamByName(String filename, GridFSDownloadByNameOptions options);
-
-    /**
      * Downloads the contents of the latest version of the stored file specified by {@code filename} and writes the contents to
      * the {@code destination} Stream.
      *
      * @param filename the name of the file to be downloaded
      * @param destination the destination stream
+     * @since 3.3
      */
-    void downloadToStreamByName(String filename, OutputStream destination);
+    void downloadToStream(String filename, OutputStream destination);
 
     /**
      * Downloads the contents of the stored file specified by {@code filename} and by the revision in {@code options} and writes the
@@ -290,8 +274,30 @@ public interface GridFSBucket {
      * @param filename the name of the file to be downloaded
      * @param destination the destination stream
      * @param options the download options
+     * @since 3.3
      */
-    void downloadToStreamByName(String filename, OutputStream destination, GridFSDownloadByNameOptions options);
+    void downloadToStream(String filename, OutputStream destination, GridFSDownloadOptions options);
+
+    /**
+     * Opens a Stream from which the application can read the contents of the latest version of the stored file specified by the
+     * {@code filename}.
+     *
+     * @param filename the name of the file to be downloaded
+     * @return the stream
+     * @since 3.3
+     */
+    GridFSDownloadStream openDownloadStream(String filename);
+
+    /**
+     * Opens a Stream from which the application can read the contents of the stored file specified by {@code filename} and the revision
+     * in {@code options}.
+     *
+     * @param filename the name of the file to be downloaded
+     * @param options the download options
+     * @return the stream
+     * @since 3.3
+     */
+    GridFSDownloadStream openDownloadStream(String filename, GridFSDownloadOptions options);
 
     /**
      * Finds all documents in the files collection.
@@ -350,5 +356,53 @@ public interface GridFSBucket {
      * Drops the data associated with this bucket from the database.
      */
     void drop();
+
+    // Deprecated APIs
+
+    /**
+     * Opens a Stream from which the application can read the contents of the latest version of the stored file specified by the
+     * {@code filename}.
+     *
+     * @param filename the name of the file to be downloaded
+     * @deprecated use {@link #openDownloadStream(String)} instead.
+     * @return the stream
+     */
+    @Deprecated
+    GridFSDownloadStream openDownloadStreamByName(String filename);
+
+    /**
+     * Opens a Stream from which the application can read the contents of the stored file specified by {@code filename} and the revision
+     * in {@code options}.
+     *
+     * @param filename the name of the file to be downloaded
+     * @param options the download options
+     * @deprecated use {@link #openDownloadStream(String, GridFSDownloadOptions)} instead.
+     * @return the stream
+     */
+    @Deprecated
+    GridFSDownloadStream openDownloadStreamByName(String filename, GridFSDownloadByNameOptions options);
+
+    /**
+     * Downloads the contents of the latest version of the stored file specified by {@code filename} and writes the contents to
+     * the {@code destination} Stream.
+     *
+     * @param filename the name of the file to be downloaded
+     * @param destination the destination stream
+     * @deprecated use {@link #downloadToStream(String, OutputStream)} instead.
+     */
+    @Deprecated
+    void downloadToStreamByName(String filename, OutputStream destination);
+
+    /**
+     * Downloads the contents of the stored file specified by {@code filename} and by the revision in {@code options} and writes the
+     * contents to the {@code destination} Stream.
+     *
+     * @param filename the name of the file to be downloaded
+     * @param destination the destination stream
+     * @param options the download options
+     * @deprecated use {@link #downloadToStream(String, OutputStream, GridFSDownloadOptions)} instead.
+     */
+    @Deprecated
+    void downloadToStreamByName(String filename, OutputStream destination, GridFSDownloadByNameOptions options);
 
 }

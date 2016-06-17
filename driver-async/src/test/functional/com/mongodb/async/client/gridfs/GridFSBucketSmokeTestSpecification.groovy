@@ -186,7 +186,7 @@ class GridFSBucketSmokeTestSpecification extends FunctionalSpecification {
         def byteBuffer = ByteBuffer.allocate(contentBytes.length)
 
         when:
-        run(gridFSBucket.&uploadFromStreamWithId, fileId, 'myFile', toAsyncInputStream(contentBytes));
+        run(gridFSBucket.&uploadFromStream, fileId, 'myFile', toAsyncInputStream(contentBytes));
         run(gridFSBucket.&downloadToStream, fileId, asyncOutputStream)
 
         then:
@@ -194,7 +194,7 @@ class GridFSBucketSmokeTestSpecification extends FunctionalSpecification {
 
         when:
         run(gridFSBucket.&rename, fileId, 'newName')
-        run(gridFSBucket.openDownloadStreamByName('newName').&read, byteBuffer)
+        run(gridFSBucket.openDownloadStream('newName').&read, byteBuffer)
 
         then:
         byteBuffer.array() == contentBytes
@@ -376,10 +376,10 @@ class GridFSBucketSmokeTestSpecification extends FunctionalSpecification {
         when:
         def byteBuffer = ByteBuffer.allocate(fileInfo.getLength() as int)
         if (direct) {
-            run(gridFSBucket.openDownloadStreamByName(filename).&read, byteBuffer)
+            run(gridFSBucket.openDownloadStream(filename).&read, byteBuffer)
         } else {
             def outputStream = toAsyncOutputStream(byteBuffer)
-            run(gridFSBucket.&downloadToStreamByName, filename, outputStream)
+            run(gridFSBucket.&downloadToStream, filename, outputStream)
             run(outputStream.&close)
         }
 
@@ -395,10 +395,10 @@ class GridFSBucketSmokeTestSpecification extends FunctionalSpecification {
         def filename = 'myFile'
         def byteBuffer = ByteBuffer.allocate(10)
         if (direct) {
-            run(gridFSBucket.openDownloadStreamByName(filename).&read, byteBuffer)
+            run(gridFSBucket.openDownloadStream(filename).&read, byteBuffer)
         } else {
             def outputStream = toAsyncOutputStream(byteBuffer)
-            run(gridFSBucket.&downloadToStreamByName, filename, outputStream)
+            run(gridFSBucket.&downloadToStream, filename, outputStream)
             run(outputStream.&close)
         }
 

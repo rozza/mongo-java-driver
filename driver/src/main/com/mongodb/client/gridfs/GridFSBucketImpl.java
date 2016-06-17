@@ -24,6 +24,7 @@ import com.mongodb.WriteConcern;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.gridfs.model.GridFSDownloadByNameOptions;
+import com.mongodb.client.gridfs.model.GridFSDownloadOptions;
 import com.mongodb.client.gridfs.model.GridFSFile;
 import com.mongodb.client.gridfs.model.GridFSUploadOptions;
 import com.mongodb.client.model.IndexOptions;
@@ -123,21 +124,21 @@ final class GridFSBucketImpl implements GridFSBucket {
 
     @Override
     public GridFSUploadStream openUploadStream(final String filename) {
-        return openUploadStream(filename, new GridFSUploadOptions());
+        return openUploadStream(new BsonObjectId(), filename);
     }
 
     @Override
     public GridFSUploadStream openUploadStream(final String filename, final GridFSUploadOptions options) {
-        return openUploadStreamWithId(new BsonObjectId(), filename, options);
+        return openUploadStream(new BsonObjectId(), filename, options);
     }
 
     @Override
-    public GridFSUploadStream openUploadStreamWithId(final BsonValue id, final String filename) {
-        return openUploadStreamWithId(id, filename, new GridFSUploadOptions());
+    public GridFSUploadStream openUploadStream(final BsonValue id, final String filename) {
+        return openUploadStream(id, filename, new GridFSUploadOptions());
     }
 
     @Override
-    public GridFSUploadStream openUploadStreamWithId(final BsonValue id, final String filename, final GridFSUploadOptions options) {
+    public GridFSUploadStream openUploadStream(final BsonValue id, final String filename, final GridFSUploadOptions options) {
         int chunkSize = options.getChunkSizeBytes() == null ? chunkSizeBytes : options.getChunkSizeBytes();
         checkCreateIndex();
         return new GridFSUploadStreamImpl(filesCollection, chunksCollection, id, filename, chunkSize, options.getMetadata());
@@ -151,19 +152,19 @@ final class GridFSBucketImpl implements GridFSBucket {
     @Override
     public ObjectId uploadFromStream(final String filename, final InputStream source, final GridFSUploadOptions options) {
         ObjectId id = new ObjectId();
-        uploadFromStreamWithId(new BsonObjectId(id), filename, source, options);
+        uploadFromStream(new BsonObjectId(id), filename, source, options);
         return id;
     }
 
     @Override
-    public void uploadFromStreamWithId(final BsonValue id, final String filename, final InputStream source) {
-        uploadFromStreamWithId(id, filename, source, new GridFSUploadOptions());
+    public void uploadFromStream(final BsonValue id, final String filename, final InputStream source) {
+        uploadFromStream(id, filename, source, new GridFSUploadOptions());
     }
 
     @Override
-    public void uploadFromStreamWithId(final BsonValue id, final String filename, final InputStream source, final
+    public void uploadFromStream(final BsonValue id, final String filename, final InputStream source, final
     GridFSUploadOptions options) {
-        GridFSUploadStream uploadStream = openUploadStreamWithId(id, filename, options);
+        GridFSUploadStream uploadStream = openUploadStream(id, filename, options);
         int chunkSize = options.getChunkSizeBytes() == null ? chunkSizeBytes : options.getChunkSizeBytes();
         byte[] buffer = new byte[chunkSize];
         int len;
@@ -194,28 +195,28 @@ final class GridFSBucketImpl implements GridFSBucket {
     }
 
     @Override
+    public void downloadToStream(final String filename, final OutputStream destination) {
+        downloadToStream(filename, destination, new GridFSDownloadOptions());
+    }
+
+    @Override
+    public void downloadToStream(final String filename, final OutputStream destination, final GridFSDownloadOptions options) {
+        downloadToStream(openDownloadStream(filename, options), destination);
+    }
+
+    @Override
     public GridFSDownloadStream openDownloadStream(final BsonValue id) {
         return findTheFileInfoAndOpenDownloadStream(id);
     }
 
     @Override
-    public GridFSDownloadStream openDownloadStreamByName(final String filename) {
-        return openDownloadStreamByName(filename, new GridFSDownloadByNameOptions());
+    public GridFSDownloadStream openDownloadStream(final String filename) {
+        return openDownloadStream(filename, new GridFSDownloadOptions());
     }
 
     @Override
-    public GridFSDownloadStream openDownloadStreamByName(final String filename, final GridFSDownloadByNameOptions options) {
+    public GridFSDownloadStream openDownloadStream(final String filename, final GridFSDownloadOptions options) {
         return new GridFSDownloadStreamImpl(getFileByName(filename, options), chunksCollection);
-    }
-
-    @Override
-    public void downloadToStreamByName(final String filename, final OutputStream destination) {
-        downloadToStreamByName(filename, destination, new GridFSDownloadByNameOptions());
-    }
-
-    @Override
-    public void downloadToStreamByName(final String filename, final OutputStream destination, final GridFSDownloadByNameOptions options) {
-        downloadToStream(openDownloadStreamByName(filename, options), destination);
     }
 
     @Override
@@ -264,6 +265,30 @@ final class GridFSBucketImpl implements GridFSBucket {
         chunksCollection.drop();
     }
 
+    @Override
+    @Deprecated
+    public GridFSDownloadStream openDownloadStreamByName(final String filename) {
+        return openDownloadStreamByName(filename, new GridFSDownloadByNameOptions());
+    }
+
+    @Override
+    @Deprecated
+    public GridFSDownloadStream openDownloadStreamByName(final String filename, final GridFSDownloadByNameOptions options) {
+        return openDownloadStream(filename, new GridFSDownloadOptions().revision(options.getRevision()));
+    }
+
+    @Override
+    @Deprecated
+    public void downloadToStreamByName(final String filename, final OutputStream destination) {
+        downloadToStreamByName(filename, destination, new GridFSDownloadByNameOptions());
+    }
+
+    @Override
+    @Deprecated
+    public void downloadToStreamByName(final String filename, final OutputStream destination, final GridFSDownloadByNameOptions options) {
+        downloadToStream(filename, destination, new GridFSDownloadOptions().revision(options.getRevision()));
+    }
+
     private static MongoCollection<GridFSFile> getFilesCollection(final MongoDatabase database, final String bucketName) {
         return database.getCollection(bucketName + ".files", GridFSFile.class).withCodecRegistry(
                 fromRegistries(database.getCodecRegistry(), MongoClient.getDefaultCodecRegistry())
@@ -303,7 +328,7 @@ final class GridFSBucketImpl implements GridFSBucket {
         return hasIndex;
     }
 
-    private GridFSFile getFileByName(final String filename, final GridFSDownloadByNameOptions options) {
+    private GridFSFile getFileByName(final String filename, final GridFSDownloadOptions options) {
         int revision = options.getRevision();
         int skip;
         int sort;

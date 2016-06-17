@@ -27,7 +27,7 @@ import com.mongodb.client.FindIterable
 import com.mongodb.client.ListIndexesIterable
 import com.mongodb.client.MongoCollection
 import com.mongodb.client.MongoCursor
-import com.mongodb.client.gridfs.model.GridFSDownloadByNameOptions
+import com.mongodb.client.gridfs.model.GridFSDownloadOptions
 import com.mongodb.client.gridfs.model.GridFSFile
 import com.mongodb.client.result.DeleteResult
 import com.mongodb.client.result.UpdateResult
@@ -377,7 +377,7 @@ class GridFSBucketSpecification extends Specification {
         def outputStream = new ByteArrayOutputStream(10)
 
         when:
-        gridFSBucket.downloadToStreamByName(filename, outputStream)
+        gridFSBucket.downloadToStream(filename, outputStream)
         outputStream.close()
 
         then:
@@ -434,7 +434,7 @@ class GridFSBucketSpecification extends Specification {
         def gridFSBucket = new GridFSBucketImpl('fs', 255, filesCollection, chunksCollection)
 
         when:
-        def stream = gridFSBucket.openDownloadStreamByName(filename, new GridFSDownloadByNameOptions().revision(version))
+        def stream = gridFSBucket.openDownloadStream(filename, new GridFSDownloadOptions().revision(version))
 
         then:
         1 * findIterable.filter(new Document('filename', filename)) >> findIterable
@@ -504,7 +504,7 @@ class GridFSBucketSpecification extends Specification {
         def chunksCollection = Stub(MongoCollection)
         def gridFSBucket = new GridFSBucketImpl('fs', 255, filesCollection, chunksCollection)
         when:
-        gridFSBucket.openDownloadStreamByName('filename')
+        gridFSBucket.openDownloadStream('filename')
 
         then:
         1 * filesCollection.find() >> findIterable

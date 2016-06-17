@@ -20,7 +20,7 @@ import com.mongodb.FunctionalSpecification
 import com.mongodb.MongoGridFSException
 import com.mongodb.client.MongoCollection
 import com.mongodb.client.MongoDatabase
-import com.mongodb.client.gridfs.model.GridFSDownloadByNameOptions
+import com.mongodb.client.gridfs.model.GridFSDownloadOptions
 import com.mongodb.client.gridfs.model.GridFSFile
 import com.mongodb.client.gridfs.model.GridFSUploadOptions
 import org.bson.BsonDocument
@@ -31,7 +31,6 @@ import org.bson.codecs.UuidCodec
 import org.bson.types.ObjectId
 import spock.lang.Unroll
 
-import java.nio.ByteBuffer
 import java.security.MessageDigest
 
 import static com.mongodb.Fixture.getDefaultDatabaseName
@@ -156,11 +155,10 @@ class GridFSBucketSmokeTestSpecification extends FunctionalSpecification {
         def content = multiChunkString
         def contentBytes = content as byte[]
         def fileId = new BsonString('myFile')
-        def byteBuffer = ByteBuffer.allocate(contentBytes.length)
         byte[] gridFSContentBytes
 
         when:
-        gridFSBucket.uploadFromStreamWithId(fileId, 'myFile', new ByteArrayInputStream(contentBytes));
+        gridFSBucket.uploadFromStream(fileId, 'myFile', new ByteArrayInputStream(contentBytes));
         gridFSContentBytes = gridFSBucket.openDownloadStream(fileId).batchSize(1).getBytes()
 
         then:
@@ -170,7 +168,7 @@ class GridFSBucketSmokeTestSpecification extends FunctionalSpecification {
         gridFSBucket.rename(fileId, 'newName')
 
         then:
-        gridFSBucket.openDownloadStreamByName('newName').getBytes() == contentBytes
+        gridFSBucket.openDownloadStream('newName').getBytes() == contentBytes
 
         when:
         gridFSBucket.delete(fileId)
@@ -246,14 +244,14 @@ class GridFSBucketSmokeTestSpecification extends FunctionalSpecification {
         byte[] gridFSContentBytes
 
         when: 'Direct to a stream'
-        gridFSContentBytes = gridFSBucket.openDownloadStreamByName(filename).getBytes()
+        gridFSContentBytes = gridFSBucket.openDownloadStream(filename).getBytes()
 
         then:
         gridFSContentBytes == contentBytes
 
         when: 'To supplied stream'
         def outputStream = new ByteArrayOutputStream(contentBytes.length)
-        gridFSBucket.downloadToStreamByName(filename, outputStream)
+        gridFSBucket.downloadToStream(filename, outputStream)
         outputStream.close()
         gridFSContentBytes = outputStream.toByteArray()
 
@@ -271,17 +269,17 @@ class GridFSBucketSmokeTestSpecification extends FunctionalSpecification {
             gridFSBucket.uploadFromStream(filename, new ByteArrayInputStream(it))
         }
         def expectedContentBytes = contentBytes[version]
-        def options = new GridFSDownloadByNameOptions().revision(version)
+        def options = new GridFSDownloadOptions().revision(version)
 
         when: 'Direct to a stream'
-        gridFSContentBytes = gridFSBucket.openDownloadStreamByName(filename, options).getBytes()
+        gridFSContentBytes = gridFSBucket.openDownloadStream(filename, options).getBytes()
 
         then:
         gridFSContentBytes == expectedContentBytes
 
         when: 'To supplied stream'
         def outputStream = new ByteArrayOutputStream(expectedContentBytes.length)
-        gridFSBucket.downloadToStreamByName(filename, outputStream, options)
+        gridFSBucket.downloadToStream(filename, outputStream, options)
         outputStream.close()
         gridFSContentBytes = outputStream.toByteArray()
 
@@ -297,13 +295,13 @@ class GridFSBucketSmokeTestSpecification extends FunctionalSpecification {
         def filename = 'FileDoesNotExist'
 
         when: 'Direct to a stream'
-        gridFSBucket.openDownloadStreamByName(filename)
+        gridFSBucket.openDownloadStream(filename)
 
         then:
         thrown(MongoGridFSException)
 
         when: 'To supplied stream'
-        gridFSBucket.downloadToStreamByName(filename, new ByteArrayOutputStream(1024))
+        gridFSBucket.downloadToStream(filename, new ByteArrayOutputStream(1024))
 
         then:
         thrown(MongoGridFSException)
@@ -312,17 +310,17 @@ class GridFSBucketSmokeTestSpecification extends FunctionalSpecification {
     def 'should throw an exception if cannot open by name with selected version'() {
         given:
         def filename = 'myFile'
-        def options = new GridFSDownloadByNameOptions().revision(1)
+        def options = new GridFSDownloadOptions().revision(1)
         gridFSBucket.uploadFromStream(filename, new ByteArrayInputStream('Hello GridFS' as byte[]))
 
         when: 'Direct to a stream'
-        gridFSBucket.openDownloadStreamByName(filename, options)
+        gridFSBucket.openDownloadStream(filename, options)
 
         then:
         thrown(MongoGridFSException)
 
         when: 'To supplied stream'
-        gridFSBucket.downloadToStreamByName(filename, new ByteArrayOutputStream(1024), options)
+        gridFSBucket.downloadToStream(filename, new ByteArrayOutputStream(1024), options)
 
         then:
         thrown(MongoGridFSException)
@@ -397,7 +395,7 @@ class GridFSBucketSmokeTestSpecification extends FunctionalSpecification {
         chunksCollection.count() == 1
 
         when:
-        gridFSBucket.openDownloadStreamByName(newFileName)
+        gridFSBucket.openDownloadStream(newFileName)
 
         then:
         notThrown(MongoGridFSException)
@@ -533,5 +531,30 @@ class GridFSBucketSmokeTestSpecification extends FunctionalSpecification {
 
         then:
         filesCollection.find(BsonDocument).first().getDocument('metadata').getBinary('uuid').getType() == 4 as byte
+    }
+
+    @SuppressWarnings('deprecation')
+    def 'should be able to open by name using the deprecated methods'() {
+        given:
+        def content = 'Hello GridFS'
+        def contentBytes = content as byte[]
+        def filename = 'myFile'
+        gridFSBucket.uploadFromStream(filename, new ByteArrayInputStream(contentBytes))
+        byte[] gridFSContentBytes
+
+        when: 'Direct to a stream'
+        gridFSContentBytes = gridFSBucket.openDownloadStreamByName(filename).getBytes()
+
+        then:
+        gridFSContentBytes == contentBytes
+
+        when: 'To supplied stream'
+        def outputStream = new ByteArrayOutputStream(contentBytes.length)
+        gridFSBucket.downloadToStreamByName(filename, outputStream)
+        outputStream.close()
+        gridFSContentBytes = outputStream.toByteArray()
+
+        then:
+        gridFSContentBytes == contentBytes
     }
 }
