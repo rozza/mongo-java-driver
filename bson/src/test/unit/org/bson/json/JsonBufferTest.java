@@ -16,7 +16,6 @@
 
 package org.bson.json;
 
-import org.bson.BsonRegularExpression;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
