@@ -152,6 +152,7 @@ public interface GridFSBucket {
      * @param filename the filename for the stream
      * @return the GridFSUploadStream that provides the ObjectId for the file to be uploaded and the Stream to which the
      *          application will write the contents.
+     * @since 3.3
      */
     GridFSUploadStream openUploadStream(BsonValue id, String filename);
 
@@ -168,11 +169,12 @@ public interface GridFSBucket {
      * @param options the GridFSUploadOptions
      * @return the GridFSUploadStream that includes the _id for the file to be uploaded and the Stream to which the
      *          application will write the contents.
+     * @since 3.3
      */
     GridFSUploadStream openUploadStream(BsonValue id, String filename, GridFSUploadOptions options);
 
     /**
-     * Uploads a user file to a GridFS bucket.
+     * Uploads the contents of the given {@code InputStream} to a GridFS bucket.
      *<p>
      * Reads the contents of the user file from the {@code Stream} and uploads it as chunks in the chunks collection. After all the
      * chunks have been uploaded, it creates a files collection document for {@code filename} in the files collection.
@@ -185,7 +187,7 @@ public interface GridFSBucket {
     ObjectId uploadFromStream(String filename, InputStream source);
 
     /**
-     * Uploads a user file to a GridFS bucket.
+     * Uploads the contents of the given {@code InputStream} to a GridFS bucket.
      * <p>
      * Reads the contents of the user file from the {@code Stream} and uploads it as chunks in the chunks collection. After all the
      * chunks have been uploaded, it creates a files collection document for {@code filename} in the files collection.
@@ -199,7 +201,7 @@ public interface GridFSBucket {
     ObjectId uploadFromStream(String filename, InputStream source, GridFSUploadOptions options);
 
     /**
-     * Uploads a user file to a GridFS bucket.
+     * Uploads the contents of the given {@code InputStream} to a GridFS bucket.
      *<p>
      * Reads the contents of the user file from the {@code Stream} and uploads it as chunks in the chunks collection. After all the
      * chunks have been uploaded, it creates a files collection document for {@code filename} in the files collection.
@@ -208,11 +210,12 @@ public interface GridFSBucket {
      * @param id the custom id value of the file
      * @param filename the filename for the stream
      * @param source the Stream providing the file data
+     * @since 3.3
      */
     void uploadFromStream(BsonValue id, String filename, InputStream source);
 
     /**
-     * Uploads a user file to a GridFS bucket.
+     * Uploads the contents of the given {@code InputStream} to a GridFS bucket.
      * <p>
      * Reads the contents of the user file from the {@code Stream} and uploads it as chunks in the chunks collection. After all the
      * chunks have been uploaded, it creates a files collection document for {@code filename} in the files collection.
@@ -222,6 +225,7 @@ public interface GridFSBucket {
      * @param filename the filename for the stream
      * @param source the Stream providing the file data
      * @param options the GridFSUploadOptions
+     * @since 3.3
      */
     void uploadFromStream(BsonValue id, String filename, InputStream source, GridFSUploadOptions options);
 
@@ -333,6 +337,7 @@ public interface GridFSBucket {
     /**
      * Given a {@code id}, delete this stored file's files collection document and associated chunks from a GridFS bucket.
      * @param id the id of the file to be deleted
+     * @since 3.3
      */
     void delete(BsonValue id);
 
@@ -349,6 +354,7 @@ public interface GridFSBucket {
      *
      * @param id the id of the file in the files collection to rename
      * @param newFilename the new filename for the file
+     * @since 3.3
      */
     void rename(BsonValue id, String newFilename);
 

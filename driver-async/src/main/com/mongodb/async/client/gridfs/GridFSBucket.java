@@ -167,7 +167,7 @@ public interface GridFSBucket {
     GridFSUploadStream openUploadStream(BsonValue id, String filename, GridFSUploadOptions options);
 
     /**
-     * Uploads a user file to a GridFS bucket.
+     * Uploads the contents of the given {@code AsyncInputStream} to a GridFS bucket.
      * <p>
      * Reads the contents of the user file from the {@code source} and uploads it as chunks in the chunks collection. After all the
      * chunks have been uploaded, it creates a files collection document for {@code filename} in the files collection.
@@ -180,7 +180,7 @@ public interface GridFSBucket {
     void uploadFromStream(String filename, AsyncInputStream source, SingleResultCallback<ObjectId> callback);
 
     /**
-     * Uploads a user file to a GridFS bucket.
+     * Uploads the contents of the given {@code AsyncInputStream} to a GridFS bucket.
      * <p>
      * Reads the contents of the user file from the {@code source} and uploads it as chunks in the chunks collection. After all the
      * chunks have been uploaded, it creates a files collection document for {@code filename} in the files collection.
@@ -194,7 +194,7 @@ public interface GridFSBucket {
     void uploadFromStream(String filename, AsyncInputStream source, GridFSUploadOptions options, SingleResultCallback<ObjectId> callback);
 
     /**
-     * Uploads a user file to a GridFS bucket.
+     * Uploads the contents of the given {@code AsyncInputStream} to a GridFS bucket.
      * <p>
      * Reads the contents of the user file from the {@code source} and uploads it as chunks in the chunks collection. After all the
      * chunks have been uploaded, it creates a files collection document for {@code filename} in the files collection.
@@ -208,7 +208,7 @@ public interface GridFSBucket {
     void uploadFromStream(BsonValue id, String filename, AsyncInputStream source, SingleResultCallback<Void> callback);
 
     /**
-     * Uploads a user file to a GridFS bucket.
+     * Uploads the contents of the given {@code AsyncInputStream} to a GridFS bucket.
      * <p>
      * Reads the contents of the user file from the {@code source} and uploads it as chunks in the chunks collection. After all the
      * chunks have been uploaded, it creates a files collection document for {@code filename} in the files collection.
