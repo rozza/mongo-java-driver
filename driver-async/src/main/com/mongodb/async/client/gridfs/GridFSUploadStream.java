@@ -32,6 +32,8 @@ public interface GridFSUploadStream extends AsyncOutputStream {
     /**
      * Gets the {@link ObjectId} for the file to be uploaded
      *
+     * Throws a {@link com.mongodb.MongoGridFSException} if the file id is not an ObjectId.
+     *
      * @return the ObjectId for the file to be uploaded
      */
     ObjectId getObjectId();
