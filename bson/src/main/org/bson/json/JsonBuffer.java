@@ -46,8 +46,8 @@ class JsonBuffer {
     }
 
     public void unread(final int c) {
+        eof = false;
         if (c != -1 && buffer.charAt(position - 1) == c) {
-            eof = false;
             position--;
         }
     }

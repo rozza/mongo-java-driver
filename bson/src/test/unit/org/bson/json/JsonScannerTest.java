@@ -31,7 +31,6 @@ public class JsonScannerTest {
         JsonToken token = scanner.nextToken();
         assertEquals(JsonTokenType.END_OF_FILE, token.getType());
         assertEquals("<eof>", token.getValue());
-        assertEquals(-1, buffer.read());
     }
 
     @Test

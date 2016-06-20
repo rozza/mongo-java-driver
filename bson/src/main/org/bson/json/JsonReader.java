@@ -226,6 +226,8 @@ public class JsonReader extends AbstractBsonReader {
         }
         if (noValueFound) {
             throw new JsonParseException("JSON reader was expecting a value but found '%s'.", token.getValue());
+        } else if (token.getType() == JsonTokenType.END_OF_FILE) {
+            return getCurrentBsonType();
         }
 
         if (getContext().getContextType() == BsonContextType.ARRAY || getContext().getContextType() == BsonContextType.DOCUMENT) {
