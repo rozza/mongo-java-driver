@@ -40,6 +40,16 @@ public class NettyStreamFactoryFactory implements StreamFactoryFactory {
     private final ByteBufAllocator allocator;
 
     /**
+     * Construct an instance with the default {@code EventLoopGroup} and {@code ByteBufAllocator}.
+     *
+     * @deprecated Use {@link NettyStreamFactoryFactory#builder()} instead to construct the {@code  NettyStreamFactoryFactory}.
+     */
+    @Deprecated
+    public NettyStreamFactoryFactory() {
+        this(builder());
+    }
+
+    /**
      * Construct an instance with the given {@code EventLoopGroup} and {@code ByteBufAllocator}.
      *
      * @param eventLoopGroup the non-null event loop group
