@@ -25,7 +25,7 @@ import org.bson.Document
 import static com.mongodb.async.client.Fixture.getMongoClientBuilderFromConnectionString
 import static java.util.concurrent.TimeUnit.SECONDS
 
-class NettyStreamFactoryFactorySpecification extends FunctionalSpecification {
+class NettyStreamFactoryFactorySmokeTestSpecification extends FunctionalSpecification {
 
     private MongoClient mongoClient
 
@@ -49,9 +49,7 @@ class NettyStreamFactoryFactorySpecification extends FunctionalSpecification {
         run(collection.&count) == 1
 
         cleanup:
-        if (mongoClient != null) {
-            mongoClient.close()
-        }
+        mongoClient?.close()
 
     }
 

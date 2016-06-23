@@ -280,6 +280,26 @@ final class NettyStream implements Stream {
         return isClosed;
     }
 
+    public SocketSettings getSettings() {
+        return settings;
+    }
+
+    public SslSettings getSslSettings() {
+        return sslSettings;
+    }
+
+    public EventLoopGroup getWorkerGroup() {
+        return workerGroup;
+    }
+
+    public Class<? extends SocketChannel> getSocketChannelClass() {
+        return socketChannelClass;
+    }
+
+    public ByteBufAllocator getAllocator() {
+        return allocator;
+    }
+
     private class InboundBufferHandler extends SimpleChannelInboundHandler<io.netty.buffer.ByteBuf> {
         @Override
         protected void channelRead0(final ChannelHandlerContext ctx, final io.netty.buffer.ByteBuf buffer) throws Exception {
