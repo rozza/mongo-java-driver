@@ -473,7 +473,7 @@ class CreateIndexesOperationSpecification extends OperationFunctionalSpecificati
         def operation = new CreateIndexesOperation(getNamespace(), [new IndexRequest(keys)], new WriteConcern(5))
 
         when:
-        async ? executeAsync(operation) : operation.execute(getBinding())
+        execute(operation, async)
 
         then:
         def ex = thrown(MongoWriteConcernException)
@@ -482,6 +482,26 @@ class CreateIndexesOperationSpecification extends OperationFunctionalSpecificati
 
         where:
         async << [true, false]
+    }
+
+    def 'should throw an exception when using an unsupported Collation'() {
+        given:
+        def operation = new CreateIndexesOperation(getNamespace(), requests)
+
+        when:
+        testOperationThrows(operation, [3, 2, 0], async)
+
+        then:
+        def exception = thrown(IllegalArgumentException)
+        exception.getMessage().startsWith('Unsupported collation')
+
+        where:
+        [async, requests] << [
+                [true, false],
+                [[new IndexRequest(BsonDocument.parse('{field: 1}}')).collation(defaultCollation)],
+                 [new IndexRequest(BsonDocument.parse('{field: 1}}')),
+                  new IndexRequest(BsonDocument.parse('{field: 2}}')).collation(defaultCollation)]]
+        ].combinations()
     }
 
     Document getIndex(final String indexName) {

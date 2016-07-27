@@ -385,4 +385,5 @@ class ConnectionStringSpecification extends Specification {
                            + 'authMechanism=SCRAM-SHA-1')            | new ConnectionString('mongodb://ross:123@localhost/?'
                                                                                           + 'authMechanism=GSSAPI')
     }
+
 }

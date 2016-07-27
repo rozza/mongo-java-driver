@@ -29,6 +29,8 @@ import com.mongodb.connection.Connection;
 import java.util.List;
 
 import static com.mongodb.assertions.Assertions.notNull;
+import static com.mongodb.operation.OperationHelper.AsyncCallableWithConnection;
+import static com.mongodb.operation.OperationHelper.checkValidWriteRequestCollations;
 
 /**
  * An operation that deletes one or more documents from a collection.
@@ -74,12 +76,22 @@ public class DeleteOperation extends BaseWriteOperation {
 
     @Override
     protected BulkWriteResult executeCommandProtocol(final Connection connection) {
+        checkValidWriteRequestCollations(connection, deleteRequests);
         return connection.deleteCommand(getNamespace(), isOrdered(), getWriteConcern(), deleteRequests);
     }
 
     @Override
     protected void executeCommandProtocolAsync(final AsyncConnection connection, final SingleResultCallback<BulkWriteResult> callback) {
-        connection.deleteCommandAsync(getNamespace(), isOrdered(), getWriteConcern(), deleteRequests, callback);
+        checkValidWriteRequestCollations(connection, deleteRequests, new AsyncCallableWithConnection(){
+            @Override
+            public void call(final AsyncConnection connection, final Throwable t) {
+                if (t != null) {
+                    callback.onResult(null, t);
+                } else {
+                    connection.deleteCommandAsync(getNamespace(), isOrdered(), getWriteConcern(), deleteRequests, callback);
+                }
+            }
+        });
     }
 
     @Override

@@ -17,7 +17,14 @@
 package com.mongodb;
 
 import category.ReplicaSet;
+import com.mongodb.client.model.Collation;
+import com.mongodb.client.model.CollationAlternate;
+import com.mongodb.client.model.CollationCaseFirst;
+import com.mongodb.client.model.CollationMaxVariable;
+import com.mongodb.client.model.CollationStrength;
 import com.mongodb.operation.UserExistsOperation;
+import org.bson.BsonDocument;
+import org.bson.BsonDocumentWrapper;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
@@ -171,6 +178,35 @@ public class DBTest extends DatabaseTestCase {
         DBObject creationOptions = BasicDBObjectBuilder.start().add("capped", true)
                                                        .add("size", -20).get();
         database.createCollection(collectionName, creationOptions);
+    }
+
+    @Test
+    public void shouldCreateCollectionWithTheSetCollation() {
+        assumeThat(serverVersionAtLeast(asList(3, 3, 10)), is(true));
+        // Given
+        collection.drop();
+        Collation collation = Collation.builder()
+                .locale("en")
+                .caseLevel(true)
+                .collationCaseFirst(CollationCaseFirst.OFF)
+                .collationStrength(CollationStrength.IDENTICAL)
+                .numericOrdering(true)
+                .collationAlternate(CollationAlternate.SHIFTED)
+                .collationMaxVariable(CollationMaxVariable.SPACE)
+                .backwards(true)
+                .build();
+        database.setCollation(collation);
+        database.createCollection(collectionName, new BasicDBObject());
+
+        // When
+        BsonDocument indexCollation =  new BsonDocumentWrapper<DBObject>((DBObject) database.getCollection(collectionName)
+                .getIndexInfo().get(0).get("collation"), collection.getDefaultDBObjectCodec());
+
+        // Then
+        BsonDocument collationDocument = collation.asDocument();
+        for (String key: collationDocument.keySet()) {
+            assertEquals(collationDocument.get(key), indexCollation.get(key));
+        }
     }
 
     @Test(expected = DuplicateKeyException.class)

@@ -16,7 +16,6 @@
 
 package com.mongodb.operation
 
-import category.Async
 import category.Slow
 import com.mongodb.OperationFunctionalSpecification
 import com.mongodb.bulk.DeleteRequest
@@ -28,38 +27,24 @@ import org.bson.codecs.BsonDocumentCodec
 import org.bson.codecs.DocumentCodec
 import org.junit.experimental.categories.Category
 
-import static com.mongodb.ClusterFixture.executeAsync
-import static com.mongodb.ClusterFixture.getBinding
 import static com.mongodb.WriteConcern.ACKNOWLEDGED
 
 class DeleteOperationSpecification extends OperationFunctionalSpecification {
     def 'should remove a document'() {
         given:
         getCollectionHelper().insertDocuments(new DocumentCodec(), new Document('_id', 1))
-        def op = new DeleteOperation(getNamespace(), true, ACKNOWLEDGED,
-                                     [new DeleteRequest(new BsonDocument('_id', new BsonInt32(1)))]
-        )
+        def operation = new DeleteOperation(getNamespace(), true, ACKNOWLEDGED,
+                                     [new DeleteRequest(new BsonDocument('_id', new BsonInt32(1)))])
 
         when:
-        op.execute(getBinding())
+        execute(operation, async)
 
         then:
         getCollectionHelper().count() == 0
-    }
 
-    @Category(Async)
-    def 'should remove a document asynchronously'() {
-        given:
-        getCollectionHelper().insertDocuments(new DocumentCodec(), new Document('_id', 1))
-        def op = new DeleteOperation(getNamespace(), true, ACKNOWLEDGED,
-                                     [new DeleteRequest(new BsonDocument('_id', new BsonInt32(1)))]
-        )
+        where:
+        async << [true, false]
 
-        when:
-        executeAsync(op)
-
-        then:
-        getCollectionHelper().count() == 0
     }
 
     @Category(Slow)
@@ -69,33 +54,37 @@ class DeleteOperationSpecification extends OperationFunctionalSpecification {
         def smallerDoc = new BsonDocument('bytes', new BsonBinary(new byte[1024 * 16 + 1980]))
         def simpleDoc = new BsonDocument('_id', new BsonInt32(1))
         getCollectionHelper().insertDocuments(new BsonDocumentCodec(), simpleDoc)
-        def op = new DeleteOperation(getNamespace(), true, ACKNOWLEDGED,
-                                     [new DeleteRequest(bigDoc), new DeleteRequest(smallerDoc), new DeleteRequest(simpleDoc)]
-        )
+        def operation = new DeleteOperation(getNamespace(), true, ACKNOWLEDGED,
+                [new DeleteRequest(bigDoc), new DeleteRequest(smallerDoc), new DeleteRequest(simpleDoc)])
 
         when:
-        op.execute(getBinding())
+        execute(operation, async)
 
         then:
         getCollectionHelper().count() == 0
+
+        where:
+        async << [true, false]
     }
 
-    @Category([Slow, Async])
-    def 'should split removes into batches asynchronously'() {
+    def 'should throw an exception when using an unsupported Collation'() {
         given:
-        def bigDoc = new BsonDocument('bytes', new BsonBinary(new byte[1024 * 1024 * 16 - 2127]))
-        def smallerDoc = new BsonDocument('bytes', new BsonBinary(new byte[1024 * 16 + 1980]))
-        def simpleDoc = new BsonDocument('_id', new BsonInt32(1))
-        getCollectionHelper().insertDocuments(new BsonDocumentCodec(), simpleDoc)
-        def op = new DeleteOperation(getNamespace(), true, ACKNOWLEDGED,
-                                     [new DeleteRequest(bigDoc), new DeleteRequest(smallerDoc), new DeleteRequest(simpleDoc)]
-        )
+        def operation = new DeleteOperation(getNamespace(), false, ACKNOWLEDGED, requests)
 
         when:
-        executeAsync(op)
+        testOperationThrows(operation, [3, 2, 0], async)
 
         then:
-        getCollectionHelper().count() == 0
+        def exception = thrown(IllegalArgumentException)
+        exception.getMessage().startsWith('Unsupported collation')
+
+        where:
+        [async, requests] << [
+                [true, false],
+                [[new DeleteRequest(BsonDocument.parse('{x: 1}}')).collation(defaultCollation)],
+                 [new DeleteRequest(BsonDocument.parse('{x: 1}}')),
+                  new DeleteRequest(BsonDocument.parse('{y: 1}}')).collation(defaultCollation)]]
+        ].combinations()
     }
 
 }

@@ -59,6 +59,7 @@ import static com.mongodb.operation.OperationHelper.AsyncCallableWithConnection;
 import static com.mongodb.operation.OperationHelper.CallableWithConnection;
 import static com.mongodb.operation.OperationHelper.LOGGER;
 import static com.mongodb.operation.OperationHelper.bypassDocumentValidationNotSupported;
+import static com.mongodb.operation.OperationHelper.checkValidWriteRequestCollations;
 import static com.mongodb.operation.OperationHelper.getBypassDocumentValidationException;
 import static com.mongodb.operation.OperationHelper.releasingCallback;
 import static com.mongodb.operation.OperationHelper.withConnection;
@@ -431,6 +432,7 @@ public class MixedBulkWriteOperation implements AsyncWriteOperation<BulkWriteRes
 
                 @Override
                 BulkWriteResult executeWriteCommandProtocol() {
+                    checkValidWriteRequestCollations(connection, deleteRequests);
                     return connection.deleteCommand(namespace, ordered, writeConcern, deleteRequests);
                 }
 
@@ -478,6 +480,7 @@ public class MixedBulkWriteOperation implements AsyncWriteOperation<BulkWriteRes
 
                 @Override
                 BulkWriteResult executeWriteCommandProtocol() {
+                    checkValidWriteRequestCollations(connection, updates);
                     return connection.updateCommand(namespace, ordered, writeConcern, bypassDocumentValidation, updates);
                 }
 
@@ -499,7 +502,16 @@ public class MixedBulkWriteOperation implements AsyncWriteOperation<BulkWriteRes
 
                 @Override
                 void executeWriteCommandProtocolAsync(final SingleResultCallback<BulkWriteResult> callback) {
-                    connection.deleteCommandAsync(namespace, ordered, writeConcern, deleteRequests, callback);
+                    checkValidWriteRequestCollations(connection, deleteRequests, new AsyncCallableWithConnection(){
+                        @Override
+                        public void call(final AsyncConnection connection, final Throwable t) {
+                            if (t != null) {
+                                callback.onResult(null, t);
+                            } else {
+                                connection.deleteCommandAsync(namespace, ordered, writeConcern, deleteRequests, callback);
+                            }
+                        }
+                    });
                 }
 
                 @Override
@@ -546,7 +558,17 @@ public class MixedBulkWriteOperation implements AsyncWriteOperation<BulkWriteRes
 
                 @Override
                 void executeWriteCommandProtocolAsync(final SingleResultCallback<BulkWriteResult> callback) {
-                    connection.updateCommandAsync(namespace, ordered, writeConcern, bypassDocumentValidation, updates, callback);
+                    checkValidWriteRequestCollations(connection, updates, new AsyncCallableWithConnection(){
+                        @Override
+                        public void call(final AsyncConnection connection, final Throwable t) {
+                            if (t != null) {
+                                callback.onResult(null, t);
+                            } else {
+                                connection.updateCommandAsync(namespace, ordered, writeConcern, bypassDocumentValidation, updates,
+                                        callback);
+                            }
+                        }
+                    });
                 }
 
                 @Override
@@ -646,9 +668,8 @@ public class MixedBulkWriteOperation implements AsyncWriteOperation<BulkWriteRes
                 if (shouldUseWriteCommands(connection.getDescription())) {
                     return executeWriteCommandProtocol();
                 } else {
-                    BulkWriteBatchCombiner bulkWriteBatchCombiner = new BulkWriteBatchCombiner(connection.getDescription()
-                                                                                                         .getServerAddress(),
-                                                                                               ordered, writeConcern);
+                    BulkWriteBatchCombiner bulkWriteBatchCombiner =
+                            new BulkWriteBatchCombiner(connection.getDescription().getServerAddress(), ordered, writeConcern);
                     for (int i = 0; i < runWrites.size(); i++) {
                         IndexMap indexMap = IndexMap.create(i, 1);
                         indexMap = indexMap.add(0, i);
