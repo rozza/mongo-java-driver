@@ -263,6 +263,22 @@ class CreateCollectionOperationSpecification extends OperationFunctionalSpecific
         async << [true, false]
     }
 
+    @IgnoreIf({ !serverVersionAtLeast(asList(3, 3, 10)) })
+    def 'should be able to create a collection with a collation'() {
+        given:
+        def operation = new CreateCollectionOperation(getDatabaseName(), getCollectionName()).collation(defaultCollation)
+
+        when:
+        execute(operation, async)
+        def collectionCollation = getCollectionInfo(getCollectionName()).get('options').get('collation')
+
+        then:
+        defaultCollation.asDocument().each { assert collectionCollation.get(it.key) == it.value }
+
+        where:
+        async << [true, false]
+    }
+
     def 'should throw an exception when passing an unsupported collation'() {
         given:
         def operation = new CreateCollectionOperation(getDatabaseName(), getCollectionName()).collation(defaultCollation)
