@@ -122,27 +122,27 @@ final class OperationHelper {
 
     static void checkValidWriteRequestCollations(final AsyncConnection connection, final List<? extends WriteRequest> requests,
                                                  final AsyncCallableWithConnection callable) {
-        if (requests.isEmpty()) {
-            callable.call(connection, null);
-        } else {
+        boolean calledTheCallable = false;
+        for (WriteRequest request : requests) {
             Collation collation = null;
-            WriteRequest head = requests.get(0);
-            if (head instanceof UpdateRequest) {
-                collation = ((UpdateRequest) head).getCollation();
-            } else if (head instanceof DeleteRequest) {
-                collation = ((DeleteRequest) head).getCollation();
+            if (request instanceof UpdateRequest) {
+                collation = ((UpdateRequest) request).getCollation();
+            } else if (request instanceof DeleteRequest) {
+                collation = ((DeleteRequest) request).getCollation();
             }
             if (collation != null) {
+                calledTheCallable = true;
                 checkValidCollation(connection, collation, new AsyncCallableWithConnection() {
                     @Override
                     public void call(final AsyncConnection connection, final Throwable t) {
                         callable.call(connection, t);
                     }
                 });
-            } else {
-                List<? extends WriteRequest> tail = requests.subList(1, requests.size());
-                checkValidWriteRequestCollations(connection, tail, callable);
+                break;
             }
+        }
+        if (!calledTheCallable) {
+            callable.call(connection, null);
         }
     }
 
@@ -157,22 +157,21 @@ final class OperationHelper {
 
     static void checkValidIndexRequestCollations(final AsyncConnection connection, final List<IndexRequest> requests,
                                                  final AsyncCallableWithConnection callable) {
-        if (requests.isEmpty()) {
-            callable.call(connection, null);
-        } else {
-            IndexRequest head = requests.get(0);
-            Collation collation = head.getCollation();
-            if (collation != null) {
-                checkValidCollation(connection, collation, new AsyncCallableWithConnection() {
+        boolean calledTheCallable = false;
+        for (IndexRequest request : requests) {
+            if (request.getCollation() != null) {
+                calledTheCallable = true;
+                checkValidCollation(connection, request.getCollation(), new AsyncCallableWithConnection() {
                     @Override
                     public void call(final AsyncConnection connection, final Throwable t) {
                         callable.call(connection, t);
                     }
                 });
-            } else {
-                List<IndexRequest> tail = requests.subList(1, requests.size());
-                checkValidIndexRequestCollations(connection, tail, callable);
+                break;
             }
+        }
+        if (!calledTheCallable) {
+            callable.call(connection, null);
         }
     }
 
