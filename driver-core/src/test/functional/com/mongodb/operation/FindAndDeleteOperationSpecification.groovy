@@ -217,4 +217,23 @@ class FindAndDeleteOperationSpecification extends OperationFunctionalSpecificati
         where:
         async << [false, false]
     }
+
+    @IgnoreIf({ !serverVersionAtLeast(asList(3, 3, 10)) })
+    def 'should support collation'() {
+        given:
+        def document = Document.parse('{_id: 1, str: "foo"}')
+        getCollectionHelper().insertDocuments(document)
+        def operation = new FindAndDeleteOperation<Document>(getNamespace(), writeConcern, documentCodec)
+                .filter(BsonDocument.parse('{str: "FOO"}'))
+                .collation(caseInsensitiveCollation)
+
+        when:
+        def result = execute(operation, async)
+
+        then:
+        result == document
+
+        where:
+        async << [true, false]
+    }
 }

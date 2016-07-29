@@ -98,6 +98,17 @@ class DBCursorSpecification extends Specification {
         cursor.getCollation() == enCollation
     }
 
+    def 'should copy as expected'() {
+        when:
+        def collection = new DB(getMongoClient(), 'myDatabase', new TestOperationExecutor([])).getCollection('test')
+        def cursor = new DBCursor(collection, new BasicDBObject(), new BasicDBObject(), ReadPreference.nearest())
+            .setReadConcern(ReadConcern.LOCAL)
+            .setCollation(Collation.builder().locale('en').build())
+
+        then:
+        expect(cursor, isTheSameAs(cursor.copy()))
+    }
+
     def 'find should create the correct FindOperation'() {
         given:
         def dbObject = new BasicDBObject('_id', 1)

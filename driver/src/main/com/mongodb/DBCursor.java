@@ -120,7 +120,6 @@ public class DBCursor implements Cursor, Iterable<DBObject> {
         this.readPreference = readPreference;
         this.resultDecoder = collection.getObjectCodec();
         this.decoderFactory = collection.getDBDecoderFactory();
-        this.collation = collection.getCollation();
     }
 
     /**
@@ -129,7 +128,8 @@ public class DBCursor implements Cursor, Iterable<DBObject> {
      * @return the new cursor
      */
     public DBCursor copy() {
-        return new DBCursor(collection, executor, filter, modifiers, projection, sort, new FindOptions(findOptions), readPreference);
+        return new DBCursor(collection, executor, filter, modifiers, projection, sort, new FindOptions(findOptions), readPreference)
+                .setReadConcern(getReadConcern()).setCollation(getCollation());
     }
 
     /**
@@ -671,9 +671,8 @@ public class DBCursor implements Cursor, Iterable<DBObject> {
      * @see DBCursor#size
      */
     public int count() {
-        return (int) collection.getCount(getQuery(), 0, 0, getReadPreferenceForCursor(), getReadConcern(),
-                                         findOptions.getMaxTime(MILLISECONDS), MILLISECONDS,
-                                         collection.wrap(modifiers).get("$hint"));
+        return (int) collection.getCount(getQuery(), 0, 0, getReadPreferenceForCursor(), getReadConcern(), getCollation(),
+                                         findOptions.getMaxTime(MILLISECONDS), MILLISECONDS,  collection.wrap(modifiers).get("$hint"));
     }
 
     /**
@@ -683,8 +682,8 @@ public class DBCursor implements Cursor, Iterable<DBObject> {
      * @since 2.12
      */
     public DBObject one() {
-        return collection.findOne(getQuery(), getKeysWanted(), sort,
-                                  getReadPreferenceForCursor(), getReadConcern(), findOptions.getMaxTime(MILLISECONDS), MILLISECONDS);
+        return collection.findOne(getQuery(), getKeysWanted(), sort, getReadPreferenceForCursor(), getReadConcern(),
+                getCollation(), findOptions.getMaxTime(MILLISECONDS), MILLISECONDS);
     }
 
     /**
@@ -727,8 +726,8 @@ public class DBCursor implements Cursor, Iterable<DBObject> {
      */
     public int size() {
         return (int) collection.getCount(getQuery(), findOptions.getLimit(),
-                                         findOptions.getSkip(), getReadPreference(), getReadConcern(),
-                                         findOptions.getMaxTime(MILLISECONDS), MILLISECONDS);
+                                         findOptions.getSkip(), getReadPreference(), getReadConcern(), getCollation(),
+                                         findOptions.getMaxTime(MILLISECONDS), MILLISECONDS, null);
     }
 
     /**

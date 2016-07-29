@@ -21,7 +21,6 @@ import com.mongodb.MongoException
 import com.mongodb.OperationFunctionalSpecification
 import com.mongodb.WriteConcernResult
 import com.mongodb.bulk.UpdateRequest
-import com.mongodb.bulk.WriteRequest
 import org.bson.BsonBinary
 import org.bson.BsonDocument
 import org.bson.BsonInt32
@@ -34,6 +33,7 @@ import spock.lang.IgnoreIf
 
 import static com.mongodb.ClusterFixture.serverVersionAtLeast
 import static com.mongodb.WriteConcern.ACKNOWLEDGED
+import static com.mongodb.bulk.WriteRequest.Type.UPDATE
 import static java.util.Arrays.asList
 
 class UpdateOperationSpecification extends OperationFunctionalSpecification {
@@ -43,7 +43,7 @@ class UpdateOperationSpecification extends OperationFunctionalSpecification {
         def operation = new UpdateOperation(getNamespace(), true, ACKNOWLEDGED,
                                      asList(new UpdateRequest(new BsonDocument('x', new BsonInt32(1)),
                                                               new BsonDocument('$set', new BsonDocument('y', new BsonInt32(2))),
-                                                              WriteRequest.Type.UPDATE)
+                                                              UPDATE)
                                                     .multi(false)))
 
         when:
@@ -68,7 +68,7 @@ class UpdateOperationSpecification extends OperationFunctionalSpecification {
         def operation = new UpdateOperation(getNamespace(), true, ACKNOWLEDGED,
                                      asList(new UpdateRequest(new BsonDocument('x', new BsonInt32(1)),
                                                               new BsonDocument('$set', new BsonDocument('y', new BsonInt32(2))),
-                                                              WriteRequest.Type.UPDATE)
+                                                              UPDATE)
                                                     .multi(false)))
         when:
         WriteConcernResult result = execute(operation, async)
@@ -92,7 +92,7 @@ class UpdateOperationSpecification extends OperationFunctionalSpecification {
         def operation = new UpdateOperation(getNamespace(), true, ACKNOWLEDGED,
                                      asList(new UpdateRequest(new BsonDocument('x', new BsonInt32(1)),
                                                               new BsonDocument('$set', new BsonDocument('y', new BsonInt32(2))),
-                                                              WriteRequest.Type.UPDATE)
+                                                              UPDATE)
                                                     .multi(true)))
         when:
         WriteConcernResult result = execute(operation, async)
@@ -113,7 +113,7 @@ class UpdateOperationSpecification extends OperationFunctionalSpecification {
         def operation = new UpdateOperation(getNamespace(), true, ACKNOWLEDGED,
                                      asList(new UpdateRequest(new BsonDocument('_id', new BsonInt32(1)),
                                                               new BsonDocument('$set', new BsonDocument('y', new BsonInt32(2))),
-                                                              WriteRequest.Type.UPDATE)
+                                                              UPDATE)
                                                     .upsert(true)))
         when:
         WriteConcernResult result = execute(operation, async)
@@ -138,7 +138,7 @@ class UpdateOperationSpecification extends OperationFunctionalSpecification {
         def operation = new UpdateOperation(getNamespace(), true, ACKNOWLEDGED,
                                      asList(new UpdateRequest(new BsonDocument('_id', new BsonInt32(1)),
                                                               new BsonDocument('$set', new BsonDocument('y', binary)),
-                                                              WriteRequest.Type.UPDATE)
+                                                              UPDATE)
                                                     .upsert(true)))
         when:
         WriteConcernResult result = execute(operation, async)
@@ -161,7 +161,7 @@ class UpdateOperationSpecification extends OperationFunctionalSpecification {
         def operation = new UpdateOperation(getNamespace(), true, ACKNOWLEDGED,
                                      asList(new UpdateRequest(new BsonDocument('_id', new BsonObjectId(id)),
                                                               new BsonDocument('$set', new BsonDocument('x', new BsonInt32(1))),
-                                                              WriteRequest.Type.UPDATE).
+                                                              UPDATE).
                                                     upsert(true)))
 
         when:
@@ -182,7 +182,7 @@ class UpdateOperationSpecification extends OperationFunctionalSpecification {
         def operation = new UpdateOperation(getNamespace(), ordered, ACKNOWLEDGED,
                             [new UpdateRequest(new BsonDocument(),
                                                new BsonDocument('$set', new BsonDocument('x', new BsonInt32(2)))
-                                                       .append('y', new BsonInt32(2)), WriteRequest.Type.UPDATE)])
+                                                       .append('y', new BsonInt32(2)), UPDATE)])
 
         when:
         execute(operation, async)
@@ -203,7 +203,7 @@ class UpdateOperationSpecification extends OperationFunctionalSpecification {
     def 'when an update document is empty, update should throw IllegalArgumentException'() {
         given:
         def operation =  new UpdateOperation(getNamespace(), ordered, ACKNOWLEDGED,
-                [new UpdateRequest(new BsonDocument(), new BsonDocument(), WriteRequest.Type.UPDATE)])
+                [new UpdateRequest(new BsonDocument(), new BsonDocument(), UPDATE)])
 
         when:
         execute(operation, async)
@@ -241,12 +241,30 @@ class UpdateOperationSpecification extends OperationFunctionalSpecification {
         where:
         [async, requests] << [
                 [true, false],
-                [[new UpdateRequest(new BsonDocument(), BsonDocument.parse('{$set: {x: 1}}'), WriteRequest.Type.UPDATE)
+                [[new UpdateRequest(new BsonDocument(), BsonDocument.parse('{$set: {x: 1}}'), UPDATE)
                          .collation(defaultCollation)],
-                 [new UpdateRequest(new BsonDocument(), BsonDocument.parse('{$set: {y: 1}}'), WriteRequest.Type.UPDATE),
-                  new UpdateRequest(new BsonDocument(), BsonDocument.parse('{$set: {a: 1}}'), WriteRequest.Type.UPDATE)
+                 [new UpdateRequest(new BsonDocument(), BsonDocument.parse('{$set: {y: 1}}'), UPDATE),
+                  new UpdateRequest(new BsonDocument(), BsonDocument.parse('{$set: {a: 1}}'), UPDATE)
                           .collation(defaultCollation)]]
         ].combinations()
+    }
+
+    @IgnoreIf({ !serverVersionAtLeast(asList(3, 3, 10)) })
+    def 'should support collation'() {
+        given:
+        getCollectionHelper().insertDocuments(Document.parse('{str: "foo"}'))
+        def requests = [new UpdateRequest(BsonDocument.parse('{str: "FOO"}}'), BsonDocument.parse('{$set: {str: "bar"}}'), UPDATE)
+                                .collation(caseInsensitiveCollation)]
+        def operation = new UpdateOperation(getNamespace(), false, ACKNOWLEDGED, requests)
+
+        when:
+        WriteConcernResult result = execute(operation, async)
+
+        then:
+        result.getCount() == 1
+
+        where:
+        async << [true, false]
     }
 
 }

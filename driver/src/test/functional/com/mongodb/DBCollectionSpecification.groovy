@@ -92,6 +92,12 @@ class DBCollectionSpecification extends Specification {
         collection.getCollation() == null
 
         when:
+        db.setCollation(frenchCollation)
+
+        then:
+        collection.getCollation() == frenchCollation
+
+        when:
         collection.setCollation(collation)
 
         then:
@@ -99,6 +105,12 @@ class DBCollectionSpecification extends Specification {
 
         when:
         collection.setCollation(null)
+
+        then:
+        collection.getCollation() == frenchCollation
+
+        when:
+        db.setCollation(null)
 
         then:
         collection.getCollation() == null

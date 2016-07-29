@@ -244,4 +244,10 @@ class OperationFunctionalSpecification extends Specification {
             .collationMaxVariable(CollationMaxVariable.SPACE)
             .backwards(true)
             .build()
+
+    @Shared
+    Collation caseInsensitiveCollation = Collation.builder()
+            .locale('en')
+            .collationStrength(CollationStrength.SECONDARY)
+            .build()
 }

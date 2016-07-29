@@ -19,6 +19,7 @@ package com.mongodb.operation
 import category.Slow
 import com.mongodb.MongoException
 import com.mongodb.OperationFunctionalSpecification
+import com.mongodb.WriteConcernResult
 import com.mongodb.bulk.DeleteRequest
 import org.bson.BsonBinary
 import org.bson.BsonDocument
@@ -96,6 +97,23 @@ class DeleteOperationSpecification extends OperationFunctionalSpecification {
                  [new DeleteRequest(BsonDocument.parse('{x: 1}}')),
                   new DeleteRequest(BsonDocument.parse('{y: 1}}')).collation(defaultCollation)]]
         ].combinations()
+    }
+
+    @IgnoreIf({ !serverVersionAtLeast(asList(3, 3, 10)) })
+    def 'should support collation'() {
+        given:
+        getCollectionHelper().insertDocuments(Document.parse('{str: "foo"}'))
+        def requests = [new DeleteRequest(BsonDocument.parse('{str: "FOO"}}')).collation(caseInsensitiveCollation)]
+        def operation = new DeleteOperation(getNamespace(), false, ACKNOWLEDGED, requests)
+
+        when:
+        WriteConcernResult result = execute(operation, async)
+
+        then:
+        result.getCount() == 1
+
+        where:
+        async << [true, false]
     }
 
 }

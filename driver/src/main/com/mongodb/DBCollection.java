@@ -746,25 +746,11 @@ public class DBCollection {
      */
     public DBObject findOne(final DBObject query, final DBObject projection, final DBObject sort,
                             final ReadPreference readPreference) {
-        return findOne(query, projection, sort, readPreference, getReadConcern(), 0, MILLISECONDS);
+        return findOne(query, projection, sort, readPreference, getReadConcern(), getCollation(), 0, MILLISECONDS);
     }
 
-    /**
-     * Get a single document from collection.
-     *
-     * @param query          the selection criteria using query operators.
-     * @param projection     specifies which projection MongoDB will return from the documents in the result set.
-     * @param sort           A document whose fields specify the attributes on which to sort the result set.
-     * @param readPreference {@code ReadPreference} to be used for this operation
-     * @param readConcern    {@code ReadConcern} to be used for this operation
-     * @param maxTime        the maximum time that the server will allow this operation to execute before killing it
-     * @param maxTimeUnit    the unit that maxTime is specified in
-     * @return A document that satisfies the query specified as the argument to this method.
-     * @mongodb.driver.manual tutorial/query-documents/ Querying
-     * @since 2.12.0
-     */
     DBObject findOne(final DBObject query, final DBObject projection, final DBObject sort,
-                     final ReadPreference readPreference, final ReadConcern readConcern,
+                     final ReadPreference readPreference, final ReadConcern readConcern, final Collation collation,
                      final long maxTime, final TimeUnit maxTimeUnit) {
         FindOperation<DBObject> operation = new FindOperation<DBObject>(getNamespace(), objectCodec)
                 .readConcern(readConcern)
@@ -772,7 +758,7 @@ public class DBCollection {
                 .sort(wrapAllowNull(sort))
                 .limit(-1)
                 .maxTime(maxTime, maxTimeUnit)
-                .collation(getCollation());
+                .collation(collation);
         if (query != null) {
             operation.filter(wrap(query));
         }
@@ -930,18 +916,11 @@ public class DBCollection {
      */
     public long getCount(final DBObject query, final DBObject projection, final long limit, final long skip,
                          final ReadPreference readPreference) {
-        return getCount(query, limit, skip, readPreference, getReadConcern(), 0, MILLISECONDS, null);
+        return getCount(query, limit, skip, readPreference, getReadConcern(), getCollation(), 0, MILLISECONDS, null);
     }
 
-    long getCount(final DBObject query, final long limit, final long skip,
-                  final ReadPreference readPreference, final ReadConcern readConcern,
-                  final long maxTime, final TimeUnit maxTimeUnit) {
-        return getCount(query, limit, skip, readPreference, readConcern, maxTime, maxTimeUnit, null);
-    }
-
-    long getCount(final DBObject query, final long limit, final long skip,
-                  final ReadPreference readPreference, final ReadConcern readConcern,
-                  final long maxTime, final TimeUnit maxTimeUnit,
+    long getCount(final DBObject query, final long limit, final long skip, final ReadPreference readPreference,
+                  final ReadConcern readConcern, final Collation collation, final long maxTime, final TimeUnit maxTimeUnit,
                   final BsonValue hint) {
 
         if (limit > Integer.MAX_VALUE) {
@@ -958,7 +937,7 @@ public class DBCollection {
                                        .skip(skip)
                                        .limit(limit)
                                        .maxTime(maxTime, maxTimeUnit)
-                                       .collation(getCollation());
+                                       .collation(collation);
         if (query != null) {
             operation.filter(wrap(query));
         }

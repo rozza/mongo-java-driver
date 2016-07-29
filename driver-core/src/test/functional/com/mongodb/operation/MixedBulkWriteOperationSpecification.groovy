@@ -665,7 +665,6 @@ class MixedBulkWriteOperationSpecification extends OperationFunctionalSpecificat
         async << [true, false]
     }
 
-
     // using w = 5 to force a timeout
     @IgnoreIf({ !ClusterFixture.isDiscoverableReplicaSet() })
     def 'should throw bulk write exception with a write concern error when wtimeout is exceeded'() {
@@ -824,6 +823,26 @@ class MixedBulkWriteOperationSpecification extends OperationFunctionalSpecificat
                  [new DeleteRequest(BsonDocument.parse('{x: 1}}')),
                   new DeleteRequest(BsonDocument.parse('{y: 1}}')).collation(defaultCollation)]]
         ].combinations()
+    }
+
+    @IgnoreIf({ !serverVersionAtLeast(asList(3, 3, 10)) })
+    def 'should support collation'() {
+        given:
+        getCollectionHelper().insertDocuments(Document.parse('{str: "foo"}'), Document.parse('{str: "bar"}'))
+        def requests = [new DeleteRequest(BsonDocument.parse('{str: "FOO"}}')).collation(caseInsensitiveCollation),
+                        new UpdateRequest(BsonDocument.parse('{str: "BAR"}}'), BsonDocument.parse('{str: "bar"}}'), REPLACE)
+                                .collation(caseInsensitiveCollation)]
+        def operation = new MixedBulkWriteOperation(namespace, requests, false, ACKNOWLEDGED)
+
+        when:
+        BulkWriteResult result = execute(operation, async)
+
+        then:
+        result.getDeletedCount() == 1
+        result.getModifiedCount() == 1
+
+        where:
+        async << [true, false]
     }
 
     private static List<WriteRequest> getTestWrites() {

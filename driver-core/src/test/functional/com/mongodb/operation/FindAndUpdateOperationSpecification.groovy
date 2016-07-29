@@ -321,7 +321,7 @@ class FindAndUpdateOperationSpecification extends OperationFunctionalSpecificati
 
     def 'should throw an exception when passing an unsupported collation'() {
         given:
-        def update = BsonDocument.parse('{ update: 1}')
+        def update = BsonDocument.parse('{ $set: {x: 1}}')
         def operation = new FindAndUpdateOperation<Document>(getNamespace(), writeConcern, documentCodec, update)
                 .collation(defaultCollation)
 
@@ -334,5 +334,25 @@ class FindAndUpdateOperationSpecification extends OperationFunctionalSpecificati
 
         where:
         async << [false, false]
+    }
+
+    @IgnoreIf({ !serverVersionAtLeast(asList(3, 3, 10)) })
+    def 'should support collation'() {
+        given:
+        def document = Document.parse('{_id: 1, str: "foo"}')
+        getCollectionHelper().insertDocuments(document)
+        def update = BsonDocument.parse('{ $set: {str: "bar"}}')
+        def operation = new FindAndUpdateOperation<Document>(getNamespace(), writeConcern, documentCodec, update)
+                .filter(BsonDocument.parse('{str: "FOO"}'))
+                .collation(caseInsensitiveCollation)
+
+        when:
+        def result = execute(operation, async)
+
+        then:
+        result == document
+
+        where:
+        async << [true, false]
     }
 }

@@ -365,6 +365,22 @@ class CountOperationSpecification extends OperationFunctionalSpecification {
         async << [false, false]
     }
 
+    @IgnoreIf({ !serverVersionAtLeast(asList(3, 3, 10)) })
+    def 'should support collation'() {
+        given:
+        getCollectionHelper().insertDocuments(BsonDocument.parse('{str: "foo"}'))
+        def operation = new CountOperation(namespace).filter(BsonDocument.parse('{str: "FOO"}')).collation(caseInsensitiveCollation)
+
+        when:
+        def result = execute(operation, async)
+
+        then:
+        result == 1
+
+        where:
+        async << [true, false]
+    }
+
     def helper = [
         dbName: 'db',
         namespace: new MongoNamespace('db', 'coll'),

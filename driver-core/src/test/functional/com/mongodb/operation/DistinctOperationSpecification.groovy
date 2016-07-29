@@ -255,6 +255,24 @@ class DistinctOperationSpecification extends OperationFunctionalSpecification {
         async << [false, false]
     }
 
+    @IgnoreIf({ !serverVersionAtLeast(asList(3, 3, 10)) })
+    def 'should support collation'() {
+        given:
+        def document = Document.parse('{str: "foo"}')
+        getCollectionHelper().insertDocuments(document)
+        def operation = new DistinctOperation(namespace, 'str', stringDecoder).filter(BsonDocument.parse('{str: "FOO"}}'))
+                .collation(caseInsensitiveCollation)
+
+        when:
+        def result = executeAndCollectBatchCursorResults(operation, async)
+
+        then:
+        result == ['foo']
+
+        where:
+        async << [true, false]
+    }
+
     def helper = [
         dbName: 'db',
         namespace: new MongoNamespace('db', 'coll'),

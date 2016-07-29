@@ -264,4 +264,23 @@ class AggregateToCollectionOperationSpecification extends OperationFunctionalSpe
         where:
         async << [false, false]
     }
+
+    @IgnoreIf({ !serverVersionAtLeast(asList(3, 3, 10)) })
+    def 'should support collation'() {
+        given:
+        getCollectionHelper().insertDocuments(BsonDocument.parse('{_id: 1, str: "foo"}'))
+        def pipeline = [BsonDocument.parse('{$match: {str: "FOO"}}'),
+                        new BsonDocument('$out', new BsonString(aggregateCollectionNamespace.collectionName))]
+        def operation = new AggregateToCollectionOperation(getNamespace(), pipeline).collation(defaultCollation)
+                .collation(caseInsensitiveCollation)
+
+        when:
+        execute(operation, async)
+
+        then:
+        getCollectionHelper(aggregateCollectionNamespace).count() == 1
+
+        where:
+        async << [true, false]
+    }
 }

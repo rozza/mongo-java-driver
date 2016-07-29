@@ -263,6 +263,21 @@ class CreateCollectionOperationSpecification extends OperationFunctionalSpecific
         async << [true, false]
     }
 
+    def 'should throw an exception when passing an unsupported collation'() {
+        given:
+        def operation = new CreateCollectionOperation(getDatabaseName(), getCollectionName()).collation(defaultCollation)
+
+        when:
+        testOperationThrows(operation, [3, 2, 0], async)
+
+        then:
+        def exception = thrown(IllegalArgumentException)
+        exception.getMessage().startsWith('Collation not supported by server version:')
+
+        where:
+        async << [false, false]
+    }
+
     @IgnoreIf({ !serverVersionAtLeast(asList(3, 3, 10)) })
     def 'should be able to create a collection with a collation'() {
         given:
@@ -277,21 +292,6 @@ class CreateCollectionOperationSpecification extends OperationFunctionalSpecific
 
         where:
         async << [true, false]
-    }
-
-    def 'should throw an exception when passing an unsupported collation'() {
-        given:
-        def operation = new CreateCollectionOperation(getDatabaseName(), getCollectionName()).collation(defaultCollation)
-
-        when:
-        testOperationThrows(operation, [3, 2, 0], async)
-
-        then:
-        def exception = thrown(IllegalArgumentException)
-        exception.getMessage().startsWith('Collation not supported by server version:')
-
-        where:
-        async << [false, false]
     }
 
     def getCollectionInfo(String collectionName) {

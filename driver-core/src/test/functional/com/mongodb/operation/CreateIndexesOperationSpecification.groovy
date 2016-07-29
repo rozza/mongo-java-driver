@@ -431,23 +431,6 @@ class CreateIndexesOperationSpecification extends OperationFunctionalSpecificati
         async << [true, false]
     }
 
-    @IgnoreIf({ !serverVersionAtLeast(asList(3, 3, 10)) })
-    def 'should be able to create a an index with collation'() {
-        given:
-        def operation = new CreateIndexesOperation(getNamespace(),
-                [new IndexRequest(new BsonDocument('a', new BsonInt32(1))).collation(defaultCollation)])
-
-        when:
-        execute(operation, async)
-        def indexCollation = new BsonDocumentWrapper<Document>(getIndex('a_1').get('collation'), new DocumentCodec())
-
-        then:
-        defaultCollation.asDocument().each { assert indexCollation.get(it.key) == it.value }
-
-        where:
-        async << [true, false]
-    }
-
     @IgnoreIf({ !serverVersionAtLeast(asList(3, 3, 8)) || !isDiscoverableReplicaSet() })
     def 'should throw on write concern error'() {
         given:
@@ -484,6 +467,23 @@ class CreateIndexesOperationSpecification extends OperationFunctionalSpecificati
                  [new IndexRequest(BsonDocument.parse('{field: 1}}')),
                   new IndexRequest(BsonDocument.parse('{field: 2}}')).collation(defaultCollation)]]
         ].combinations()
+    }
+
+    @IgnoreIf({ !serverVersionAtLeast(asList(3, 3, 10)) })
+    def 'should be able to create an index with collation'() {
+        given:
+        def operation = new CreateIndexesOperation(getNamespace(),
+                [new IndexRequest(new BsonDocument('a', new BsonInt32(1))).collation(defaultCollation)])
+
+        when:
+        execute(operation, async)
+        def indexCollation = new BsonDocumentWrapper<Document>(getIndex('a_1').get('collation'), new DocumentCodec())
+
+        then:
+        defaultCollation.asDocument().each { assert indexCollation.get(it.key) == it.value }
+
+        where:
+        async << [true, false]
     }
 
     Document getIndex(final String indexName) {

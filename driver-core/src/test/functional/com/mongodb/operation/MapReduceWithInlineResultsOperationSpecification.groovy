@@ -30,7 +30,10 @@ import org.bson.BsonNull
 import org.bson.BsonString
 import org.bson.Document
 import org.bson.codecs.DocumentCodec
+import spock.lang.IgnoreIf
 
+import static com.mongodb.ClusterFixture.serverVersionAtLeast
+import static java.util.Arrays.asList
 import static java.util.concurrent.TimeUnit.MILLISECONDS
 
 class MapReduceWithInlineResultsOperationSpecification extends OperationFunctionalSpecification {
@@ -221,6 +224,29 @@ class MapReduceWithInlineResultsOperationSpecification extends OperationFunction
 
         where:
         async << [false, false]
+    }
+
+    @IgnoreIf({ !serverVersionAtLeast(asList(3, 3, 10)) })
+    def 'should support collation'() {
+        given:
+        def document = Document.parse('{_id: 1, str: "foo"}')
+        getCollectionHelper().insertDocuments(document)
+        def operation = new MapReduceWithInlineResultsOperation<Document>(
+                namespace,
+                new BsonJavaScript('function(){ emit( this._id, this.str ); }'),
+                new BsonJavaScript('function(key, values){ return key, values; }'),
+                documentCodec)
+                .filter(BsonDocument.parse('{str: "FOO"}'))
+                .collation(caseInsensitiveCollation)
+
+        when:
+        def results = executeAndCollectBatchCursorResults(operation, async)
+
+        then:
+        results == [Document.parse('{_id: 1.0, value: "foo"}')]
+
+        where:
+        async << [true, false]
     }
 
     def helper = [

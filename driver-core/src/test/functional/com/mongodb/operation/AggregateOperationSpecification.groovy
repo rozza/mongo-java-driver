@@ -147,6 +147,25 @@ class AggregateOperationSpecification extends OperationFunctionalSpecification {
         async << [false, false]
     }
 
+    @IgnoreIf({ !serverVersionAtLeast(asList(3, 3, 10)) })
+    def 'should support collation'() {
+        given:
+        def document = BsonDocument.parse('{_id: 1, str: "foo"}')
+        getCollectionHelper().insertDocuments(document)
+        def pipeline = [BsonDocument.parse('{$match: {str: "FOO"}}')]
+        def operation = new AggregateOperation<BsonDocument>(namespace, pipeline, new BsonDocumentCodec())
+                .collation(caseInsensitiveCollation)
+
+        when:
+        def result = executeAndCollectBatchCursorResults(operation, async)
+
+        then:
+        result == [document]
+
+        where:
+        async << [true, false]
+    }
+
     def 'should be able to aggregate'() {
         when:
         AggregateOperation operation = new AggregateOperation<Document>(getNamespace(), [], new DocumentCodec()).useCursor(useCursor)

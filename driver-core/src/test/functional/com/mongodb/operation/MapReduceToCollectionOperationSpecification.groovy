@@ -304,4 +304,29 @@ class MapReduceToCollectionOperationSpecification extends OperationFunctionalSpe
         async << [false, false]
     }
 
+    @IgnoreIf({ !serverVersionAtLeast(asList(3, 3, 10)) })
+    def 'should support collation'() {
+        given:
+        def outCollectionHelper = getCollectionHelper(new MongoNamespace(mapReduceInputNamespace.getDatabaseName(), 'collectionOut'))
+        outCollectionHelper.drop()
+
+        def document = Document.parse('{_id: 1, str: "foo"}')
+        getCollectionHelper(mapReduceInputNamespace).insertDocuments(document)
+        def operation = new MapReduceToCollectionOperation(mapReduceInputNamespace,
+                new BsonJavaScript('function(){ emit( this._id, this.str ); }'),
+                new BsonJavaScript('function(key, values){ return values; }'),
+                'collectionOut')
+                .filter(BsonDocument.parse('{str: "FOO"}'))
+                .collation(caseInsensitiveCollation)
+
+        when:
+        execute(operation, async)
+
+        then:
+        outCollectionHelper.count() == 1
+
+        where:
+        async << [true, false]
+    }
+
 }
