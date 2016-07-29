@@ -660,16 +660,41 @@ class DBCollectionFunctionalSpecification extends FunctionalSpecification {
                 .collationMaxVariable(CollationMaxVariable.SPACE)
                 .backwards(true)
                 .build()
-        collection.setCollation(collation)
+
+        def options = BasicDBObject.parse('''{ collation: { locale: "en", caseLevel: true, caseFirst: "off", strength: 5,
+                    numericOrdering: true, alternate: "shifted",  maxVariable: "space", backwards: true }}''')
 
         when:
-        collection.createIndex(~['y': 1], new BasicDBObject())
+        collection.drop()
+        collection.createIndex(~['y': 1], new BasicDBObject(options))
 
         then:
         collection.getIndexInfo().size() == 2
 
         when:
         BsonDocument indexCollation = new BsonDocumentWrapper<DBObject>(collection.getIndexInfo()[1].get('collation'),
+                collection.getDefaultDBObjectCodec())
+
+        then:
+        collation.asDocument().each { assert indexCollation.get(it.key) == it.value }
+
+        when: // Set at the collection level
+        collection.drop()
+        collection.setCollation(collation)
+
+        collection.createIndex(~['y': 1], new BasicDBObject())
+        indexCollation = new BsonDocumentWrapper<DBObject>(collection.getIndexInfo()[1].get('collation'),
+                collection.getDefaultDBObjectCodec())
+
+        then:
+        collation.asDocument().each { assert indexCollation.get(it.key) == it.value }
+
+        when: // Set at both the collection and the options levels
+        collection.drop()
+        collection.setCollation(Collation.builder().locale('fr').build())
+
+        collection.createIndex(~['y': 1], new BasicDBObject(options))
+        indexCollation = new BsonDocumentWrapper<DBObject>(collection.getIndexInfo()[1].get('collation'),
                 collection.getDefaultDBObjectCodec())
 
         then:

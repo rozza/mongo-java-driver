@@ -2352,7 +2352,11 @@ public class DBCollection {
         if (options.containsField("partialFilterExpression")) {
             request.partialFilterExpression(wrap(convertOptionsToType(options, "partialFilterExpression", DBObject.class)));
         }
-        request.collation(getCollation());
+        Collation collation = getCollation();
+        if (options.containsField("collation")) {
+            collation = DBObjectCollationHelper.createOptions(options);
+        }
+        request.collation(collation);
         return new CreateIndexesOperation(getNamespace(), singletonList(request), writeConcern);
     }
 

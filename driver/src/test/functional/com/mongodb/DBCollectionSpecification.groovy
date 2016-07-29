@@ -106,7 +106,7 @@ class DBCollectionSpecification extends Specification {
 
     def 'should use CreateIndexOperation properly'() {
         given:
-        def executor = new TestOperationExecutor([null, null]);
+        def executor = new TestOperationExecutor([null, null, null]);
         def collection = new DB(getMongoClient(), 'myDatabase', executor).getCollection('test')
         def keys = new BasicDBObject('a', 1);
 

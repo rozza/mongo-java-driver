@@ -22,9 +22,11 @@ import com.mongodb.client.model.CollationAlternate;
 import com.mongodb.client.model.CollationCaseFirst;
 import com.mongodb.client.model.CollationMaxVariable;
 import com.mongodb.client.model.CollationStrength;
+import com.mongodb.operation.ListCollectionsOperation;
 import com.mongodb.operation.UserExistsOperation;
 import org.bson.BsonDocument;
-import org.bson.BsonDocumentWrapper;
+import org.bson.BsonString;
+import org.bson.codecs.BsonDocumentCodec;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
@@ -39,6 +41,7 @@ import static com.mongodb.ClusterFixture.isSharded;
 import static com.mongodb.ClusterFixture.serverVersionAtLeast;
 import static com.mongodb.DBObjectMatchers.hasFields;
 import static com.mongodb.DBObjectMatchers.hasSubdocument;
+import static com.mongodb.Fixture.getDefaultDatabaseName;
 import static com.mongodb.Fixture.getMongoClient;
 import static com.mongodb.ReadPreference.secondary;
 import static java.util.Arrays.asList;
@@ -195,17 +198,42 @@ public class DBTest extends DatabaseTestCase {
                 .collationMaxVariable(CollationMaxVariable.SPACE)
                 .backwards(true)
                 .build();
-        database.setCollation(collation);
-        database.createCollection(collectionName, new BasicDBObject());
+
+        DBObject options = BasicDBObject.parse("{ collation: { locale: 'en', caseLevel: true, caseFirst: 'off', strength: 5,"
+                + "numericOrdering: true, alternate: 'shifted',  maxVariable: 'space', backwards: true }}");
 
         // When
-        BsonDocument indexCollation =  new BsonDocumentWrapper<DBObject>((DBObject) database.getCollection(collectionName)
-                .getIndexInfo().get(0).get("collation"), collection.getDefaultDBObjectCodec());
+        database.createCollection(collectionName, options);
+        BsonDocument collectionCollation = getCollectionInfo(collectionName).getDocument("options").getDocument("collation");
 
         // Then
         BsonDocument collationDocument = collation.asDocument();
         for (String key: collationDocument.keySet()) {
-            assertEquals(collationDocument.get(key), indexCollation.get(key));
+            assertEquals(collationDocument.get(key), collectionCollation.get(key));
+        }
+
+        // When - collation set on the database
+        database.getCollection(collectionName).drop();
+        database.setCollation(collation);
+        database.createCollection(collectionName, new BasicDBObject());
+        collectionCollation = getCollectionInfo(collectionName).getDocument("options").getDocument("collation");
+
+        // Then
+        collationDocument = collation.asDocument();
+        for (String key: collationDocument.keySet()) {
+            assertEquals(collationDocument.get(key), collectionCollation.get(key));
+        }
+
+        // When - collation set on the database and in options
+        database.getCollection(collectionName).drop();
+        database.setCollation(Collation.builder().locale("fr").build());
+        database.createCollection(collectionName, options);
+        collectionCollation = getCollectionInfo(collectionName).getDocument("options").getDocument("collation");
+
+        // Then
+        collationDocument = collation.asDocument();
+        for (String key: collationDocument.keySet()) {
+            assertEquals(collationDocument.get(key), collectionCollation.get(key));
         }
     }
 
@@ -432,5 +460,10 @@ public class DBTest extends DatabaseTestCase {
         // Then
         assertThat(commandResult.ok(), is(true));
         assertThat((String) commandResult.get("serverUsed"), not(containsString(":27017")));
+    }
+
+    BsonDocument getCollectionInfo(final String collectionName) {
+        return new ListCollectionsOperation<BsonDocument>(getDefaultDatabaseName(), new BsonDocumentCodec())
+                .filter(new BsonDocument("name", new BsonString(collectionName))).execute(getBinding()).next().get(0);
     }
 }

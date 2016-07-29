@@ -43,6 +43,8 @@ public class DatabaseTestCase {
 
     @After
     public void tearDown() {
+        database.setCollation(null);
+        collection.setCollation(null);
         collection.drop();
     }
 

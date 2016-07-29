@@ -388,10 +388,13 @@ public class DB {
         if (options.get("validationAction") != null) {
             validationAction = ValidationAction.fromString((String) options.get("validationAction"));
         }
-
+        Collation collation = getCollation();
+        if (options.containsField("collation")) {
+            collation = DBObjectCollationHelper.createOptions(options);
+        }
         return new CreateCollectionOperation(getName(), collectionName, getWriteConcern())
                    .capped(capped)
-                   .collation(getCollation())
+                   .collation(collation)
                    .sizeInBytes(sizeInBytes)
                    .autoIndex(autoIndex)
                    .maxDocuments(maxDocuments)
