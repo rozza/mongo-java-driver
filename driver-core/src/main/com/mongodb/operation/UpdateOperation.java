@@ -65,12 +65,22 @@ public class UpdateOperation extends BaseWriteOperation {
 
     @Override
     protected WriteConcernResult executeProtocol(final Connection connection) {
+        checkValidWriteRequestCollations(connection, updates);
         return connection.update(getNamespace(), isOrdered(), getWriteConcern(), updates);
     }
 
     @Override
     protected void executeProtocolAsync(final AsyncConnection connection, final SingleResultCallback<WriteConcernResult> callback) {
-        connection.updateAsync(getNamespace(), isOrdered(), getWriteConcern(), updates, callback);
+        checkValidWriteRequestCollations(connection, updates, new AsyncCallableWithConnection(){
+            @Override
+            public void call(final AsyncConnection connection, final Throwable t) {
+                if (t != null) {
+                    callback.onResult(null, t);
+                } else {
+                    connection.updateAsync(getNamespace(), isOrdered(), getWriteConcern(), updates, callback);
+                }
+            }
+        });
     }
 
     @Override

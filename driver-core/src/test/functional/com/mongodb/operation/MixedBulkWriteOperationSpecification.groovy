@@ -802,23 +802,25 @@ class MixedBulkWriteOperationSpecification extends OperationFunctionalSpecificat
         [async, ordered] << [[true, false], [true, false]].combinations()
     }
 
+    @IgnoreIf({ serverVersionAtLeast(asList(3, 3, 10)) })
     def 'should throw an exception when using an unsupported Collation'() {
         given:
         def operation = new MixedBulkWriteOperation(namespace, requests, false, ACKNOWLEDGED)
 
         when:
-        testOperationThrows(operation, [3, 2, 0], async)
+        execute(operation, async)
 
         then:
-        def exception = thrown(IllegalArgumentException)
-        exception.getMessage().startsWith('Unsupported collation')
+        def exception = thrown(Exception)
+        exception instanceof IllegalArgumentException
+        exception.getMessage().startsWith('Collation not supported by server version:')
 
         where:
         [async, requests] << [
                 [true, false],
                 [[new DeleteRequest(BsonDocument.parse('{x: 1}}')).collation(defaultCollation)],
-                 [new UpdateRequest(BsonDocument.parse('{x: 1}}'), BsonDocument.parse('{x: 10}}'), UPDATE),
-                  new UpdateRequest(BsonDocument.parse('{y: 1}}'), BsonDocument.parse('{x: 10}}'), UPDATE).collation(defaultCollation)],
+                 [new UpdateRequest(BsonDocument.parse('{x: 1}}'), BsonDocument.parse('{x: 10}}'), REPLACE),
+                  new UpdateRequest(BsonDocument.parse('{y: 1}}'), BsonDocument.parse('{x: 10}}'), REPLACE).collation(defaultCollation)],
                  [new DeleteRequest(BsonDocument.parse('{x: 1}}')),
                   new DeleteRequest(BsonDocument.parse('{y: 1}}')).collation(defaultCollation)]]
         ].combinations()

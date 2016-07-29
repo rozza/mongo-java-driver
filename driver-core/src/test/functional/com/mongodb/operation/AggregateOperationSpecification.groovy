@@ -124,7 +124,7 @@ class AggregateOperationSpecification extends OperationFunctionalSpecification {
 
         then:
         def exception = thrown(IllegalArgumentException)
-        exception.getMessage().startsWith('Unsupported ReadConcern')
+        exception.getMessage().startsWith('ReadConcern not supported by server version:')
 
         where:
         [async, readConcern] << [[true, false], [ReadConcern.MAJORITY, ReadConcern.LOCAL]].combinations()
@@ -141,7 +141,7 @@ class AggregateOperationSpecification extends OperationFunctionalSpecification {
 
         then:
         def exception = thrown(IllegalArgumentException)
-        exception.getMessage().startsWith('Unsupported collation')
+        exception.getMessage().startsWith('Collation not supported by server version:')
 
         where:
         async << [false, false]

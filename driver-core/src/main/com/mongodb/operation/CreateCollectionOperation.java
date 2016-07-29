@@ -65,7 +65,6 @@ public class CreateCollectionOperation implements AsyncWriteOperation<Void>, Wri
     private ValidationAction validationAction = null;
     private Collation collation = null;
 
-
     /**
      * Construct a new instance.
      *

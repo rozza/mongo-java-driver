@@ -17,6 +17,7 @@
 package com.mongodb.operation
 
 import category.Slow
+import com.mongodb.MongoException
 import com.mongodb.OperationFunctionalSpecification
 import com.mongodb.bulk.DeleteRequest
 import org.bson.BsonBinary
@@ -26,10 +27,14 @@ import org.bson.Document
 import org.bson.codecs.BsonDocumentCodec
 import org.bson.codecs.DocumentCodec
 import org.junit.experimental.categories.Category
+import spock.lang.IgnoreIf
 
+import static com.mongodb.ClusterFixture.serverVersionAtLeast
 import static com.mongodb.WriteConcern.ACKNOWLEDGED
+import static java.util.Arrays.asList
 
 class DeleteOperationSpecification extends OperationFunctionalSpecification {
+
     def 'should remove a document'() {
         given:
         getCollectionHelper().insertDocuments(new DocumentCodec(), new Document('_id', 1))
@@ -67,16 +72,22 @@ class DeleteOperationSpecification extends OperationFunctionalSpecification {
         async << [true, false]
     }
 
+    @IgnoreIf({ serverVersionAtLeast(asList(3, 3, 10)) })
     def 'should throw an exception when using an unsupported Collation'() {
         given:
         def operation = new DeleteOperation(getNamespace(), false, ACKNOWLEDGED, requests)
 
         when:
-        testOperationThrows(operation, [3, 2, 0], async)
+        execute(operation, async)
 
         then:
-        def exception = thrown(IllegalArgumentException)
-        exception.getMessage().startsWith('Unsupported collation')
+        def exception = thrown(Exception)
+        if (async) {
+            exception instanceof MongoException
+            exception = exception.cause
+        }
+        exception instanceof IllegalArgumentException
+        exception.getMessage().startsWith('Collation not supported by server version:')
 
         where:
         [async, requests] << [

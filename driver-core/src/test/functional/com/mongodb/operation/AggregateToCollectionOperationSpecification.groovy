@@ -259,7 +259,7 @@ class AggregateToCollectionOperationSpecification extends OperationFunctionalSpe
 
         then:
         def exception = thrown(IllegalArgumentException)
-        exception.getMessage().startsWith('Unsupported collation')
+        exception.getMessage().startsWith('Collation not supported by server version:')
 
         where:
         async << [false, false]

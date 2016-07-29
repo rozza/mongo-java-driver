@@ -59,6 +59,7 @@ import static com.mongodb.operation.OperationHelper.AsyncCallableWithConnection;
 import static com.mongodb.operation.OperationHelper.CallableWithConnection;
 import static com.mongodb.operation.OperationHelper.LOGGER;
 import static com.mongodb.operation.OperationHelper.bypassDocumentValidationNotSupported;
+import static com.mongodb.operation.OperationHelper.checkValidCollation;
 import static com.mongodb.operation.OperationHelper.checkValidWriteRequestCollations;
 import static com.mongodb.operation.OperationHelper.getBypassDocumentValidationException;
 import static com.mongodb.operation.OperationHelper.releasingCallback;
@@ -427,7 +428,9 @@ public class MixedBulkWriteOperation implements AsyncWriteOperation<BulkWriteRes
 
                 @Override
                 WriteConcernResult executeWriteProtocol(final int index) {
-                    return connection.delete(namespace, ordered, writeConcern, singletonList(deleteRequests.get(index)));
+                    DeleteRequest deleteRequest = deleteRequests.get(index);
+                    checkValidCollation(connection, deleteRequest.getCollation());
+                    return connection.delete(namespace, ordered, writeConcern, singletonList(deleteRequest));
                 }
 
                 @Override
@@ -475,7 +478,9 @@ public class MixedBulkWriteOperation implements AsyncWriteOperation<BulkWriteRes
 
                 @Override
                 WriteConcernResult executeWriteProtocol(final int index) {
-                    return connection.update(namespace, ordered, writeConcern, singletonList(updates.get(index)));
+                    UpdateRequest updateRequest = updates.get(index);
+                    checkValidCollation(connection, updateRequest.getCollation());
+                    return connection.update(namespace, ordered, writeConcern, singletonList(updateRequest));
                 }
 
                 @Override
@@ -497,7 +502,17 @@ public class MixedBulkWriteOperation implements AsyncWriteOperation<BulkWriteRes
 
                 @Override
                 void executeWriteProtocolAsync(final int index, final SingleResultCallback<WriteConcernResult> callback) {
-                    connection.deleteAsync(namespace, ordered, writeConcern, singletonList(deleteRequests.get(index)), callback);
+                    final DeleteRequest deleteRequest = deleteRequests.get(index);
+                    checkValidCollation(connection, deleteRequest.getCollation(), new AsyncCallableWithConnection() {
+                        @Override
+                        public void call(final AsyncConnection connection, final Throwable t) {
+                            if (t != null) {
+                                callback.onResult(null, t);
+                            } else {
+                                connection.deleteAsync(namespace, ordered, writeConcern, singletonList(deleteRequest), callback);
+                            }
+                        }
+                    });
                 }
 
                 @Override
@@ -553,7 +568,17 @@ public class MixedBulkWriteOperation implements AsyncWriteOperation<BulkWriteRes
 
                 @Override
                 void executeWriteProtocolAsync(final int index, final SingleResultCallback<WriteConcernResult> callback) {
-                    connection.updateAsync(namespace, ordered, writeConcern, singletonList(updates.get(index)), callback);
+                    final UpdateRequest updateRequest = updates.get(index);
+                    checkValidCollation(connection, updateRequest.getCollation(), new AsyncCallableWithConnection() {
+                        @Override
+                        public void call(final AsyncConnection connection, final Throwable t) {
+                            if (t != null) {
+                                callback.onResult(null, t);
+                            } else {
+                                connection.updateAsync(namespace, ordered, writeConcern, singletonList(updateRequest), callback);
+                            }
+                        }
+                    });
                 }
 
                 @Override

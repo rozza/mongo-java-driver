@@ -111,7 +111,7 @@ class AggregateExplainOperation implements AsyncReadOperation<BsonDocument>, Rea
             @Override
             public BsonDocument call(final Connection connection) {
                 checkValidCollation(connection, collation);
-                return executeWrappedCommandProtocol(binding, namespace.getDatabaseName(), getCommand());
+                return executeWrappedCommandProtocol(binding, namespace.getDatabaseName(), getCommand(), connection);
             }
         });
     }

@@ -206,7 +206,7 @@ class UpdateOperationSpecification extends OperationFunctionalSpecification {
                 [new UpdateRequest(new BsonDocument(), new BsonDocument(), WriteRequest.Type.UPDATE)])
 
         when:
-        execute(operation, [3, 4, 0], async)
+        execute(operation, async)
 
         then:
         def ex = thrown(Exception)
@@ -221,16 +221,22 @@ class UpdateOperationSpecification extends OperationFunctionalSpecification {
         [async, ordered] << [[true, false], [true, false]].combinations()
     }
 
+    @IgnoreIf({ serverVersionAtLeast(asList(3, 3, 10)) })
     def 'should throw an exception when using an unsupported Collation'() {
         given:
         def operation = new UpdateOperation(getNamespace(), false, ACKNOWLEDGED, requests)
 
         when:
-        testOperationThrows(operation, [3, 2, 0], async)
+        execute(operation, async)
 
         then:
-        def exception = thrown(IllegalArgumentException)
-        exception.getMessage().startsWith('Unsupported collation')
+        def exception = thrown(Exception)
+        if (async) {
+            exception instanceof MongoException
+            exception = exception.cause
+        }
+        exception instanceof IllegalArgumentException
+        exception.getMessage().startsWith('Collation not supported by server version:')
 
         where:
         [async, requests] << [

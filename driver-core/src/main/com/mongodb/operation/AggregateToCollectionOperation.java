@@ -54,6 +54,7 @@ import static com.mongodb.operation.WriteConcernHelper.writeConcernErrorTransfor
  * a read operation).
  *
  * @mongodb.server.release 2.6
+ * @mongodb.driver.manual reference/command/aggregate/ Aggregation
  * @since 3.0
  */
 public class AggregateToCollectionOperation implements AsyncWriteOperation<Void>, WriteOperation<Void> {
@@ -186,7 +187,6 @@ public class AggregateToCollectionOperation implements AsyncWriteOperation<Void>
      * @param bypassDocumentValidation If true, allows the write to opt-out of document level validation.
      * @return this
      * @since 3.2
-     * @mongodb.driver.manual reference/command/aggregate/ Aggregation
      * @mongodb.server.release 3.2
      */
     public AggregateToCollectionOperation bypassDocumentValidation(final Boolean bypassDocumentValidation) {
@@ -199,7 +199,6 @@ public class AggregateToCollectionOperation implements AsyncWriteOperation<Void>
      *
      * @return the collation options
      * @since 3.4
-     * @mongodb.driver.manual reference/command/aggregate/ Aggregation
      * @mongodb.server.release 3.4
      */
     public Collation getCollation() {
@@ -212,7 +211,6 @@ public class AggregateToCollectionOperation implements AsyncWriteOperation<Void>
      * @param collation the collation options
      * @return this
      * @since 3.4
-     * @mongodb.driver.manual reference/command/aggregate/ Aggregation
      * @mongodb.server.release 3.4
      */
     public AggregateToCollectionOperation collation(final Collation collation) {
