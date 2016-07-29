@@ -60,9 +60,11 @@ public enum CollationCaseFirst {
      * @return the read concern
      */
     public static CollationCaseFirst fromString(final String collationCaseFirst) {
-        for (CollationCaseFirst caseFirst : CollationCaseFirst.values()) {
-            if (collationCaseFirst.equalsIgnoreCase(caseFirst.value)) {
-                return caseFirst;
+        if (collationCaseFirst != null) {
+            for (CollationCaseFirst caseFirst : CollationCaseFirst.values()) {
+                if (collationCaseFirst.equalsIgnoreCase(caseFirst.value)) {
+                    return caseFirst;
+                }
             }
         }
         throw new IllegalArgumentException(format("'%s' is not a valid collationCaseFirst", collationCaseFirst));

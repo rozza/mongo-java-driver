@@ -61,9 +61,11 @@ public enum CollationMaxVariable {
      * @return the read concern
      */
     public static CollationMaxVariable fromString(final String collationMaxVariable) {
-        for (CollationMaxVariable caseFirst : CollationMaxVariable.values()) {
-            if (collationMaxVariable.equalsIgnoreCase(caseFirst.value)) {
-                return caseFirst;
+        if (collationMaxVariable != null) {
+            for (CollationMaxVariable caseFirst : CollationMaxVariable.values()) {
+                if (collationMaxVariable.equalsIgnoreCase(caseFirst.value)) {
+                    return caseFirst;
+                }
             }
         }
         throw new IllegalArgumentException(format("'%s' is not a valid collationMaxVariable", collationMaxVariable));

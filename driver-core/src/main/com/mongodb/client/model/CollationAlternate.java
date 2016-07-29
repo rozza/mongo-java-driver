@@ -59,9 +59,11 @@ public enum CollationAlternate {
      * @return the read concern
      */
     public static CollationAlternate fromString(final String collationAlternate) {
-        for (CollationAlternate caseFirst : CollationAlternate.values()) {
-            if (collationAlternate.equalsIgnoreCase(caseFirst.value)) {
-                return caseFirst;
+        if (collationAlternate != null) {
+            for (CollationAlternate caseFirst : CollationAlternate.values()) {
+                if (collationAlternate.equalsIgnoreCase(caseFirst.value)) {
+                    return caseFirst;
+                }
             }
         }
         throw new IllegalArgumentException(format("'%s' is not a valid collationAlternate", collationAlternate));
