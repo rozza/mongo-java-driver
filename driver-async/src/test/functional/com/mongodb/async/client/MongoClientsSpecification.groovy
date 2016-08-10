@@ -18,12 +18,20 @@
 package com.mongodb.async.client
 
 import com.mongodb.MongoCredential
+import com.mongodb.ReadConcern
 import com.mongodb.ServerAddress
+import com.mongodb.Tag
+import com.mongodb.TagSet
+import com.mongodb.WriteConcern
 import com.mongodb.connection.AsynchronousSocketChannelStreamFactoryFactory
 import com.mongodb.connection.netty.NettyStreamFactoryFactory
 import spock.lang.IgnoreIf
+import spock.lang.Unroll
 
 import static com.mongodb.ClusterFixture.getSslSettings
+import static com.mongodb.ReadPreference.primary
+import static com.mongodb.ReadPreference.secondaryPreferred
+import static java.util.Arrays.asList
 import static java.util.concurrent.TimeUnit.MILLISECONDS
 
 class MongoClientsSpecification extends FunctionalSpecification {
@@ -117,5 +125,72 @@ class MongoClientsSpecification extends FunctionalSpecification {
 
         cleanup:
         client?.close()
+    }
+
+    @Unroll
+    def 'should correct parse read preference for #readPreference'() {
+        when:
+        def client = MongoClients.create(uri)
+
+        then:
+        client.settings.getReadPreference() == readPreference
+
+        cleanup:
+        client?.close()
+
+        where:
+        uri                                                              | readPreference
+        'mongodb://localhost/?readPreference=secondaryPreferred'         | secondaryPreferred()
+        'mongodb://localhost/?slaveOk=true'                              | secondaryPreferred()
+        'mongodb://localhost/?slaveOk=false'                             | primary()
+        'mongodb://localhost/' +
+                '?readPreference=secondaryPreferred' +
+                '&readPreferenceTags=dc:ny,rack:1' +
+                '&readPreferenceTags=dc:ny' +
+                '&readPreferenceTags='                                   | secondaryPreferred([
+                                                                            new TagSet(asList(new Tag('dc', 'ny'), new Tag('rack', '1'))),
+                                                                            new TagSet(asList(new Tag('dc', 'ny'))),
+                                                                            new TagSet()])
+    }
+
+    @Unroll
+    def 'should correct parse read concern for #readConcern'() {
+        when:
+        def client = MongoClients.create(uri)
+
+        then:
+        client.settings.getReadConcern() == readConcern
+
+        cleanup:
+        client?.close()
+
+        where:
+        uri                                               | readConcern
+        'mongodb://localhost/'                            | ReadConcern.DEFAULT
+        'mongodb://localhost/?readConcernLevel=local'     | ReadConcern.LOCAL
+        'mongodb://localhost/?readConcernLevel=majority'  | ReadConcern.MAJORITY
+    }
+
+    @Unroll
+    def 'should correctly parse different #writeConcern'() {
+        when:
+        def client = MongoClients.create(uri)
+
+        then:
+        client.settings.getWriteConcern() == writeConcern
+
+        cleanup:
+        client?.close()
+
+        where:
+        uri                                                            | writeConcern
+        'mongodb://localhost'                                          | WriteConcern.ACKNOWLEDGED
+        'mongodb://localhost/?safe=true'                               | WriteConcern.ACKNOWLEDGED
+        'mongodb://localhost/?safe=false'                              | WriteConcern.UNACKNOWLEDGED
+        'mongodb://localhost/?wTimeout=5'                              | WriteConcern.ACKNOWLEDGED.withWTimeout(5, MILLISECONDS)
+        'mongodb://localhost/?fsync=true'                              | WriteConcern.ACKNOWLEDGED.withFsync(true)
+        'mongodb://localhost/?journal=true'                            | WriteConcern.ACKNOWLEDGED.withJournal(true)
+        'mongodb://localhost/?w=2&wtimeout=5&fsync=true&journal=true'  | new WriteConcern(2, 5, true, true)
+        'mongodb://localhost/?w=majority&wtimeout=5&fsync=true&j=true' | new WriteConcern('majority', 5, true, true)
     }
 }
