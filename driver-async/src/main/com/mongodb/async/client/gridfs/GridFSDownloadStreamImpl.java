@@ -141,7 +141,7 @@ final class GridFSDownloadStreamImpl implements GridFSDownloadStream {
     private void checkAndFetchResults(final int amountRead, final ByteBuffer dst, final SingleResultCallback<Integer> callback) {
         if (currentPosition == fileInfo.getLength() || dst.remaining() == 0) {
             callback.onResult(amountRead, null);
-        } else if (hasResultsToProcess(dst)) {
+        } else if (hasResultsToProcess()) {
             processResults(amountRead, dst, callback);
         } else if (cursor == null) {
             chunksCollection.find(new Document("files_id", fileInfo.getId())
@@ -266,8 +266,8 @@ final class GridFSDownloadStreamImpl implements GridFSDownloadStream {
         return !resultsQueue.isEmpty() && (buffer == null || bufferOffset == buffer.length);
     }
 
-    private boolean hasResultsToProcess(final ByteBuffer dst) {
-        return !resultsQueue.isEmpty() || (dst.remaining() > 0 && (buffer != null && bufferOffset < buffer.length));
+    private boolean hasResultsToProcess() {
+        return !resultsQueue.isEmpty() || (buffer != null && bufferOffset < buffer.length);
     }
 
     private <A> boolean tryGetReadingLock(final SingleResultCallback<A> callback) {
