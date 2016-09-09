@@ -190,15 +190,16 @@ final class GridFSDownloadStreamImpl implements GridFSDownloadStream {
                     chunkIndex += 1;
                 }
 
-                amountToCopy = dst.remaining();
                 if (amountToCopy > buffer.length - bufferOffset) {
                     amountToCopy = buffer.length - bufferOffset;
                 }
+
                 if (amountToCopy > 0) {
                     dst.put(buffer, bufferOffset, amountToCopy);
                     bufferOffset += amountToCopy;
                     currentPosition += amountToCopy;
                     amountRead += amountToCopy;
+                    amountToCopy = dst.remaining();
                 }
             }
             checkAndFetchResults(amountRead, dst, callback);
