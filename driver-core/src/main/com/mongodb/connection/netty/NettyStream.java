@@ -174,6 +174,7 @@ final class NettyStream implements Stream {
             io.netty.buffer.ByteBuf byteBuf = ((NettyByteBuf) cur).asByteBuf();
             composite.addComponent(byteBuf.retain());
             composite.writerIndex(composite.writerIndex() + byteBuf.writerIndex());
+            byteBuf.release();
         }
 
         channel.writeAndFlush(composite).addListener(new ChannelFutureListener() {
