@@ -149,14 +149,7 @@ final class NettyStream implements Stream {
                     channel.closeFuture().addListener(new ChannelFutureListener() {
                         @Override
                         public void operationComplete(final ChannelFuture f2) throws Exception {
-                            PendingReader pending = null;
-                            synchronized (this) {
-                                pending = pendingReader;
-                                pendingReader = null;
-                            }
-                            if (pending != null) {
-                                pending.handler.failed(new MongoSocketException("The connection to the server was closed", address));
-                            }
+                            handleReadResponse(null, new IOException("The connection to the server was closed"));
                         }
                     });
                     handler.completed(null);
