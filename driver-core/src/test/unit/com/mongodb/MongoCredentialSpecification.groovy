@@ -27,12 +27,12 @@ import static com.mongodb.AuthenticationMechanism.SCRAM_SHA_1
 class MongoCredentialSpecification extends Specification {
     def 'creating a credential with an unspecified mechanism should populate correct fields'() {
         given:
-        String userName = 'user'
-        String database = 'test'
-        char[] password = 'pwd'.toCharArray()
+        String userName = 'user';
+        String database = 'test';
+        char[] password = 'pwd'.toCharArray();
 
         when:
-        MongoCredential credential = MongoCredential.createCredential(userName, database, password)
+        MongoCredential credential = MongoCredential.createCredential(userName, database, password);
 
         then:
         userName == credential.getUserName()
@@ -40,18 +40,17 @@ class MongoCredentialSpecification extends Specification {
         password == credential.getPassword()
         !credential.getAuthenticationMechanism()
         !credential.getMechanism()
-        credential == MongoCredential.createCredential(userName, database, password)
     }
 
     def 'creating a challenge-response credential should populate correct fields'() {
         given:
-        AuthenticationMechanism mechanism = MONGODB_CR
-        String userName = 'user'
-        String database = 'test'
-        char[] password = 'pwd'.toCharArray()
+        AuthenticationMechanism mechanism = MONGODB_CR;
+        String userName = 'user';
+        String database = 'test';
+        char[] password = 'pwd'.toCharArray();
 
         when:
-        MongoCredential credential = MongoCredential.createMongoCRCredential(userName, database, password)
+        MongoCredential credential = MongoCredential.createMongoCRCredential(userName, database, password);
 
         then:
         userName == credential.getUserName()
@@ -59,7 +58,6 @@ class MongoCredentialSpecification extends Specification {
         password == credential.getPassword()
         mechanism == credential.getAuthenticationMechanism()
         MongoCredential.MONGODB_CR_MECHANISM == credential.getMechanism()
-        credential == MongoCredential.createMongoCRCredential(userName, database, password)
     }
 
     def 'should throw IllegalArgumentException when required parameter is not supplied for challenge-response'() {
@@ -81,13 +79,13 @@ class MongoCredentialSpecification extends Specification {
 
     def 'creating a Plain credential should populate all required fields'() {
         given:
-        AuthenticationMechanism mechanism = PLAIN
-        String userName = 'user'
-        String source = '$external'
-        char[] password = 'pwd'.toCharArray()
+        AuthenticationMechanism mechanism = PLAIN;
+        String userName = 'user';
+        String source = '$external';
+        char[] password = 'pwd'.toCharArray();
 
         when:
-        MongoCredential credential = MongoCredential.createPlainCredential(userName, source, password)
+        MongoCredential credential = MongoCredential.createPlainCredential(userName, source, password);
 
         then:
         userName == credential.getUserName()
@@ -95,7 +93,6 @@ class MongoCredentialSpecification extends Specification {
         password == credential.getPassword()
         mechanism == credential.getAuthenticationMechanism()
         MongoCredential.PLAIN_MECHANISM == credential.getMechanism()
-        credential == MongoCredential.createPlainCredential(userName, source, password)
     }
 
     def 'should throw IllegalArgumentException when a required field is not passed in'() {
@@ -117,13 +114,13 @@ class MongoCredentialSpecification extends Specification {
 
     def 'creating a SCRAM_SHA_1 credential should populate all required fields'() {
         given:
-        AuthenticationMechanism mechanism = SCRAM_SHA_1
-        String userName = 'user'
-        String source = 'admin'
-        char[] password = 'pwd'.toCharArray()
+        AuthenticationMechanism mechanism = SCRAM_SHA_1;
+        String userName = 'user';
+        String source = 'admin';
+        char[] password = 'pwd'.toCharArray();
 
         when:
-        MongoCredential credential = MongoCredential.createScramSha1Credential(userName, source, password)
+        MongoCredential credential = MongoCredential.createScramSha1Credential(userName, source, password);
 
         then:
         userName == credential.getUserName()
@@ -131,7 +128,6 @@ class MongoCredentialSpecification extends Specification {
         password == credential.getPassword()
         mechanism == credential.getAuthenticationMechanism()
         MongoCredential.SCRAM_SHA_1_MECHANISM == credential.getMechanism()
-        credential == MongoCredential.createScramSha1Credential(userName, source, password)
     }
 
     def 'should throw IllegalArgumentException when a required field is not passed in for the SCRAM_SHA_1 mechanism'() {
@@ -153,11 +149,11 @@ class MongoCredentialSpecification extends Specification {
 
     def 'creating a GSSAPI Credential should populate the correct fields'() {
         given:
-        AuthenticationMechanism mechanism = AuthenticationMechanism.GSSAPI
-        String userName = 'user'
+        AuthenticationMechanism mechanism = AuthenticationMechanism.GSSAPI;
+        String userName = 'user';
 
         when:
-        MongoCredential credential = MongoCredential.createGSSAPICredential(userName)
+        MongoCredential credential = MongoCredential.createGSSAPICredential(userName);
 
         then:
         userName == credential.getUserName()
@@ -165,7 +161,6 @@ class MongoCredentialSpecification extends Specification {
         null == credential.getPassword()
         mechanism == credential.getAuthenticationMechanism()
         MongoCredential.GSSAPI_MECHANISM == credential.getMechanism()
-        credential == MongoCredential.createGSSAPICredential(userName)
     }
 
     def 'creating an X.509 Credential should populate the correct fields'() {
@@ -182,7 +177,6 @@ class MongoCredentialSpecification extends Specification {
         null == credential.getPassword()
         mechanism == credential.getAuthenticationMechanism()
         MongoCredential.MONGODB_X509_MECHANISM == credential.getMechanism()
-        credential == MongoCredential.createMongoX509Credential(userName)
     }
 
     def 'creating an X.509 Credential without a username should populate the correct fields'() {
@@ -198,7 +192,6 @@ class MongoCredentialSpecification extends Specification {
         null == credential.getPassword()
         mechanism == credential.getAuthenticationMechanism()
         MongoCredential.MONGODB_X509_MECHANISM == credential.getMechanism()
-        credential == MongoCredential.createMongoX509Credential()
     }
 
     def 'should get default value of mechanism property when there is no mapping'() {
@@ -286,5 +279,29 @@ class MongoCredentialSpecification extends Specification {
         credentialOne.hashCode() != credentialTwo.hashCode()
 
         !credentialOne.toString().contains(password)
+    }
+
+    def 'testEqualsAndHashCode'() {
+        expect:
+        credential() == credential()
+        credential().hashCode() == credential().hashCode()
+
+        where:
+        credential << [
+            { MongoCredential.createCredential('user', 'database', 'pwd'.toCharArray()) },
+            { MongoCredential.createCredential('user', 'database', 'pwd'.toCharArray()).withMechanismProperty('foo', 'bar') },
+            { MongoCredential.createMongoCRCredential('user', 'database', 'pwd'.toCharArray()) },
+            { MongoCredential.createMongoCRCredential('user', 'database', 'pwd'.toCharArray()).withMechanismProperty('foo', 'bar') },
+            { MongoCredential.createPlainCredential('user', '$external', 'pwd'.toCharArray()) },
+            { MongoCredential.createPlainCredential('user', '$external', 'pwd'.toCharArray()).withMechanismProperty('foo', 'bar') },
+            { MongoCredential.createScramSha1Credential('user', '$external', 'pwd'.toCharArray()) },
+            { MongoCredential.createScramSha1Credential('user', '$external', 'pwd'.toCharArray()).withMechanismProperty('foo', 'bar') },
+            { MongoCredential.createGSSAPICredential('user') },
+            { MongoCredential.createGSSAPICredential('user').withMechanismProperty('foo', 'bar') },
+            { MongoCredential.createMongoX509Credential('user') },
+            { MongoCredential.createMongoX509Credential('user').withMechanismProperty('foo', 'bar') },
+            { MongoCredential.createMongoX509Credential() },
+            { MongoCredential.createMongoX509Credential().withMechanismProperty('foo', 'bar') },
+        ]
     }
 }
