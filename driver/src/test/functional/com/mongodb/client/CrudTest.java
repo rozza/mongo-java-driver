@@ -95,8 +95,8 @@ public class CrudTest extends DatabaseTestCase {
         List<Object[]> data = new ArrayList<Object[]>();
         for (File file : JsonPoweredTestHelper.getTestFiles("/crud")) {
             BsonDocument testDocument = util.JsonPoweredTestHelper.getTestDocument(file);
-            if (testDocument.containsKey("minServerVersion") &&
-                    !serverAtLeastMinVersion(testDocument.getString("minServerVersion").getValue())) {
+            if (testDocument.containsKey("minServerVersion")
+                    && !serverAtLeastMinVersion(testDocument.getString("minServerVersion").getValue())) {
                 continue;
             }
             for (BsonValue test: testDocument.getArray("tests")) {
@@ -129,7 +129,7 @@ public class CrudTest extends DatabaseTestCase {
 
     private static boolean serverAtLeastMinVersion(final String minServerVersionString) {
         List<Integer> versionList = new ArrayList<Integer>();
-        for(String s : minServerVersionString.split("\\.")) {
+        for (String s : minServerVersionString.split("\\.")) {
             versionList.add(Integer.valueOf(s));
         }
         while (versionList.size() < 3) {
