@@ -73,6 +73,13 @@ configure(subprojects.findAll { it.name != 'util' }) {
         project.hasProperty(propertyName) && project.property(propertyName).toBoolean()
     }
 
+    tasks.withType(Checkstyle) {
+        reports {
+            xml.enabled true
+            html.enabled true
+        }
+    }
+
     javadoc {
         exclude "**/com/mongodb/**/internal/**"
 
