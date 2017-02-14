@@ -78,7 +78,7 @@ class AsyncQueryBatchCursorSpecification extends Specification {
             it[5].onResult(reply, null)
         }
         1 * connection.release()
-        batch == null
+        batch == []
 
         where:
         batchSize  | maxTimeMS  | expectedMaxTimeFieldValue

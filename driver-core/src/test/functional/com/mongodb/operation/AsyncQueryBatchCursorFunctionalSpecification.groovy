@@ -287,7 +287,7 @@ class AsyncQueryBatchCursorFunctionalSpecification extends OperationFunctionalSp
 
         def latch = new CountDownLatch(1)
         def connection = getConnection(connectionSource)
-        def serverCursor = cursor.serverCursor
+        def serverCursor = cursor.getCursor()
         connection.killCursorAsync(getNamespace(), asList(serverCursor.id), new SingleResultCallback<Void>() {
             @Override
             void onResult(final Void result, final Throwable t) {
