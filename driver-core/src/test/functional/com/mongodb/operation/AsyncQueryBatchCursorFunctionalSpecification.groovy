@@ -18,6 +18,7 @@ package com.mongodb.operation
 
 import category.Slow
 import com.mongodb.MongoCursorNotFoundException
+import com.mongodb.MongoException
 import com.mongodb.MongoTimeoutException
 import com.mongodb.OperationFunctionalSpecification
 import com.mongodb.WriteConcern
@@ -177,10 +178,10 @@ class AsyncQueryBatchCursorFunctionalSpecification extends OperationFunctionalSp
         connectionSource.count == 1
 
         when:
-        cursor.next { }
+        nextBatch()
 
         then:
-        thrown(IllegalStateException)
+        thrown(MongoException)
     }
 
     def 'should close when not exhausted'() {

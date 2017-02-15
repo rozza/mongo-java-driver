@@ -106,9 +106,10 @@ class AsyncQueryBatchCursor<T> implements AsyncBatchCursor<T> {
 
     @Override
     public void next(final SingleResultCallback<List<T>> callback) {
-        isTrue("open", !closed);
-        // may be empty for a tailable cursor
-        if (firstBatch  != null && !firstBatch.getResults().isEmpty()) {
+        if (isClosed()) {
+            callback.onResult(null, new MongoException("Next() called after the cursor was closed."));
+        } else if (firstBatch  != null && !firstBatch.getResults().isEmpty()) {
+            // May be empty for a tailable cursor
             List<T> results = firstBatch.getResults();
             firstBatch = null;
             callback.onResult(results, null);
@@ -157,6 +158,16 @@ class AsyncQueryBatchCursor<T> implements AsyncBatchCursor<T> {
         }
     }
 
+    private Long getCursorId() {
+        Long local = null;
+        synchronized (lock) {
+            if (cursor != null) {
+                local = cursor.getId();
+            }
+        }
+        return local;
+    }
+
     private AsyncConnectionSource getConnectionSource() {
         AsyncConnectionSource local = null;
         synchronized (lock) {
@@ -194,16 +205,16 @@ class AsyncQueryBatchCursor<T> implements AsyncBatchCursor<T> {
     }
 
     private void getMore(final AsyncConnection connection, final SingleResultCallback<List<T>> callback) {
-        ServerCursor localCursor = getCursor();
-        if (isClosed() || localCursor == null) {
+        Long cursorId = getCursorId();
+        if (isClosed() || cursorId == null) {
             callback.onResult(null, GET_MORE_AFTER_CLOSE_EXCEPTION);
         } else if (serverIsAtLeastVersionThreeDotTwo(connection.getDescription())) {
-            connection.commandAsync(namespace.getDatabaseName(), asGetMoreCommandDocument(localCursor.getId()), false,
+            connection.commandAsync(namespace.getDatabaseName(), asGetMoreCommandDocument(cursorId), false,
                                     new NoOpFieldNameValidator(), CommandResultDocumentCodec.create(decoder, "nextBatch"),
                                     new CommandResultSingleResultCallback(connection, callback));
 
         } else {
-            connection.getMoreAsync(namespace, localCursor.getId(), getNumberToReturn(limit, batchSize, count),
+            connection.getMoreAsync(namespace, cursorId, getNumberToReturn(limit, batchSize, count),
                                     decoder, new QueryResultSingleResultCallback(connection, callback));
         }
     }
@@ -285,7 +296,6 @@ class AsyncQueryBatchCursor<T> implements AsyncBatchCursor<T> {
         @Override
         public void onResult(final BsonDocument result, final Throwable t) {
             ServerCursor localCursor = getCursor();
-            AsyncConnectionSource localConnectionSource = getConnectionSource();
             if (t != null) {
                 Throwable translatedException = (t instanceof MongoCommandException && localCursor != null)
                                                 ? translateCommandException((MongoCommandException) t, localCursor)
@@ -294,12 +304,11 @@ class AsyncQueryBatchCursor<T> implements AsyncBatchCursor<T> {
                 close();
                 callback.onResult(null, translatedException);
             } else {
-
-                if (isClosed() || localConnectionSource == null) {
+                if (isClosed()) {
                     callback.onResult(null, GET_MORE_AFTER_CLOSE_EXCEPTION);
                 } else {
                     QueryResult<T> queryResult = getMoreCursorDocumentToQueryResult(result.getDocument("cursor"),
-                            localConnectionSource.getServerDescription().getAddress());
+                            connection.getDescription().getServerAddress());
                     handleGetMoreQueryResult(connection, callback, queryResult);
                 }
             }
@@ -329,5 +338,6 @@ class AsyncQueryBatchCursor<T> implements AsyncBatchCursor<T> {
         }
     }
 
-    private static final MongoException GET_MORE_AFTER_CLOSE_EXCEPTION = new MongoException("GetMore called after the cursor was closed.");
+    private static final MongoException GET_MORE_AFTER_CLOSE_EXCEPTION = new MongoException("The GetMore callback called after the cursor"
+            + " had been closed.");
 }
