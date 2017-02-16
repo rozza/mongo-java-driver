@@ -52,17 +52,12 @@ class AsyncQueryBatchCursor<T> implements AsyncBatchCursor<T> {
     private final Decoder<T> decoder;
     private final long maxTimeMS;
     private final Object lock = new Object();
-    private volatile AsyncConnectionSource connectionSource;
+    private final AsyncConnectionSource connectionSource;
     private volatile QueryResult<T> firstBatch;
     private volatile int batchSize;
     private volatile ServerCursor cursor;
     private volatile int count;
     private volatile boolean closed;
-
-    AsyncQueryBatchCursor(final QueryResult<T> firstBatch, final int limit, final int batchSize,
-                          final Decoder<T> decoder) {
-        this(firstBatch, limit, batchSize, 0, decoder, null, null);
-    }
 
     AsyncQueryBatchCursor(final QueryResult<T> firstBatch, final int limit, final int batchSize, final long maxTimeMS,
                           final Decoder<T> decoder, final AsyncConnectionSource connectionSource, final AsyncConnection connection) {
@@ -74,15 +69,7 @@ class AsyncQueryBatchCursor<T> implements AsyncBatchCursor<T> {
         this.batchSize = batchSize;
         this.decoder = decoder;
         this.cursor = firstBatch.getCursor();
-        if (this.cursor != null) {
-            notNull("connectionSource", connectionSource);
-            notNull("connection", connection);
-        }
-        if (connectionSource != null) {
-            this.connectionSource = connectionSource.retain();
-        } else {
-            this.connectionSource = null;
-        }
+        this.connectionSource = notNull("connectionSource", connectionSource).retain();
         this.count += firstBatch.getResults().size();
         if (limitReached()) {
              killCursor(connection);
@@ -91,34 +78,27 @@ class AsyncQueryBatchCursor<T> implements AsyncBatchCursor<T> {
 
     @Override
     public void close() {
-        boolean callKillCursor = false;
-        synchronized (lock) {
-            if (!closed) {
-                closed = true;
-                callKillCursor = true;
-            }
-        }
-
-        if (callKillCursor) {
-            killCursor(null);
+        if (!getAndSetClosed()) {
+            killCursorOnClose();
         }
     }
 
     @Override
     public void next(final SingleResultCallback<List<T>> callback) {
         if (isClosed()) {
-            callback.onResult(null, new MongoException("Next() called after the cursor was closed."));
+            callback.onResult(null, new MongoException("next() called after the cursor was closed."));
         } else if (firstBatch  != null && !firstBatch.getResults().isEmpty()) {
             // May be empty for a tailable cursor
             List<T> results = firstBatch.getResults();
             firstBatch = null;
             callback.onResult(results, null);
         } else {
-            if (getCursor() == null) {
+            ServerCursor localCursor = cursor;
+            if (localCursor == null) {
                 close();
                 callback.onResult(null, null);
             } else {
-                getMore(callback);
+                getMore(localCursor, callback);
             }
         }
     }
@@ -137,84 +117,53 @@ class AsyncQueryBatchCursor<T> implements AsyncBatchCursor<T> {
 
     @Override
     public boolean isClosed() {
-        boolean localClosed = false;
-        synchronized (lock) {
-            localClosed = closed;
-        }
-        return localClosed;
+        return closed;
     }
 
-    private ServerCursor getCursor() {
-        ServerCursor local = null;
+    private boolean getAndSetClosed() {
+        boolean oldClosed;
         synchronized (lock) {
-            local = cursor;
+            oldClosed = closed;
+            closed = true;
         }
-        return local;
+        return oldClosed;
     }
 
-    private void setCursor(final ServerCursor cursor) {
+    private ServerCursor getAndSetCursor(final ServerCursor cursor) {
+        ServerCursor oldCursor;
         synchronized (lock) {
+            oldCursor = this.cursor;
             this.cursor = cursor;
         }
-    }
-
-    private Long getCursorId() {
-        Long local = null;
-        synchronized (lock) {
-            if (cursor != null) {
-                local = cursor.getId();
-            }
-        }
-        return local;
-    }
-
-    private AsyncConnectionSource getConnectionSource() {
-        AsyncConnectionSource local = null;
-        synchronized (lock) {
-            local = connectionSource;
-        }
-        return local;
-    }
-
-    private void setConnectionSource(final AsyncConnectionSource connectionSource) {
-        synchronized (lock) {
-            this.connectionSource = connectionSource;
-        }
+        return oldCursor;
     }
 
     private boolean limitReached() {
         return Math.abs(limit) != 0 && count >= Math.abs(limit);
     }
 
-    private void getMore(final SingleResultCallback<List<T>> callback) {
-        AsyncConnectionSource localConnectionSource = getConnectionSource();
-        if (isClosed() || localConnectionSource == null) {
-            callback.onResult(null, GET_MORE_AFTER_CLOSE_EXCEPTION);
-        } else {
-            localConnectionSource.getConnection(new SingleResultCallback<AsyncConnection>() {
-                @Override
-                public void onResult(final AsyncConnection connection, final Throwable t) {
-                    if (t != null) {
-                        callback.onResult(null, t);
-                    } else {
-                        getMore(connection, callback);
-                    }
+    private void getMore(final ServerCursor cursor, final SingleResultCallback<List<T>> callback) {
+        connectionSource.getConnection(new SingleResultCallback<AsyncConnection>() {
+            @Override
+            public void onResult(final AsyncConnection connection, final Throwable t) {
+                if (t != null) {
+                    callback.onResult(null, t);
+                } else {
+                    getMore(connection, cursor, callback);
                 }
-            });
-        }
+            }
+        });
     }
 
-    private void getMore(final AsyncConnection connection, final SingleResultCallback<List<T>> callback) {
-        Long cursorId = getCursorId();
-        if (isClosed() || cursorId == null) {
-            callback.onResult(null, GET_MORE_AFTER_CLOSE_EXCEPTION);
-        } else if (serverIsAtLeastVersionThreeDotTwo(connection.getDescription())) {
-            connection.commandAsync(namespace.getDatabaseName(), asGetMoreCommandDocument(cursorId), false,
+    private void getMore(final AsyncConnection connection, final ServerCursor cursor,
+                         final SingleResultCallback<List<T>> callback) {
+        if (serverIsAtLeastVersionThreeDotTwo(connection.getDescription())) {
+            connection.commandAsync(namespace.getDatabaseName(), asGetMoreCommandDocument(cursor.getId()), false,
                                     new NoOpFieldNameValidator(), CommandResultDocumentCodec.create(decoder, "nextBatch"),
-                                    new CommandResultSingleResultCallback(connection, callback));
+                                    new CommandResultSingleResultCallback(connection, cursor, callback));
 
         } else {
-            connection.getMoreAsync(namespace, cursorId, getNumberToReturn(limit, batchSize, count),
+            connection.getMoreAsync(namespace, cursor.getId(), getNumberToReturn(limit, batchSize, count),
                                     decoder, new QueryResultSingleResultCallback(connection, callback));
         }
     }
@@ -233,84 +182,93 @@ class AsyncQueryBatchCursor<T> implements AsyncBatchCursor<T> {
         return document;
     }
 
-    private void killCursor(final AsyncConnection connection) {
-        final ServerCursor localCursor = getCursor();
-        final AsyncConnectionSource localConnectionSource = getConnectionSource();
+    private void killCursorOnClose() {
+        final ServerCursor localCursor = getAndSetCursor(null);
         if (localCursor != null) {
-            setCursor(null);
-            setConnectionSource(null);
-            if (connection != null) {
-                connection.retain();
-                killCursorAsynchronouslyAndReleaseConnectionAndSource(connection, localCursor, localConnectionSource);
-            } else {
-                localConnectionSource.getConnection(new SingleResultCallback<AsyncConnection>() {
-                    @Override
-                    public void onResult(final AsyncConnection connection, final Throwable connectionException) {
-                        if (connectionException == null) {
-                            killCursorAsynchronouslyAndReleaseConnectionAndSource(connection, localCursor, localConnectionSource);
-                        }
+            connectionSource.getConnection(new SingleResultCallback<AsyncConnection>() {
+                @Override
+                public void onResult(final AsyncConnection connection, final Throwable connectionException) {
+                    if (connectionException == null) {
+                        killCursorAsynchronouslyAndReleaseConnectionAndSource(connectionSource, connection, localCursor);
                     }
-                });
-            }
-        } else if (localConnectionSource != null) {
-            localConnectionSource.release();
-            setConnectionSource(null);
+                }
+            });
+        } else {
+            connectionSource.release();
         }
     }
 
-    private void killCursorAsynchronouslyAndReleaseConnectionAndSource(final AsyncConnection connection, final ServerCursor localCursor,
-                                                                       final AsyncConnectionSource localConnectionSource) {
+    private void killCursor(final AsyncConnection connection) {
+        final ServerCursor localCursor = getAndSetCursor(null);
+        if (localCursor != null) {
+            final AsyncConnectionSource retainedConnectionSource = connectionSource.retain();
+            retainedConnectionSource.getConnection(new SingleResultCallback<AsyncConnection>() {
+                @Override
+                public void onResult(final AsyncConnection connection, final Throwable connectionException) {
+                    if (connectionException == null) {
+                        killCursorAsynchronouslyAndReleaseConnectionAndSource(retainedConnectionSource, connection, localCursor);
+                    }
+                }
+            });
+        }
+    }
+
+    private void killCursorAsynchronouslyAndReleaseConnectionAndSource(final AsyncConnectionSource connectionSource,
+                                                                       final AsyncConnection connection,
+                                                                       final ServerCursor localCursor) {
         connection.killCursorAsync(namespace, singletonList(localCursor.getId()), new SingleResultCallback<Void>() {
             @Override
             public void onResult(final Void result, final Throwable t) {
                 connection.release();
-                localConnectionSource.release();
+                connectionSource.release();
             }
         });
     }
 
     private void handleGetMoreQueryResult(final AsyncConnection connection, final SingleResultCallback<List<T>> callback,
                                           final QueryResult<T> result) {
+        getAndSetCursor(result.getCursor());
         if (result.getResults().isEmpty() && result.getCursor() != null) {
-            getMore(connection, callback);
+            getMore(connection, result.getCursor(), callback);
         } else {
-            setCursor(result.getCursor());
             count += result.getResults().size();
             if (limitReached()) {
                 killCursor(connection);
             }
             connection.release();
-            callback.onResult(result.getResults(), null);
+            if (result.getResults().isEmpty()) {
+                callback.onResult(null, null);
+            } else {
+                callback.onResult(result.getResults(), null);
+            }
         }
     }
 
     private class CommandResultSingleResultCallback implements SingleResultCallback<BsonDocument> {
         private final AsyncConnection connection;
+        private final ServerCursor cursor;
         private final SingleResultCallback<List<T>> callback;
 
-        CommandResultSingleResultCallback(final AsyncConnection connection, final SingleResultCallback<List<T>> callback) {
+        CommandResultSingleResultCallback(final AsyncConnection connection, final ServerCursor cursor,
+                                          final SingleResultCallback<List<T>> callback) {
             this.connection = connection;
+            this.cursor = cursor;
             this.callback = errorHandlingCallback(callback, LOGGER);
         }
 
         @Override
         public void onResult(final BsonDocument result, final Throwable t) {
-            ServerCursor localCursor = getCursor();
             if (t != null) {
-                Throwable translatedException = (t instanceof MongoCommandException && localCursor != null)
-                                                ? translateCommandException((MongoCommandException) t, localCursor)
+                Throwable translatedException = t instanceof MongoCommandException
+                                                ? translateCommandException((MongoCommandException) t, cursor)
                                                 : t;
                 connection.release();
                 close();
                 callback.onResult(null, translatedException);
             } else {
-                if (isClosed()) {
-                    callback.onResult(null, GET_MORE_AFTER_CLOSE_EXCEPTION);
-                } else {
-                    QueryResult<T> queryResult = getMoreCursorDocumentToQueryResult(result.getDocument("cursor"),
-                            connection.getDescription().getServerAddress());
-                    handleGetMoreQueryResult(connection, callback, queryResult);
-                }
+                QueryResult<T> queryResult = getMoreCursorDocumentToQueryResult(result.getDocument("cursor"),
+                        connection.getDescription().getServerAddress());
+                handleGetMoreQueryResult(connection, callback, queryResult);
             }
         }
     }
@@ -330,14 +288,9 @@ class AsyncQueryBatchCursor<T> implements AsyncBatchCursor<T> {
                 connection.release();
                 close();
                 callback.onResult(null, t);
-            } else if (isClosed()) {
-                callback.onResult(null, GET_MORE_AFTER_CLOSE_EXCEPTION);
             } else {
                 handleGetMoreQueryResult(connection, callback, result);
             }
         }
     }
-
-    private static final MongoException GET_MORE_AFTER_CLOSE_EXCEPTION = new MongoException("The GetMore callback called after the cursor"
-            + " had been closed.");
 }
