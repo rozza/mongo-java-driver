@@ -66,5 +66,5 @@ class AsyncSingleBatchQueryCursorSpecification extends Specification {
         futureResultCallback.get(60, SECONDS)
     }
 
-    def firstBatch = new QueryResult(new MongoNamespace('db', 'coll'), [new Document('a', 1)], 1, new ServerAddress())
+    def firstBatch = new QueryResult(new MongoNamespace('db', 'coll'), [new Document('a', 1)], 0, new ServerAddress())
 }

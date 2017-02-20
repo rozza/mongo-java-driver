@@ -33,6 +33,8 @@ import org.bson.BsonString;
 import org.bson.codecs.Decoder;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static com.mongodb.assertions.Assertions.isTrue;
 import static com.mongodb.assertions.Assertions.isTrueArgument;
@@ -51,13 +53,12 @@ class AsyncQueryBatchCursor<T> implements AsyncBatchCursor<T> {
     private final int limit;
     private final Decoder<T> decoder;
     private final long maxTimeMS;
-    private final Object lock = new Object();
     private final AsyncConnectionSource connectionSource;
+    private final AtomicBoolean isClosed = new AtomicBoolean();
+    private final AtomicReference<ServerCursor> cursor;
     private volatile QueryResult<T> firstBatch;
     private volatile int batchSize;
-    private volatile ServerCursor cursor;
     private volatile int count;
-    private volatile boolean closed;
 
     AsyncQueryBatchCursor(final QueryResult<T> firstBatch, final int limit, final int batchSize, final long maxTimeMS,
                           final Decoder<T> decoder, final AsyncConnectionSource connectionSource, final AsyncConnection connection) {
@@ -68,7 +69,7 @@ class AsyncQueryBatchCursor<T> implements AsyncBatchCursor<T> {
         this.limit = limit;
         this.batchSize = batchSize;
         this.decoder = decoder;
-        this.cursor = firstBatch.getCursor();
+        this.cursor = new AtomicReference<ServerCursor>(firstBatch.getCursor());
         this.connectionSource = notNull("connectionSource", connectionSource).retain();
         this.count += firstBatch.getResults().size();
         if (limitReached()) {
@@ -78,7 +79,7 @@ class AsyncQueryBatchCursor<T> implements AsyncBatchCursor<T> {
 
     @Override
     public void close() {
-        if (!getAndSetClosed()) {
+        if (!isClosed.getAndSet(true)) {
             killCursorOnClose();
         }
     }
@@ -93,7 +94,7 @@ class AsyncQueryBatchCursor<T> implements AsyncBatchCursor<T> {
             firstBatch = null;
             callback.onResult(results, null);
         } else {
-            ServerCursor localCursor = cursor;
+            ServerCursor localCursor = cursor.getAndSet(null);
             if (localCursor == null) {
                 close();
                 callback.onResult(null, null);
@@ -105,37 +106,19 @@ class AsyncQueryBatchCursor<T> implements AsyncBatchCursor<T> {
 
     @Override
     public void setBatchSize(final int batchSize) {
-        isTrue("open", !closed);
+        isTrue("open", !isClosed.get());
         this.batchSize = batchSize;
     }
 
     @Override
     public int getBatchSize() {
-        isTrue("open", !closed);
+        isTrue("open", !isClosed.get());
         return batchSize;
     }
 
     @Override
     public boolean isClosed() {
-        return closed;
-    }
-
-    private boolean getAndSetClosed() {
-        boolean oldClosed;
-        synchronized (lock) {
-            oldClosed = closed;
-            closed = true;
-        }
-        return oldClosed;
-    }
-
-    private ServerCursor getAndSetCursor(final ServerCursor cursor) {
-        ServerCursor oldCursor;
-        synchronized (lock) {
-            oldCursor = this.cursor;
-            this.cursor = cursor;
-        }
-        return oldCursor;
+        return isClosed.get();
     }
 
     private boolean limitReached() {
@@ -183,7 +166,7 @@ class AsyncQueryBatchCursor<T> implements AsyncBatchCursor<T> {
     }
 
     private void killCursorOnClose() {
-        final ServerCursor localCursor = getAndSetCursor(null);
+        final ServerCursor localCursor = cursor.getAndSet(null);
         if (localCursor != null) {
             connectionSource.getConnection(new SingleResultCallback<AsyncConnection>() {
                 @Override
@@ -199,17 +182,9 @@ class AsyncQueryBatchCursor<T> implements AsyncBatchCursor<T> {
     }
 
     private void killCursor(final AsyncConnection connection) {
-        final ServerCursor localCursor = getAndSetCursor(null);
+        ServerCursor localCursor = cursor.getAndSet(null);
         if (localCursor != null) {
-            final AsyncConnectionSource retainedConnectionSource = connectionSource.retain();
-            retainedConnectionSource.getConnection(new SingleResultCallback<AsyncConnection>() {
-                @Override
-                public void onResult(final AsyncConnection connection, final Throwable connectionException) {
-                    if (connectionException == null) {
-                        killCursorAsynchronouslyAndReleaseConnectionAndSource(retainedConnectionSource, connection, localCursor);
-                    }
-                }
-            });
+            killCursorAsynchronouslyAndReleaseConnectionAndSource(connectionSource.retain(), connection, localCursor);
         }
     }
 
@@ -227,7 +202,7 @@ class AsyncQueryBatchCursor<T> implements AsyncBatchCursor<T> {
 
     private void handleGetMoreQueryResult(final AsyncConnection connection, final SingleResultCallback<List<T>> callback,
                                           final QueryResult<T> result) {
-        getAndSetCursor(result.getCursor());
+        cursor.getAndSet(result.getCursor());
         if (result.getResults().isEmpty() && result.getCursor() != null) {
             getMore(connection, result.getCursor(), callback);
         } else {

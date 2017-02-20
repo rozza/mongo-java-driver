@@ -23,12 +23,15 @@ import com.mongodb.connection.QueryResult;
 
 import java.util.List;
 
+import static com.mongodb.assertions.Assertions.isTrue;
+
 class AsyncSingleBatchQueryCursor<T> implements AsyncBatchCursor<T> {
     private volatile QueryResult<T> firstBatch;
     private volatile boolean closed;
 
     AsyncSingleBatchQueryCursor(final QueryResult<T> firstBatch) {
         this.firstBatch = firstBatch;
+        isTrue("Empty Cursor", firstBatch.getCursor() == null);
     }
 
     @Override
