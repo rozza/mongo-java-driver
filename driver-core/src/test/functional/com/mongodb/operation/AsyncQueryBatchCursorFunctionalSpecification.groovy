@@ -87,7 +87,7 @@ class AsyncQueryBatchCursorFunctionalSpecification extends OperationFunctionalSp
 
     private void cleanupConnectionAndSource() {
         connection?.release()
-        connectionSource?.release();
+        connectionSource?.release()
         waitForLastRelease(connectionSource.getServerDescription().getAddress(), getAsyncCluster())
         waitForRelease(connectionSource, 0)
     }
