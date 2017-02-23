@@ -30,11 +30,17 @@ import org.bson.BsonInt64
 import org.bson.BsonString
 import org.bson.Document
 import org.bson.codecs.DocumentCodec
+import spock.lang.Shared
 import spock.lang.Specification
 
 import static java.util.concurrent.TimeUnit.SECONDS
 
 class AsyncQueryBatchCursorSpecification extends Specification {
+    @Shared
+    private static final MongoNamespace NAMESPACE = new MongoNamespace('db', 'coll')
+    @Shared
+    private static final ServerAddress SERVER_ADDRESS = new ServerAddress()
+
     def 'should generate expected command with batchSize and maxTimeMS'() {
         given:
         def connection = Mock(AsyncConnection) {
@@ -47,16 +53,11 @@ class AsyncQueryBatchCursorSpecification extends Specification {
         }
         connectionSource.retain() >> connectionSource
 
-        def database = 'test'
-        def collection = 'AsyncQueryBatchCursorSpecification'
-        def cursorId = 42
-
-        def namespace = new MongoNamespace(database, collection)
-        def firstBatch = new QueryResult(namespace, [], cursorId, new ServerAddress())
+        def firstBatch = new QueryResult(NAMESPACE, [], 42, SERVER_ADDRESS)
         def cursor = new AsyncQueryBatchCursor<Document>(firstBatch, 0, batchSize, maxTimeMS, new DocumentCodec(), connectionSource,
                                                          connection)
         def expectedCommand = new BsonDocument('getMore': new BsonInt64(cursorId))
-                .append('collection', new BsonString(collection))
+                .append('collection', new BsonString(NAMESPACE.getCollectionName()))
         if (batchSize != 0) {
             expectedCommand.append('batchSize', new BsonInt32(batchSize))
         }
@@ -67,14 +68,14 @@ class AsyncQueryBatchCursorSpecification extends Specification {
         def reply = new BsonDocument('ok', new BsonInt32(1))
                 .append('cursor',
                         new BsonDocument('id', new BsonInt64(0))
-                                .append('ns', new BsonString(namespace.getFullName()))
+                                .append('ns', new BsonString(NAMESPACE.getFullName()))
                                 .append('nextBatch', new BsonArrayWrapper([])))
 
         when:
         def batch = nextBatch(cursor)
 
         then:
-        1 * connection.commandAsync(database, expectedCommand, _, _, _, _) >> {
+        1 * connection.commandAsync(NAMESPACE.getDatabaseName(), expectedCommand, _, _, _, _) >> {
             it[5].onResult(reply, null)
         }
         1 * connection.release()
@@ -87,9 +88,134 @@ class AsyncQueryBatchCursorSpecification extends Specification {
         0          | 100        | 100
     }
 
+    def 'should retain connectionSource on close then release the connection source'() {
+        given:
+        def connection = Mock(AsyncConnection) {
+            _ * getDescription() >> Stub(ConnectionDescription) {
+                getServerVersion() >> new ServerVersion([3, 2, 0])
+            }
+        }
+        def connectionSource = Mock(AsyncConnectionSource) {
+            getConnection(_) >> {
+                connection.retain()
+                it[0].onResult(connection, null)
+            }
+        }
+
+        when:
+        def cursor = new AsyncQueryBatchCursor<Document>(queryResult, 0, 0, 0, new DocumentCodec(), connectionSource, connection)
+
+        then:
+        1 * connectionSource.retain()
+
+        when:
+        cursor.close()
+
+        then:
+        1 * connection.retain()
+
+        then:
+        connection.killCursorAsync(NAMESPACE, _, _) >> {
+            it[2].onResult(null, null)
+        }
+        1 * connection.release()
+        1 * connectionSource.release()
+    }
+
+    def 'should close the cursor in the getMore callback if it was closed before getMore returned'() {
+        given:
+        def connection = Mock(AsyncConnection) {
+            _ * getDescription() >> Stub(ConnectionDescription) {
+                getServerVersion() >> serverVersion
+            }
+        }
+        def connectionSource = Mock(AsyncConnectionSource) {
+            getConnection(_) >> {
+                connection.retain()
+                it[0].onResult(connection, null)
+            }
+        }
+
+        when:
+        def cursor = new AsyncQueryBatchCursor<Document>(queryResult, 0, 0, 0, new DocumentCodec(), connectionSource, connection)
+
+        then:
+        1 * connectionSource.retain()
+
+        when:
+        def batch = nextBatch(cursor)
+
+        then:
+        batch == firstBatch
+
+        when:
+        batch = nextBatch(cursor)
+
+        then:
+        1 * connection.retain()
+        if (commandAsync) {
+            1 * connection.commandAsync(_, _, _, _, _, _) >> {
+                // Simulate the user calling close while the getMore is in flight
+                cursor.close()
+                it[5].onResult(response, null)
+            }
+        } else {
+            1 * connection.getMoreAsync(_, _, _, _, _) >> {
+                // Simulate the user calling close while the getMore is in flight
+                cursor.close()
+                it[4].onResult(response, null)
+            }
+        }
+
+        1 * connectionSource.retain()
+        1 * connection.retain()
+        1 * connection.killCursorAsync(_, _, _) >> {
+            it[2].onResult(null, null)
+        }
+
+        2 * connection.release()
+        2 * connectionSource.release()
+
+        where:
+        serverVersion                | commandAsync | response
+        new ServerVersion([3, 2, 0]) | true         | new BsonDocument('ok', new BsonInt32(1)).append('cursor',
+                                                        new BsonDocument('id', new BsonInt64(0)).append('ns',
+                                                            new BsonString(NAMESPACE.getFullName()))
+                                                                .append('nextBatch', new BsonArrayWrapper([])))
+        new ServerVersion([3, 0, 0]) | false        | new QueryResult(NAMESPACE, [], 0, SERVER_ADDRESS)
+
+    }
+
+    def 'should close the cursor if the initial batch is bigger than the limit and there is a cursor'() {
+        given:
+        def connection = Mock(AsyncConnection) {
+            _ * getDescription() >> Stub(ConnectionDescription) {
+                getServerVersion() >> new ServerVersion([3, 2, 0])
+            }
+        }
+        def connectionSource = Mock(AsyncConnectionSource) {
+            getConnection(_) >> { it[0].onResult(connection, null) }
+        }
+
+        when:
+        new AsyncQueryBatchCursor<Document>(queryResult, 1, 0, 0, new DocumentCodec(), connectionSource, connection)
+
+        then:
+        1 * connectionSource.retain()
+        1 * connection.killCursorAsync(_, _, _) >> {
+            it[2].onResult(null, null)
+        }
+        1 * connection.release()
+        1 * connectionSource.release()
+    }
+
     List<Document> nextBatch(AsyncQueryBatchCursor cursor) {
         def futureResultCallback = new FutureResultCallback()
         cursor.next(futureResultCallback)
         futureResultCallback.get(60, SECONDS)
     }
+
+    def cursorId = 42
+    def firstBatch = [new Document('_id', 1), new Document('_id', 2)]
+    def queryResult = new QueryResult(NAMESPACE, firstBatch, cursorId, new ServerAddress())
 }
