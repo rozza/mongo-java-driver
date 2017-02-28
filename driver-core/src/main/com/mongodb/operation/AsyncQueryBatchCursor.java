@@ -211,10 +211,15 @@ class AsyncQueryBatchCursor<T> implements AsyncBatchCursor<T> {
 
     private void handleGetMoreQueryResult(final AsyncConnection connection, final SingleResultCallback<List<T>> callback,
                                           final QueryResult<T> result) {
+        if (isClosed()) {
+            connection.release();
+            connectionSource.release();
+            callback.onResult(null, new MongoException("The cursor was closed before next() completed."));
+            return;
+        }
+
         cursor.getAndSet(result.getCursor());
-        if (isClosed() && result.getCursor() != null) {
-            killCursorAsynchronouslyAndReleaseConnectionAndSource(connection, result.getCursor(), callback);
-        } else if (result.getResults().isEmpty() && result.getCursor() != null) {
+        if (result.getResults().isEmpty() && result.getCursor() != null) {
             getMore(connection, result.getCursor(), callback);
         } else {
             count += result.getResults().size();

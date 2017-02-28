@@ -94,7 +94,7 @@ class AsyncQueryBatchCursorSpecification extends Specification {
 
         then:
         if (firstBatch.getCursor() != null) {
-            1 * connection.killCursorAsync(NAMESPACE, _, _) >> {
+            1 * connection.killCursorAsync(NAMESPACE, [42], _) >> {
                 connection.getCount() == 1
                 connectionSource.getCount() == 1
 
@@ -217,7 +217,7 @@ class AsyncQueryBatchCursorSpecification extends Specification {
         def cursor = new AsyncQueryBatchCursor<Document>( queryResult(), 1, 0, 0, CODEC, connectionSource, connection)
 
         then:
-        1 * connection.killCursorAsync(_, _, _) >> {
+        1 * connection.killCursorAsync(NAMESPACE, [42], _) >> {
             connection.getCount() == 1
             connectionSource.getCount() == 1
             it[2].onResult(null, null)
@@ -320,7 +320,7 @@ class AsyncQueryBatchCursorSpecification extends Specification {
                 it[4].onResult(response, null)
             }
         }
-        1 * connection.killCursorAsync(NAMESPACE, _, _) >> { it[2].onResult(null, null) }
+        1 * connection.killCursorAsync(NAMESPACE, [42], _) >> { it[2].onResult(null, null) }
 
         then:
         connection.getCount() == 0
@@ -342,8 +342,9 @@ class AsyncQueryBatchCursorSpecification extends Specification {
 
     def 'should kill the cursor in the getMore callback if it was closed before getMore returned'() {
         given:
-        def connection = referenceCountedAsyncConnection(serverVersion)
-        def connectionSource = getAsyncConnectionSource(connection)
+        def connectionA = referenceCountedAsyncConnection(serverVersion)
+        def connectionB = referenceCountedAsyncConnection(serverVersion)
+        def connectionSource = getAsyncConnectionSource(connectionA, connectionB)
 
         when:
         def cursor = new AsyncQueryBatchCursor<Document>(queryResult(), 0, 0, 0, CODEC, connectionSource, null)
@@ -357,24 +358,31 @@ class AsyncQueryBatchCursorSpecification extends Specification {
 
         then:
         if (commandAsync) {
-            1 * connection.commandAsync(_, _, _, _, _, _) >> {
+            1 * connectionA.commandAsync(_, _, _, _, _, _) >> {
                 // Simulate the user calling close while the getMore is in flight
-                cursor.isClosed.set(true)
-                connectionSource.release()
+                cursor.close()
                 it[5].onResult(response, null)
             }
         } else {
-            1 * connection.getMoreAsync(_, _, _, _, _) >> {
+            1 * connectionA.getMoreAsync(_, _, _, _, _) >> {
                 // Simulate the user calling close while the getMore is in flight
-                cursor.isClosed.set(true)
-                connectionSource.release()
+                cursor.close()
                 it[4].onResult(response, null)
             }
         }
-        1 * connection.killCursorAsync(NAMESPACE, _, _) >> { it[2].onResult(null, null) }
+        1 * connectionB.killCursorAsync(NAMESPACE, [42], _) >> {
+            connectionA.getCount() == 1
+            connectionB.getCount() == 1
+            connectionSource.getCount() == 1
+            it[2].onResult(null, null)
+        }
 
         then:
-        connection.getCount() == 0
+        thrown(MongoException)
+
+        then:
+        connectionA.getCount() == 0
+        connectionB.getCount() == 0
         connectionSource.getCount() == 0
 
         where:
@@ -539,12 +547,8 @@ class AsyncQueryBatchCursorSpecification extends Specification {
     }
 
     def getAsyncConnectionSource(AsyncConnection... connections) {
-        if (connections.size() > 1) {
-            def index = -1
-            getAsyncConnectionSourceWithResult { index += 1; [connections.toList().get(index).retain(), null] }
-        } else {
-            getAsyncConnectionSourceWithResult { [connections.head().retain(), null] }
-        }
+        def index = -1
+        getAsyncConnectionSourceWithResult { index += 1; [connections.toList().get(index).retain(), null] }
     }
 
     def getAsyncConnectionSourceWithResult(connectionCallbackResults) {
