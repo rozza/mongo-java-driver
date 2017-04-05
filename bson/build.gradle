@@ -50,8 +50,3 @@ modifyPom {
         url 'http://bsonspec.org'
     }
 }
-
-dependencies {
-    shadow 'com.fasterxml:classmate:1.3.1'
-}
-

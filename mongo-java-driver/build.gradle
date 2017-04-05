@@ -24,15 +24,14 @@ idea {
     }
 }
 
-// dependencies copied from driver-core
+// dependencies for the pom
 dependencies {
     compile "io.netty:netty-buffer:$nettyVersion", optional
     compile "io.netty:netty-transport:$nettyVersion", optional
     compile "io.netty:netty-handler:$nettyVersion", optional
-    compile project(path: ':driver')
 }
 
-// srcDirs copied as well, so everything is compiled twice
+// srcDirs for the jar
 sourceSets {
     main {
         java {

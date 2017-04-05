@@ -1,5 +1,3 @@
-import org.gradle.api.internal.file.FileResolver
-
 /*
  * Copyright 2017 MongoDB, Inc.
  *
@@ -15,6 +13,7 @@ import org.gradle.api.internal.file.FileResolver
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 import com.github.jengelman.gradle.plugins.shadow.tasks.DefaultInheritManifest
 import org.gradle.api.internal.file.FileResolver
 
@@ -34,15 +33,13 @@ configure([project(':bson'), project(':mongo-java-driver')]) {
     }
 
     shadowJar {
-        from sourceSets.main.output
-        configurations = [project.configurations.compile]
-        mergeServiceFiles()
         relocate 'com.fasterxml', 'org.bson.shaded.fasterxml'
         classifier = 'shadow'
         dependencies {
             exclude(dependency('io.netty:.*'))
             exclude(dependency('org.slf4j:.*'))
         }
+        append "$rootDir/LICENSE.txt"
     }
 
     task unzipShadowJar(type: Copy, dependsOn: 'shadowJar') {
@@ -57,9 +54,7 @@ configure([project(':bson'), project(':mongo-java-driver')]) {
             classesDir = new File("$buildDir/tmp/osgiShadowJar-classes".toString())
             classpath = configurations.runtime
         }
-
         manifest = new DefaultInheritManifest(getServices().get(FileResolver.class))
-
         manifest.inheritFrom jar.manifest
         manifest.inheritFrom(mf) {
             eachEntry {
@@ -71,15 +66,17 @@ configure([project(':bson'), project(':mongo-java-driver')]) {
             }
         }
 
-        classifier = ''
-
         from(zipTree(project.shadowJar.archivePath.getPath())) {
-            exclude("META-INF/MANIFEST.MF")
+            exclude("META-INF/**")
         }
     }
 
     artifacts {
         archives osgiShadowJar
+    }
+
+    dependencies {
+        shadow 'com.fasterxml:classmate:1.3.1'
     }
 
 }
