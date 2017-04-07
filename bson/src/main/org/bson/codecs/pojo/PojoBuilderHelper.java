@@ -24,8 +24,10 @@ import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static java.lang.String.format;
 import static java.lang.reflect.Modifier.isStatic;
@@ -44,11 +46,11 @@ final class PojoBuilderHelper {
         }
 
         ArrayList<Annotation> annotations = new ArrayList<Annotation>();
-        List<String> fieldNames = new ArrayList<String>();
+        Set<String> fieldNames = new HashSet<String>();
         Map<String, TypeParameterMap> fieldTypeParameterMap = new HashMap<String, TypeParameterMap>();
         Class<? super T> currentClass = clazz;
-        TypeData<?> classTypeData = getTypeData(currentClass.getGenericSuperclass(), currentClass);
 
+        TypeData<?> parentClassTypeData = null;
         while (currentClass.getSuperclass() != null) {
             annotations.addAll(asList(currentClass.getDeclaredAnnotations()));
 
@@ -58,21 +60,22 @@ final class PojoBuilderHelper {
             }
 
             for (Field field : currentClass.getDeclaredFields()) {
-                if (fieldNames.contains(field.getName()) || isTransient(field.getModifiers()) || isStatic(field.getModifiers())) {
+                if (!fieldNames.add(field.getName()) || isTransient(field.getModifiers()) || isStatic(field.getModifiers())) {
                     continue;
                 }
-                fieldNames.add(field.getName());
                 TypeParameterMap typeParameterMap = getTypeParameterMap(genericTypeNames, field);
                 fieldTypeParameterMap.put(field.getName(), typeParameterMap);
 
                 FieldModelBuilder<?> fieldModelBuilder = getFieldBuilder(field, field.getType());
-                specializeFieldModelBuilder(fieldModelBuilder, typeParameterMap, classTypeData.getTypeParameters());
+                if (parentClassTypeData != null) {
+                    specializeFieldModelBuilder(fieldModelBuilder, typeParameterMap, parentClassTypeData.getTypeParameters());
+                }
 
                 classModelBuilder.addField(fieldModelBuilder);
                 field.setAccessible(true);
             }
 
-            classTypeData = getTypeData(currentClass.getGenericSuperclass(), currentClass);
+            parentClassTypeData = getTypeData(currentClass.getGenericSuperclass(), currentClass);
             currentClass = currentClass.getSuperclass();
         }
 
@@ -92,16 +95,14 @@ final class PojoBuilderHelper {
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     private static <T> TypeData<T> getTypeData(final Type genericType, final Class<T> clazz) {
+        TypeData.Builder<T> builder = TypeData.builder(clazz);
         if (genericType instanceof ParameterizedType) {
             ParameterizedType pType = (ParameterizedType) genericType;
-            TypeData.Builder<T> builder = TypeData.builder(clazz);
             for (Type argType : pType.getActualTypeArguments()) {
                 getNestedTypeData(builder, argType);
             }
-            return builder.build();
-        } else {
-            return TypeData.builder(clazz).build();
         }
+        return builder.build();
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})

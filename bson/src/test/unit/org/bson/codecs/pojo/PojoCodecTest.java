@@ -63,6 +63,7 @@ import java.util.List;
 import java.util.Map;
 
 import static java.lang.String.format;
+import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
 import static org.bson.codecs.pojo.Conventions.NO_CONVENTIONS;
@@ -168,8 +169,11 @@ public final class PojoCodecTest extends PojoTestCase {
     @Test
     public void testMultipleBoundsModel() {
         PojoCodecProvider.Builder builder = getPojoCodecProviderBuilder(MultipleBoundsModel.class);
-        roundTrip(builder, new MultipleBoundsModel("string", 42, 2.2),
-                "{'level1' : 2.2, 'level2': 42, 'level3': 'string'}");
+        HashMap<String, String> map = new HashMap<String, String>();
+        map.put("key", "value");
+        List<Integer> list = asList(1, 2, 3);
+        roundTrip(builder, new MultipleBoundsModel(map, list, 2.2),
+                "{'level1' : 2.2, 'level2': [1, 2, 3], 'level3': {key: 'value'}}");
     }
 
     @Test

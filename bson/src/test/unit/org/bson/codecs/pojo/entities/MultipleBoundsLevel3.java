@@ -16,13 +16,15 @@
 
 package org.bson.codecs.pojo.entities;
 
+import java.util.Map;
+
 public class MultipleBoundsLevel3<T> {
-    private T level3;
+    private Map<String, T> level3;
 
     public MultipleBoundsLevel3() {
     }
 
-    public MultipleBoundsLevel3(final T level3) {
+    public MultipleBoundsLevel3(final Map<String, T> level3) {
         this.level3 = level3;
     }
 

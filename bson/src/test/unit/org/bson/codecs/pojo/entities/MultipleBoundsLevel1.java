@@ -16,6 +16,9 @@
 
 package org.bson.codecs.pojo.entities;
 
+import java.util.List;
+import java.util.Map;
+
 public class MultipleBoundsLevel1<T> extends MultipleBoundsLevel2<Integer> {
     private T level1;
 
@@ -23,7 +26,7 @@ public class MultipleBoundsLevel1<T> extends MultipleBoundsLevel2<Integer> {
         super();
     }
 
-    public MultipleBoundsLevel1(final String level3, final Integer level2, final T level1) {
+    public MultipleBoundsLevel1(final Map<String, String> level3, final List<Integer> level2, final T level1) {
         super(level3, level2);
         this.level1 = level1;
     }
