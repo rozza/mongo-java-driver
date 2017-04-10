@@ -41,9 +41,6 @@ final class PojoBuilderHelper {
     @SuppressWarnings("unchecked")
     static <T> void configureClassModelBuilder(final ClassModelBuilder<T> classModelBuilder, final Class<T> clazz) {
         classModelBuilder.type(notNull("clazz", clazz));
-        if (clazz.equals(Object.class)) {
-            return;
-        }
 
         ArrayList<Annotation> annotations = new ArrayList<Annotation>();
         Set<String> fieldNames = new HashSet<String>();
