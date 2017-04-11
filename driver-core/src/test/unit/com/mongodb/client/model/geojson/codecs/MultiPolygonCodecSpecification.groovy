@@ -18,8 +18,11 @@ import com.mongodb.client.model.geojson.MultiPolygon
 import com.mongodb.client.model.geojson.PolygonCoordinates
 import com.mongodb.client.model.geojson.Position
 import org.bson.BsonDocument
+import org.bson.BsonDocumentReader
 import org.bson.BsonDocumentWriter
+import org.bson.codecs.DecoderContext
 import org.bson.codecs.EncoderContext
+import org.bson.codecs.configuration.CodecConfigurationException
 import spock.lang.Specification
 
 import static com.mongodb.client.model.geojson.NamedCoordinateReferenceSystem.EPSG_4326_STRICT_WINDING
@@ -48,13 +51,17 @@ class MultiPolygonCodecSpecification extends Specification {
         codec.encode(writer, multiMultiPolygon, context)
 
         then:
-        writer.document == parse('{ "type": "MultiPolygon",' +
-                                 '    "coordinates": [' +
-                                 '      [[[102.0, 2.0], [103.0, 2.0], [103.0, 3.0], [102.0, 3.0], [102.0, 2.0]]],' +
-                                 '      [[[100.0, 0.0], [101.0, 0.0], [101.0, 1.0], [100.0, 1.0], [100.0, 0.0]],' +
-                                 '       [[100.2, 0.2], [100.8, 0.2], [100.8, 0.8], [100.2, 0.8], [100.2, 0.2]]]' +
-                                 '      ]' +
-                                 '    }')
+        writer.document == parse('''{type: "MultiPolygon",
+                coordinates: [[[[102.0, 2.0], [103.0, 2.0], [103.0, 3.0], [102.0, 3.0], [102.0, 2.0]]],
+                              [[[100.0, 0.0], [101.0, 0.0], [101.0, 1.0], [100.0, 1.0], [100.0, 0.0]],
+                              [[100.2, 0.2], [100.8, 0.2], [100.8, 0.8], [100.2, 0.8], [100.2, 0.2]]]]}''')
+
+
+        when:
+        def decodedMultiMultiPolygon = codec.decode(new BsonDocumentReader(writer.document), DecoderContext.builder().build())
+
+        then:
+        multiMultiPolygon == decodedMultiMultiPolygon
     }
 
     def 'should encode with coordinate reference system'() {
@@ -74,14 +81,52 @@ class MultiPolygonCodecSpecification extends Specification {
         codec.encode(writer, multiMultiPolygon, context)
 
         then:
-        writer.document == parse('{ "type": "MultiPolygon",' +
-                                 '    "coordinates": [' +
-                                 '      [[[102.0, 2.0], [103.0, 2.0], [103.0, 3.0], [102.0, 3.0], [102.0, 2.0]]],' +
-                                 '      [[[100.0, 0.0], [101.0, 0.0], [101.0, 1.0], [100.0, 1.0], [100.0, 0.0]],' +
-                                 '       [[100.2, 0.2], [100.8, 0.2], [100.8, 0.8], [100.2, 0.8], [100.2, 0.2]]]' +
-                                 '      ]' +
-                                 "    \"crs\" : {type: 'name', properties : {name : '$EPSG_4326_STRICT_WINDING.name'}}}" +
-                                 '    }')
+        writer.document == parse("""{ "type": "MultiPolygon",
+                coordinates: [[[[102.0, 2.0], [103.0, 2.0], [103.0, 3.0], [102.0, 3.0], [102.0, 2.0]]],
+                              [[[100.0, 0.0], [101.0, 0.0], [101.0, 1.0], [100.0, 1.0], [100.0, 0.0]],
+                              [[100.2, 0.2], [100.8, 0.2], [100.8, 0.8], [100.2, 0.8], [100.2, 0.2]]]],
+                crs: {type: 'name', properties : {name : '$EPSG_4326_STRICT_WINDING.name'}}}""")
+
+        when:
+        def decodedMultiMultiPolygon = codec.decode(new BsonDocumentReader(writer.document), DecoderContext.builder().build())
+
+        then:
+        multiMultiPolygon == decodedMultiMultiPolygon
+    }
+
+    def 'should throw when decoding invalid documents'() {
+        when:
+        codec.decode(new BsonDocumentReader(parse(invalidJson)), DecoderContext.builder().build())
+
+        then:
+        thrown(CodecConfigurationException)
+
+        where:
+        invalidJson << [
+                '''{type: "MultiPolygot",
+                    coordinates: [[[[102.0, 2.0], [103.0, 2.0], [103.0, 3.0], [102.0, 3.0], [102.0, 2.0]]],
+                              [[[100.0, 0.0], [101.0, 0.0], [101.0, 1.0], [100.0, 1.0], [100.0, 0.0]],
+                              [[100.2, 0.2], [100.8, 0.2], [100.8, 0.8], [100.2, 0.8], [100.2, 0.2]]]]}''',
+                '{type: "MultiPolygon", coordinates: [[[40.0, 18.0], [40.0, 19.0]]]}',
+                '{type: "MultiPolygon", coordinates: []}',
+                '{type: "MultiPolygon", coordinates: [[]]}',
+                '{type: "MultiPolygon", coordinates: [[[]]]}',
+                '{type: "MultiPolygon", coordinates: [[[[]]]]}',
+                '{type: "MultiPolygon", coordinates: [[[[[]]]]]}',
+                "{type: 'MultiPolygon', crs : {type: 'name', properties : {name : '$EPSG_4326_STRICT_WINDING.name'}}}",
+                '''{type: "MultiPolygot", crs : {type: "something"},
+                    coordinates: [[[[102.0, 2.0], [103.0, 2.0], [103.0, 3.0], [102.0, 3.0], [102.0, 2.0]]],
+                              [[[100.0, 0.0], [101.0, 0.0], [101.0, 1.0], [100.0, 1.0], [100.0, 0.0]],
+                              [[100.2, 0.2], [100.8, 0.2], [100.8, 0.8], [100.2, 0.8], [100.2, 0.2]]]]}''',
+                '''{type: "MultiPolygot", crs : {type: "link", properties: {href: "http://example.com/crs/42"}},
+                    coordinates: [[[[102.0, 2.0], [103.0, 2.0], [103.0, 3.0], [102.0, 3.0], [102.0, 2.0]]],
+                              [[[100.0, 0.0], [101.0, 0.0], [101.0, 1.0], [100.0, 1.0], [100.0, 0.0]],
+                              [[100.2, 0.2], [100.8, 0.2], [100.8, 0.8], [100.2, 0.8], [100.2, 0.2]]]]}''',
+                '''{type: "MultiPolygon", abc: 123,
+                    coordinates: [[[[102.0, 2.0], [103.0, 2.0], [103.0, 3.0], [102.0, 3.0], [102.0, 2.0]]],
+                              [[[100.0, 0.0], [101.0, 0.0], [101.0, 1.0], [100.0, 1.0], [100.0, 0.0]],
+                              [[100.2, 0.2], [100.8, 0.2], [100.8, 0.8], [100.2, 0.8], [100.2, 0.2]]]]}'''
+        ]
     }
 
 }

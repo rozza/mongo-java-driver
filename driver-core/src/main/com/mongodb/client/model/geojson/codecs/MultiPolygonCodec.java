@@ -24,6 +24,7 @@ import org.bson.codecs.EncoderContext;
 import org.bson.codecs.configuration.CodecRegistry;
 
 import static com.mongodb.assertions.Assertions.notNull;
+import static com.mongodb.client.model.geojson.codecs.GeometryCodecHelper.decodeGeometry;
 import static com.mongodb.client.model.geojson.codecs.GeometryCodecHelper.encodeGeometry;
 import static com.mongodb.client.model.geojson.codecs.GeometryCodecHelper.encodePolygonCoordinates;
 
@@ -66,6 +67,6 @@ public class MultiPolygonCodec implements Codec<MultiPolygon> {
 
     @Override
     public MultiPolygon decode(final BsonReader reader, final DecoderContext decoderContext) {
-        throw new UnsupportedOperationException("Not implemented yet!");
+        return decodeGeometry(reader, getEncoderClass());
     }
 }
