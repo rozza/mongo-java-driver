@@ -78,15 +78,13 @@ public final class DocumentationSamples extends DatabaseTestCase {
     public void testInsert() throws InterruptedException, ExecutionException, TimeoutException {
 
         // Start Example 1
-        Document canvas = new Document();
-        canvas.put("item", "canvas");
-        canvas.put("qty", 100);
-        canvas.put("tags", singletonList("cotton"));
+        Document canvas = new Document("item", "canvas")
+                .append("qty", 100)
+                .append("tags", singletonList("cotton"));
 
-        Document size = new Document();
-        size.put("h", 28);
-        size.put("w", 35.5);
-        size.put("uom", "cm");
+        Document size = new Document("h", 28)
+                .append("w", 35.5)
+                .append("uom", "cm");
         canvas.put("size", size);
 
         final CountDownLatch insertLatch = new CountDownLatch(1);
@@ -101,7 +99,7 @@ public final class DocumentationSamples extends DatabaseTestCase {
         // End Example 1
 
         // Start Example 2
-        FindIterable<Document> findIterable = collection.find(new Document("item", "canvas"));
+        FindIterable<Document> findIterable = collection.find(eq("item", "canvas"));
         // End Example 2
 
         final CountDownLatch check1 = new CountDownLatch(1);
@@ -115,37 +113,31 @@ public final class DocumentationSamples extends DatabaseTestCase {
         assertTrue(check1.await(10, TimeUnit.SECONDS));
 
         // Start Example 3
-        Document journal = new Document();
-        journal.put("item", "journal");
-        journal.put("qty", 25);
-        journal.put("tags", asList("blank", "red"));
+        Document journal = new Document("item", "journal")
+                .append("qty", 25)
+                .append("tags", asList("blank", "red"));
 
-        Document journalSize = new Document();
-        journalSize.put("h", 14);
-        journalSize.put("w", 21);
-        journalSize.put("uom", "cm");
+        Document journalSize = new Document("h", 14)
+                .append("w", 21)
+                .append("uom", "cm");
         journal.put("size", journalSize);
 
-        Document mat = new Document();
-        mat.put("item", "mat");
-        mat.put("qty", 85);
-        mat.put("tags", singletonList("gray"));
+        Document mat = new Document("item", "mat")
+                .append("qty", 85)
+                .append("tags", singletonList("gray"));
 
-        Document matSize = new Document();
-        matSize.put("h", 27.9);
-        matSize.put("w", 35.5);
-        matSize.put("uom", "cm");
+        Document matSize = new Document("h", 27.9)
+                .append("w", 35.5)
+                .append("uom", "cm");
         mat.put("size", matSize);
 
-        Document mousePad = new Document();
-        mousePad.put("item", "mousePad");
-        mousePad.put("qty", 25);
-        mousePad.put("tags", asList("gel", "blue"));
+        Document mousePad = new Document("item", "mousePad")
+                .append("qty", 25)
+                .append("tags", asList("gel", "blue"));
 
-        Document mousePadSize = new Document();
-        mousePadSize.put("h", 19);
-        mousePadSize.put("w", 22.85);
-        mousePadSize.put("uom", "cm");
+        Document mousePadSize = new Document("h", 19)
+                .append("w", 22.85)
+                .append("uom", "cm");
         mousePad.put("size", mousePadSize);
 
         final CountDownLatch insertManyLatch = new CountDownLatch(1);
@@ -410,7 +402,7 @@ public final class DocumentationSamples extends DatabaseTestCase {
     }
 
     @Test
-    public void testQueryingArrayvalues() throws InterruptedException, ExecutionException, TimeoutException {
+    public void testQueryingArrayValues() throws InterruptedException, ExecutionException, TimeoutException {
 
         //Start Example 20
         final CountDownLatch insertLatch = new CountDownLatch(1);
@@ -451,7 +443,7 @@ public final class DocumentationSamples extends DatabaseTestCase {
         });
 
         //Start Example 22
-        findIterable = collection.find(all("tags", "red", "blank"));
+        findIterable = collection.find(all("tags", asList("red", "blank")));
         //End Example 22
 
         findIterable.into(new ArrayList<Document>(), new SingleResultCallback<ArrayList<Document>>() {
