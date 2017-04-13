@@ -24,6 +24,7 @@ import com.mongodb.client.gridfs.codecs.GridFSFileCodecProvider;
 import com.mongodb.client.model.geojson.codecs.GeoJsonCodecProvider;
 import org.bson.BsonDocument;
 import org.bson.Document;
+import org.bson.codecs.BigDecimalCodecProvider;
 import org.bson.codecs.BsonValueCodecProvider;
 import org.bson.codecs.DocumentCodecProvider;
 import org.bson.codecs.IterableCodecProvider;
@@ -90,7 +91,8 @@ public class MongoClient extends Mongo implements Closeable {
                     new BsonValueCodecProvider(),
                     new IterableCodecProvider(new DocumentToDBRefTransformer()),
                     new GeoJsonCodecProvider(),
-                    new GridFSFileCodecProvider()));
+                    new GridFSFileCodecProvider(),
+                    new BigDecimalCodecProvider()));
 
     /**
      * Gets the default codec registry.  It includes the following providers:
