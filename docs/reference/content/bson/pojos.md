@@ -17,23 +17,24 @@ A `ClassModel` for a POJO includes:
 
   * The class of the POJO.
   * A new instance factory. Handling the creation of new instances of the POJO. By default it requires the POJO to have an empty constructor.
-  * Field information, a list of [`FieldModel`]({{<apiref "org/bson/codecs/pojo/FieldModel.html">}}) instances that contain all the field metadata.
+  * Field information, a list of [`FieldModel`]({{<apiref "org/bson/codecs/pojo/FieldModel.html">}}) instances that contain all the field metadata. By default all non static and non transient fields.
   * An optional IdField. By default the `_id` or `id` field in the POJO.
-  * Type data for the POJO and it's fields to work around type erasure.
-  * An optional discriminator value. The discriminator is the value used to represent the POJO class being stored and by default is the 
-    simple name of the POJO class.
-  * An optional discriminator key. The document field name for the discriminator which has the default of `_t`.
-  * The use discriminator flag.  This determines if the discriminator should be serialized. By default it is off.
+  * Type data for the POJO and its fields to work around type erasure.
+  * An optional discriminator value. The discriminator is the value used to represent the POJO class being stored.
+  * An optional discriminator key. The document field name for the discriminator.
+  * The use discriminator flag. This determines if the discriminator should be serialized. By default it is off.
   
 Each `FieldModel` includes:
 
   * The field name.
   * The document field name, which is the key for the value when serialized to BSON. By default it is the same as the field name.
   * Type data, to work around type erasure.
-  * An optional `Codec` for the field. Which allows for fine grained control over how the field is encoded and decoded.
+  * An optional `Codec` for the field. The codec allows for fine grained control over how the field is encoded and decoded.
   * A serialization checker. This checks if the value should be serialized. By default, `null` values are not serialized.
-  * Use discriminator flag which is only used when serializing other POJOs. By default it is off.
   * A field accessor. Used to access field values from the POJO instance.
+  * Use discriminator flag, only used when serializing other POJOs. By default it is off. When on the `PojoCodecProvider` copies the 
+    `ClassModel` for the field's type and turns on the use discriminator flag. The corresponding `ClassModel` must be configured with a 
+    discriminator key and value.
 
 ClassModels are built using the [`ClassModelBuilder`]({{<apiref "org/bson/codecs/pojo/ClassModelBuilder.html">}}) which can be accessed via
  the [`ClassModel.builder(clazz)`]({{<apiref "org/bson/codecs/pojo/ClassModel.html#builder-java.lang.Class-">}}) method. The builder 
@@ -119,7 +120,7 @@ encode and decode the address value.
 
 ### Generics support
 
-Generics are fully supported, during the creation of a `ClassModelBuilder` the type parameters are inspected and saved to work around type 
+Generics are fully supported. During the creation of a `ClassModelBuilder` type parameters are inspected and saved to work around type 
 erasure. The only requirement is the top level POJO **cannot** contain any type parameters. 
 
 Take the following classes:
@@ -227,7 +228,7 @@ For most scenarios there is no need for further configuration. However, there ar
 
 ### Fields with abstract or interface types.
 
-If a POJO contains a field that has an abstract type or has an interface as it's type, then a discriminator is required. The type and all 
+If a POJO contains a field that has an abstract type or has an interface as its type, then a discriminator is required. The type and all 
 subtypes / implementations need to be registered with the `PojoCodecProvider` so that values can be encoded and decoded correctly.
 
 The easiest way to enable a discriminator is to annotate the abstract class with the `Discriminator` annotation. Alternatively, the 
