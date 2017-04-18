@@ -32,7 +32,6 @@ import com.mongodb.connection.StreamFactoryFactory;
 import com.mongodb.event.CommandEventMulticaster;
 import com.mongodb.event.CommandListener;
 import com.mongodb.management.JMXConnectionPoolListener;
-import org.bson.codecs.BigDecimalCodecProvider;
 import org.bson.codecs.BsonValueCodecProvider;
 import org.bson.codecs.DocumentCodecProvider;
 import org.bson.codecs.IterableCodecProvider;
@@ -218,8 +217,7 @@ public final class MongoClients {
                     new BsonValueCodecProvider(),
                     new IterableCodecProvider(),
                     new GeoJsonCodecProvider(),
-                    new GridFSFileCodecProvider(),
-                    new BigDecimalCodecProvider()));
+                    new GridFSFileCodecProvider()));
 
     private static StreamFactory getStreamFactory(final StreamFactoryFactory streamFactoryFactory,
                                                   final SocketSettings socketSettings, final SslSettings sslSettings,

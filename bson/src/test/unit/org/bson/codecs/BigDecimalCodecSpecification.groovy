@@ -16,36 +16,42 @@
 
 package org.bson.codecs
 
+import org.bson.BsonDecimal128
 import org.bson.BsonDocument
 import org.bson.BsonDocumentReader
 import org.bson.BsonDocumentWriter
 import org.bson.BsonReader
+import org.bson.types.Decimal128
 import spock.lang.Specification
 
 class BigDecimalCodecSpecification extends Specification {
 
-    def 'should round trip BigDecimal successfully'(BigDecimal expected) {
+    def 'should round trip BigDecimal successfully'() {
         given:
-        BigDecimalCodec codec = new BigDecimalCodec()
+        def codec = new BigDecimalCodec()
+        def bsonDecimal128 = new BsonDecimal128(new Decimal128(bigDecimal))
 
+        when:
         def writer = new BsonDocumentWriter(new BsonDocument())
         writer.writeStartDocument()
         writer.writeName('bigDecimal')
-        codec.encode(writer, expected, EncoderContext.builder().build())
+        codec.encode(writer, bigDecimal, EncoderContext.builder().build())
         writer.writeEndDocument()
 
+        then:
+        bsonDecimal128 == writer.getDocument().get('bigDecimal')
+
+        when:
         BsonReader bsonReader = new BsonDocumentReader(writer.getDocument())
         bsonReader.readStartDocument()
         bsonReader.readName()
-
-        when:
         BigDecimal actual = codec.decode(bsonReader, DecoderContext.builder().build())
 
         then:
-        expected == actual
+        bigDecimal == actual
 
         where:
-        expected << [
+        bigDecimal << [
                 new BigDecimal(123),
                 new BigDecimal(42L),
                 new BigDecimal('12345678901234567890'),
