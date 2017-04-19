@@ -17,7 +17,7 @@ A `ClassModel` for a POJO includes:
 
   * The class of the POJO.
   * A new instance factory. Handling the creation of new instances of the POJO. By default it requires the POJO to have an empty constructor.
-  * Field information, a list of [`FieldModel`]({{<apiref "org/bson/codecs/pojo/FieldModel.html">}}) instances that contain all the field metadata. By default all non static and non transient fields.
+  * Field information, a list of [`FieldModel`]({{<apiref "org/bson/codecs/pojo/FieldModel.html">}}) instances that contain all the field metadata. By default this includes all non static and non transient fields.
   * An optional IdField. By default the `_id` or `id` field in the POJO.
   * Type data for the POJO and its fields to work around type erasure.
   * An optional discriminator value. The discriminator is the value used to represent the POJO class being stored.
