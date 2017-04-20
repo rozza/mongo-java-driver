@@ -15,49 +15,21 @@
 package com.mongodb.client.model.geojson.codecs;
 
 import com.mongodb.client.model.geojson.LineString;
-import com.mongodb.client.model.geojson.Position;
-import org.bson.BsonReader;
-import org.bson.BsonWriter;
-import org.bson.codecs.Codec;
-import org.bson.codecs.DecoderContext;
-import org.bson.codecs.EncoderContext;
 import org.bson.codecs.configuration.CodecRegistry;
-
-import static com.mongodb.assertions.Assertions.notNull;
-import static com.mongodb.client.model.geojson.codecs.GeometryCodecHelper.decodeGeometry;
-import static com.mongodb.client.model.geojson.codecs.GeometryCodecHelper.encodeGeometry;
-import static com.mongodb.client.model.geojson.codecs.GeometryCodecHelper.encodePosition;
 
 /**
  * A Codec for a GeoJSON LineString.
  *
  * @since 3.1
  */
-public class LineStringCodec implements Codec<LineString> {
-    private final CodecRegistry registry;
+public class LineStringCodec extends AbstractGeometryCodec<LineString> {
 
     /**
-     * Constructs an instance.
-     *
-     * @param registry the registry
+     * Construct a new instance
+     * @param registry the CodecRegistry
      */
     public LineStringCodec(final CodecRegistry registry) {
-        this.registry = notNull("registry", registry);
-    }
-
-    @Override
-    public void encode(final BsonWriter writer, final LineString value, final EncoderContext encoderContext) {
-        encodeGeometry(writer, value, encoderContext, registry, new Runnable() {
-            @Override
-            @SuppressWarnings({"unchecked", "rawtypes"})
-            public void run() {
-                writer.writeStartArray();
-                for (Position position : value.getCoordinates()) {
-                    encodePosition(writer, position);
-                }
-                writer.writeEndArray();
-            }
-        });
+        super(registry);
     }
 
     @Override
@@ -65,8 +37,4 @@ public class LineStringCodec implements Codec<LineString> {
         return LineString.class;
     }
 
-    @Override
-    public LineString decode(final BsonReader reader, final DecoderContext decoderContext) {
-        return decodeGeometry(reader, getEncoderClass());
-    }
 }

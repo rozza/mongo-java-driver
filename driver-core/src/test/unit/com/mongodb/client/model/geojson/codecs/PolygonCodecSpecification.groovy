@@ -120,6 +120,8 @@ class PolygonCodecSpecification extends Specification {
 
         where:
         invalidJson << [
+                '{type: "Polygon"}',
+                '{coordinates: [[[40.0, 18.0], [40.0, 19.0], [41.0, 19.0], [40.0, 18.0]]]}',
                 '{type: "Polygot", coordinates: [[[40.0, 18.0], [40.0, 19.0], [41.0, 19.0], [40.0, 18.0]]]}',
                 '{type: "Polygon", coordinates: [[[40.0, 18.0], [40.0, 19.0]]]}',
                 '{type: "Polygon", coordinates: []}',

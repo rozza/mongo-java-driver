@@ -29,74 +29,16 @@ import com.mongodb.client.model.geojson.Polygon;
 import com.mongodb.client.model.geojson.PolygonCoordinates;
 import com.mongodb.client.model.geojson.Position;
 import org.bson.BsonReader;
+import org.bson.BsonReaderMark;
 import org.bson.BsonType;
-import org.bson.BsonWriter;
-import org.bson.codecs.Codec;
-import org.bson.codecs.EncoderContext;
 import org.bson.codecs.configuration.CodecConfigurationException;
-import org.bson.codecs.configuration.CodecRegistry;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import static java.lang.String.format;
 
-final class GeometryCodecHelper {
-
-    static void encodeGeometry(final BsonWriter writer, final Geometry geometry, final EncoderContext encoderContext,
-                               final CodecRegistry registry, final Runnable coordinatesEncoder) {
-        writer.writeStartDocument();
-        encodeType(writer, geometry);
-        writer.writeName("coordinates");
-
-        coordinatesEncoder.run();
-
-        encodeCoordinateReferenceSystem(writer, geometry, encoderContext, registry);
-
-        writer.writeEndDocument();
-    }
-
-    static void encodeType(final BsonWriter writer, final Geometry geometry) {
-        writer.writeString("type", geometry.getType().getTypeName());
-    }
-
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    static void encodeCoordinateReferenceSystem(final BsonWriter writer, final Geometry geometry,
-                                                final EncoderContext encoderContext, final CodecRegistry registry) {
-        if (geometry.getCoordinateReferenceSystem() != null) {
-            writer.writeName("crs");
-            Codec codec = registry.get(geometry.getCoordinateReferenceSystem().getClass());
-            encoderContext.encodeWithChildContext(codec, writer, geometry.getCoordinateReferenceSystem());
-        }
-    }
-
-    static void encodePolygonCoordinates(final BsonWriter writer, final PolygonCoordinates polygonCoordinates) {
-        writer.writeStartArray();
-        encodeLinearRing(polygonCoordinates.getExterior(), writer);
-        for (List<Position> ring : polygonCoordinates.getHoles()) {
-            encodeLinearRing(ring, writer);
-        }
-        writer.writeEndArray();
-    }
-
-    private static void encodeLinearRing(final List<Position> ring, final BsonWriter writer) {
-        writer.writeStartArray();
-        for (Position position : ring) {
-            encodePosition(writer, position);
-        }
-        writer.writeEndArray();
-    }
-
-
-    static void encodePosition(final BsonWriter writer, final Position value) {
-        writer.writeStartArray();
-
-        for (double number : value.getValues()) {
-            writer.writeDouble(number);
-        }
-
-        writer.writeEndArray();
-    }
+final class GeometryDecoderHelper {
 
     @SuppressWarnings("unchecked")
     static <T extends Geometry> T decodeGeometry(final BsonReader reader, final Class<T> clazz) {
@@ -108,14 +50,14 @@ final class GeometryCodecHelper {
             return (T) decodePolygon(reader);
         } else if (clazz.equals(MultiPolygon.class)) {
             return (T) decodeMultiPolygon(reader);
-        } else if (clazz.equals(MultiPolygon.class)) {
-            return (T) decodeMultiPolygon(reader);
         } else if (clazz.equals(LineString.class)) {
             return (T) decodeLineString(reader);
         } else if (clazz.equals(MultiLineString.class)) {
             return (T) decodeMultiLineString(reader);
         } else if (clazz.equals(GeometryCollection.class)) {
             return (T) decodeGeometryCollection(reader);
+        } else if (clazz.equals(Geometry.class)) {
+            return (T) decodeGeometry(reader);
         }
 
         throw new CodecConfigurationException(format("Unsupported Geometry: %s", clazz));
@@ -334,50 +276,53 @@ final class GeometryCodecHelper {
         reader.readStartArray();
         List<Geometry> values = new ArrayList<Geometry>();
         while (reader.readBsonType() != BsonType.END_OF_DOCUMENT) {
-            String type = null;
-            reader.mark();
-            validateIsDocument(reader);
-            reader.readStartDocument();
-            while (reader.readBsonType() != BsonType.END_OF_DOCUMENT) {
-                String key = reader.readName();
-                if (key.equals("type")) {
-                    type = reader.readString();
-                    break;
-                } else {
-                    reader.skipValue();
-                }
-            }
-            reader.reset();
-
-            if (type == null) {
-                throw new CodecConfigurationException("Invalid Geometry item, document contained no type information.");
-            }
-            Geometry geometry = null;
-            if (type.equals("Point")) {
-                geometry = decodePoint(reader);
-            } else if (type.equals("MultiPoint")) {
-                geometry = decodeMultiPoint(reader);
-            } else if (type.equals("Polygon")) {
-                geometry = decodePolygon(reader);
-            } else if (type.equals("MultiPolygon")) {
-                geometry = decodeMultiPolygon(reader);
-            } else if (type.equals("MultiPolygon")) {
-                geometry = decodeMultiPolygon(reader);
-            } else if (type.equals("LineString")) {
-                geometry = decodeLineString(reader);
-            } else if (type.equals("MultiLineString")) {
-                geometry = decodeMultiLineString(reader);
-            } else if (type.equals("GeometryCollection")) {
-                geometry = decodeGeometryCollection(reader);
-            } else {
-                throw new CodecConfigurationException(format("Invalid Geometry item, found type '%s'.", type));
-            }
+            Geometry geometry = decodeGeometry(reader);
             values.add(geometry);
         }
         reader.readEndArray();
 
 
         return values;
+    }
+
+    private static Geometry decodeGeometry(final BsonReader reader) {
+        String type = null;
+        BsonReaderMark mark = reader.getMark();
+        validateIsDocument(reader);
+        reader.readStartDocument();
+        while (reader.readBsonType() != BsonType.END_OF_DOCUMENT) {
+            String key = reader.readName();
+            if (key.equals("type")) {
+                type = reader.readString();
+                break;
+            } else {
+                reader.skipValue();
+            }
+        }
+        mark.reset();
+
+        if (type == null) {
+            throw new CodecConfigurationException("Invalid Geometry item, document contained no type information.");
+        }
+        Geometry geometry = null;
+        if (type.equals("Point")) {
+            geometry = decodePoint(reader);
+        } else if (type.equals("MultiPoint")) {
+            geometry = decodeMultiPoint(reader);
+        } else if (type.equals("Polygon")) {
+            geometry = decodePolygon(reader);
+        } else if (type.equals("MultiPolygon")) {
+            geometry = decodeMultiPolygon(reader);
+        } else if (type.equals("LineString")) {
+            geometry = decodeLineString(reader);
+        } else if (type.equals("MultiLineString")) {
+            geometry = decodeMultiLineString(reader);
+        } else if (type.equals("GeometryCollection")) {
+            geometry = decodeGeometryCollection(reader);
+        } else {
+            throw new CodecConfigurationException(format("Invalid Geometry item, found type '%s'.", type));
+        }
+        return geometry;
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
@@ -503,7 +448,11 @@ final class GeometryCodecHelper {
     }
 
     private static void validateIsDocument(final BsonReader reader) {
-        if (reader.getCurrentBsonType() != BsonType.DOCUMENT) {
+        BsonType currentType = reader.getCurrentBsonType();
+        if (currentType == null) {
+            currentType = reader.readBsonType();
+        }
+        if (!currentType.equals(BsonType.DOCUMENT)) {
             throw new CodecConfigurationException("Invalid BsonType expecting a Document");
         }
     }
@@ -514,6 +463,6 @@ final class GeometryCodecHelper {
         }
     }
 
-    private GeometryCodecHelper() {
+    private GeometryDecoderHelper() {
     }
 }

@@ -84,6 +84,8 @@ class LineStringCodecSpecification extends Specification {
 
         where:
         invalidJson << [
+                '{type: "lineString"}',
+                '{coordinates: [[40.0, 18.0], [40.0, 19.0]]}',
                 '{type: "lineStr", coordinates: [[40.0, 18.0], [40.0, 19.0]]}',
                 '{type: "lineString", coordinates: [40.0, 18.0]}',
                 '{type: "lineString", coordinates: []}',

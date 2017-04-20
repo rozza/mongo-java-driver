@@ -1,9 +1,11 @@
 /*
- * Copyright 2015 MongoDB, Inc.
+ * Copyright 2017 MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -14,28 +16,28 @@
 
 package com.mongodb.client.model.geojson.codecs;
 
-import com.mongodb.client.model.geojson.MultiPoint;
+import com.mongodb.client.model.geojson.Geometry;
 import org.bson.codecs.configuration.CodecRegistry;
 
 /**
- * A Codec for a GeoJSON MultiPoint.
+ * A Codec for a GeoJSON Geometry.
  *
- * @since 3.1
+ * @since 3.5
  */
-public class MultiPointCodec extends AbstractGeometryCodec<MultiPoint> {
+public final class GeometryCodec extends AbstractGeometryCodec<Geometry> {
 
     /**
-     * Constructs an instance.
+     * Construct a new instance
      *
-     * @param registry the registry
+     * @param registry the CodecRegistry
      */
-    public MultiPointCodec(final CodecRegistry registry) {
+    public GeometryCodec(final CodecRegistry registry) {
         super(registry);
     }
 
     @Override
-    public Class<MultiPoint> getEncoderClass() {
-        return MultiPoint.class;
+    public Class<Geometry> getEncoderClass() {
+        return Geometry.class;
     }
 
 }

@@ -84,6 +84,8 @@ class MultiPointCodecSpecification extends Specification {
 
         where:
         invalidJson << [
+                '{type: "MultiPoint"}',
+                '{coordinates: [[40.0, 20.0], [40.0, 40.0], [20.0, 40.0]]}',
                 '{type: "MultiPoit", coordinates: [[40.0, 20.0], [40.0, 40.0], [20.0, 40.0]]}',
                 '{type: "MultiPoint", coordinates: [40.0, 18.0]}',
                 '{type: "MultiPoint", coordinates: [[[40.0, 18.0], [40.0, 19.0], [41.0, 19.0], [40.0, 18.0]]]}',

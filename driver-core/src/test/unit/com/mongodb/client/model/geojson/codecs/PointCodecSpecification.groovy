@@ -80,6 +80,8 @@ class PointCodecSpecification extends Specification {
 
         where:
         invalidJson << [
+                '{type: "Point"}',
+                '{coordinates: [40.0, 18.0]}',
                 '{type: "Pointer", coordinates: [40.0, 18.0]}',
                 "{type: 'Point', crs : {type: 'name', properties : {name : '$EPSG_4326_STRICT_WINDING.name'}}}",
                 '{type: "Point", coordinates: [40.0, 18.0], crs : {type: "link", properties: {href: "http://example.com/crs/42"}}}',

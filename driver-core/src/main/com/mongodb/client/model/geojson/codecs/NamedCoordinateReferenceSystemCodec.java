@@ -23,7 +23,7 @@ import org.bson.codecs.DecoderContext;
 import org.bson.codecs.EncoderContext;
 import org.bson.codecs.configuration.CodecConfigurationException;
 
-import static com.mongodb.client.model.geojson.codecs.GeometryCodecHelper.decodeCoordinateReferenceSystem;
+import static com.mongodb.client.model.geojson.codecs.GeometryDecoderHelper.decodeCoordinateReferenceSystem;
 
 /**
  * Codec for a GeoJson Coordinate Reference System of type name.

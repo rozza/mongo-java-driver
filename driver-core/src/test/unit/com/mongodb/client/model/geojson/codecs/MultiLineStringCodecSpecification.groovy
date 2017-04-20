@@ -83,6 +83,8 @@ class MultiLineStringCodecSpecification extends Specification {
 
         where:
         invalidJson << [
+                '{type: "MultiLineString"}',
+                '{coordinates: [[[1.0, 1.0], [2.0, 2.0], [3.0, 4.0]], [[2.0, 3.0], [3.0, 2.0], [4.0, 4.0]]]}',
                 '{type: "MultiLineStr", coordinates: [[[1.0, 1.0], [2.0, 2.0], [3.0, 4.0]], [[2.0, 3.0], [3.0, 2.0], [4.0, 4.0]]]}',
                 '{type: "MultiLineString", coordinates: [40.0, 18.0]}',
                 '{type: "MultiLineString", coordinates: [[[[40.0, 18.0], [40.0, 19.0], [41.0, 19.0], [40.0, 18.0]]]]}',
