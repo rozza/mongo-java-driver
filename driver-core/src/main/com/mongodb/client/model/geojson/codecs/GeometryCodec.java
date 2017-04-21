@@ -32,12 +32,6 @@ public final class GeometryCodec extends AbstractGeometryCodec<Geometry> {
      * @param registry the CodecRegistry
      */
     public GeometryCodec(final CodecRegistry registry) {
-        super(registry);
+        super(registry, Geometry.class);
     }
-
-    @Override
-    public Class<Geometry> getEncoderClass() {
-        return Geometry.class;
-    }
-
 }

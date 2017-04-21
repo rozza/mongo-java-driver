@@ -34,7 +34,7 @@ class MultiLineStringCodecSpecification extends Specification {
     def writer = new BsonDocumentWriter(new BsonDocument())
     def context = EncoderContext.builder().build()
 
-    def 'should encode'() {
+    def 'should round trip'() {
         given:
         def multiLineString = new MultiLineString([[new Position([1.0d, 1.0d]), new Position([2.0d, 2.0d]), new Position([3.0d, 4.0d])],
                                                    [new Position([2.0d, 3.0d]), new Position([3.0d, 2.0d]), new Position([4.0d, 4.0d])]])
@@ -53,7 +53,7 @@ class MultiLineStringCodecSpecification extends Specification {
         multiLineString == decodedMultiLineString
     }
 
-    def 'should encode with coordinate reference system'() {
+    def 'should round trip with coordinate reference system'() {
         given:
         def multiLineString = new MultiLineString(EPSG_4326_STRICT_WINDING,
                                                   [[new Position([1.0d, 1.0d]), new Position([2.0d, 2.0d]), new Position([3.0d, 4.0d])],

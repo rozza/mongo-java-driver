@@ -37,7 +37,7 @@ final class NamedCoordinateReferenceSystemSpecification extends Specification {
     def writer = new BsonDocumentWriter(new BsonDocument())
     def context = EncoderContext.builder().build()
 
-    def 'should encode'() {
+    def 'should round trip'() {
         when:
         codec.encode(writer, crs, context)
 

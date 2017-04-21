@@ -34,7 +34,7 @@ class MultiPointCodecSpecification extends Specification {
     def writer = new BsonDocumentWriter(new BsonDocument())
     def context = EncoderContext.builder().build()
 
-    def 'should encode'() {
+    def 'should round trip'() {
         given:
         def multiPoint = new MultiPoint([new Position([40.0d, 18.0d]),
                                          new Position([40.0d, 19.0d]),
@@ -53,7 +53,7 @@ class MultiPointCodecSpecification extends Specification {
         multiPoint == decodedMultiPoint
     }
 
-    def 'should encode with coordinate reference system'() {
+    def 'should round trip with coordinate reference system'() {
         given:
         def multiPoint = new MultiPoint(EPSG_4326_STRICT_WINDING,
                                         [new Position([40.0d, 18.0d]),

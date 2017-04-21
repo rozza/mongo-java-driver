@@ -29,12 +29,6 @@ public class LineStringCodec extends AbstractGeometryCodec<LineString> {
      * @param registry the CodecRegistry
      */
     public LineStringCodec(final CodecRegistry registry) {
-        super(registry);
+        super(registry, LineString.class);
     }
-
-    @Override
-    public Class<LineString> getEncoderClass() {
-        return LineString.class;
-    }
-
 }

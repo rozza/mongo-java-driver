@@ -34,7 +34,7 @@ class LineStringCodecSpecification extends Specification {
     def writer = new BsonDocumentWriter(new BsonDocument())
     def context = EncoderContext.builder().build()
 
-    def 'should encode'() {
+    def 'should round trip'() {
         given:
         def lineString = new LineString([new Position([40.0d, 18.0d]),
                                          new Position([40.0d, 19.0d]),
@@ -53,7 +53,7 @@ class LineStringCodecSpecification extends Specification {
         lineString == decodedLineString
     }
 
-    def 'should encode with coordinate reference system'() {
+    def 'should round trip with coordinate reference system'() {
         given:
         def lineString = new LineString(EPSG_4326_STRICT_WINDING,
                                         [new Position([40.0d, 20.0d]),

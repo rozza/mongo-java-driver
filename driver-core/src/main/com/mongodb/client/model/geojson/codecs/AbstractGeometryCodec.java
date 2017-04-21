@@ -29,18 +29,25 @@ import static com.mongodb.client.model.geojson.codecs.GeometryEncoderHelper.enco
 
 abstract class AbstractGeometryCodec<T extends Geometry> implements Codec<T> {
     private final CodecRegistry registry;
+    private final Class<T> encoderClass;
 
-    AbstractGeometryCodec(final CodecRegistry registry) {
+    AbstractGeometryCodec(final CodecRegistry registry, final Class<T> encoderClass) {
         this.registry = registry;
+        this.encoderClass = encoderClass;
     }
 
     @Override
-    public void encode(final BsonWriter writer, final Geometry value, final EncoderContext encoderContext) {
+    public void encode(final BsonWriter writer, final T value, final EncoderContext encoderContext) {
         encodeGeometry(writer, value, encoderContext, registry);
     }
 
     @Override
     public T decode(final BsonReader reader, final DecoderContext decoderContext) {
         return decodeGeometry(reader, getEncoderClass());
+    }
+
+    @Override
+    public Class<T> getEncoderClass() {
+        return encoderClass;
     }
 }

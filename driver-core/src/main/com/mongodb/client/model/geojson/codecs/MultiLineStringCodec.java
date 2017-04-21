@@ -30,12 +30,6 @@ public class MultiLineStringCodec extends AbstractGeometryCodec<MultiLineString>
      * @param registry the registry
      */
     public MultiLineStringCodec(final CodecRegistry registry) {
-        super(registry);
+        super(registry, MultiLineString.class);
     }
-
-    @Override
-    public Class<MultiLineString> getEncoderClass() {
-        return MultiLineString.class;
-    }
-
 }

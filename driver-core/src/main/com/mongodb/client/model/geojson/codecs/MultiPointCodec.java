@@ -30,12 +30,6 @@ public class MultiPointCodec extends AbstractGeometryCodec<MultiPoint> {
      * @param registry the registry
      */
     public MultiPointCodec(final CodecRegistry registry) {
-        super(registry);
+        super(registry, MultiPoint.class);
     }
-
-    @Override
-    public Class<MultiPoint> getEncoderClass() {
-        return MultiPoint.class;
-    }
-
 }

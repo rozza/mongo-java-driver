@@ -37,7 +37,7 @@ class PolygonCodecSpecification extends Specification {
     def writer = new BsonDocumentWriter(new BsonDocument())
     def context = EncoderContext.builder().build()
 
-    def 'should encode and decode'() {
+    def 'should round trip'() {
         given:
         def polygon = new Polygon([new Position([40.0d, 18.0d]),
                                    new Position([40.0d, 19.0d]),
@@ -58,7 +58,7 @@ class PolygonCodecSpecification extends Specification {
 
     }
 
-    def 'should encode and decode with coordinate reference system'() {
+    def 'should round trip with coordinate reference system'() {
         given:
         def polygon = new Polygon(EPSG_4326_STRICT_WINDING,
                                   new PolygonCoordinates([new Position([40.0d, 20.0d]),
@@ -80,7 +80,7 @@ class PolygonCodecSpecification extends Specification {
         polygon == decodedPolygon
     }
 
-    def 'should encode and decode with holes'() {
+    def 'should round trip with holes'() {
         given:
         def polygon = new Polygon([new Position([40.0d, 20.0d]),
                                    new Position([40.0d, 40.0d]),

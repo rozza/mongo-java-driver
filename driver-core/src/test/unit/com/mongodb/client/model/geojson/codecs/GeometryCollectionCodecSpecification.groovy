@@ -57,7 +57,7 @@ class GeometryCollectionCodecSpecification extends Specification {
         geometryCollection == decodedGeometryCollection
     }
 
-    def 'should encode'() {
+    def 'should round trip'() {
         given:
         def geometryCollection = new GeometryCollection([
                 new LineString([new Position(101d, 0d), new Position(102d, 1d)]),
@@ -105,7 +105,7 @@ class GeometryCollectionCodecSpecification extends Specification {
         geometryCollection == decodedGeometryCollection
     }
 
-    def 'should encode with coordinate reference system'() {
+    def 'should round trip with coordinate reference system'() {
         given:
         def geometryCollection = new GeometryCollection(EPSG_4326_STRICT_WINDING, [
                 new LineString([new Position(101d, 0d), new Position(102d, 1d)]),

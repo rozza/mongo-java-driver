@@ -35,7 +35,7 @@ class MultiPolygonCodecSpecification extends Specification {
     def writer = new BsonDocumentWriter(new BsonDocument())
     def context = EncoderContext.builder().build()
 
-    def 'should encode'() {
+    def 'should round trip'() {
         given:
         def multiMultiPolygon = new MultiPolygon([new PolygonCoordinates([new Position(102.0, 2.0), new Position(103.0, 2.0),
                                                                           new Position(103.0, 3.0), new Position(102.0, 3.0),
@@ -64,7 +64,7 @@ class MultiPolygonCodecSpecification extends Specification {
         multiMultiPolygon == decodedMultiMultiPolygon
     }
 
-    def 'should encode with coordinate reference system'() {
+    def 'should round trip with coordinate reference system'() {
         given:
         def multiMultiPolygon = new MultiPolygon(EPSG_4326_STRICT_WINDING,
                                                  [new PolygonCoordinates([new Position(102.0, 2.0), new Position(103.0, 2.0),

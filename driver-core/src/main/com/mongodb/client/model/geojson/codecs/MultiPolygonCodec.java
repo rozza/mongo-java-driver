@@ -30,12 +30,6 @@ public class MultiPolygonCodec extends AbstractGeometryCodec<MultiPolygon> {
      * @param registry the registry
      */
     public MultiPolygonCodec(final CodecRegistry registry) {
-        super(registry);
+        super(registry, MultiPolygon.class);
     }
-
-    @Override
-    public Class<MultiPolygon> getEncoderClass() {
-        return MultiPolygon.class;
-    }
-
 }

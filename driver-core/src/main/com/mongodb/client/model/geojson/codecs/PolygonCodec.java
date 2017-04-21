@@ -32,12 +32,6 @@ public class PolygonCodec extends AbstractGeometryCodec<Polygon> {
      * @param registry the registry
      */
     public PolygonCodec(final CodecRegistry registry) {
-        super(registry);
+        super(registry, Polygon.class);
     }
-
-    @Override
-    public Class<Polygon> getEncoderClass() {
-        return Polygon.class;
-    }
-
 }

@@ -32,12 +32,6 @@ public class PointCodec extends AbstractGeometryCodec<Point> {
      * @param registry the registry
      */
     public PointCodec(final CodecRegistry registry) {
-        super(registry);
+        super(registry, Point.class);
     }
-
-    @Override
-    public Class<Point> getEncoderClass() {
-        return Point.class;
-    }
-
 }
