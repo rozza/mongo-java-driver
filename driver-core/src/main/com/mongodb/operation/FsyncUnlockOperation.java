@@ -17,7 +17,7 @@
 package com.mongodb.operation;
 
 import com.mongodb.MongoNamespace;
-import com.mongodb.binding.WriteBinding;
+import com.mongodb.binding.ReadBinding;
 import com.mongodb.connection.Connection;
 import com.mongodb.operation.OperationHelper.CallableWithConnection;
 import org.bson.BsonDocument;
@@ -35,9 +35,9 @@ import static com.mongodb.operation.OperationHelper.withConnection;
  * @mongodb.driver.manual reference/command/fsyncUnlock/ fsyncUnlock command
  * @since 3.2
  */
-public class FsyncUnlockOperation implements WriteOperation<BsonDocument> {
+public class FsyncUnlockOperation implements ReadOperation<BsonDocument> {
     @Override
-    public BsonDocument execute(final WriteBinding binding) {
+    public BsonDocument execute(final ReadBinding binding) {
         return withConnection(binding, new CallableWithConnection<BsonDocument>() {
             @Override
             public BsonDocument call(final Connection connection) {
