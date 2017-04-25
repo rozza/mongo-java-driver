@@ -154,7 +154,7 @@ public final class CollectionHelper<T> {
     }
 
     public void insertDocuments(final Document... documents) {
-        insertDocuments(new DocumentCodec(registry, new BsonTypeClassMap()), asList(documents));
+        insertDocuments(new DocumentCodec(registry), asList(documents));
     }
 
     public <I> void insertDocuments(final Codec<I> iCodec, final I... documents) {
