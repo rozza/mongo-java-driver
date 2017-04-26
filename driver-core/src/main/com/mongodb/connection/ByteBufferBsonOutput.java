@@ -177,7 +177,9 @@ public class ByteBufferBsonOutput extends OutputBuffer {
     @Override
     public void close() {
         for (final ByteBuf cur : bufferList) {
-            cur.release();
+            while(cur.getReferenceCount() > 0) {
+                cur.release();
+            }
         }
         bufferList.clear();
         closed = true;
