@@ -59,7 +59,17 @@ public class DocumentCodec implements CollectibleCodec<Document> {
      * Construct a new instance with a default {@code CodecRegistry} and
      */
     public DocumentCodec() {
-        this(DEFAULT_REGISTRY, DEFAULT_BSON_TYPE_CLASS_MAP);
+        this(DEFAULT_REGISTRY);
+    }
+
+    /**
+     * Construct a new instance with the given registry and BSON type class map.
+     *
+     * @param registry         the registry
+     * @since 3.5
+     */
+    public DocumentCodec(final CodecRegistry registry) {
+        this(registry, DEFAULT_BSON_TYPE_CLASS_MAP);
     }
 
     /**
