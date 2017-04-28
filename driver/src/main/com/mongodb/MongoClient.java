@@ -22,7 +22,6 @@ import com.mongodb.client.MongoDriverInformation;
 import com.mongodb.client.MongoIterable;
 import com.mongodb.client.gridfs.codecs.GridFSFileCodecProvider;
 import com.mongodb.client.model.geojson.codecs.GeoJsonCodecProvider;
-import com.mongodb.internal.DocumentToDBRefTransformer;
 import org.bson.BsonDocument;
 import org.bson.Document;
 import org.bson.codecs.BsonValueCodecProvider;

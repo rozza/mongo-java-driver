@@ -14,14 +14,18 @@
  * limitations under the License.
  */
 
-package com.mongodb.internal;
+package com.mongodb;
 
 import com.mongodb.DBRef;
 import org.bson.Document;
 import org.bson.Transformer;
 
 /**
- * This class is not part of the public API and may be removed or changed at any time.
+ * A Document to DBRef Transformer.
+ *
+ * Can be used with any {@link org.bson.codecs.Codec} that takes a {@link Transformer}.
+ *
+ * @since 3.5
  */
 public final class DocumentToDBRefTransformer implements Transformer {
     @Override

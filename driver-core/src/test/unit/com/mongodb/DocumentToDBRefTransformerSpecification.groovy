@@ -16,7 +16,6 @@
 
 package com.mongodb
 
-import com.mongodb.internal.DocumentToDBRefTransformer
 import org.bson.Document
 import spock.lang.Specification
 
