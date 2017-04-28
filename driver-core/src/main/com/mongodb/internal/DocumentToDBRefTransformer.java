@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2014 MongoDB, Inc.
+ * Copyright 2008-2017 MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,12 +14,16 @@
  * limitations under the License.
  */
 
-package com.mongodb;
+package com.mongodb.internal;
 
+import com.mongodb.DBRef;
 import org.bson.Document;
 import org.bson.Transformer;
 
-final class DocumentToDBRefTransformer implements Transformer {
+/**
+ * This class is not part of the public API and may be removed or changed at any time.
+ */
+public final class DocumentToDBRefTransformer implements Transformer {
     @Override
     public Object transform(final Object value) {
         if (value instanceof Document) {
