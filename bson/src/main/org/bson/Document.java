@@ -150,6 +150,7 @@ public class Document implements Map<String, Object>, Serializable, Bson {
      * @param <T>   the type of the class
      * @return the value of the given key, or null if the instance does not contain this key.
      * @throws ClassCastException if the value of the given key is not of type T
+     * @since 3.5
      */
     public <T> T get(final Object key, final T defaultValue, final Class<T> clazz) {
         notNull("clazz", clazz);
@@ -198,8 +199,9 @@ public class Document implements Map<String, Object>, Serializable, Bson {
      * @param defaultValue what to return if the value is null
      * @return the value as an Long, which may be null
      * @throws java.lang.ClassCastException if the value is not an Long
+     * @since 3.5
      */
-    public Long getLong(final Object key, final Long defaultValue) {
+    public long getLong(final Object key, final long defaultValue) {
         return get(key, defaultValue, Long.class);
     }
 
@@ -221,8 +223,9 @@ public class Document implements Map<String, Object>, Serializable, Bson {
      * @param defaultValue what to return if the value is null
      * @return the value as an Double, which may be null
      * @throws java.lang.ClassCastException if the value is not an Double
+     * @since 3.5
      */
-    public Double getDouble(final Object key, final Double defaultValue) {
+    public double getDouble(final Object key, final double defaultValue) {
         return get(key, defaultValue, Double.class);
     }
 
@@ -244,6 +247,7 @@ public class Document implements Map<String, Object>, Serializable, Bson {
      * @param defaultValue what to return if the value is null
      * @return the value as an String, which may be null
      * @throws java.lang.ClassCastException if the value is not an String
+     * @since 3.5
      */
     public String getString(final Object key, final String defaultValue) {
         return get(key, defaultValue, String.class);
@@ -290,6 +294,7 @@ public class Document implements Map<String, Object>, Serializable, Bson {
      * @param defaultValue what to return if the value is null
      * @return the value as an ObjectId, which may be null
      * @throws java.lang.ClassCastException if the value is not an ObjectId
+     * @since 3.5
      */
     public ObjectId getObjectId(final Object key, final ObjectId defaultValue) {
         return get(key, defaultValue, ObjectId.class);
@@ -313,6 +318,7 @@ public class Document implements Map<String, Object>, Serializable, Bson {
      * @param defaultValue what to return if the value is null
      * @return the value as a Date, which may be null
      * @throws java.lang.ClassCastException if the value is not a Date
+     * @since 3.5
      */
     public Date getDate(final Object key, final Date defaultValue) {
         return get(key, defaultValue, Date.class);
