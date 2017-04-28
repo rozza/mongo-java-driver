@@ -141,6 +141,23 @@ public class Document implements Map<String, Object>, Serializable, Bson {
     }
 
     /**
+     * Gets the value of the given key, casting it to the given {@code Class<T>} or returns the default value if null.
+     * This is useful to avoid having casts in client code, though the effect is the same.
+     *
+     * @param key   the key
+     * @param defaultValue what to return if the value is null
+     * @param clazz the non-null class to cast the value to
+     * @param <T>   the type of the class
+     * @return the value of the given key, or null if the instance does not contain this key.
+     * @throws ClassCastException if the value of the given key is not of type T
+     */
+    public <T> T get(final Object key, final T defaultValue, final Class<T> clazz) {
+        notNull("clazz", clazz);
+        Object value = documentAsMap.get(key);
+        return value == null ? defaultValue : clazz.cast(value);
+    }
+
+    /**
      * Gets the value of the given key as an Integer.
      *
      * @param key the key
@@ -160,8 +177,7 @@ public class Document implements Map<String, Object>, Serializable, Bson {
      * @throws java.lang.ClassCastException if the value is not an integer
      */
     public int getInteger(final Object key, final int defaultValue) {
-        Object value = get(key);
-        return value == null ? defaultValue : (Integer) value;
+        return get(key, defaultValue, Integer.class);
     }
 
     /**
@@ -184,8 +200,7 @@ public class Document implements Map<String, Object>, Serializable, Bson {
      * @throws java.lang.ClassCastException if the value is not an Long
      */
     public Long getLong(final Object key, final Long defaultValue) {
-        Object value = get(key);
-        return value == null ? defaultValue : (Long) value;
+        return get(key, defaultValue, Long.class);
     }
 
     /**
@@ -208,8 +223,7 @@ public class Document implements Map<String, Object>, Serializable, Bson {
      * @throws java.lang.ClassCastException if the value is not an Double
      */
     public Double getDouble(final Object key, final Double defaultValue) {
-        Object value = get(key);
-        return value == null ? defaultValue : (Double) value;
+        return get(key, defaultValue, Double.class);
     }
 
     /**
@@ -232,8 +246,7 @@ public class Document implements Map<String, Object>, Serializable, Bson {
      * @throws java.lang.ClassCastException if the value is not an String
      */
     public String getString(final Object key, final String defaultValue) {
-        Object value = get(key);
-        return value == null ? defaultValue : (String) value;
+        return get(key, defaultValue, String.class);
     }
 
     /**
@@ -256,8 +269,7 @@ public class Document implements Map<String, Object>, Serializable, Bson {
      * @throws java.lang.ClassCastException if the value is not a boolean
      */
     public boolean getBoolean(final Object key, final boolean defaultValue) {
-        Object value = get(key);
-        return value == null ? defaultValue : (Boolean) value;
+        return get(key, defaultValue, Boolean.class);
     }
 
     /**
@@ -272,6 +284,18 @@ public class Document implements Map<String, Object>, Serializable, Bson {
     }
 
     /**
+     * Gets the value of the given key as an ObjectId.
+     *
+     * @param key the key
+     * @param defaultValue what to return if the value is null
+     * @return the value as an ObjectId, which may be null
+     * @throws java.lang.ClassCastException if the value is not an ObjectId
+     */
+    public ObjectId getObjectId(final Object key, final ObjectId defaultValue) {
+        return get(key, defaultValue, ObjectId.class);
+    }
+
+    /**
      * Gets the value of the given key as a Date.
      *
      * @param key the key
@@ -280,6 +304,18 @@ public class Document implements Map<String, Object>, Serializable, Bson {
      */
     public Date getDate(final Object key) {
         return (Date) get(key);
+    }
+
+    /**
+     * Gets the value of the given key as a Date.
+     *
+     * @param key the key
+     * @param defaultValue what to return if the value is null
+     * @return the value as a Date, which may be null
+     * @throws java.lang.ClassCastException if the value is not a Date
+     */
+    public Date getDate(final Object key, final Date defaultValue) {
+        return get(key, defaultValue, Date.class);
     }
 
     /**

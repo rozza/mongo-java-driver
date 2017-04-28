@@ -46,8 +46,11 @@ class DocumentSpecification extends Specification {
         doc.getString('stringNoVal', 'defVal') == 'defVal';
         doc.getBoolean('boolean');
         doc.getObjectId('objectId') == objectId;
+        doc.getObjectId('objectIdNoVal', objectId) == objectId;
         doc.getDate('date') == date;
+        doc.getDate('dateNoVal', date) == date;
         doc.get('objectId', ObjectId) == objectId;
+        doc.get('objectIdNoVal', objectId, ObjectId) == objectId;
     }
 
     def 'should parse a valid JSON string to a Document'() {
