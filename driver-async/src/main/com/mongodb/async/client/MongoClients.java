@@ -18,6 +18,7 @@ package com.mongodb.async.client;
 
 import com.mongodb.ConnectionString;
 import com.mongodb.DBRefCodecProvider;
+import com.mongodb.DocumentToDBRefTransformer;
 import com.mongodb.client.MongoDriverInformation;
 import com.mongodb.client.gridfs.codecs.GridFSFileCodecProvider;
 import com.mongodb.client.model.geojson.codecs.GeoJsonCodecProvider;
@@ -216,8 +217,8 @@ public final class MongoClients {
             fromProviders(asList(new ValueCodecProvider(),
                     new BsonValueCodecProvider(),
                     new DBRefCodecProvider(),
-                    new DocumentCodecProvider(),
-                    new IterableCodecProvider(),
+                    new DocumentCodecProvider(new DocumentToDBRefTransformer()),
+                    new IterableCodecProvider(new DocumentToDBRefTransformer()),
                     new GeoJsonCodecProvider(),
                     new GridFSFileCodecProvider()));
 

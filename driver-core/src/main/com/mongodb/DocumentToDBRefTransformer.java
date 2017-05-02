@@ -16,7 +16,6 @@
 
 package com.mongodb;
 
-import com.mongodb.DBRef;
 import org.bson.Document;
 import org.bson.Transformer;
 
