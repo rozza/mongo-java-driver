@@ -37,20 +37,32 @@ class DocumentSpecification extends Specification {
                 .append('objectId', objectId).append('date', date);
 
         then:
-        doc.getInteger('int') == 1;
-        doc.getLong('long') == 2L;
-        doc.getLong('longNoVal', 42L) == 42L;
-        doc.getDouble('double') == 3.0d;
-        doc.getDouble('doubleNoVal', 3.1d) == 3.1d;
-        doc.getString('string') == 'hi';
-        doc.getString('stringNoVal', 'defVal') == 'defVal';
-        doc.getBoolean('boolean');
-        doc.getObjectId('objectId') == objectId;
-        doc.getObjectId('objectIdNoVal', objectId) == objectId;
-        doc.getDate('date') == date;
-        doc.getDate('dateNoVal', date) == date;
-        doc.get('objectId', ObjectId) == objectId;
-        doc.get('objectIdNoVal', objectId, ObjectId) == objectId;
+        doc.getInteger('int') == 1
+        doc.getInteger('intNoVal', 42) == 42
+        doc.getLong('long') == 2L
+        doc.getDouble('double') == 3.0d
+        doc.getString('string') == 'hi'
+        doc.getBoolean('boolean')
+        doc.getBoolean('booleanNoVal', true)
+        doc.getObjectId('objectId') == objectId
+        doc.getDate('date') == date
+
+
+        doc.get('objectId', ObjectId) == objectId
+        doc.get('int', Integer) == 1
+        doc.get('long', Long) == 2L
+        doc.get('double', Double) == 3.0d
+        doc.get('string', String) == 'hi'
+        doc.get('boolean', Boolean)
+        doc.get('date', Date) == date
+
+        doc.get('noVal', 42L) == 42L
+        doc.get('noVal', 3.1d) == 3.1d
+        doc.get('noVal', 'defVal') == 'defVal'
+        doc.get('noVal', true)
+        doc.get('noVal', objectId) == objectId
+        doc.get('noVal', date) == date
+        doc.get('noVal', objectId) == objectId
     }
 
     def 'should parse a valid JSON string to a Document'() {
