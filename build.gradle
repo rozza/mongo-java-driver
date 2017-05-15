@@ -142,7 +142,7 @@ configure(subprojects.findAll { it.name != 'util' }) {
         try {
             if (Class.forName('com.sun.tools.doclets.formats.html.ConfigurationImpl')
                      .newInstance().optionLength('--allow-script-in-comments') > 0) {
-                addBooleanOption('-allow-script-in-comments').value = true
+                options.addBooleanOption("-allow-script-in-comments", true)
             }
         } catch (ignored) {}
     }
