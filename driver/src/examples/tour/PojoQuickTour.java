@@ -38,7 +38,7 @@ import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
 import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
 
 /**
- * The POJO QuickTour code example see: https://mongodb.github.io/mongo-java-driver/3.0/getting-started-pojo
+ * The POJO QuickTour code example see: https://mongodb.github.io/mongo-java-driver/3.5/getting-started-pojo
  */
 public class PojoQuickTour {
     /**
@@ -56,7 +56,7 @@ public class PojoQuickTour {
             mongoClient = new MongoClient(new MongoClientURI(args[0]));
         }
 
-        // create codec registry for Pojos
+        // create codec registry for POJOs
         CodecRegistry pojoCodecRegistry = fromRegistries(
                 fromProviders(PojoCodecProvider.builder().register(Person.class, Address.class).build()),
                 MongoClient.getDefaultCodecRegistry());
@@ -113,8 +113,14 @@ public class PojoQuickTour {
         // Update One
         collection.updateOne(eq("name", "Ada Byron"), combine(set("age", 23), set("name", "Ada Lovelace")));
 
+        System.out.println("");
         // Update Many
         UpdateResult updateResult = collection.updateMany(not(eq("zip", null)), set("zip", null));
+        System.out.println(updateResult.getModifiedCount());
+
+        System.out.println("");
+        // Replace One
+        updateResult = collection.replaceOne(eq("name", "Ada Lovelace"), ada);
         System.out.println(updateResult.getModifiedCount());
 
         // Delete One
@@ -123,8 +129,6 @@ public class PojoQuickTour {
         // Delete Many
         DeleteResult deleteResult = collection.deleteMany(eq("address.city", "London"));
         System.out.println(deleteResult.getDeletedCount());
-
-        collection.drop();
 
         // Clean up
         database.drop();

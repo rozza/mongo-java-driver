@@ -1,19 +1,19 @@
 +++
-date = "2017-05-17T15:36:56Z"
+date = "2017-05-17T15:36:57Z"
 title = "Quick Start - POJOs"
 [menu.main]
-  parent = "MongoDB Driver"
-  identifier = "Sync Quick Start POJOs"
+  parent = "MongoDB Async Driver"
+  identifier = "Async Quick Start - POJOs"
   weight = 15
   pre = "<i class='fa'></i>"
 +++
 
-# MongoDB Driver Quick Start - POJOs
+# MongoDB Async Driver Quick Start - POJOs
 
 {{% note %}}
 POJOs stands for Plain Old Java Objects.
 
-The following code snippets come from the [`PojoQuickTour.java`]({{< srcref "driver/src/examples/tour/PojoQuickTour.java">}}) example code
+The following code snippets come from the [`PojoQuickTour.java`]({{< srcref "driver-async/src/examples/tour/PojoQuickTour.java">}}) example code
 that can be found with the driver source on github.
 {{% /note %}}
 
@@ -29,10 +29,11 @@ that can be found with the driver source on github.
 
 ```java
 import com.mongodb.Block;
-import com.mongodb.MongoClient;
-import com.mongodb.MongoClientURI;
-import com.mongodb.client.MongoCollection;
-import com.mongodb.client.MongoDatabase;
+import com.mongodb.async.SingleResultCallback;
+import com.mongodb.async.client.MongoClient;
+import com.mongodb.async.client.MongoClients;
+import com.mongodb.async.client.MongoCollection;
+import com.mongodb.async.client.MongoDatabase;
 import com.mongodb.client.result.DeleteResult;
 import com.mongodb.client.result.UpdateResult;
 import org.bson.codecs.configuration.CodecRegistry;
@@ -47,7 +48,7 @@ import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
 import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
 ```
 
-- The following POJO classes. The full source is available on github for the [Person]({{< srcref "driver/src/examples/tour/Person.java">}}) and [Address]({{< srcref "driver/src/examples/tour/Address.java">}})
+- The following POJO classes. The full source is available on github for the [Person]({{< srcref "driver-async/src/examples/tour/Person.java">}}) and [Address]({{< srcref "driver-async/src/examples/tour/Address.java">}})
 POJOs. Here are the main implementation details:
 
 ```java
@@ -119,13 +120,22 @@ MongoCollection<Person> collection = database.getCollection("people", Person.cla
 ```
 
 ### Insert a Person
+{{% note class="important" %}}
+Remember, always check for errors in any `SingleResultCallback<T>` implementation and handle them appropriately.
+
+For sake of brevity, this tutorial omits the error check logic in the code examples.
+{{% /note %}}
 
 To insert a Person into the collection, you can use the collection's [`insertOne()`]({{< apiref "com/mongodb/client/MongoCollection.html#insertOne-TDocument-" >}}) method.
 
 ```java
 Person ada = new Person("Ada Byron", 20, new Address("St James Square", "London", "W1"));
-
-collection.insertOne(ada);
+collection.insertOne(ada, new SingleResultCallback<Void>() {
+    @Override
+    public void onResult(final Void result, final Throwable t) {
+        System.out.println("Inserted!");
+    }
+});
 ```
 
 ### Insert Many Persons
@@ -142,7 +152,17 @@ List<Person> people = asList(
         new Person("Timothy Berners-Lee", 61, new Address("Colehill", "Wimborne", null))
 );
 
-collection.insertMany(people);
+collection.insertMany(people, new SingleResultCallback<Void>() {
+    @Override
+    public void onResult(final Void result, final Throwable t) {
+        collection.count(new SingleResultCallback<Long>() {
+            @Override
+            public void onResult(final Long count, final Throwable t) {
+                System.out.println("total # of people " + count);
+            }
+        });
+    }
+});
 ```
 
 ## Query the Collection
@@ -158,7 +178,14 @@ Block<Person> printBlock = new Block<Person>() {
     }
 };
 
-collection.find().forEach(printBlock);
+SingleResultCallback<Void> callbackWhenFinished = new SingleResultCallback<Void>() {
+    @Override
+    public void onResult(final Void result, final Throwable t) {
+        System.out.println("Operation Finished!");
+    }
+};
+
+collection.find().forEach(printBlock, callbackWhenFinished);
 ```
 
 The example uses the [`forEach`]({{ <apiref "com/mongodb/client/MongoIterable.html#forEach-com.mongodb.Block-">}}) method on the ``FindIterable`` 
@@ -188,8 +215,13 @@ For example, to find the first `Person` in the database that lives in `Wimborne`
 filter object to specify the equality condition:
 
 ```java
-somebody = collection.find(eq("address.city", "Wimborne")).first();
-System.out.println(somebody);
+SingleResultCallback<Person> printCallback = new SingleResultCallback<Person>() {
+    @Override
+    public void onResult(final Person person, final Throwable t) {
+        System.out.println(person);
+    }
+};
+collection.find(eq("address.city", "Wimborne")).first(printCallback);
 ```
 The example prints one document:
 
@@ -203,7 +235,7 @@ Person{id='591dbc2550852fa685b3ad1a', name='Timothy Berners-Lee', age=61,
 The following example returns and prints everyone where ``"age" > 30``:
 
 ```java
-collection.find(gt("age", 30)).forEach(printBlock);
+collection.find(gt("age", 30)).forEach(printBlock, callbackWhenFinished);
 ```
 
 ## Update Documents
@@ -225,7 +257,13 @@ To update at most a single `Person`, use the [`updateOne`]({{<apiref "com/mongod
 The following example updates `Ada Byron` setting their age to `23` and name to `Ada Lovelace`:
 
 ```java
-collection.updateOne(eq("name", "Ada Byron"), combine(set("age", 23), set("name", "Ada Lovelace")));
+SingleResultCallback<UpdateResult> printModifiedCount = new SingleResultCallback<UpdateResult>() {
+    @Override
+    public void onResult(final UpdateResult result, final Throwable t) {
+        System.out.println(result.getModifiedCount());
+    }
+};
+collection.updateOne(eq("name", "Ada Byron"), combine(set("age", 23), set("name", "Ada Lovelace")), printModifiedCount);
 ```
 
 ### Update Multiple Persons
@@ -235,8 +273,7 @@ To update all Persons that match a filter, use the [`updateMany`]({{<apiref "com
 The following example sets the zip field to `null` for all documents that have a `zip` value:
 
 ```java
-UpdateResult updateResult = collection.updateMany(not(eq("zip", null)), set("zip", null));
-System.out.println(updateResult.getModifiedCount());
+collection.updateMany(not(eq("zip", null)), set("zip", null), printModifiedCount);
 
 ```
 
@@ -247,7 +284,7 @@ An alternative method to change an existing `Person`, would be to use the [`repl
 The following example replaces the `Ada Lovelace` back to the original document:
 
 ```java
-collection.replaceOne(eq("name", "Ada Lovelace"), ada);
+collection.replaceOne(eq("name", "Ada Lovelace"), ada, printModifiedCount);
 ```
 
 ## Delete Documents
@@ -266,7 +303,14 @@ To delete at most a single `Person` that matches a filter, use the [`deleteOne`]
 The following example deletes at most one `Person` who lives in `Wimborne`:
 
 ```java
-collection.deleteOne(eq("address.city", "Wimborne"));
+SingleResultCallback<DeleteResult> printDeletedCount = new SingleResultCallback<DeleteResult>() {
+    @Override
+    public void onResult(final DeleteResult result, final Throwable t) {
+        System.out.println(result.getDeletedCount());
+    }
+};
+
+collection.deleteOne(eq("address.city", "Wimborne"), printDeletedCount);
 ```
 
 ### Delete All Persons That Match a Filter
@@ -276,13 +320,12 @@ To delete multiple Persons matching a filter use the [`deleteMany`]({{< apiref "
 The following example deletes all Persons that live in `London`:
 
 ```java
-DeleteResult deleteResult = collection.deleteMany(eq("address.city", "London"));
-System.out.println(deleteResult.getDeletedCount());
+collection.deleteMany(eq("address.city", "London"), printDeletedCount);
 ```
 
 ### Additional Information
 
 For additional information about the configuring the `PojoCodecProvider`, see the [Bson POJO page]({{< ref "bson/pojos.md" >}}).
 
-For additional tutorials about using MongoDB (such as to use the aggregation framework, specify write concern, etc.), see [Java Driver Tutorials]({{< ref "driver/tutorials/index.md" >}}).
+For additional tutorials about using MongoDB (such as to use the aggregation framework, specify write concern, etc.), see the [Java Async Driver Tutorials]({{< ref "driver-async/tutorials/index.md" >}}).
 
