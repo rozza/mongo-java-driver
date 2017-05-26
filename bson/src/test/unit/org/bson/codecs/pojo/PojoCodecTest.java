@@ -50,6 +50,8 @@ import org.bson.codecs.pojo.entities.ShapeHolderModel;
 import org.bson.codecs.pojo.entities.ShapeModelAbstract;
 import org.bson.codecs.pojo.entities.ShapeModelCircle;
 import org.bson.codecs.pojo.entities.ShapeModelRectangle;
+import org.bson.codecs.pojo.entities.SimpleEnum;
+import org.bson.codecs.pojo.entities.SimpleEnumModel;
 import org.bson.codecs.pojo.entities.SimpleGenericsModel;
 import org.bson.codecs.pojo.entities.SimpleModel;
 import org.bson.codecs.pojo.entities.SimpleNestedPojoModel;
@@ -338,6 +340,13 @@ public final class PojoCodecTest extends PojoTestCase {
                 "{ '_id': 'id', '_cls': 'convention_model', 'my_final_field': 10, 'my_int_field': 10,"
                         + "'child': { '_id': 'child', 'my_final_field': 10, 'my_int_field': 10, "
                         + "           'simple_model': {'integer_field': 42, 'string_field': 'myString' } } }");
+    }
+
+    @Test
+    public void testEnumSupport() {
+        SimpleEnumModel model = new SimpleEnumModel(SimpleEnum.BRAVO);
+
+        roundTrip(getPojoCodecProviderBuilder(SimpleEnumModel.class), model, "{ 'myEnum': 'BRAVO' }");
     }
 
     @Test

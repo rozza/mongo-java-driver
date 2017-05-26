@@ -194,6 +194,9 @@ final class PojoCodec<T> implements Codec<T> {
             codec = new CollectionCodec(head, getCodecFromTypeData(typeData.getTypeParameters().get(0)));
         } else if (Map.class.isAssignableFrom(head)) {
             codec = new MapCodec(head, getCodecFromTypeData(typeData.getTypeParameters().get(1)));
+        } else if (Enum.class.isAssignableFrom(head)) {
+            Class<Enum<?>> enumClass = (Class<Enum<?>>) head;
+            codec = new EnumCodec(enumClass);
         } else {
             codec = getCodecFromClass(head);
         }
