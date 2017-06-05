@@ -21,10 +21,8 @@ import org.bson.BsonWriter;
 import org.bson.codecs.Codec;
 import org.bson.codecs.DecoderContext;
 import org.bson.codecs.EncoderContext;
-import org.bson.codecs.StringCodec;
 
 final class EnumCodec<T extends Enum<T>> implements Codec<T> {
-    private final Codec<String> codec = new StringCodec();
     private final Class<T> clazz;
 
     EnumCodec(final Class<T> clazz) {
@@ -33,7 +31,7 @@ final class EnumCodec<T extends Enum<T>> implements Codec<T> {
 
     @Override
     public void encode(final BsonWriter writer, final T value, final EncoderContext encoderContext) {
-        codec.encode(writer, value.toString(), encoderContext);
+        writer.writeString(value.name());
     }
 
     @Override
@@ -43,6 +41,6 @@ final class EnumCodec<T extends Enum<T>> implements Codec<T> {
 
     @Override
     public T decode(final BsonReader reader, final DecoderContext decoderContext) {
-        return Enum.valueOf(clazz, codec.decode(reader, decoderContext));
+        return Enum.valueOf(clazz, reader.readString());
     }
 }

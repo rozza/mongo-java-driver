@@ -68,7 +68,9 @@ import java.util.Map;
 import static java.lang.String.format;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
+import static org.bson.codecs.configuration.CodecRegistries.fromCodecs;
 import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
+import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
 import static org.bson.codecs.pojo.Conventions.NO_CONVENTIONS;
 
 public final class PojoCodecTest extends PojoTestCase {
@@ -345,8 +347,15 @@ public final class PojoCodecTest extends PojoTestCase {
     @Test
     public void testEnumSupport() {
         SimpleEnumModel model = new SimpleEnumModel(SimpleEnum.BRAVO);
-
         roundTrip(getPojoCodecProviderBuilder(SimpleEnumModel.class), model, "{ 'myEnum': 'BRAVO' }");
+    }
+
+    @Test
+    public void testEnumSupportWithCustomCodec() {
+        SimpleEnumModel model = new SimpleEnumModel(SimpleEnum.BRAVO);
+        CodecRegistry registry = fromRegistries(getCodecRegistry(getPojoCodecProviderBuilder(SimpleEnumModel.class)),
+                fromCodecs(new SimpleEnumCodec()));
+        roundTrip(registry, model, "{ 'myEnum': 1 }");
     }
 
     @Test

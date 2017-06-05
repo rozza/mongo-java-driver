@@ -19,6 +19,5 @@ package org.bson.codecs.pojo.entities;
 public enum SimpleEnum {
     ALPHA,
     BRAVO,
-    CHARLIE;
-
+    CHARLIE
 }
