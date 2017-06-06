@@ -16,42 +16,25 @@
 
 package org.bson.codecs;
 
-import org.bson.BsonInvalidOperationException;
 import org.bson.Document;
 import org.junit.Test;
 
-public final class FloatCodecTest extends CodecTestCase {
+public final class DoubleCodecTest extends CodecTestCase {
 
     @Test
-    public void shouldRoundTripFloatValues() {
-        roundTrip(new Document("a", new Float(1)));
-    }
-
-    @Test
-    public void shouldRoundTripNegativeFloatValues() {
-        roundTrip(new Document("a", new Float(-1)));
+    public void shouldRoundTripDoubleValues() {
+        roundTrip(new Document("a", 10.0));
     }
 
     @Test
     public void shouldHandleAlternativeNumberValues() {
-        Document expected = new Document("a", 10f);
+        Document expected = new Document("a", 10.00);
         roundTrip(new Document("a", 10), expected);
         roundTrip(new Document("a", 10L), expected);
-        roundTrip(new Document("a", 9.9999999999999992), expected);
-    }
-
-    @Test(expected = BsonInvalidOperationException.class)
-    public void shouldErrorDecodingOutsideMinRange() {
-        roundTrip(new Document("a", -Double.MAX_VALUE));
-    }
-
-    @Test(expected = BsonInvalidOperationException.class)
-    public void shouldErrorDecodingOutsideMaxRange() {
-        roundTrip(new Document("a", Double.MAX_VALUE));
     }
 
     @Override
     DocumentCodecProvider getDocumentCodecProvider() {
-        return getSpecificNumberDocumentCodecProvider(Float.class);
+        return getSpecificNumberDocumentCodecProvider(Double.class);
     }
 }

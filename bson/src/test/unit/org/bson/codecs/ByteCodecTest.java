@@ -17,23 +17,32 @@
 package org.bson.codecs;
 
 import org.bson.BsonInvalidOperationException;
-import org.bson.BsonType;
 import org.bson.Document;
 import org.junit.Test;
 
-import java.util.HashMap;
-
 public final class ByteCodecTest extends CodecTestCase {
 
-    DocumentCodecProvider getDocumentCodecProvider() {
-        HashMap<BsonType, Class<?>> replacements = new HashMap<BsonType, Class<?>>();
-        replacements.put(BsonType.INT32, Byte.class);
-        return new DocumentCodecProvider(new BsonTypeClassMap(replacements));
+    @Test
+    public void shouldRoundTripByteValues() {
+        roundTrip(new Document("a", new Byte("1")));
     }
 
     @Test
-    public void shouldRoundTripFloatValues() {
-        roundTrip(new Document("a", new Byte("1")));
+    public void shouldHandleAlternativeNumberValues() {
+        Document expected = new Document("a", new Byte("10"));
+        roundTrip(new Document("a", 10), expected);
+        roundTrip(new Document("a", 10.00), expected);
+        roundTrip(new Document("a", 9.9999999999999992), expected);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void shouldThrowIfTheDeltaIsOutOfRange() {
+        new ByteCodec(1);
+    }
+
+    @Test(expected = BsonInvalidOperationException.class)
+    public void shouldSupportACustomDelta() {
+        roundTripWithCodec(new Document("a", 9.9999999999999991), new ByteCodec(0));
     }
 
     @Test(expected = BsonInvalidOperationException.class)
@@ -44,5 +53,15 @@ public final class ByteCodecTest extends CodecTestCase {
     @Test(expected = BsonInvalidOperationException.class)
     public void shouldErrorDecodingOutsideMaxRange() {
         roundTrip(new Document("a", Integer.MAX_VALUE));
+    }
+
+    @Test(expected = BsonInvalidOperationException.class)
+    public void shouldThrowWhenHandlingLossyDoubleValues() {
+        roundTrip(new Document("a", 9.9999999999999991));
+    }
+
+    @Override
+    DocumentCodecProvider getDocumentCodecProvider() {
+        return getSpecificNumberDocumentCodecProvider(Byte.class);
     }
 }

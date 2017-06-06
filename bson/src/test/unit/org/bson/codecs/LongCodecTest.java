@@ -20,44 +20,43 @@ import org.bson.BsonInvalidOperationException;
 import org.bson.Document;
 import org.junit.Test;
 
-public final class ShortCodecTest extends CodecTestCase {
+public final class LongCodecTest extends CodecTestCase {
 
     @Test
-    public void shouldRoundTripFloatValues() {
-        roundTrip(new Document("a", new Short("1")));
+    public void shouldRoundTripLongValues() {
+        roundTrip(new Document("a", 1L));
     }
 
     @Test
     public void shouldHandleAlternativeNumberValues() {
-        Document expected = new Document("a", new Short("10"));
+        Document expected = new Document("a", 10L);
         roundTrip(new Document("a", 10), expected);
-        roundTrip(new Document("a", 10L), expected);
         roundTrip(new Document("a", 10.00), expected);
         roundTrip(new Document("a", 9.9999999999999992), expected);
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void shouldThrowIfTheDeltaIsOutOfRange() {
-        new ShortCodec(1);
+        new LongCodec(1);
     }
 
     @Test(expected = BsonInvalidOperationException.class)
     public void shouldSupportACustomDelta() {
-        roundTripWithCodec(new Document("a", 9.9999999999999991), new ShortCodec(0));
+        roundTripWithCodec(new Document("a", 9.9999999999999991), new LongCodec(0));
     }
 
     @Test(expected = BsonInvalidOperationException.class)
-    public void shouldErrorDecodingOutsideMinRange() {
-        roundTrip(new Document("a", Integer.MIN_VALUE));
+    public void shouldThrowWhenHandlingLossyLongValues() {
+        roundTrip(new Document("a", Double.MAX_VALUE));
     }
 
     @Test(expected = BsonInvalidOperationException.class)
-    public void shouldErrorDecodingOutsideMaxRange() {
-        roundTrip(new Document("a", Integer.MAX_VALUE));
+    public void shouldThrowWhenHandlingLossyDoubleValues() {
+        roundTrip(new Document("a", 9.9999999999999991));
     }
 
     @Override
     DocumentCodecProvider getDocumentCodecProvider() {
-        return getSpecificNumberDocumentCodecProvider(Short.class);
+        return getSpecificNumberDocumentCodecProvider(Long.class);
     }
 }

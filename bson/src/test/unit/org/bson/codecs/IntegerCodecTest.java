@@ -20,17 +20,16 @@ import org.bson.BsonInvalidOperationException;
 import org.bson.Document;
 import org.junit.Test;
 
-public final class ShortCodecTest extends CodecTestCase {
+public final class IntegerCodecTest extends CodecTestCase {
 
     @Test
-    public void shouldRoundTripFloatValues() {
-        roundTrip(new Document("a", new Short("1")));
+    public void shouldRoundTripIntegerValues() {
+        roundTrip(new Document("a", 1));
     }
 
     @Test
     public void shouldHandleAlternativeNumberValues() {
-        Document expected = new Document("a", new Short("10"));
-        roundTrip(new Document("a", 10), expected);
+        Document expected = new Document("a", 10);
         roundTrip(new Document("a", 10L), expected);
         roundTrip(new Document("a", 10.00), expected);
         roundTrip(new Document("a", 9.9999999999999992), expected);
@@ -38,26 +37,31 @@ public final class ShortCodecTest extends CodecTestCase {
 
     @Test(expected = IllegalArgumentException.class)
     public void shouldThrowIfTheDeltaIsOutOfRange() {
-        new ShortCodec(1);
+        new IntegerCodec(1);
     }
 
     @Test(expected = BsonInvalidOperationException.class)
     public void shouldSupportACustomDelta() {
-        roundTripWithCodec(new Document("a", 9.9999999999999991), new ShortCodec(0));
+        roundTripWithCodec(new Document("a", 9.9999999999999991), new IntegerCodec(0));
     }
 
     @Test(expected = BsonInvalidOperationException.class)
     public void shouldErrorDecodingOutsideMinRange() {
-        roundTrip(new Document("a", Integer.MIN_VALUE));
+        roundTrip(new Document("a", Long.MIN_VALUE));
     }
 
     @Test(expected = BsonInvalidOperationException.class)
     public void shouldErrorDecodingOutsideMaxRange() {
-        roundTrip(new Document("a", Integer.MAX_VALUE));
+        roundTrip(new Document("a", Long.MAX_VALUE));
+    }
+
+    @Test(expected = BsonInvalidOperationException.class)
+    public void shouldThrowWhenHandlingLossyDoubleValues() {
+        roundTrip(new Document("a", 9.9999999999999991));
     }
 
     @Override
     DocumentCodecProvider getDocumentCodecProvider() {
-        return getSpecificNumberDocumentCodecProvider(Short.class);
+        return getSpecificNumberDocumentCodecProvider(Integer.class);
     }
 }
