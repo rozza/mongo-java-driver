@@ -14,7 +14,7 @@ The following code snippets come from the [`QuickTour.java`]({{< srcref "driver-
 that can be found with the async driver source on github.
 
 {{% note %}}
-There are two higher level MongoDB Asynchronous Java Drivers available, that users may find easier to work with:
+There are two higher level MongoDB Asynchronous Java Drivers available, that users may find easier to work with due to their friendlier APIs:
 
 * [MongoDB RxJava Driver](http://mongodb.github.io/mongo-java-driver-rx/) An RxJava implementation of the MongoDB Driver.
 * [MongoDB Reactive Streams Java Driver](http://mongodb.github.io/mongo-java-driver-reactivestreams/) A Reactive Streams implementation for the JVM.
