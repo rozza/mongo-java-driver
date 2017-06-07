@@ -81,9 +81,13 @@ public class SocketSettings {
         /**
          * Sets keep-alive.
          *
-         * @param keepAlive true if keep-alive should be enabled
+         * @param keepAlive false if keep-alive should be disabled
          * @return this
+         * @deprecated configuring keep-alive has been deprecated. It now defaults to true and disabling it is not recommended.
+         * @see <a href="https://docs.mongodb.com/manual/faq/diagnostics/#does-tcp-keepalive-time-affect-mongodb-deployments">
+         *     Does TCP keep-alive time affect MongoDB Deployments?</a>
          */
+        @Deprecated
         public Builder keepAlive(final boolean keepAlive) {
             this.keepAlive = keepAlive;
             return this;
@@ -162,7 +166,11 @@ public class SocketSettings {
      * Gets whether keep-alive is enabled. Defaults to true.
      *
      * @return true if keep-alive is enabled.
+     * @deprecated configuring keep-alive has been deprecated. It now defaults to true and disabling it is not recommended.
+     * @see <a href="https://docs.mongodb.com/manual/faq/diagnostics/#does-tcp-keepalive-time-affect-mongodb-deployments">
+     *     Does TCP keep-alive time affect MongoDB Deployments?</a>
      */
+    @Deprecated
     public boolean isKeepAlive() {
         return keepAlive;
     }

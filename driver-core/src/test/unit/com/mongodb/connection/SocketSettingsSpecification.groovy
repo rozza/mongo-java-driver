@@ -21,7 +21,9 @@ import spock.lang.Specification
 
 import static java.util.concurrent.TimeUnit.MILLISECONDS
 
+@SuppressWarnings('deprecation')
 class SocketSettingsSpecification extends Specification {
+
     def 'should have correct defaults'() {
         when:
         def settings = SocketSettings.builder().build()

@@ -39,6 +39,7 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS
 import static java.util.concurrent.TimeUnit.SECONDS
 import static spock.util.matcher.HamcrestSupport.expect
 
+@SuppressWarnings('deprecation')
 class MongoClientOptionsSpecification extends Specification {
 
     def 'should set the correct default values'() {

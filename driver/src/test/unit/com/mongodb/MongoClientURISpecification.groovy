@@ -170,7 +170,6 @@ class MongoClientURISpecification extends Specification {
         options.getMaxWaitTime() == 120000
         options.getConnectTimeout() == 10000
         options.getSocketTimeout() == 0
-        options.isSocketKeepAlive()
         options.getDescription() == null
         options.getReadPreference() == ReadPreference.primary()
         options.getRequiredReplicaSetName() == null

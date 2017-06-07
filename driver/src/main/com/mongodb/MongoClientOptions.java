@@ -98,6 +98,7 @@ public class MongoClientOptions {
     private final List<ServerListener> serverListeners;
     private final List<ServerMonitorListener> serverMonitorListeners;
 
+    @SuppressWarnings("deprecation")
     private MongoClientOptions(final Builder builder) {
         description = builder.description;
         applicationName = builder.applicationName;
@@ -341,13 +342,17 @@ public class MongoClientOptions {
     }
 
     /**
-     * <p>This flag controls the socket keep alive feature that keeps a connection alive through firewalls {@link
+     * <p>This flag controls the socket keep-alive feature that keeps a connection alive through firewalls {@link
      * java.net.Socket#setKeepAlive(boolean)}</p>
      *
      * <p>Default is {@code true}.</p>
      *
      * @return whether keep-alive is enabled on each socket
+     * @deprecated configuring keep-alive has been deprecated. It now defaults to true and disabling it is not recommended.
+     * @see <a href="https://docs.mongodb.com/manual/faq/diagnostics/#does-tcp-keepalive-time-affect-mongodb-deployments">
+     *     Does TCP keep-alive time affect MongoDB Deployments?</a>
      */
+    @Deprecated
     public boolean isSocketKeepAlive() {
         return socketKeepAlive;
     }
@@ -914,6 +919,7 @@ public class MongoClientOptions {
          *
          * @param options create a builder from existing options
          */
+        @SuppressWarnings("deprecation")
         public Builder(final MongoClientOptions options) {
             description = options.getDescription();
             applicationName = options.getApplicationName();
@@ -1112,12 +1118,15 @@ public class MongoClientOptions {
         }
 
         /**
-         * Sets whether socket keep alive is enabled.
+         * Sets whether socket keep-alive is enabled.
          *
-         * @param socketKeepAlive keep alive
+         * @param socketKeepAlive keep-alive
          * @return {@code this}
-         * @see com.mongodb.MongoClientOptions#isSocketKeepAlive()
+         * @deprecated configuring keep-alive has been deprecated. It now defaults to true and disabling it is not recommended.
+         * @see <a href="https://docs.mongodb.com/manual/faq/diagnostics/#does-tcp-keepalive-time-affect-mongodb-deployments">
+         *     Does TCP keep-alive time affect MongoDB Deployments?</a>
          */
+        @Deprecated
         public Builder socketKeepAlive(final boolean socketKeepAlive) {
             this.socketKeepAlive = socketKeepAlive;
             return this;
