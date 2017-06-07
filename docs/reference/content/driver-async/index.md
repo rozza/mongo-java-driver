@@ -11,16 +11,12 @@ type = "index"
 ## MongoDB Async Java Driver Documentation
 
 The following guide provides information on using the
-MongoDB Async Java Driver 3.4.
+MongoDB Async Java Driver 3.5.
 
-### What's New in 3.4
+### What's New in 3.5
 
 The [What's New]({{< relref "whats-new.md" >}}) guide explains
 the major new features of the driver.
-
-If you are upgrading from the 2.x series of the driver, consult the
-[Upgrading]({{< relref "upgrading.md" >}}) documentation for
-information on breaking changes.
 
 ## Getting Started
 
