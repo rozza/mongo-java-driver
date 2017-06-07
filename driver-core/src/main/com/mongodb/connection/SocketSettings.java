@@ -50,7 +50,7 @@ public class SocketSettings {
     public static class Builder {
         private long connectTimeoutMS = 10000;
         private long readTimeoutMS;
-        private boolean keepAlive;
+        private boolean keepAlive = true;
         private int receiveBufferSize;
         private int sendBufferSize;
 
@@ -159,7 +159,7 @@ public class SocketSettings {
     }
 
     /**
-     * Gets whether keep-alive is enabled. Defaults to false.
+     * Gets whether keep-alive is enabled. Defaults to true.
      *
      * @return true if keep-alive is enabled.
      */

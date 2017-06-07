@@ -344,7 +344,7 @@ public class MongoClientOptions {
      * <p>This flag controls the socket keep alive feature that keeps a connection alive through firewalls {@link
      * java.net.Socket#setKeepAlive(boolean)}</p>
      *
-     * <p>Default is {@code false}.</p>
+     * <p>Default is {@code true}.</p>
      *
      * @return whether keep-alive is enabled on each socket
      */
@@ -880,7 +880,7 @@ public class MongoClientOptions {
         private int maxConnectionLifeTime;
         private int connectTimeout = 1000 * 10;
         private int socketTimeout = 0;
-        private boolean socketKeepAlive = false;
+        private boolean socketKeepAlive = true;
         private boolean sslEnabled = false;
         private boolean sslInvalidHostNameAllowed = false;
         private SSLContext sslContext;
