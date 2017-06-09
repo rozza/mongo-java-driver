@@ -34,6 +34,7 @@ import static com.mongodb.ClusterFixture.getCredentialList
 import static com.mongodb.ClusterFixture.getSslSettings
 import static com.mongodb.MongoCredential.createPlainCredential
 import static com.mongodb.connection.CommandHelper.executeCommand
+import static com.mongodb.connection.EventListeners.NOOP_CONNECTION_LISTENER
 import static java.util.concurrent.TimeUnit.SECONDS
 
 @IgnoreIf({ getCredentialList().isEmpty() || getCredentialList().get(0).getAuthenticationMechanism() != PLAIN })
@@ -103,7 +104,7 @@ class PlainAuthenticationSpecification extends Specification {
                 async ? new NettyStreamFactory(SocketSettings.builder().build(), getSslSettings())
                         : new SocketStreamFactory(SocketSettings.builder().build(), getSslSettings()),
                 new InternalStreamConnectionInitializer(credential == null ? [] : [new PlainAuthenticator(credential)], null),
-                new NoOpConnectionListener())
+                NOOP_CONNECTION_LISTENER)
     }
 
     private static void openConnection(final InternalConnection connection, final boolean async) {

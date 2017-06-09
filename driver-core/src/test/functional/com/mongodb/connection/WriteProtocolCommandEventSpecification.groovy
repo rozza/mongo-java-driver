@@ -47,6 +47,7 @@ import static com.mongodb.ClusterFixture.serverVersionAtLeast
 import static com.mongodb.WriteConcern.ACKNOWLEDGED
 import static com.mongodb.WriteConcern.UNACKNOWLEDGED
 import static com.mongodb.bulk.WriteRequest.Type.UPDATE
+import static com.mongodb.connection.EventListeners.NOOP_CONNECTION_LISTENER
 import static com.mongodb.connection.MessageHelper.buildSuccessfulReply
 import static com.mongodb.connection.ProtocolTestHelper.execute
 
@@ -56,7 +57,7 @@ class WriteProtocolCommandEventSpecification extends OperationFunctionalSpecific
 
     def setupSpec() {
         connection = new InternalStreamConnectionFactory(new NettyStreamFactory(SocketSettings.builder().build(), getSslSettings()),
-                getCredentialList(), new NoOpConnectionListener(), null, null)
+                getCredentialList(), NOOP_CONNECTION_LISTENER, null, null)
                 .create(new ServerId(new ClusterId(), getPrimary()))
         connection.open();
     }

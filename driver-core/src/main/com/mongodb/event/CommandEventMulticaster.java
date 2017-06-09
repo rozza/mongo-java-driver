@@ -22,12 +22,12 @@ import com.mongodb.diagnostics.logging.Logger;
 import com.mongodb.diagnostics.logging.Loggers;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 import static com.mongodb.assertions.Assertions.isTrue;
 import static com.mongodb.assertions.Assertions.notNull;
 import static java.lang.String.format;
+import static java.util.Collections.unmodifiableList;
 
 /**
  * A multicaster for command events. Any exception thrown by one of the listeners will be caught and not re-thrown, but may be
@@ -59,7 +59,7 @@ public final class CommandEventMulticaster implements CommandListener {
      * @return the unmodifiable set of command listeners
      */
     public List<CommandListener> getCommandListeners() {
-        return Collections.unmodifiableList(commandListeners);
+        return unmodifiableList(commandListeners);
     }
 
     @Override

@@ -25,6 +25,7 @@ import spock.lang.Specification
 import static com.mongodb.connection.ClusterConnectionMode.SINGLE
 import static com.mongodb.connection.ClusterType.REPLICA_SET
 import static com.mongodb.connection.ClusterType.UNKNOWN
+import static com.mongodb.connection.EventListeners.NOOP_CLUSTER_LISTENER
 import static com.mongodb.connection.ServerConnectionState.CONNECTED
 import static com.mongodb.connection.ServerConnectionState.CONNECTING
 import static com.mongodb.connection.ServerType.STANDALONE
@@ -48,7 +49,7 @@ class SingleServerClusterSpecification extends Specification {
     def 'should update description when the server connects'() {
         given:
         def cluster = new SingleServerCluster(CLUSTER_ID,
-                ClusterSettings.builder().mode(SINGLE).hosts(Arrays.asList(firstServer)).build(), factory)
+                ClusterSettings.builder().mode(SINGLE).hosts(Arrays.asList(firstServer)).build(), factory, NOOP_CLUSTER_LISTENER)
 
         when:
         sendNotification(firstServer, STANDALONE)
@@ -65,7 +66,7 @@ class SingleServerClusterSpecification extends Specification {
     def 'should get server when open'() {
         given:
         def cluster = new SingleServerCluster(CLUSTER_ID,
-                ClusterSettings.builder().mode(SINGLE).hosts(Arrays.asList(firstServer)).build(), factory)
+                ClusterSettings.builder().mode(SINGLE).hosts(Arrays.asList(firstServer)).build(), factory, NOOP_CLUSTER_LISTENER)
 
         when:
         sendNotification(firstServer, STANDALONE)
@@ -81,7 +82,7 @@ class SingleServerClusterSpecification extends Specification {
     def 'should not get server when closed'() {
         given:
         def cluster = new SingleServerCluster(CLUSTER_ID,
-                ClusterSettings.builder().mode(SINGLE).hosts(Arrays.asList(firstServer)).build(), factory)
+                ClusterSettings.builder().mode(SINGLE).hosts(Arrays.asList(firstServer)).build(), factory, NOOP_CLUSTER_LISTENER)
         cluster.close()
 
         when:
@@ -98,7 +99,7 @@ class SingleServerClusterSpecification extends Specification {
         given:
         def cluster = new SingleServerCluster(CLUSTER_ID,
                 ClusterSettings.builder().mode(SINGLE).requiredClusterType(ClusterType.SHARDED).hosts(Arrays.asList(firstServer)).build(),
-                factory)
+                factory, NOOP_CLUSTER_LISTENER)
 
         when:
         sendNotification(firstServer, ServerType.REPLICA_SET_PRIMARY)
@@ -115,7 +116,7 @@ class SingleServerClusterSpecification extends Specification {
         given:
         def cluster = new SingleServerCluster(CLUSTER_ID,
                 ClusterSettings.builder().mode(SINGLE).requiredReplicaSetName('test1').hosts(Arrays.asList(firstServer)).build(),
-                factory)
+                factory, NOOP_CLUSTER_LISTENER)
 
         when:
         sendNotification(firstServer, ServerType.REPLICA_SET_PRIMARY, 'test1')
@@ -132,7 +133,7 @@ class SingleServerClusterSpecification extends Specification {
         given:
         def cluster = new SingleServerCluster(CLUSTER_ID,
                 ClusterSettings.builder().mode(SINGLE).requiredReplicaSetName('test1').hosts(Arrays.asList(firstServer)).build(),
-                factory)
+                factory, NOOP_CLUSTER_LISTENER)
 
         when:
         sendNotification(firstServer, ServerType.REPLICA_SET_PRIMARY, 'test2')
@@ -147,11 +148,8 @@ class SingleServerClusterSpecification extends Specification {
 
     def 'getServer should throw when cluster is incompatible'() {
         given:
-        def cluster = new SingleServerCluster(CLUSTER_ID,
-                ClusterSettings.builder().mode(SINGLE).hosts(Arrays.asList(firstServer))
-                        .serverSelectionTimeout(1, SECONDS)
-                        .build(),
-                factory)
+        def cluster = new SingleServerCluster(CLUSTER_ID, ClusterSettings.builder().mode(SINGLE).hosts(Arrays.asList(firstServer))
+                        .serverSelectionTimeout(1, SECONDS).build(), factory, NOOP_CLUSTER_LISTENER)
         sendNotification(firstServer, getBuilder(firstServer).minWireVersion(1000).maxWireVersion(1000).build())
 
         when:
@@ -166,11 +164,8 @@ class SingleServerClusterSpecification extends Specification {
 
     def 'should connect to server'() {
         given:
-        def cluster = new SingleServerCluster(CLUSTER_ID,
-                ClusterSettings.builder()
-                        .mode(SINGLE)
-                        .hosts([firstServer]).build(),
-                factory)
+        def cluster = new SingleServerCluster(CLUSTER_ID, ClusterSettings.builder().mode(SINGLE).hosts([firstServer]).build(),
+                factory, NOOP_CLUSTER_LISTENER)
 
         when:
         cluster.connect()
@@ -192,11 +187,8 @@ class SingleServerClusterSpecification extends Specification {
                 [ServerDescription.builder().state(CONNECTING).address(firstServer).build()])
         def listener = Mock(ClusterListener)
         when:
-        def cluster = new SingleServerCluster(CLUSTER_ID,
-                ClusterSettings.builder().mode(SINGLE).hosts([firstServer])
-                        .addClusterListener(listener)
-                        .build(),
-                factory)
+        def cluster = new SingleServerCluster(CLUSTER_ID, ClusterSettings.builder().mode(SINGLE).hosts([firstServer]).build(),
+                factory, listener)
 
         then:
         1 * listener.clusterOpening { it.clusterId == CLUSTER_ID }

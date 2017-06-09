@@ -16,22 +16,24 @@
 
 package com.mongodb.event;
 
+import com.mongodb.annotations.Immutable;
 import com.mongodb.diagnostics.logging.Logger;
 import com.mongodb.diagnostics.logging.Loggers;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 import static com.mongodb.assertions.Assertions.isTrue;
 import static com.mongodb.assertions.Assertions.notNull;
 import static java.lang.String.format;
+import static java.util.Collections.unmodifiableList;
 
 /**
  * A multicaster for cluster events.
  *
  * @since 3.3
  */
+@Immutable
 public final class ClusterEventMulticaster implements ClusterListener {
     private static final Logger LOGGER = Loggers.getLogger("cluster.event");
 
@@ -54,7 +56,7 @@ public final class ClusterEventMulticaster implements ClusterListener {
      * @return the cluster listeners
      */
     public List<ClusterListener> getClusterListeners() {
-        return Collections.unmodifiableList(clusterListeners);
+        return unmodifiableList(clusterListeners);
     }
 
     @Override

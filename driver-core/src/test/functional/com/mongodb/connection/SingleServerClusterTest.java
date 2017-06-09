@@ -16,17 +16,19 @@
 
 package com.mongodb.connection;
 
+import com.mongodb.event.EventListenerSettings;
 import com.mongodb.selector.ServerSelector;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.util.Arrays;
 import java.util.List;
 
 import static com.mongodb.ClusterFixture.getCredentialList;
 import static com.mongodb.ClusterFixture.getPrimary;
 import static com.mongodb.ClusterFixture.getSslSettings;
+import static com.mongodb.connection.EventListeners.NOOP_CLUSTER_LISTENER;
+import static java.util.Collections.singletonList;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
@@ -40,18 +42,18 @@ public class SingleServerClusterTest {
         ClusterId clusterId = new ClusterId();
         ClusterSettings clusterSettings = ClusterSettings.builder()
                                                .mode(ClusterConnectionMode.SINGLE)
-                                               .hosts(Arrays.asList(getPrimary()))
+                                               .hosts(singletonList(getPrimary()))
                                                .build();
         cluster = new SingleServerCluster(clusterId,
                                           clusterSettings,
                                           new DefaultClusterableServerFactory(clusterId, clusterSettings, ServerSettings.builder().build(),
                                                                               ConnectionPoolSettings.builder().maxSize(1).build(),
+                                                                              EventListenerSettings.builder().build(),
                                                                               streamFactory,
                                                                               streamFactory,
                                                                               getCredentialList(),
-                                                                                     new NoOpConnectionListener(),
-                                                                              new NoOpConnectionPoolListener(), null, null, null)
-        );
+                                                                              null, null),
+                                          NOOP_CLUSTER_LISTENER);
     }
 
     @After

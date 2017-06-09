@@ -44,6 +44,7 @@ import com.mongodb.connection.ServerVersion
 import com.mongodb.connection.SocketSettings
 import com.mongodb.connection.SocketStreamFactory
 import com.mongodb.connection.StreamFactory
+import com.mongodb.event.EventListenerSettings
 import com.mongodb.internal.validator.NoOpFieldNameValidator
 import com.mongodb.selector.WritableServerSelector
 import org.bson.BsonDocument
@@ -454,7 +455,8 @@ class UserOperationsSpecification extends OperationFunctionalSpecification {
         new DefaultClusterFactory().create(builder.hosts(asList(getPrimary())).build(),
                                            ServerSettings.builder().build(),
                                            ConnectionPoolSettings.builder().maxSize(1).maxWaitQueueSize(1).build(),
-                                           streamFactory, streamFactory, asList(credential), null, null, null)
+                                           EventListenerSettings.builder().build(),
+                                           streamFactory, streamFactory, asList(credential), null, null)
     }
 
     def testConnection(Connection connection) {

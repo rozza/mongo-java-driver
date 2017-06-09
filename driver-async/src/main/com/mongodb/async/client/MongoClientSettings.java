@@ -29,10 +29,10 @@ import com.mongodb.connection.SocketSettings;
 import com.mongodb.connection.SslSettings;
 import com.mongodb.connection.StreamFactoryFactory;
 import com.mongodb.event.CommandListener;
+import com.mongodb.event.EventListenerSettings;
 import org.bson.codecs.configuration.CodecRegistry;
 
 import java.nio.charset.Charset;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -52,7 +52,6 @@ public final class MongoClientSettings {
     private final ReadConcern readConcern;
     private final List<MongoCredential> credentialList;
     private final StreamFactoryFactory streamFactoryFactory;
-    private final List<CommandListener> commandListeners;
 
     private final CodecRegistry codecRegistry;
 
@@ -60,6 +59,7 @@ public final class MongoClientSettings {
     private final SocketSettings socketSettings;
     private final SocketSettings heartbeatSocketSettings;
     private final ConnectionPoolSettings connectionPoolSettings;
+    private final EventListenerSettings eventListenerSettings;
     private final ServerSettings serverSettings;
     private final SslSettings sslSettings;
     private final String applicationName;
@@ -94,8 +94,6 @@ public final class MongoClientSettings {
         private ReadConcern readConcern = ReadConcern.DEFAULT;
         private CodecRegistry codecRegistry = MongoClients.getDefaultCodecRegistry();
         private StreamFactoryFactory streamFactoryFactory;
-        private final List<CommandListener> commandListeners = new ArrayList<CommandListener>();
-
         private ClusterSettings clusterSettings;
         private SocketSettings socketSettings = SocketSettings.builder().build();
         private SocketSettings heartbeatSocketSettings = SocketSettings.builder().build();
@@ -103,6 +101,7 @@ public final class MongoClientSettings {
                                                                                       .maxSize(100)
                                                                                       .maxWaitQueueSize(500)
                                                                                       .build();
+        private EventListenerSettings eventListenerSettings = EventListenerSettings.builder().build();
         private ServerSettings serverSettings = ServerSettings.builder().build();
         private SslSettings sslSettings = SslSettings.builder().build();
         private List<MongoCredential> credentialList = Collections.emptyList();
@@ -123,13 +122,12 @@ public final class MongoClientSettings {
             credentialList = settings.getCredentialList();
             codecRegistry = settings.getCodecRegistry();
             streamFactoryFactory = settings.getStreamFactoryFactory();
-            commandListeners.addAll(settings.commandListeners);
-
             clusterSettings = settings.getClusterSettings();
             serverSettings = settings.getServerSettings();
             socketSettings = settings.getSocketSettings();
             heartbeatSocketSettings = settings.getHeartbeatSocketSettings();
             connectionPoolSettings = settings.getConnectionPoolSettings();
+            eventListenerSettings = settings.getEventListenerSettings();
             sslSettings = settings.getSslSettings();
             applicationName = settings.getApplicationName();
         }
@@ -183,6 +181,18 @@ public final class MongoClientSettings {
         }
 
         /**
+         * Sets the event listener settings.
+         *
+         * @param eventListenerSettings the socket settings
+         * @return {@code this}
+         * @see MongoClientSettings##getEventListenerSettings()
+         */
+         public Builder eventListenerSettings(final EventListenerSettings eventListenerSettings) {
+            this.eventListenerSettings = notNull("eventListenerSettings", eventListenerSettings);
+            return this;
+        }
+
+        /**
          * Sets the server settings.
          *
          * @param serverSettings the server settings
@@ -205,7 +215,6 @@ public final class MongoClientSettings {
             this.sslSettings = notNull("sslSettings", sslSettings);
             return this;
         }
-
 
         /**
          * Sets the read preference.
@@ -288,13 +297,12 @@ public final class MongoClientSettings {
          * @param commandListener the command listener
          * @return this
          * @since 3.3
+         * @deprecated use {@link #eventListenerSettings(EventListenerSettings)} instead
          */
+        @Deprecated
         public Builder addCommandListener(final CommandListener commandListener) {
-            notNull("commandListener", commandListener);
-            commandListeners.add(commandListener);
-            return this;
+            return eventListenerSettings(EventListenerSettings.builder(eventListenerSettings).addCommandListener(commandListener).build());
         }
-
 
         /**
          * Sets the logical name of the application using this MongoClient.  The application name may be used by the client to identify
@@ -398,9 +406,11 @@ public final class MongoClientSettings {
      *
      * @return the unmodifiable list of command listeners
      * @since 3.3
+     * @deprecated use {@link #getEventListenerSettings()} instead
      */
+    @Deprecated
     public List<CommandListener> getCommandListeners() {
-        return Collections.unmodifiableList(commandListeners);
+        return eventListenerSettings.getCommandListeners();
     }
 
     /**
@@ -416,7 +426,6 @@ public final class MongoClientSettings {
     public String getApplicationName() {
         return applicationName;
     }
-
 
     /**
      * Gets the cluster settings.
@@ -482,6 +491,114 @@ public final class MongoClientSettings {
         return serverSettings;
     }
 
+    /**
+     * Returns the eventListenerSettings
+     *
+     * @return the eventListenerSettings
+     * @see com.mongodb.event.EventListenerSettings
+     * @since 3.5
+     */
+    public EventListenerSettings getEventListenerSettings() {
+        return eventListenerSettings;
+    }
+
+    @Override
+    public boolean equals(final Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+
+        MongoClientSettings that = (MongoClientSettings) o;
+
+        if (!getReadPreference().equals(that.getReadPreference())) {
+            return false;
+        }
+        if (!getWriteConcern().equals(that.getWriteConcern())) {
+            return false;
+        }
+        if (!getReadConcern().equals(that.getReadConcern())) {
+            return false;
+        }
+        if (!getCredentialList().equals(that.getCredentialList())) {
+            return false;
+        }
+        if (getStreamFactoryFactory() != null ? !getStreamFactoryFactory().equals(that.getStreamFactoryFactory()) : that
+                .getStreamFactoryFactory() != null) {
+            return false;
+        }
+        if (!getCodecRegistry().equals(that.getCodecRegistry())) {
+            return false;
+        }
+        if (getClusterSettings() != null ? !getClusterSettings().equals(that.getClusterSettings()) : that.getClusterSettings() != null) {
+            return false;
+        }
+        if (!getSocketSettings().equals(that.getSocketSettings())) {
+            return false;
+        }
+        if (!getHeartbeatSocketSettings().equals(that.getHeartbeatSocketSettings())) {
+            return false;
+        }
+        if (!getConnectionPoolSettings().equals(that.getConnectionPoolSettings())) {
+            return false;
+        }
+        if (!getEventListenerSettings().equals(that.getEventListenerSettings())) {
+            return false;
+        }
+        if (!getServerSettings().equals(that.getServerSettings())) {
+            return false;
+        }
+        if (getSslSettings() != null ? !getSslSettings().equals(that.getSslSettings()) : that.getSslSettings() != null) {
+            return false;
+        }
+        if (getApplicationName() != null ? !getApplicationName().equals(that.getApplicationName()) : that.getApplicationName() != null) {
+            return false;
+        }
+
+        return true;
+    }
+
+    @Override
+    public int hashCode() {
+        int result = getReadPreference().hashCode();
+        result = 31 * result + getWriteConcern().hashCode();
+        result = 31 * result + getReadConcern().hashCode();
+        result = 31 * result + getCredentialList().hashCode();
+        result = 31 * result + (getStreamFactoryFactory() != null ? getStreamFactoryFactory().hashCode() : 0);
+        result = 31 * result + getCodecRegistry().hashCode();
+        result = 31 * result + (getClusterSettings() != null ? getClusterSettings().hashCode() : 0);
+        result = 31 * result + getSocketSettings().hashCode();
+        result = 31 * result + getHeartbeatSocketSettings().hashCode();
+        result = 31 * result + getConnectionPoolSettings().hashCode();
+        result = 31 * result + getEventListenerSettings().hashCode();
+        result = 31 * result + getServerSettings().hashCode();
+        result = 31 * result + (getSslSettings() != null ? getSslSettings().hashCode() : 0);
+        result = 31 * result + (getApplicationName() != null ? getApplicationName().hashCode() : 0);
+        return result;
+    }
+
+    @Override
+    public String toString() {
+        return "MongoClientSettings{"
+                + "readPreference=" + readPreference
+                + ", writeConcern=" + writeConcern
+                + ", readConcern=" + readConcern
+                + ", credentialList=" + credentialList
+                + ", streamFactoryFactory=" + streamFactoryFactory
+                + ", codecRegistry=" + codecRegistry
+                + ", clusterSettings=" + clusterSettings
+                + ", socketSettings=" + socketSettings
+                + ", heartbeatSocketSettings=" + heartbeatSocketSettings
+                + ", connectionPoolSettings=" + connectionPoolSettings
+                + ", eventListenerSettings=" + eventListenerSettings
+                + ", serverSettings=" + serverSettings
+                + ", sslSettings=" + sslSettings
+                + ", applicationName='" + applicationName + "'"
+                + "}";
+    }
+
     private MongoClientSettings(final Builder builder) {
         readPreference = builder.readPreference;
         writeConcern = builder.writeConcern;
@@ -489,7 +606,7 @@ public final class MongoClientSettings {
         credentialList = builder.credentialList;
         streamFactoryFactory = builder.streamFactoryFactory;
         codecRegistry = builder.codecRegistry;
-        commandListeners = builder.commandListeners;
+        eventListenerSettings = builder.eventListenerSettings;
         applicationName = builder.applicationName;
         clusterSettings = builder.clusterSettings;
         serverSettings = builder.serverSettings;

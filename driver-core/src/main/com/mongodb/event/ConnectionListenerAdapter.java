@@ -17,13 +17,12 @@
 package com.mongodb.event;
 
 
-import com.mongodb.annotations.Beta;
-
 /**
  * An adapter for connection listener implementations, for clients that want to listen for a subset of connection events. Extend this class
  * to listen for connection events and override the methods of interest.
+ *
+ * @since 3.5
  */
-@Beta
 public abstract class ConnectionListenerAdapter implements ConnectionListener {
     @Override
     public void connectionOpened(final ConnectionOpenedEvent event) {
@@ -31,13 +30,5 @@ public abstract class ConnectionListenerAdapter implements ConnectionListener {
 
     @Override
     public void connectionClosed(final ConnectionClosedEvent event) {
-    }
-
-    @Override
-    public void messagesSent(final ConnectionMessagesSentEvent event) {
-    }
-
-    @Override
-    public void messageReceived(final ConnectionMessageReceivedEvent event) {
     }
 }

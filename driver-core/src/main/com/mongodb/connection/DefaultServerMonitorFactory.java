@@ -16,6 +16,8 @@
 
 package com.mongodb.connection;
 
+import com.mongodb.event.ServerMonitorListener;
+
 import static com.mongodb.assertions.Assertions.notNull;
 
 class DefaultServerMonitorFactory implements ServerMonitorFactory {
@@ -23,17 +25,20 @@ class DefaultServerMonitorFactory implements ServerMonitorFactory {
     private final ServerSettings settings;
     private final InternalConnectionFactory internalConnectionFactory;
     private final ConnectionPool connectionPool;
+    private final ServerMonitorListener serverMonitorListener;
 
-    DefaultServerMonitorFactory(final ServerId serverId, final ServerSettings settings,
+    DefaultServerMonitorFactory(final ServerId serverId, final ServerSettings settings, final ServerMonitorListener serverMonitorListener,
                                 final InternalConnectionFactory internalConnectionFactory, final ConnectionPool connectionPool) {
         this.serverId = notNull("serverId", serverId);
         this.settings = notNull("settings", settings);
+        this.serverMonitorListener = notNull("serverMonitorListener", serverMonitorListener);
         this.internalConnectionFactory = notNull("internalConnectionFactory", internalConnectionFactory);
         this.connectionPool = notNull("connectionPool", connectionPool);
     }
 
     @Override
     public ServerMonitor create(final ChangeListener<ServerDescription> serverStateListener) {
-        return new DefaultServerMonitor(serverId, settings, serverStateListener, internalConnectionFactory, connectionPool);
+        return new DefaultServerMonitor(serverId, settings, serverMonitorListener, serverStateListener, internalConnectionFactory,
+                connectionPool);
     }
 }

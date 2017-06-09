@@ -31,6 +31,7 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
 import static com.mongodb.connection.MessageHelper.buildSuccessfulReply
+import static com.mongodb.connection.EventListeners.NOOP_SERVER_MONITOR_LISTENER
 
 @SuppressWarnings('BusyWait')
 class DefaultServerMonitorSpecification extends Specification {
@@ -43,24 +44,23 @@ class DefaultServerMonitorSpecification extends Specification {
         def changeListener = new ChangeListener<ServerDescription>() {
             @Override
             void stateChanged(final ChangeEvent<ServerDescription> event) {
-                stateChanged = true;
+                stateChanged = true
             }
         }
         def internalConnectionFactory = Mock(InternalConnectionFactory) {
             create(_) >> {
                 Mock(InternalConnection) {
-                    open() >> { sleep(100); }
+                    open() >> { sleep(100) }
                 }
             }
         }
-        monitor = new DefaultServerMonitor(new ServerId(new ClusterId(), new ServerAddress()),
-                ServerSettings.builder().addServerListener(new NoOpServerListener()).build(), changeListener, internalConnectionFactory,
-                new TestConnectionPool())
+        monitor = new DefaultServerMonitor(new ServerId(new ClusterId(), new ServerAddress()), ServerSettings.builder().build(),
+                NOOP_SERVER_MONITOR_LISTENER, changeListener, internalConnectionFactory, new TestConnectionPool())
         monitor.start()
 
         when:
         monitor.close()
-        monitor.monitorThread.join();
+        monitor.monitorThread.join()
 
         then:
         !stateChanged
@@ -133,7 +133,7 @@ class DefaultServerMonitorSpecification extends Specification {
             }
         }
         monitor = new DefaultServerMonitor(new ServerId(new ClusterId(), new ServerAddress()),
-                ServerSettings.builder().heartbeatFrequency(1, TimeUnit.HOURS).addServerMonitorListener(serverMonitorListener).build(),
+                ServerSettings.builder().heartbeatFrequency(1, TimeUnit.HOURS).build(), serverMonitorListener,
                 changeListener, internalConnectionFactory, new TestConnectionPool())
 
         when:
@@ -161,8 +161,8 @@ class DefaultServerMonitorSpecification extends Specification {
 
         def latch = new CountDownLatch(1)
         def startedEvent
-        def succeededEvent;
-        def failedEvent;
+        def succeededEvent
+        def failedEvent
 
         def serverMonitorListener = new ServerMonitorListener() {
             @Override
@@ -208,7 +208,7 @@ class DefaultServerMonitorSpecification extends Specification {
             }
         }
         monitor = new DefaultServerMonitor(new ServerId(new ClusterId(), new ServerAddress()),
-                ServerSettings.builder().heartbeatFrequency(1, TimeUnit.HOURS).addServerMonitorListener(serverMonitorListener).build(),
+                ServerSettings.builder().heartbeatFrequency(1, TimeUnit.HOURS).build(), serverMonitorListener,
                 changeListener, internalConnectionFactory, new TestConnectionPool())
 
         when:

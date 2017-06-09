@@ -27,7 +27,6 @@ import com.mongodb.diagnostics.logging.Logger;
 import com.mongodb.diagnostics.logging.Loggers;
 import com.mongodb.event.ClusterClosedEvent;
 import com.mongodb.event.ClusterDescriptionChangedEvent;
-import com.mongodb.event.ClusterEventMulticaster;
 import com.mongodb.event.ClusterListener;
 import com.mongodb.event.ClusterOpeningEvent;
 import com.mongodb.event.ServerListener;
@@ -68,12 +67,12 @@ abstract class BaseCluster implements Cluster {
     private volatile boolean isClosed;
     private volatile ClusterDescription description;
 
-    BaseCluster(final ClusterId clusterId, final ClusterSettings settings, final ClusterableServerFactory serverFactory) {
+    BaseCluster(final ClusterId clusterId, final ClusterSettings settings, final ClusterableServerFactory serverFactory,
+                final ClusterListener clusterListener) {
         this.clusterId = notNull("clusterId", clusterId);
         this.settings = notNull("settings", settings);
         this.serverFactory = notNull("serverFactory", serverFactory);
-        this.clusterListener = settings.getClusterListeners().isEmpty()
-                                       ? new NoOpClusterListener() : new ClusterEventMulticaster(settings.getClusterListeners());
+        this.clusterListener = notNull("clusterListener", clusterListener);
         clusterListener.clusterOpening(new ClusterOpeningEvent(clusterId));
     }
 
@@ -355,8 +354,7 @@ abstract class BaseCluster implements Cluster {
         return result;
     }
 
-    protected ClusterableServer createServer(final ServerAddress serverAddress,
-                                             final ServerListener serverListener) {
+    protected ClusterableServer createServer(final ServerAddress serverAddress, final ServerListener serverListener) {
         ClusterableServer server = serverFactory.create(serverAddress, serverListener);
         return server;
     }

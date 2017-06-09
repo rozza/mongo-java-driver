@@ -32,6 +32,7 @@ import spock.lang.Subject
 import java.util.concurrent.CountDownLatch
 
 import static com.mongodb.connection.ConnectionPoolSettings.builder
+import static com.mongodb.connection.EventListeners.NOOP_CONNECTION_POOL_LISTENER
 import static java.util.concurrent.TimeUnit.MILLISECONDS
 import static java.util.concurrent.TimeUnit.MINUTES
 
@@ -51,7 +52,7 @@ class DefaultConnectionPoolSpecification extends Specification {
         given:
         pool = new DefaultConnectionPool(SERVER_ID, connectionFactory,
                                          builder().maxSize(1).maxWaitQueueSize(1).build(),
-                                         new NoOpConnectionPoolListener())
+                                         NOOP_CONNECTION_POOL_LISTENER)
 
         expect:
         pool.get() != null
@@ -61,7 +62,7 @@ class DefaultConnectionPoolSpecification extends Specification {
         given:
         pool = new DefaultConnectionPool(SERVER_ID, connectionFactory,
                                          builder().maxSize(1).maxWaitQueueSize(1).build(),
-                                         new NoOpConnectionPoolListener())
+                                         NOOP_CONNECTION_POOL_LISTENER)
 
         when:
         pool.get().close()
@@ -75,7 +76,7 @@ class DefaultConnectionPoolSpecification extends Specification {
         given:
         pool = new DefaultConnectionPool(SERVER_ID, connectionFactory,
                                          builder().maxSize(1).maxWaitQueueSize(1).build(),
-                                         new NoOpConnectionPoolListener())
+                                         NOOP_CONNECTION_POOL_LISTENER)
 
         when:
         pool.get().close()
@@ -88,7 +89,7 @@ class DefaultConnectionPoolSpecification extends Specification {
         given:
         pool = new DefaultConnectionPool(SERVER_ID, connectionFactory,
                                          builder().maxSize(1).maxWaitQueueSize(1).maxWaitTime(1, MILLISECONDS).build(),
-                                         new NoOpConnectionPoolListener())
+                                         NOOP_CONNECTION_POOL_LISTENER)
 
         when:
         def first = pool.get()
@@ -107,7 +108,7 @@ class DefaultConnectionPoolSpecification extends Specification {
         given:
         pool = new DefaultConnectionPool(SERVER_ID, connectionFactory,
                                          builder().maxSize(1).maxWaitQueueSize(1).maxWaitTime(50, MILLISECONDS).build(),
-                                         new NoOpConnectionPoolListener())
+                                         NOOP_CONNECTION_POOL_LISTENER)
         pool.get()
 
         when:
@@ -137,7 +138,7 @@ class DefaultConnectionPoolSpecification extends Specification {
         }
 
         pool = new DefaultConnectionPool(SERVER_ID, mockConnectionFactory, builder().maxSize(2).maxWaitQueueSize(1).build(),
-                                         new NoOpConnectionPoolListener())
+                                         NOOP_CONNECTION_POOL_LISTENER)
         when:
         def c1 = pool.get()
         def c2 = pool.get()
@@ -197,7 +198,7 @@ class DefaultConnectionPoolSpecification extends Specification {
 
         pool = new DefaultConnectionPool(SERVER_ID, mockConnectionFactory,
                                          builder().maxSize(2).maxWaitQueueSize(1).build(),
-                                         new NoOpConnectionPoolListener())
+                                         NOOP_CONNECTION_POOL_LISTENER)
         when:
         def c1 = pool.get()
         def c2 = pool.get()
@@ -244,7 +245,7 @@ class DefaultConnectionPoolSpecification extends Specification {
         given:
         pool = new DefaultConnectionPool(SERVER_ID, connectionFactory,
                                          builder().maxSize(10).maintenanceInitialDelay(5, MINUTES).build(),
-                                         new NoOpConnectionPoolListener())
+                                         NOOP_CONNECTION_POOL_LISTENER)
 
         when:
         pool.doMaintenance()
@@ -258,7 +259,7 @@ class DefaultConnectionPoolSpecification extends Specification {
         given:
         pool = new DefaultConnectionPool(SERVER_ID, connectionFactory,
                                          builder().maxSize(10).minSize(5).maintenanceInitialDelay(5, MINUTES).build(),
-                                         new NoOpConnectionPoolListener())
+                                         NOOP_CONNECTION_POOL_LISTENER)
 
         when:
         pool.doMaintenance()
@@ -359,7 +360,7 @@ class DefaultConnectionPoolSpecification extends Specification {
     def 'should select connection asynchronously if one is immediately available'() {
         given:
         pool = new DefaultConnectionPool(SERVER_ID, connectionFactory,
-                                         builder().maxSize(1).maxWaitQueueSize(1).build(), new NoOpConnectionPoolListener())
+                                         builder().maxSize(1).maxWaitQueueSize(1).build(), NOOP_CONNECTION_POOL_LISTENER)
 
         expect:
         selectConnectionAsyncAndGet(pool).opened()
@@ -368,7 +369,7 @@ class DefaultConnectionPoolSpecification extends Specification {
     def 'should select connection asynchronously if one is not immediately available'() {
         given:
         pool = new DefaultConnectionPool(SERVER_ID, connectionFactory,
-                                         builder().maxSize(1).maxWaitQueueSize(1).build(), new NoOpConnectionPoolListener())
+                                         builder().maxSize(1).maxWaitQueueSize(1).build(), NOOP_CONNECTION_POOL_LISTENER)
 
         when:
         def connection = pool.get()
@@ -383,7 +384,7 @@ class DefaultConnectionPoolSpecification extends Specification {
         given:
         pool = new DefaultConnectionPool(SERVER_ID, connectionFactory,
                                          builder().maxSize(1).maxWaitQueueSize(2).maxWaitTime(5, MILLISECONDS).build(),
-                                         new NoOpConnectionPoolListener())
+                                         NOOP_CONNECTION_POOL_LISTENER)
 
         pool.get()
         def firstConnectionLatch = selectConnectionAsync(pool)
@@ -405,7 +406,7 @@ class DefaultConnectionPoolSpecification extends Specification {
     def 'when getting a connection asynchronously should send MongoWaitQueueFullException to callback if there are too many waiters'() {
         given:
         pool = new DefaultConnectionPool(SERVER_ID, connectionFactory,
-                                         builder().maxSize(1).maxWaitQueueSize(1).build(), new NoOpConnectionPoolListener())
+                                         builder().maxSize(1).maxWaitQueueSize(1).build(), NOOP_CONNECTION_POOL_LISTENER)
 
         when:
         pool.get()

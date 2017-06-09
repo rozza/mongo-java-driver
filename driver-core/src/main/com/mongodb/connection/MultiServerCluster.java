@@ -20,7 +20,9 @@ import com.mongodb.ServerAddress;
 import com.mongodb.diagnostics.logging.Logger;
 import com.mongodb.diagnostics.logging.Loggers;
 import com.mongodb.event.ClusterDescriptionChangedEvent;
+import com.mongodb.event.ClusterListener;
 import com.mongodb.event.ServerDescriptionChangedEvent;
+import com.mongodb.event.ServerListenerAdapter;
 import org.bson.types.ObjectId;
 
 import java.util.ArrayList;
@@ -64,8 +66,9 @@ final class MultiServerCluster extends BaseCluster {
         }
     }
 
-    MultiServerCluster(final ClusterId clusterId, final ClusterSettings settings, final ClusterableServerFactory serverFactory) {
-        super(clusterId, settings, serverFactory);
+    MultiServerCluster(final ClusterId clusterId, final ClusterSettings settings, final ClusterableServerFactory serverFactory,
+                       final ClusterListener clusterListener) {
+        super(clusterId, settings, serverFactory, clusterListener);
         isTrue("connection mode is multiple", settings.getMode() == ClusterConnectionMode.MULTIPLE);
         clusterType = settings.getRequiredClusterType();
         replicaSetName = settings.getRequiredReplicaSetName();
@@ -120,7 +123,7 @@ final class MultiServerCluster extends BaseCluster {
     }
 
 
-    private final class DefaultServerStateListener extends NoOpServerListener {
+    private final class DefaultServerStateListener extends ServerListenerAdapter {
         @Override
         public void serverDescriptionChanged(final ServerDescriptionChangedEvent event) {
             onChange(event);

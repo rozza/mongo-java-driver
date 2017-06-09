@@ -33,12 +33,8 @@ import com.mongodb.connection.Connection;
 import com.mongodb.connection.DefaultClusterFactory;
 import com.mongodb.connection.ServerDescription;
 import com.mongodb.connection.SocketStreamFactory;
-import com.mongodb.event.ClusterListener;
-import com.mongodb.event.CommandEventMulticaster;
-import com.mongodb.event.CommandListener;
 import com.mongodb.internal.connection.PowerOfTwoBufferPool;
 import com.mongodb.internal.thread.DaemonThreadFactory;
-import com.mongodb.management.JMXConnectionPoolListener;
 import com.mongodb.operation.CurrentOpOperation;
 import com.mongodb.operation.FsyncUnlockOperation;
 import com.mongodb.operation.ListDatabasesOperation;
@@ -727,7 +723,7 @@ public class Mongo {
                                          final MongoClientOptions options, final MongoDriverInformation mongoDriverInformation) {
         return createCluster(ClusterSettings.builder()
                                             .mode(getSingleServerClusterMode(options))
-                                            .hosts(asList(serverAddress))
+                                            .hosts(singletonList(serverAddress))
                                             .requiredReplicaSetName(options.getRequiredReplicaSetName())
                                             .serverSelectionTimeout(options.getServerSelectionTimeout(), MILLISECONDS)
                                             .serverSelector(createServerSelector(options))
@@ -738,34 +734,19 @@ public class Mongo {
 
     private static Cluster createCluster(final ClusterSettings.Builder settingsBuilder, final List<MongoCredential> credentialsList,
                                          final MongoClientOptions options, final MongoDriverInformation mongoDriverInformation) {
-        for (ClusterListener cur : options.getClusterListeners()) {
-            settingsBuilder.addClusterListener(cur);
-        }
         return new DefaultClusterFactory().create(settingsBuilder.build(),
                                                   options.getServerSettings(),
                                                   options.getConnectionPoolSettings(),
+                                                  options.getEventListenerSettings(),
                                                   new SocketStreamFactory(options.getSocketSettings(),
                                                                           options.getSslSettings(),
                                                                           options.getSocketFactory()),
                                                   new SocketStreamFactory(options.getHeartbeatSocketSettings(),
                                                                           options.getSslSettings(),
                                                                           options.getSocketFactory()),
-                                                  credentialsList, null,
-                                                  new JMXConnectionPoolListener(), null,
-                                                  createCommandListener(options.getCommandListeners()),
+                                                  credentialsList,
                                                   options.getApplicationName(),
                                                   mongoDriverInformation);
-    }
-
-    private static CommandListener createCommandListener(final List<CommandListener> commandListeners) {
-        switch (commandListeners.size()) {
-            case 0:
-                return null;
-            case 1:
-                return commandListeners.get(0);
-            default:
-                return new CommandEventMulticaster(commandListeners);
-        }
     }
 
     private static List<ServerAddress> createNewSeedList(final List<ServerAddress> seedList) {

@@ -16,14 +16,13 @@
 
 package com.mongodb.event;
 
-import com.mongodb.annotations.Beta;
-
 import java.util.EventListener;
 
 /**
  * A listener for connection-related events.
+ *
+ * @since 3.5
  */
-@Beta
 public interface ConnectionListener extends EventListener {
 
     /**
@@ -39,18 +38,4 @@ public interface ConnectionListener extends EventListener {
      * @param event the event
      */
     void connectionClosed(ConnectionClosedEvent event);
-
-    /**
-     * Publish a connection messages sent event.
-     *
-     * @param event the event
-     */
-    void messagesSent(ConnectionMessagesSentEvent event);
-
-    /**
-     * Publish a connection message received event.
-     *
-     * @param event the event
-     */
-    void messageReceived(ConnectionMessageReceivedEvent event);
 }

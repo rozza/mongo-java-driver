@@ -16,63 +16,73 @@
 
 package com.mongodb.event;
 
-import com.mongodb.annotations.Beta;
+import com.mongodb.annotations.Immutable;
+import com.mongodb.diagnostics.logging.Logger;
+import com.mongodb.diagnostics.logging.Loggers;
 
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.ArrayList;
+import java.util.List;
 
-import static java.util.Collections.newSetFromMap;
+import static com.mongodb.assertions.Assertions.isTrue;
+import static com.mongodb.assertions.Assertions.notNull;
+import static java.lang.String.format;
+import static java.util.Collections.unmodifiableList;
 
 /**
- * A multicaster for connection events.
+ * A multicaster for connection events. Any exception thrown by one of the listeners will be caught and not re-thrown, but may be
+ * logged.
+ *
+ * @since 3.5
  */
-@Beta
+@Immutable
 public final class ConnectionEventMulticaster implements ConnectionListener {
-    private final Set<ConnectionListener> connectionListeners = newSetFromMap(new ConcurrentHashMap<ConnectionListener, Boolean>());
+    private static final Logger LOGGER = Loggers.getLogger("protocol.event");
+
+    private final List<ConnectionListener> connectionListeners;
 
     /**
-     * Adds the given connection listener to the list of listeners to invoke on connection events.
+     * Construct an instance with the given list of connection pool listeners
      *
-     * @param connectionListener the connection listener
+     * @param connectionListeners the non-null list of connection pool listeners, none of which may be null
      */
-    public void add(final ConnectionListener connectionListener) {
-        connectionListeners.add(connectionListener);
+    public ConnectionEventMulticaster(final List<ConnectionListener> connectionListeners) {
+        notNull("connectionPoolListener", connectionListeners);
+        isTrue("All ConnectionListener instances are non-null", !connectionListeners.contains(null));
+        this.connectionListeners = new ArrayList<ConnectionListener>(connectionListeners);
     }
 
     /**
-     * Removes the given connection listener from the list of listeners to invoke on connection events.
+     * Gets the connection pool listeners.
      *
-     * @param connectionListener the connection listener
+     * @return the unmodifiable set of connection pool listeners
      */
-    public void remove(final ConnectionListener connectionListener) {
-        connectionListeners.remove(connectionListener);
+    public List<ConnectionListener> getConnectionListeners() {
+        return unmodifiableList(connectionListeners);
     }
 
     @Override
     public void connectionOpened(final ConnectionOpenedEvent event) {
         for (final ConnectionListener cur : connectionListeners) {
-            cur.connectionOpened(event);
+            try {
+                cur.connectionOpened(event);
+            } catch (Exception e) {
+                if (LOGGER.isWarnEnabled()) {
+                    LOGGER.warn(format("Exception thrown raising connection opened event to listener %s", cur), e);
+                }
+            }
         }
     }
 
     @Override
     public void connectionClosed(final ConnectionClosedEvent event) {
         for (final ConnectionListener cur : connectionListeners) {
-            cur.connectionClosed(event);
-        }
-    }
-
-    @Override
-    public void messagesSent(final ConnectionMessagesSentEvent event) {
-        for (final ConnectionListener cur : connectionListeners) {
-            cur.messagesSent(event);
-        }
-    }
-
-    @Override
-    public void messageReceived(final ConnectionMessageReceivedEvent event) {
-        for (final ConnectionListener cur : connectionListeners) {
-            cur.messageReceived(event);
+            try {
+                cur.connectionClosed(event);
+            } catch (Exception e) {
+                if (LOGGER.isWarnEnabled()) {
+                    LOGGER.warn(format("Exception thrown raising connection closed event to listener %s", cur), e);
+                }
+            }
         }
     }
 }

@@ -33,7 +33,6 @@ import com.mongodb.connection.StreamFactory;
 import com.mongodb.connection.StreamFactoryFactory;
 import com.mongodb.event.CommandEventMulticaster;
 import com.mongodb.event.CommandListener;
-import com.mongodb.management.JMXConnectionPoolListener;
 import org.bson.codecs.BsonValueCodecProvider;
 import org.bson.codecs.DocumentCodecProvider;
 import org.bson.codecs.IterableCodecProvider;
@@ -189,11 +188,9 @@ public final class MongoClients {
                                          final StreamFactory streamFactory, final StreamFactory heartbeatStreamFactory,
                                          final Closeable externalResourceCloser) {
         return new MongoClientImpl(settings, new DefaultClusterFactory().create(settings.getClusterSettings(), settings.getServerSettings(),
-                settings.getConnectionPoolSettings(), streamFactory,
-                heartbeatStreamFactory,
-                settings.getCredentialList(), null, new JMXConnectionPoolListener(), null,
-                createCommandListener(settings.getCommandListeners()),
-                settings.getApplicationName(), mongoDriverInformation), externalResourceCloser);
+                settings.getConnectionPoolSettings(), settings.getEventListenerSettings(), streamFactory,
+                heartbeatStreamFactory, settings.getCredentialList(), settings.getApplicationName(), mongoDriverInformation),
+                externalResourceCloser);
     }
 
     /**

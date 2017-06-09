@@ -29,8 +29,6 @@ import com.mongodb.diagnostics.logging.Logger;
 import com.mongodb.diagnostics.logging.Loggers;
 import com.mongodb.event.ConnectionClosedEvent;
 import com.mongodb.event.ConnectionListener;
-import com.mongodb.event.ConnectionMessageReceivedEvent;
-import com.mongodb.event.ConnectionMessagesSentEvent;
 import com.mongodb.event.ConnectionOpenedEvent;
 import org.bson.ByteBuf;
 import org.bson.io.ByteBufferBsonInput;
@@ -200,9 +198,7 @@ class InternalStreamConnection implements InternalConnection {
 
         writerLock.lock();
         try {
-            int messageSize = getMessageSize(byteBuffers);
             stream.write(byteBuffers);
-            connectionListener.messagesSent(new ConnectionMessagesSentEvent(getId(), lastRequestId, messageSize));
         } catch (Exception e) {
             close();
             throw translateWriteException(e);
@@ -242,9 +238,6 @@ class InternalStreamConnection implements InternalConnection {
             }
             ResponseBuffers myResponse = messages.remove(responseTo);
             if (myResponse != null) {
-                connectionListener.messageReceived(new ConnectionMessageReceivedEvent(getId(),
-                                                                                      myResponse.getReplyHeader().getResponseTo(),
-                                                                                      myResponse.getReplyHeader().getMessageLength()));
                 return myResponse;
             }
 
@@ -293,7 +286,6 @@ class InternalStreamConnection implements InternalConnection {
     }
 
     private void writeAsync(final SendMessageRequest request) {
-        final int messageSize = getMessageSize(request.getByteBuffers());
         stream.writeAsync(request.getByteBuffers(), new AsyncCompletionHandler<Void>() {
             @Override
             public void completed(final Void v) {
@@ -307,8 +299,6 @@ class InternalStreamConnection implements InternalConnection {
                 } finally {
                     writerLock.unlock();
                 }
-
-                connectionListener.messagesSent(new ConnectionMessagesSentEvent(getId(), request.getMessageId(), messageSize));
                 request.getCallback().onResult(null, null);
 
                 if (nextMessage != null) {
@@ -554,10 +544,6 @@ class InternalStreamConnection implements InternalConnection {
                 return;
             }
 
-            connectionListener.messageReceived(new ConnectionMessageReceivedEvent(getId(),
-                                                                                  responseBuffers.getReplyHeader().getResponseTo(),
-                                                                                  responseBuffers.getReplyHeader().getMessageLength()));
-
             try {
                 callback.onResult(responseBuffers, null);
             } catch (Throwable t) {
@@ -585,14 +571,6 @@ class InternalStreamConnection implements InternalConnection {
                 }
             }
         }
-    }
-
-    private int getMessageSize(final List<ByteBuf> byteBuffers) {
-        int messageSize = 0;
-        for (final ByteBuf cur : byteBuffers) {
-            messageSize += cur.remaining();
-        }
-        return messageSize;
     }
 
     private void failAllQueuedReads(final Throwable t) {
@@ -659,24 +637,6 @@ class InternalStreamConnection implements InternalConnection {
         public void connectionClosed(final ConnectionClosedEvent event) {
             try {
                 wrapped.connectionClosed(event);
-            } catch (Throwable t) {
-                LOGGER.warn("Exception when trying to signal connectionOpened to the connectionListener", t);
-            }
-        }
-
-        @Override
-        public void messagesSent(final ConnectionMessagesSentEvent event) {
-            try {
-                wrapped.messagesSent(event);
-            } catch (Throwable t) {
-                LOGGER.warn("Exception when trying to signal connectionOpened to the connectionListener", t);
-            }
-        }
-
-        @Override
-        public void messageReceived(final ConnectionMessageReceivedEvent event) {
-            try {
-                wrapped.messageReceived(event);
             } catch (Throwable t) {
                 LOGGER.warn("Exception when trying to signal connectionOpened to the connectionListener", t);
             }

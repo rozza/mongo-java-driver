@@ -23,6 +23,9 @@ import spock.lang.Specification
 
 import java.util.concurrent.TimeUnit
 
+import static com.mongodb.connection.EventListeners.NOOP_CLUSTER_LISTENER
+
+@SuppressWarnings('deprecated')
 class ClusterSettingsSpecification extends Specification {
     def hosts = [new ServerAddress('localhost'), new ServerAddress('localhost', 30000)]
     def serverSelector = new WritableServerSelector()
@@ -31,7 +34,7 @@ class ClusterSettingsSpecification extends Specification {
         when:
         def settings = ClusterSettings.builder()
                                       .hosts(hosts)
-                                      .build();
+                                      .build()
 
         then:
         settings.hosts == hosts
@@ -46,8 +49,8 @@ class ClusterSettingsSpecification extends Specification {
 
     def 'should set all properties'() {
         when:
-        def listenerOne = new NoOpClusterListener()
-        def listenerTwo = new NoOpClusterListener()
+        def listenerOne = NOOP_CLUSTER_LISTENER
+        def listenerTwo = NOOP_CLUSTER_LISTENER
         def settings = ClusterSettings.builder()
                                       .hosts(hosts)
                                       .mode(ClusterConnectionMode.MULTIPLE)
@@ -317,7 +320,7 @@ class ClusterSettingsSpecification extends Specification {
         def settings = ClusterSettings.builder().hosts(hosts).build()
 
         when:
-        settings.clusterListeners.add(new NoOpClusterListener())
+        settings.clusterListeners.add(NOOP_CLUSTER_LISTENER)
 
         then:
         thrown(UnsupportedOperationException)
