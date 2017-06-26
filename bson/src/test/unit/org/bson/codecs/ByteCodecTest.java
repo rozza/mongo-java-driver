@@ -35,16 +35,6 @@ public final class ByteCodecTest extends CodecTestCase {
         roundTrip(new Document("a", 9.9999999999999992), expected);
     }
 
-    @Test(expected = IllegalArgumentException.class)
-    public void shouldThrowIfTheDeltaIsOutOfRange() {
-        new ByteCodec(1);
-    }
-
-    @Test(expected = BsonInvalidOperationException.class)
-    public void shouldSupportACustomDelta() {
-        roundTripWithCodec(new Document("a", 9.9999999999999991), new ByteCodec(0));
-    }
-
     @Test(expected = BsonInvalidOperationException.class)
     public void shouldErrorDecodingOutsideMinRange() {
         roundTrip(new Document("a", Integer.MIN_VALUE));

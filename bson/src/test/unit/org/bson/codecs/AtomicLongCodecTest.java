@@ -41,16 +41,6 @@ public final class AtomicLongCodecTest extends CodecTestCase {
         roundTrip(new Document("a", 9.9999999999999992), new AtomicLongComparator(expected));
     }
 
-    @Test(expected = IllegalArgumentException.class)
-    public void shouldThrowIfTheDeltaIsOutOfRange() {
-        new AtomicLongCodec(1);
-    }
-
-    @Test(expected = BsonInvalidOperationException.class)
-    public void shouldSupportACustomDelta() {
-        roundTripWithCodec(new Document("a", 9.9999999999999991), new AtomicLongCodec(0));
-    }
-
     @Test(expected = BsonInvalidOperationException.class)
     public void shouldThrowWhenHandlingLossyDoubleValues() {
         Document original = new Document("a", 9.9999999999999991);

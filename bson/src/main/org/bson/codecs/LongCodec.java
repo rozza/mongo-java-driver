@@ -19,8 +19,6 @@ package org.bson.codecs;
 import org.bson.BsonReader;
 import org.bson.BsonWriter;
 
-import static org.bson.assertions.Assertions.isTrueArgument;
-import static org.bson.codecs.NumberCodecHelper.DEFAULT_DELTA;
 import static org.bson.codecs.NumberCodecHelper.decodeNumber;
 
 /**
@@ -30,26 +28,11 @@ import static org.bson.codecs.NumberCodecHelper.decodeNumber;
  */
 
 public class LongCodec implements Codec<Long> {
-    private final double delta;
 
     /**
      * Construct a new instance
      */
     public LongCodec() {
-        this(DEFAULT_DELTA);
-    }
-
-    /**
-     * Construct a new instance
-     *
-     * @param delta the maximum delta between {@code expected} and {@code actual} for which both numbers are still
-     * considered equal. Required when converting Double values to {@code Long} values. Defaults to {@code 0.00000000000001d}.
-     *
-     * @since 3.5
-     */
-    public LongCodec(final double delta) {
-        isTrueArgument("The delta must be greater than or equal to zero and less than one", delta >= 0 && delta < 1);
-        this.delta = delta;
     }
 
     @Override
@@ -59,7 +42,7 @@ public class LongCodec implements Codec<Long> {
 
     @Override
     public Long decode(final BsonReader reader, final DecoderContext decoderContext) {
-        return decodeNumber(reader, Long.class, delta);
+        return decodeNumber(reader, Long.class);
     }
 
     @Override

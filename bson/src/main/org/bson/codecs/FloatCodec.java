@@ -37,7 +37,7 @@ public class FloatCodec implements Codec<Float> {
 
     @Override
     public Float decode(final BsonReader reader, final DecoderContext decoderContext) {
-        double value = decodeNumber(reader, Double.class, 0);
+        double value = decodeNumber(reader, Double.class);
         if (value < -Float.MAX_VALUE || value > Float.MAX_VALUE) {
             throw new BsonInvalidOperationException(format("%s can not be converted into a Float.", value));
         }

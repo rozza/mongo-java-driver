@@ -34,7 +34,7 @@ public class DoubleCodec implements Codec<Double> {
 
     @Override
     public Double decode(final BsonReader reader, final DecoderContext decoderContext) {
-        return decodeNumber(reader, Double.class, 0);
+        return decodeNumber(reader, Double.class);
     }
 
     @Override

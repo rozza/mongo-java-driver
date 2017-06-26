@@ -47,16 +47,6 @@ public final class AtomicIntegerCodecTest extends CodecTestCase {
         roundTrip(original, new AtomicIntegerComparator(original));
     }
 
-    @Test(expected = IllegalArgumentException.class)
-    public void shouldThrowIfTheDeltaIsOutOfRange() {
-        new AtomicIntegerCodec(1);
-    }
-
-    @Test(expected = BsonInvalidOperationException.class)
-    public void shouldSupportACustomDelta() {
-        roundTripWithCodec(new Document("a", 9.9999999999999991), new AtomicIntegerCodec(0));
-    }
-
     @Test(expected = BsonInvalidOperationException.class)
     public void shouldErrorDecodingOutsideMinRange() {
         roundTrip(new Document("a", Long.MIN_VALUE));

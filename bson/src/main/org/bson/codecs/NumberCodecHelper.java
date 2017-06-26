@@ -21,60 +21,75 @@ import org.bson.BsonReader;
 import org.bson.BsonType;
 
 import static java.lang.String.format;
+import static org.bson.assertions.Assertions.isTrueArgument;
 
 final class NumberCodecHelper {
 
-    static final double DEFAULT_DELTA = 0.00000000000001d;
-
     @SuppressWarnings("unchecked")
-    static <T extends Number> T decodeNumber(final BsonReader reader, final Class<T> clazz, final double delta) {
+    static <T extends Number> T decodeNumber(final BsonReader reader, final Class<T> clazz) {
+        isTrueArgument("Clazz must be Integer, Long or Double", clazz == Integer.class || clazz == Long.class || clazz == Double.class);
         Number number;
-        boolean isADownConversion;
+        T decodedNumber;
         BsonType bsonType = reader.getCurrentBsonType();
         switch (bsonType) {
             case DOUBLE:
                 number = reader.readDouble();
-                isADownConversion = clazz != Double.class;
+                Double doubleValue = number.doubleValue();
+                Double convertedDouble = number.doubleValue();
+
+                if (clazz == Integer.class) {
+                    decodedNumber = (T) (Integer) doubleValue.intValue();
+                    convertedDouble = ((Integer) doubleValue.intValue()).doubleValue();
+                } else if (clazz == Long.class) {
+                    decodedNumber = (T) (Long) doubleValue.longValue();
+                    convertedDouble = ((Long) doubleValue.longValue()).doubleValue();
+                } else {
+                    decodedNumber = (T) doubleValue;
+                }
+
+                if (!doubleValue.equals(convertedDouble)) {
+                    throw invalidConversion(clazz, number);
+                }
                 break;
             case INT64:
                 number = reader.readInt64();
-                isADownConversion = clazz == Integer.class;
+                Long longValue = number.longValue();
+                Long convertedLong = number.longValue();
+
+                if (clazz == Integer.class) {
+                    decodedNumber = (T) (Integer) longValue.intValue();
+                    convertedLong = ((Integer) longValue.intValue()).longValue();
+                } else if (clazz == Double.class) {
+                    decodedNumber = (T) (Double) longValue.doubleValue();
+                    convertedLong = ((Double) longValue.doubleValue()).longValue();
+                } else {
+                    decodedNumber = (T) longValue;
+                }
+
+                if (!longValue.equals(convertedLong)) {
+                    throw invalidConversion(clazz, number);
+                }
                 break;
             case INT32:
                 number = reader.readInt32();
-                isADownConversion = false;
+                Integer intValue = number.intValue();
+
+                if (clazz == Double.class) {
+                    decodedNumber = (T) (Double) intValue.doubleValue();
+                } else if (clazz == Long.class) {
+                    decodedNumber = (T) (Long) intValue.longValue();
+                } else {
+                    decodedNumber = (T) intValue;
+                }
                 break;
             default:
                 throw new BsonInvalidOperationException(format("Invalid numeric type, found: %s", bsonType));
         }
-
-        Number converted;
-        if (clazz == Double.class) {
-            converted = number.doubleValue();
-        } else if (clazz == Integer.class) {
-            converted = number.intValue();
-        } else if (clazz == Long.class) {
-            converted = number.longValue();
-        } else {
-            throw new BsonInvalidOperationException(format("Unsupported numeric type, found: %s", clazz));
-        }
-
-        if (isADownConversion && hasLostPrecision(number.doubleValue(), converted.doubleValue(), delta)) {
-            throw new BsonInvalidOperationException(format("Could not convert number (%s) to %s without losing precision", number, clazz));
-        }
-
-        return (T) converted;
+        return decodedNumber;
     }
 
-    private static <T extends Number> boolean hasLostPrecision(final double d1, final double d2, final double delta) {
-        if (Double.compare(d1, d2) == 0) {
-            return false;
-        }
-        if ((Math.abs(d1 - d2) <= delta)) {
-            return false;
-        }
-
-        return true;
+    private static  <T extends Number> BsonInvalidOperationException invalidConversion(final Class<T> clazz, final Number number) {
+        return new BsonInvalidOperationException(format("Could not convert number (%s) to %s without losing precision", number, clazz));
     }
 
     private NumberCodecHelper() {

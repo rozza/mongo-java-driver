@@ -35,16 +35,6 @@ public final class LongCodecTest extends CodecTestCase {
         roundTrip(new Document("a", 9.9999999999999992), expected);
     }
 
-    @Test(expected = IllegalArgumentException.class)
-    public void shouldThrowIfTheDeltaIsOutOfRange() {
-        new LongCodec(1);
-    }
-
-    @Test(expected = BsonInvalidOperationException.class)
-    public void shouldSupportACustomDelta() {
-        roundTripWithCodec(new Document("a", 9.9999999999999991), new LongCodec(0));
-    }
-
     @Test(expected = BsonInvalidOperationException.class)
     public void shouldThrowWhenHandlingLossyLongValues() {
         roundTrip(new Document("a", Double.MAX_VALUE));
