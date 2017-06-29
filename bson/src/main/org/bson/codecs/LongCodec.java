@@ -19,7 +19,7 @@ package org.bson.codecs;
 import org.bson.BsonReader;
 import org.bson.BsonWriter;
 
-import static org.bson.codecs.NumberCodecHelper.decodeNumber;
+import static org.bson.codecs.NumberCodecHelper.decodeLong;
 
 /**
  * Encodes and decodes {@code Long} objects.
@@ -42,7 +42,7 @@ public class LongCodec implements Codec<Long> {
 
     @Override
     public Long decode(final BsonReader reader, final DecoderContext decoderContext) {
-        return decodeNumber(reader, Long.class);
+        return decodeLong(reader);
     }
 
     @Override

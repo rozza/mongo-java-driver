@@ -28,6 +28,8 @@ final class NumberCodecHelper {
     @SuppressWarnings("unchecked")
     static <T extends Number> T decodeNumber(final BsonReader reader, final Class<T> clazz) {
         isTrueArgument("Clazz must be Integer, Long or Double", clazz == Integer.class || clazz == Long.class || clazz == Double.class);
+
+
         Number number;
         T decodedNumber;
         BsonType bsonType = reader.getCurrentBsonType();
@@ -86,6 +88,79 @@ final class NumberCodecHelper {
                 throw new BsonInvalidOperationException(format("Invalid numeric type, found: %s", bsonType));
         }
         return decodedNumber;
+    }
+
+    static int decodeInt(final BsonReader reader) {
+        int intValue;
+        BsonType bsonType = reader.getCurrentBsonType();
+        switch (bsonType) {
+            case INT32:
+                intValue = reader.readInt32();
+                break;
+            case INT64:
+                long longValue = reader.readInt64();
+                intValue = (int) longValue;
+                if (longValue != (double) intValue) {
+                    throw invalidConversion(Integer.class, longValue);
+                }
+                break;
+            case DOUBLE:
+                double doubleValue = reader.readDouble();
+                intValue = (int) doubleValue;
+                if (doubleValue != (double) intValue) {
+                    throw invalidConversion(Integer.class, doubleValue);
+                }
+                break;
+            default:
+                throw new BsonInvalidOperationException(format("Invalid numeric type, found: %s", bsonType));
+        }
+        return intValue;
+    }
+
+    static long decodeLong(final BsonReader reader) {
+        long longValue;
+        BsonType bsonType = reader.getCurrentBsonType();
+        switch (bsonType) {
+            case INT32:
+                longValue = reader.readInt32();
+                break;
+            case INT64:
+                longValue = reader.readInt64();
+                break;
+            case DOUBLE:
+                double doubleValue = reader.readDouble();
+                longValue = (long) doubleValue;
+                if (doubleValue != (double) longValue) {
+                    throw invalidConversion(Long.class, doubleValue);
+                }
+                break;
+            default:
+                throw new BsonInvalidOperationException(format("Invalid numeric type, found: %s", bsonType));
+        }
+        return longValue;
+    }
+
+    static double decodeDouble(final BsonReader reader) {
+        double doubleValue;
+        BsonType bsonType = reader.getCurrentBsonType();
+        switch (bsonType) {
+            case INT32:
+                doubleValue = reader.readInt32();
+                break;
+            case INT64:
+                long longValue = reader.readInt64();
+                doubleValue = longValue;
+                if (longValue != (long) doubleValue) {
+                    throw invalidConversion(Double.class, longValue);
+                }
+                break;
+            case DOUBLE:
+                doubleValue = reader.readDouble();
+                break;
+            default:
+                throw new BsonInvalidOperationException(format("Invalid numeric type, found: %s", bsonType));
+        }
+        return doubleValue;
     }
 
     private static  <T extends Number> BsonInvalidOperationException invalidConversion(final Class<T> clazz, final Number number) {

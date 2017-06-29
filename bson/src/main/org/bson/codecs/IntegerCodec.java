@@ -19,7 +19,7 @@ package org.bson.codecs;
 import org.bson.BsonReader;
 import org.bson.BsonWriter;
 
-import static org.bson.codecs.NumberCodecHelper.decodeNumber;
+import static org.bson.codecs.NumberCodecHelper.decodeInt;
 
 /**
  * Encodes and decodes {@code Integer} objects.
@@ -41,7 +41,7 @@ public class IntegerCodec implements Codec<Integer> {
 
     @Override
     public Integer decode(final BsonReader reader, final DecoderContext decoderContext) {
-        return decodeNumber(reader, Integer.class);
+        return decodeInt(reader);
     }
 
     @Override

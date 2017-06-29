@@ -24,7 +24,8 @@ public final class LongCodecTest extends CodecTestCase {
 
     @Test
     public void shouldRoundTripLongValues() {
-        roundTrip(new Document("a", 1L));
+        roundTrip(new Document("a", Long.MAX_VALUE));
+        roundTrip(new Document("a", Long.MIN_VALUE));
     }
 
     @Test
@@ -36,7 +37,7 @@ public final class LongCodecTest extends CodecTestCase {
     }
 
     @Test(expected = BsonInvalidOperationException.class)
-    public void shouldThrowWhenHandlingLossyLongValues() {
+    public void shouldThrowWhenHandlingLossyValues() {
         roundTrip(new Document("a", Double.MAX_VALUE));
     }
 

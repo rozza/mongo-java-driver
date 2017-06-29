@@ -28,7 +28,10 @@ public final class AtomicIntegerCodecTest extends CodecTestCase {
 
     @Test
     public void shouldRoundTripAtomicIntegerValues() {
-        Document original = new Document("a", new AtomicInteger(1));
+        Document original = new Document("a", new AtomicInteger(Integer.MAX_VALUE));
+        roundTrip(original, new AtomicIntegerComparator(original));
+
+        original = new Document("a", new AtomicInteger(Integer.MIN_VALUE));
         roundTrip(original, new AtomicIntegerComparator(original));
     }
 

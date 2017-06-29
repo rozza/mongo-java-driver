@@ -28,7 +28,10 @@ public final class AtomicLongCodecTest extends CodecTestCase {
 
     @Test
     public void shouldRoundTripAtomicLongValues() {
-        Document original = new Document("a", new AtomicLong(1L));
+        Document original = new Document("a", new AtomicLong(Long.MAX_VALUE));
+        roundTrip(original, new AtomicLongComparator(original));
+
+        original = new Document("a", new AtomicLong(Long.MIN_VALUE));
         roundTrip(original, new AtomicLongComparator(original));
     }
 

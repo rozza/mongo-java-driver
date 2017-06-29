@@ -24,7 +24,8 @@ public final class FloatCodecTest extends CodecTestCase {
 
     @Test
     public void shouldRoundTripFloatValues() {
-        roundTrip(new Document("a", new Float(1)));
+        roundTrip(new Document("a", Float.MAX_VALUE));
+        roundTrip(new Document("a", -Float.MAX_VALUE));
     }
 
     @Test

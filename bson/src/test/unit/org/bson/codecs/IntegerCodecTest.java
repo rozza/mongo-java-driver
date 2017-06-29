@@ -24,7 +24,8 @@ public final class IntegerCodecTest extends CodecTestCase {
 
     @Test
     public void shouldRoundTripIntegerValues() {
-        roundTrip(new Document("a", 1));
+        roundTrip(new Document("a", Integer.MAX_VALUE));
+        roundTrip(new Document("a", Integer.MIN_VALUE));
     }
 
     @Test

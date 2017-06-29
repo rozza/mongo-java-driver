@@ -21,7 +21,7 @@ import org.bson.BsonWriter;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static org.bson.codecs.NumberCodecHelper.decodeNumber;
+import static org.bson.codecs.NumberCodecHelper.decodeInt;
 
 /**
  * Encodes and decodes {@code AtomicInteger} objects.
@@ -44,7 +44,7 @@ public class AtomicIntegerCodec implements Codec<AtomicInteger> {
 
     @Override
     public AtomicInteger decode(final BsonReader reader, final DecoderContext decoderContext) {
-        return new AtomicInteger(decodeNumber(reader, Integer.class));
+        return new AtomicInteger(decodeInt(reader));
     }
 
     @Override

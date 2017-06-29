@@ -24,7 +24,8 @@ public final class ByteCodecTest extends CodecTestCase {
 
     @Test
     public void shouldRoundTripByteValues() {
-        roundTrip(new Document("a", new Byte("1")));
+        roundTrip(new Document("a", Byte.MAX_VALUE));
+        roundTrip(new Document("a", Byte.MIN_VALUE));
     }
 
     @Test

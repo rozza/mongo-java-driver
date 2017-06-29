@@ -16,6 +16,7 @@
 
 package org.bson.codecs;
 
+import org.bson.BsonInvalidOperationException;
 import org.bson.Document;
 import org.junit.Test;
 
@@ -23,7 +24,8 @@ public final class DoubleCodecTest extends CodecTestCase {
 
     @Test
     public void shouldRoundTripDoubleValues() {
-        roundTrip(new Document("a", 10.0));
+        roundTrip(new Document("a", Long.MAX_VALUE), new Document("a", (double) Long.MAX_VALUE));
+        roundTrip(new Document("a", Long.MIN_VALUE), new Document("a", (double) Long.MIN_VALUE));
     }
 
     @Test
@@ -31,6 +33,16 @@ public final class DoubleCodecTest extends CodecTestCase {
         Document expected = new Document("a", 10.00);
         roundTrip(new Document("a", 10), expected);
         roundTrip(new Document("a", 10L), expected);
+    }
+
+    @Test(expected = BsonInvalidOperationException.class)
+    public void shouldThrowWhenHandlingLossyLongValues() {
+        roundTrip(new Document("a", Long.MAX_VALUE - 1));
+    }
+
+    @Test(expected = BsonInvalidOperationException.class)
+    public void shouldThrowWhenHandlingLossyLongValues2() {
+        roundTrip(new Document("a", Long.MIN_VALUE + 1));
     }
 
     @Override

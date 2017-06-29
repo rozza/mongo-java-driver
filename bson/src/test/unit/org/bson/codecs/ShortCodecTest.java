@@ -24,7 +24,8 @@ public final class ShortCodecTest extends CodecTestCase {
 
     @Test
     public void shouldRoundTripFloatValues() {
-        roundTrip(new Document("a", new Short("1")));
+        roundTrip(new Document("a", Short.MAX_VALUE));
+        roundTrip(new Document("a", Short.MIN_VALUE));
     }
 
     @Test
