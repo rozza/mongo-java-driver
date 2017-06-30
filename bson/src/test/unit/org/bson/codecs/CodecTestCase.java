@@ -31,9 +31,7 @@ import java.nio.ByteBuffer;
 import java.util.HashMap;
 
 import static java.util.Arrays.asList;
-import static org.bson.codecs.configuration.CodecRegistries.fromCodecs;
 import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
-import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
 import static org.junit.Assert.assertEquals;
 
 abstract class CodecTestCase {
@@ -47,15 +45,11 @@ abstract class CodecTestCase {
     }
 
     <T> void roundTrip(final T value) {
-        roundTrip(value, new DefaultComparator(value));
+        roundTrip(value, new DefaultComparator<T>(value));
     }
 
     <T> void roundTrip(final T value, final Comparator<T> comparator) {
         roundTripWithRegistry(value, comparator, getRegistry());
-    }
-
-    <T, V> void roundTripWithCodec(final T value, final Codec<V> codec) {
-        roundTripWithRegistry(value, new DefaultComparator(value), fromRegistries(fromCodecs(codec), getRegistry()));
     }
 
     @SuppressWarnings("unchecked")

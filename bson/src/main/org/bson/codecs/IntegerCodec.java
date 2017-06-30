@@ -28,12 +28,6 @@ import static org.bson.codecs.NumberCodecHelper.decodeInt;
  */
 public class IntegerCodec implements Codec<Integer> {
 
-    /**
-     * Construct a new instance
-     */
-    public IntegerCodec() {
-    }
-
     @Override
     public void encode(final BsonWriter writer, final Integer value, final EncoderContext encoderContext) {
         writer.writeInt32(value);

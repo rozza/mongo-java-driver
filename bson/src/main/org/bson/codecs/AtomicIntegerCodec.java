@@ -31,12 +31,6 @@ import static org.bson.codecs.NumberCodecHelper.decodeInt;
 
 public class AtomicIntegerCodec implements Codec<AtomicInteger> {
 
-    /**
-     * Construct a new instance
-     */
-    public AtomicIntegerCodec() {
-    }
-
     @Override
     public void encode(final BsonWriter writer, final AtomicInteger value, final EncoderContext encoderContext) {
         writer.writeInt32(value.intValue());

@@ -31,12 +31,6 @@ import static org.bson.codecs.NumberCodecHelper.decodeLong;
 
 public class AtomicLongCodec implements Codec<AtomicLong> {
 
-    /**
-     * Construct a new instance
-     */
-    public AtomicLongCodec() {
-    }
-
     @Override
     public void encode(final BsonWriter writer, final AtomicLong value, final EncoderContext encoderContext) {
         writer.writeInt64(value.longValue());

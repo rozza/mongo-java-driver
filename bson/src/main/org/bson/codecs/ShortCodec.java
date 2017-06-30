@@ -29,11 +29,6 @@ import static org.bson.codecs.NumberCodecHelper.decodeInt;
  * @since 3.0
  */
 public class ShortCodec implements Codec<Short> {
-    /**
-     * Construct a new instance
-     */
-    public ShortCodec() {
-    }
 
     @Override
     public void encode(final BsonWriter writer, final Short value, final EncoderContext encoderContext) {

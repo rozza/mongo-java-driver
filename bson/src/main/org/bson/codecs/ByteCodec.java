@@ -29,11 +29,6 @@ import static org.bson.codecs.NumberCodecHelper.decodeInt;
  * @since 3.0
  */
 public class ByteCodec implements Codec<Byte> {
-    /**
-     * Construct a new instance
-     */
-    public ByteCodec() {
-    }
 
     @Override
     public void encode(final BsonWriter writer, final Byte value, final EncoderContext encoderContext) {

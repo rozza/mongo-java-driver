@@ -21,74 +21,8 @@ import org.bson.BsonReader;
 import org.bson.BsonType;
 
 import static java.lang.String.format;
-import static org.bson.assertions.Assertions.isTrueArgument;
 
 final class NumberCodecHelper {
-
-    @SuppressWarnings("unchecked")
-    static <T extends Number> T decodeNumber(final BsonReader reader, final Class<T> clazz) {
-        isTrueArgument("Clazz must be Integer, Long or Double", clazz == Integer.class || clazz == Long.class || clazz == Double.class);
-
-
-        Number number;
-        T decodedNumber;
-        BsonType bsonType = reader.getCurrentBsonType();
-        switch (bsonType) {
-            case DOUBLE:
-                number = reader.readDouble();
-                Double doubleValue = number.doubleValue();
-                Double convertedDouble = number.doubleValue();
-
-                if (clazz == Integer.class) {
-                    decodedNumber = (T) (Integer) doubleValue.intValue();
-                    convertedDouble = ((Integer) doubleValue.intValue()).doubleValue();
-                } else if (clazz == Long.class) {
-                    decodedNumber = (T) (Long) doubleValue.longValue();
-                    convertedDouble = ((Long) doubleValue.longValue()).doubleValue();
-                } else {
-                    decodedNumber = (T) doubleValue;
-                }
-
-                if (!doubleValue.equals(convertedDouble)) {
-                    throw invalidConversion(clazz, number);
-                }
-                break;
-            case INT64:
-                number = reader.readInt64();
-                Long longValue = number.longValue();
-                Long convertedLong = number.longValue();
-
-                if (clazz == Integer.class) {
-                    decodedNumber = (T) (Integer) longValue.intValue();
-                    convertedLong = ((Integer) longValue.intValue()).longValue();
-                } else if (clazz == Double.class) {
-                    decodedNumber = (T) (Double) longValue.doubleValue();
-                    convertedLong = ((Double) longValue.doubleValue()).longValue();
-                } else {
-                    decodedNumber = (T) longValue;
-                }
-
-                if (!longValue.equals(convertedLong)) {
-                    throw invalidConversion(clazz, number);
-                }
-                break;
-            case INT32:
-                number = reader.readInt32();
-                Integer intValue = number.intValue();
-
-                if (clazz == Double.class) {
-                    decodedNumber = (T) (Double) intValue.doubleValue();
-                } else if (clazz == Long.class) {
-                    decodedNumber = (T) (Long) intValue.longValue();
-                } else {
-                    decodedNumber = (T) intValue;
-                }
-                break;
-            default:
-                throw new BsonInvalidOperationException(format("Invalid numeric type, found: %s", bsonType));
-        }
-        return decodedNumber;
-    }
 
     static int decodeInt(final BsonReader reader) {
         int intValue;
@@ -100,7 +34,7 @@ final class NumberCodecHelper {
             case INT64:
                 long longValue = reader.readInt64();
                 intValue = (int) longValue;
-                if (longValue != (double) intValue) {
+                if (longValue != (long) intValue) {
                     throw invalidConversion(Integer.class, longValue);
                 }
                 break;
@@ -163,8 +97,8 @@ final class NumberCodecHelper {
         return doubleValue;
     }
 
-    private static  <T extends Number> BsonInvalidOperationException invalidConversion(final Class<T> clazz, final Number number) {
-        return new BsonInvalidOperationException(format("Could not convert number (%s) to %s without losing precision", number, clazz));
+    private static  <T extends Number> BsonInvalidOperationException invalidConversion(final Class<T> clazz, final Object value) {
+        return new BsonInvalidOperationException(format("Could not convert `%s` to a %s without losing precision", value, clazz));
     }
 
     private NumberCodecHelper() {

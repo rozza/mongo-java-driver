@@ -29,12 +29,6 @@ import static org.bson.codecs.NumberCodecHelper.decodeLong;
 
 public class LongCodec implements Codec<Long> {
 
-    /**
-     * Construct a new instance
-     */
-    public LongCodec() {
-    }
-
     @Override
     public void encode(final BsonWriter writer, final Long value, final EncoderContext encoderContext) {
         writer.writeInt64(value);
