@@ -106,6 +106,8 @@ public final class MongoClientSettings {
         private SslSettings sslSettings = SslSettings.builder().build();
         private List<MongoCredential> credentialList = Collections.emptyList();
         private String applicationName;
+        private boolean addCommandListenerUsed;
+        private boolean eventListenerSettingsUsed;
 
         private Builder() {
         }
@@ -186,10 +188,15 @@ public final class MongoClientSettings {
          * @param eventListenerSettings the socket settings
          * @return {@code this}
          * @see MongoClientSettings##getEventListenerSettings()
-         */
+         * @since 3.5
+         * */
          public Builder eventListenerSettings(final EventListenerSettings eventListenerSettings) {
-            this.eventListenerSettings = notNull("eventListenerSettings", eventListenerSettings);
-            return this;
+             if (addCommandListenerUsed) {
+                 throw new IllegalArgumentException("Using `eventListenerSettings` and `addCommandListener` is not supported");
+             }
+             this.eventListenerSettings = notNull("eventListenerSettings", eventListenerSettings);
+             eventListenerSettingsUsed = true;
+             return this;
         }
 
         /**
@@ -301,7 +308,12 @@ public final class MongoClientSettings {
          */
         @Deprecated
         public Builder addCommandListener(final CommandListener commandListener) {
-            return eventListenerSettings(EventListenerSettings.builder(eventListenerSettings).addCommandListener(commandListener).build());
+            if (eventListenerSettingsUsed) {
+                throw new IllegalArgumentException("Using `eventListenerSettings` and `addCommandListener` is not supported");
+            }
+            this.eventListenerSettings = EventListenerSettings.builder(eventListenerSettings).addCommandListener(commandListener).build();
+            addCommandListenerUsed = true;
+            return this;
         }
 
         /**
