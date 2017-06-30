@@ -43,6 +43,10 @@ import org.bson.codecs.configuration.CodecRegistry;
 import java.io.Closeable;
 import java.util.List;
 
+import static com.mongodb.internal.event.EventListenerHelper.getClusterListener;
+import static com.mongodb.internal.event.EventListenerHelper.getCommandListener;
+import static com.mongodb.internal.event.EventListenerHelper.getConnectionPoolListener;
+import static com.mongodb.internal.event.EventListenerHelper.getServerMonitorListener;
 import static java.util.Arrays.asList;
 import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
 
@@ -188,8 +192,11 @@ public final class MongoClients {
                                          final StreamFactory streamFactory, final StreamFactory heartbeatStreamFactory,
                                          final Closeable externalResourceCloser) {
         return new MongoClientImpl(settings, new DefaultClusterFactory().create(settings.getClusterSettings(), settings.getServerSettings(),
-                settings.getConnectionPoolSettings(), settings.getEventListenerSettings(), streamFactory,
-                heartbeatStreamFactory, settings.getCredentialList(), settings.getApplicationName(), mongoDriverInformation),
+                settings.getConnectionPoolSettings(), streamFactory, heartbeatStreamFactory, settings.getCredentialList(),
+                getClusterListener(settings.getClusterSettings().getClusterListeners()),
+                getConnectionPoolListener(settings.getConnectionPoolSettings().getConnectionPoolListeners()),
+                getServerMonitorListener(settings.getServerSettings().getServerMonitorListeners()),
+                getCommandListener(settings.getCommandListeners()), settings.getApplicationName(), mongoDriverInformation),
                 externalResourceCloser);
     }
 

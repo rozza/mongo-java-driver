@@ -20,73 +20,64 @@ import com.mongodb.MongoCredential;
 import com.mongodb.ServerAddress;
 import com.mongodb.client.MongoDriverInformation;
 import com.mongodb.event.CommandListener;
-import com.mongodb.event.ConnectionListener;
 import com.mongodb.event.ConnectionPoolListener;
-import com.mongodb.event.EventListenerSettings;
 import com.mongodb.event.ServerListener;
 import com.mongodb.event.ServerMonitorListener;
 
 import java.util.List;
 
-import static com.mongodb.internal.event.EventListenerSettingsHelper.createCommandListener;
-import static com.mongodb.internal.event.EventListenerSettingsHelper.createConnectionListener;
-import static com.mongodb.internal.event.EventListenerSettingsHelper.createConnectionPoolListener;
-import static com.mongodb.internal.event.EventListenerSettingsHelper.createServerListener;
-import static com.mongodb.internal.event.EventListenerSettingsHelper.createServerMonitorListener;
+import static com.mongodb.internal.event.EventListenerHelper.createServerListener;
 
 class DefaultClusterableServerFactory implements ClusterableServerFactory {
     private final ClusterId clusterId;
     private final ClusterSettings clusterSettings;
     private final ServerSettings serverSettings;
     private final ConnectionPoolSettings connectionPoolSettings;
-    private final EventListenerSettings eventListenerSettings;
     private final StreamFactory streamFactory;
     private final List<MongoCredential> credentialList;
+    private final ConnectionPoolListener connectionPoolListener;
+    private final ServerMonitorListener serverMonitorListener;
     private final StreamFactory heartbeatStreamFactory;
+    private final CommandListener commandListener;
     private final String applicationName;
     private final MongoDriverInformation mongoDriverInformation;
 
     DefaultClusterableServerFactory(final ClusterId clusterId, final ClusterSettings clusterSettings, final ServerSettings serverSettings,
-                                    final ConnectionPoolSettings connectionPoolSettings, final EventListenerSettings eventListenerSettings,
-                                    final StreamFactory streamFactory, final StreamFactory heartbeatStreamFactory,
-                                    final List<MongoCredential> credentialList,
-                                    final String applicationName, final MongoDriverInformation mongoDriverInformation) {
+                                    final ConnectionPoolSettings connectionPoolSettings, final StreamFactory streamFactory,
+                                    final StreamFactory heartbeatStreamFactory, final List<MongoCredential> credentialList,
+                                    final ConnectionPoolListener connectionPoolListener, final ServerMonitorListener serverMonitorListener,
+                                    final CommandListener commandListener, final String applicationName,
+                                    final MongoDriverInformation mongoDriverInformation) {
         this.clusterId = clusterId;
         this.clusterSettings = clusterSettings;
         this.serverSettings = serverSettings;
         this.connectionPoolSettings = connectionPoolSettings;
         this.streamFactory = streamFactory;
         this.credentialList = credentialList;
-        this.eventListenerSettings = eventListenerSettings;
+        this.connectionPoolListener = connectionPoolListener;
+        this.serverMonitorListener = serverMonitorListener;
         this.heartbeatStreamFactory = heartbeatStreamFactory;
+        this.commandListener = commandListener;
         this.applicationName = applicationName;
         this.mongoDriverInformation = mongoDriverInformation;
     }
 
     @Override
     public ClusterableServer create(final ServerAddress serverAddress, final ServerListener initialServerListener) {
-        ConnectionListener connectionListener = createConnectionListener(eventListenerSettings);
-        ConnectionPoolListener connectionPoolListener = createConnectionPoolListener(eventListenerSettings);
-        CommandListener commandListener = createCommandListener(eventListenerSettings);
-        ServerListener serverListener = createServerListener(eventListenerSettings, serverSettings, initialServerListener);
-        ServerMonitorListener serverMonitorListener = createServerMonitorListener(eventListenerSettings, serverSettings);
-
         ConnectionPool connectionPool = new DefaultConnectionPool(new ServerId(clusterId, serverAddress),
-                new InternalStreamConnectionFactory(streamFactory, credentialList, connectionListener,
-                        applicationName, mongoDriverInformation), connectionPoolSettings, connectionPoolListener);
-
+                new InternalStreamConnectionFactory(streamFactory, credentialList, applicationName,
+                        mongoDriverInformation), connectionPoolSettings, connectionPoolListener);
         ServerMonitorFactory serverMonitorFactory =
             new DefaultServerMonitorFactory(new ServerId(clusterId, serverAddress), serverSettings, serverMonitorListener,
-                    new InternalStreamConnectionFactory(heartbeatStreamFactory, credentialList, connectionListener, applicationName,
+                    new InternalStreamConnectionFactory(heartbeatStreamFactory, credentialList, applicationName,
                             mongoDriverInformation), connectionPool);
-
         return new DefaultServer(new ServerId(clusterId, serverAddress), clusterSettings.getMode(), connectionPool,
-                new DefaultConnectionFactory(), serverMonitorFactory, serverListener, commandListener);
+                new DefaultConnectionFactory(), serverMonitorFactory,
+                createServerListener(serverSettings.getServerListeners(), initialServerListener), commandListener);
     }
 
     @Override
     public ServerSettings getSettings() {
         return serverSettings;
     }
-
 }

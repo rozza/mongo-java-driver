@@ -27,7 +27,6 @@ import org.junit.Test;
 import java.util.Collections;
 
 import static com.mongodb.ClusterFixture.getSslSettings;
-import static com.mongodb.connection.EventListeners.NOOP_CONNECTION_LISTENER;
 
 @Ignore
 public class PlainAuthenticatorTest {
@@ -44,8 +43,7 @@ public class PlainAuthenticatorTest {
         userName = System.getProperty("org.mongodb.test.userName");
         source = System.getProperty("org.mongod.test.source");
         password = System.getProperty("org.mongodb.test.password");
-        internalConnection = new InternalStreamConnectionFactory(streamFactory, Collections.<MongoCredential>emptyList(),
-                                                                 NOOP_CONNECTION_LISTENER, null, null)
+        internalConnection = new InternalStreamConnectionFactory(streamFactory, Collections.<MongoCredential>emptyList(), null, null)
                              .create(new ServerId(new ClusterId(), new ServerAddress(host)));
         connectionDescription = new ConnectionDescription(new ServerId(new ClusterId(), new ServerAddress()));
     }

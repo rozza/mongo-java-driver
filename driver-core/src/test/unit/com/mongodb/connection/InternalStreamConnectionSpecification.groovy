@@ -25,7 +25,6 @@ import com.mongodb.MongoSocketReadException
 import com.mongodb.MongoSocketWriteException
 import com.mongodb.ServerAddress
 import com.mongodb.async.FutureResultCallback
-import com.mongodb.event.ConnectionListener
 import org.bson.BsonBinaryWriter
 import org.bson.BsonDocument
 import org.bson.BsonInt32
@@ -75,32 +74,15 @@ class InternalStreamConnectionSpecification extends Specification {
         initialize(_) >> { connectionDescription }
         initializeAsync(_, _) >> { it[1].onResult(connectionDescription, null) }
     }
-    def listener = Mock(ConnectionListener)
 
     def getConnection() {
-        new InternalStreamConnection(SERVER_ID, streamFactory, initializer, listener)
+        new InternalStreamConnection(SERVER_ID, streamFactory, initializer)
     }
 
     def getOpenedConnection() {
         def connection = getConnection();
         connection.open()
         connection
-    }
-
-    def 'should fire connection opened event'() {
-        when:
-        getConnection().open()
-
-        then:
-        1 * listener.connectionOpened(_)
-    }
-
-    def 'should fire connection closed event'() {
-        when:
-        getOpenedConnection().close()
-
-        then:
-        1 * listener.connectionClosed(_)
     }
 
     def 'should change the connection description when opened'() {
@@ -222,7 +204,7 @@ class InternalStreamConnectionSpecification extends Specification {
         def failedInitializer = Mock(InternalConnectionInitializer) {
             initialize(_) >> { throw new MongoInternalException('Something went wrong') }
         }
-        def connection = new InternalStreamConnection(SERVER_ID, streamFactory, failedInitializer, listener)
+        def connection = new InternalStreamConnection(SERVER_ID, streamFactory, failedInitializer)
 
         when:
         connection.open()
@@ -239,7 +221,7 @@ class InternalStreamConnectionSpecification extends Specification {
         def failedInitializer = Mock(InternalConnectionInitializer) {
             initializeAsync(_, _) >> { it[1].onResult(null, new MongoInternalException('Something went wrong')); }
         }
-        def connection = new InternalStreamConnection(SERVER_ID, streamFactory, failedInitializer, listener)
+        def connection = new InternalStreamConnection(SERVER_ID, streamFactory, failedInitializer)
 
         when:
         def futureResultCallback = new FutureResultCallback<Void>()

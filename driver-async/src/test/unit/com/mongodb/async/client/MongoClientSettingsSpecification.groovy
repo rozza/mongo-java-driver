@@ -28,12 +28,12 @@ import com.mongodb.connection.SocketSettings
 import com.mongodb.connection.SslSettings
 import com.mongodb.connection.netty.NettyStreamFactoryFactory
 import com.mongodb.event.CommandListener
-import com.mongodb.event.ConnectionListener
-import com.mongodb.event.EventListenerSettings
 import org.bson.codecs.configuration.CodecRegistry
 import spock.lang.Specification
 
-@SuppressWarnings('depecation')
+import static com.mongodb.CustomMatchers.isTheSameAs
+import static spock.util.matcher.HamcrestSupport.expect
+
 class MongoClientSettingsSpecification extends Specification {
 
     def 'should set the correct default values'() {
@@ -41,20 +41,16 @@ class MongoClientSettingsSpecification extends Specification {
         def options = MongoClientSettings.builder().build()
 
         expect:
-        options.clusterSettings == null
-        options.connectionPoolSettings == ConnectionPoolSettings.builder().build()
-        options.getApplicationName() == null
-        options.getCommandListeners().isEmpty()
-        options.getEventListenerSettings() == EventListenerSettings.builder().build()
+        options.getWriteConcern() == WriteConcern.ACKNOWLEDGED
         options.getReadConcern() == ReadConcern.DEFAULT
         options.getReadPreference() == ReadPreference.primary()
-        options.getWriteConcern() == WriteConcern.ACKNOWLEDGED
+        options.getCommandListeners().isEmpty()
+        options.getApplicationName() == null
+        options.connectionPoolSettings == ConnectionPoolSettings.builder().build()
+        options.socketSettings == SocketSettings.builder().build()
         options.heartbeatSocketSettings == SocketSettings.builder().build()
         options.serverSettings == ServerSettings.builder().build()
-        options.socketSettings == SocketSettings.builder().build()
         options.streamFactoryFactory == null
-
-        options == MongoClientSettings.builder().build()
     }
 
     @SuppressWarnings('UnnecessaryObjectReferences')
@@ -135,14 +131,12 @@ class MongoClientSettingsSpecification extends Specification {
         def codecRegistry = Stub(CodecRegistry)
         def commandListener = Stub(CommandListener)
         def clusterSettings = ClusterSettings.builder().hosts([new ServerAddress('localhost')]).requiredReplicaSetName('test').build()
-        def eventListenerSettings = EventListenerSettings.builder().addConnectionListener(Stub(ConnectionListener)).build()
 
         def options = MongoClientSettings.builder()
                 .readPreference(ReadPreference.secondary())
                 .writeConcern(WriteConcern.JOURNALED)
                 .readConcern(ReadConcern.LOCAL)
                 .applicationName('app1')
-                .eventListenerSettings(eventListenerSettings)
                 .addCommandListener(commandListener)
                 .sslSettings(sslSettings)
                 .socketSettings(socketSettings)
@@ -152,7 +146,7 @@ class MongoClientSettingsSpecification extends Specification {
                 .connectionPoolSettings(connectionPoolSettings)
                 .codecRegistry(codecRegistry)
                 .clusterSettings(clusterSettings)
-                .streamFactoryFactory(streamFactoryFactory)
+                                         .streamFactoryFactory(streamFactoryFactory)
                 .build()
 
         expect:
@@ -161,8 +155,6 @@ class MongoClientSettingsSpecification extends Specification {
         options.getReadConcern() == ReadConcern.LOCAL
         options.getApplicationName() == 'app1'
         options.commandListeners.get(0) == commandListener
-        options.getEventListenerSettings() == EventListenerSettings.builder(eventListenerSettings)
-                .addCommandListener(commandListener).build()
         options.connectionPoolSettings == connectionPoolSettings
         options.socketSettings == socketSettings
         options.heartbeatSocketSettings == heartbeatSocketSettings
@@ -183,15 +175,15 @@ class MongoClientSettingsSpecification extends Specification {
         def credentialList = [MongoCredential.createMongoX509Credential('test')]
         def connectionPoolSettings = Stub(ConnectionPoolSettings)
         def codecRegistry = Stub(CodecRegistry)
+        def commandListener = Stub(CommandListener)
         def clusterSettings = ClusterSettings.builder().hosts([new ServerAddress('localhost')]).requiredReplicaSetName('test').build()
-        def eventListenerSettings = EventListenerSettings.builder().addConnectionListener(Stub(ConnectionListener)).build()
 
         def options = MongoClientSettings.builder()
                 .readPreference(ReadPreference.secondary())
                 .writeConcern(WriteConcern.JOURNALED)
                 .readConcern(ReadConcern.LOCAL)
                 .applicationName('app1')
-                .eventListenerSettings(eventListenerSettings)
+                .addCommandListener(commandListener)
                 .sslSettings(sslSettings)
                 .socketSettings(socketSettings)
                 .serverSettings(serverSettings)
@@ -203,7 +195,7 @@ class MongoClientSettingsSpecification extends Specification {
                 .build()
 
         then:
-        options == MongoClientSettings.builder(options).build()
+        expect options, isTheSameAs(MongoClientSettings.builder(options).build())
     }
 
     def 'applicationName can be 128 bytes when encoded as UTF-8'() {
@@ -280,9 +272,9 @@ class MongoClientSettingsSpecification extends Specification {
         when:
         // A regression test so that if anymore methods are added then the builder(final MongoClientSettings settings) should be updated
         def actual = MongoClientSettings.Builder.declaredFields.grep {  !it.synthetic } *.name.sort()
-        def expected = ['applicationName', 'clusterSettings', 'codecRegistry', 'connectionPoolSettings',
-                        'credentialList', 'eventListenerSettings', 'heartbeatSocketSettings', 'readConcern', 'readPreference',
-                        'serverSettings', 'socketSettings', 'sslSettings', 'streamFactoryFactory', 'writeConcern']
+        def expected = ['applicationName', 'clusterSettings', 'codecRegistry', 'commandListeners', 'connectionPoolSettings',
+                        'credentialList', 'heartbeatSocketSettings', 'readConcern', 'readPreference', 'serverSettings', 'socketSettings',
+                        'sslSettings', 'streamFactoryFactory', 'writeConcern']
 
         then:
         actual == expected

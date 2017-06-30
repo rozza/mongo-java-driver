@@ -113,9 +113,7 @@ public class ServerSettings {
          * @param serverListener the non-null server listener
          * @return this
          * @since 3.3
-         * @deprecated use {@link com.mongodb.event.EventListenerSettings} instead to add server listeners
          */
-        @Deprecated
         public Builder addServerListener(final ServerListener serverListener) {
             notNull("serverListener", serverListener);
             serverListeners.add(serverListener);
@@ -128,9 +126,7 @@ public class ServerSettings {
          * @param serverMonitorListener the non-null server monitor listener
          * @return this
          * @since 3.3
-         * @deprecated use {@link com.mongodb.event.EventListenerSettings} instead to add server monitor listeners
          */
-        @Deprecated
         public Builder addServerMonitorListener(final ServerMonitorListener serverMonitorListener) {
             notNull("serverMonitorListener", serverMonitorListener);
             serverMonitorListeners.add(serverMonitorListener);
@@ -187,11 +183,9 @@ public class ServerSettings {
      *
      * @return the server listeners
      * @since 3.3
-     * @deprecated use {@link com.mongodb.event.EventListenerSettings} instead
      */
-    @Deprecated
     public List<ServerListener> getServerListeners() {
-        return unmodifiableList(serverListeners);
+        return serverListeners;
     }
 
     /**
@@ -199,11 +193,9 @@ public class ServerSettings {
      *
      * @return the server monitor listeners
      * @since 3.3
-     * @deprecated use {@link com.mongodb.event.EventListenerSettings} instead
      */
-    @Deprecated
     public List<ServerMonitorListener> getServerMonitorListeners() {
-        return unmodifiableList(serverMonitorListeners);
+        return serverMonitorListeners;
     }
 
     @Override
@@ -256,7 +248,7 @@ public class ServerSettings {
     ServerSettings(final Builder builder) {
         heartbeatFrequencyMS = builder.heartbeatFrequencyMS;
         minHeartbeatFrequencyMS = builder.minHeartbeatFrequencyMS;
-        serverListeners = builder.serverListeners;
-        serverMonitorListeners = builder.serverMonitorListeners;
+        serverListeners = unmodifiableList(builder.serverListeners);
+        serverMonitorListeners = unmodifiableList(builder.serverMonitorListeners);
     }
 }

@@ -34,7 +34,6 @@ import spock.lang.Shared
 import static com.mongodb.ClusterFixture.getCredentialList
 import static com.mongodb.ClusterFixture.getPrimary
 import static com.mongodb.ClusterFixture.getSslSettings
-import static com.mongodb.connection.EventListeners.NOOP_CONNECTION_LISTENER
 import static com.mongodb.connection.ProtocolTestHelper.execute
 
 class KillCursorProtocolCommandEventSpecification extends OperationFunctionalSpecification {
@@ -43,7 +42,7 @@ class KillCursorProtocolCommandEventSpecification extends OperationFunctionalSpe
 
     def setupSpec() {
         connection = new InternalStreamConnectionFactory(new NettyStreamFactory(SocketSettings.builder().build(), getSslSettings()),
-                getCredentialList(), NOOP_CONNECTION_LISTENER, null, null)
+                getCredentialList(), null, null)
                 .create(new ServerId(new ClusterId(), getPrimary()))
         connection.open();
     }

@@ -18,7 +18,6 @@ package com.mongodb
 
 import com.mongodb.event.ClusterListener
 import com.mongodb.event.CommandListener
-import com.mongodb.event.ConnectionListener
 import com.mongodb.event.ConnectionPoolListener
 import com.mongodb.event.ServerListener
 import com.mongodb.event.ServerMonitorListener
@@ -39,9 +38,6 @@ class MongoClientListenerRegistrationSpecification extends FunctionalSpecificati
         def commandListener = Mock(CommandListener) {
             (1.._) * _
         }
-        def connectionListener = Mock(ConnectionListener) {
-            (1.._) * _
-        }
         def connectionPoolListener = Mock(ConnectionPoolListener) {
             (1.._) * _
         }
@@ -56,7 +52,6 @@ class MongoClientListenerRegistrationSpecification extends FunctionalSpecificati
         def options = MongoClientOptions.builder(mongoClientURI.options)
                 .addClusterListener(clusterListener)
                 .addCommandListener(commandListener)
-                .addConnectionListener(connectionListener)
                 .addConnectionPoolListener(connectionPoolListener)
                 .addServerListener(serverListener)
                 .addServerMonitorListener(serverMonitorListener)

@@ -213,9 +213,7 @@ public final class ClusterSettings {
          * @param clusterListener the non-null cluster listener
          * @return this
          * @since 3.3
-         * @deprecated use {@link com.mongodb.event.EventListenerSettings} to configure cluster listeners instead
          */
-        @Deprecated
         public Builder addClusterListener(final ClusterListener clusterListener) {
             notNull("clusterListener", clusterListener);
             clusterListeners.add(clusterListener);
@@ -350,11 +348,9 @@ public final class ClusterSettings {
      *
      * @return the cluster listeners
      * @since 3.3
-     * @deprecated use {@link com.mongodb.event.EventListenerSettings} to configure cluster listeners instead
      */
-    @Deprecated
     public List<ClusterListener> getClusterListeners() {
-        return unmodifiableList(clusterListeners);
+        return clusterListeners;
     }
 
     @Override
@@ -475,6 +471,6 @@ public final class ClusterSettings {
         serverSelector = builder.serverSelector;
         serverSelectionTimeoutMS = builder.serverSelectionTimeoutMS;
         maxWaitQueueSize = builder.maxWaitQueueSize;
-        clusterListeners = builder.clusterListeners;
+        clusterListeners = unmodifiableList(builder.clusterListeners);
     }
 }

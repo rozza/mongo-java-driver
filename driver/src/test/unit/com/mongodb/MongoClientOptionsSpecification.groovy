@@ -22,7 +22,6 @@ import com.mongodb.connection.SocketSettings
 import com.mongodb.connection.SslSettings
 import com.mongodb.event.ClusterListener
 import com.mongodb.event.CommandListener
-import com.mongodb.event.ConnectionListener
 import com.mongodb.event.ConnectionPoolListener
 import com.mongodb.event.ServerListener
 import com.mongodb.event.ServerMonitorListener
@@ -72,7 +71,6 @@ class MongoClientOptionsSpecification extends Specification {
 
         options.getCommandListeners() == []
         options.getClusterListeners() == []
-        options.getConnectionListeners() == []
         options.getConnectionPoolListeners() == []
         options.getServerListeners() == []
         options.getServerMonitorListeners() == []
@@ -313,7 +311,6 @@ class MongoClientOptionsSpecification extends Specification {
                 .cursorFinalizerEnabled(false)
                 .dbEncoderFactory(new MyDBEncoderFactory())
                 .addCommandListener(Mock(CommandListener))
-                .addConnectionListener(Mock(ConnectionListener))
                 .addConnectionPoolListener(Mock(ConnectionPoolListener))
                 .addClusterListener(Mock(ClusterListener))
                 .addServerListener(Mock(ServerListener))
@@ -406,52 +403,6 @@ class MongoClientOptionsSpecification extends Specification {
         options.commandListeners.size() == 2
         options.commandListeners[0].is commandListenerOne
         options.commandListeners[1].is commandListenerTwo
-    }
-
-    def 'should add connection listeners'() {
-        given:
-        ConnectionListener connectionListenerOne = Mock(ConnectionListener)
-        ConnectionListener connectionListenerTwo = Mock(ConnectionListener)
-        ConnectionListener connectionListenerThree = Mock(ConnectionListener)
-
-        when:
-        def options = MongoClientOptions.builder()
-                .build()
-
-        then:
-        options.connectionListeners.size() == 0
-
-        when:
-        options = MongoClientOptions.builder()
-                .addConnectionListener(connectionListenerOne)
-                .build()
-
-        then:
-        options.connectionListeners.size() == 1
-        options.connectionListeners[0].is connectionListenerOne
-
-        when:
-        options = MongoClientOptions.builder()
-                .addConnectionListener(connectionListenerOne)
-                .addConnectionListener(connectionListenerTwo)
-                .build()
-
-        then:
-        options.connectionListeners.size() == 2
-        options.connectionListeners[0].is connectionListenerOne
-        options.connectionListeners[1].is connectionListenerTwo
-
-        when:
-        def copiedOptions = MongoClientOptions.builder(options).addConnectionListener(connectionListenerThree).build()
-
-        then:
-        copiedOptions.connectionListeners.size() == 3
-        copiedOptions.connectionListeners[0].is connectionListenerOne
-        copiedOptions.connectionListeners[1].is connectionListenerTwo
-        copiedOptions.connectionListeners[2].is connectionListenerThree
-        options.connectionListeners.size() == 2
-        options.connectionListeners[0].is connectionListenerOne
-        options.connectionListeners[1].is connectionListenerTwo
     }
 
     def 'should add connection pool listeners'() {
@@ -670,7 +621,6 @@ class MongoClientOptionsSpecification extends Specification {
                 .dbEncoderFactory(new MyDBEncoderFactory())
                 .addCommandListener(Mock(CommandListener))
                 .addClusterListener(Mock(ClusterListener))
-                .addConnectionListener(Mock(ConnectionListener))
                 .addConnectionPoolListener(Mock(ConnectionPoolListener))
                 .addServerListener(Mock(ServerListener))
                 .addServerMonitorListener(Mock(ServerMonitorListener))
@@ -687,13 +637,14 @@ class MongoClientOptionsSpecification extends Specification {
         when:
         // A regression test so that if any more methods are added then the builder(final MongoClientOptions options) should be updated
         def actual = MongoClientOptions.Builder.declaredFields.grep { !it.synthetic } *.name.sort()
-        def expected = ['alwaysUseMBeans', 'applicationName', 'codecRegistry', 'connectTimeout', 'cursorFinalizerEnabled',
-                        'dbDecoderFactory', 'dbEncoderFactory', 'description', 'eventListenerSettingsBuilder',
+        def expected = ['alwaysUseMBeans', 'applicationName', 'clusterListeners', 'codecRegistry', 'commandListeners', 'connectTimeout',
+                        'connectionPoolListeners', 'cursorFinalizerEnabled', 'dbDecoderFactory', 'dbEncoderFactory', 'description',
                         'heartbeatConnectTimeout', 'heartbeatFrequency', 'heartbeatSocketTimeout', 'localThreshold',
                         'maxConnectionIdleTime', 'maxConnectionLifeTime', 'maxConnectionsPerHost', 'maxWaitTime', 'minConnectionsPerHost',
-                        'minHeartbeatFrequency', 'readConcern', 'readPreference', 'requiredReplicaSetName', 'serverSelectionTimeout',
-                        'socketFactory', 'socketKeepAlive', 'socketTimeout', 'sslContext', 'sslEnabled', 'sslInvalidHostNameAllowed',
-                        'threadsAllowedToBlockForConnectionMultiplier', 'writeConcern']
+                        'minHeartbeatFrequency', 'readConcern', 'readPreference', 'requiredReplicaSetName', 'serverListeners',
+                        'serverMonitorListeners', 'serverSelectionTimeout', 'socketFactory', 'socketKeepAlive', 'socketTimeout',
+                        'sslContext', 'sslEnabled', 'sslInvalidHostNameAllowed', 'threadsAllowedToBlockForConnectionMultiplier',
+                        'writeConcern']
 
         then:
         actual == expected

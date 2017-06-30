@@ -27,9 +27,6 @@ import com.mongodb.ServerAddress;
 import com.mongodb.async.SingleResultCallback;
 import com.mongodb.diagnostics.logging.Logger;
 import com.mongodb.diagnostics.logging.Loggers;
-import com.mongodb.event.ConnectionClosedEvent;
-import com.mongodb.event.ConnectionListener;
-import com.mongodb.event.ConnectionOpenedEvent;
 import org.bson.ByteBuf;
 import org.bson.io.ByteBufferBsonInput;
 
@@ -65,7 +62,6 @@ class InternalStreamConnection implements InternalConnection {
     private final ServerId serverId;
     private final StreamFactory streamFactory;
     private final InternalConnectionInitializer connectionInitializer;
-    private final ConnectionListener connectionListener;
 
     private final Lock writerLock = new ReentrantLock(false);
     private final Lock readerLock = new ReentrantLock(false);
@@ -91,12 +87,10 @@ class InternalStreamConnection implements InternalConnection {
     static final Logger LOGGER = Loggers.getLogger("connection");
 
     InternalStreamConnection(final ServerId serverId, final StreamFactory streamFactory,
-                             final InternalConnectionInitializer connectionInitializer,
-                             final ConnectionListener connectionListener) {
+                             final InternalConnectionInitializer connectionInitializer) {
         this.serverId = notNull("serverId", serverId);
         this.streamFactory = notNull("streamFactory", streamFactory);
         this.connectionInitializer = notNull("connectionInitializer", connectionInitializer);
-        this.connectionListener = new ErrorHandlingConnectionListener(notNull("connectionListener", connectionListener));
         description = new ConnectionDescription(serverId);
     }
 
@@ -113,8 +107,6 @@ class InternalStreamConnection implements InternalConnection {
             stream.open();
             description = connectionInitializer.initialize(this);
             opened.set(true);
-
-            connectionListener.connectionOpened(new ConnectionOpenedEvent(getId()));
             LOGGER.info(format("Opened connection [%s] to %s", getId(), serverId.getAddress()));
         } catch (Throwable t) {
             close();
@@ -147,7 +139,6 @@ class InternalStreamConnection implements InternalConnection {
                         } else {
                             description = result;
                             opened.set(true);
-                            connectionListener.connectionOpened(new ConnectionOpenedEvent(getId()));
                             if (LOGGER.isInfoEnabled()) {
                                 LOGGER.info(format("Opened connection [%s] to %s", getId(), serverId.getAddress()));
                             }
@@ -174,7 +165,6 @@ class InternalStreamConnection implements InternalConnection {
             if (stream != null) {
                 stream.close();
             }
-            connectionListener.connectionClosed(new ConnectionClosedEvent(getId()));
         }
     }
 
@@ -612,34 +602,6 @@ class InternalStreamConnection implements InternalConnection {
 
         public int getMessageId() {
             return messageId;
-        }
-    }
-
-
-    private static class ErrorHandlingConnectionListener implements ConnectionListener {
-
-        private final ConnectionListener wrapped;
-
-        ErrorHandlingConnectionListener(final ConnectionListener wrapped) {
-            this.wrapped = wrapped;
-        }
-
-        @Override
-        public void connectionOpened(final ConnectionOpenedEvent event) {
-            try {
-                wrapped.connectionOpened(event);
-            } catch (Throwable t) {
-                LOGGER.warn("Exception when trying to signal connectionOpened to the connectionListener", t);
-            }
-       }
-
-        @Override
-        public void connectionClosed(final ConnectionClosedEvent event) {
-            try {
-                wrapped.connectionClosed(event);
-            } catch (Throwable t) {
-                LOGGER.warn("Exception when trying to signal connectionOpened to the connectionListener", t);
-            }
         }
     }
 }

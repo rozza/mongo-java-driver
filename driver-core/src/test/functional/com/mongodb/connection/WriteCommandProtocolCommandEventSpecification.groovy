@@ -43,7 +43,6 @@ import static com.mongodb.ClusterFixture.getPrimary
 import static com.mongodb.ClusterFixture.getSslSettings
 import static com.mongodb.ClusterFixture.serverVersionAtLeast
 import static com.mongodb.WriteConcern.ACKNOWLEDGED
-import static com.mongodb.connection.EventListeners.NOOP_CONNECTION_LISTENER
 import static com.mongodb.connection.MessageHelper.buildSuccessfulReply
 import static com.mongodb.connection.ProtocolTestHelper.execute
 
@@ -54,7 +53,7 @@ class WriteCommandProtocolCommandEventSpecification extends OperationFunctionalS
 
     def setupSpec() {
         connection = new InternalStreamConnectionFactory(new NettyStreamFactory(SocketSettings.builder().build(), getSslSettings()),
-                getCredentialList(), NOOP_CONNECTION_LISTENER, null, null)
+                getCredentialList(), null, null)
                 .create(new ServerId(new ClusterId(), getPrimary()))
         connection.open();
     }

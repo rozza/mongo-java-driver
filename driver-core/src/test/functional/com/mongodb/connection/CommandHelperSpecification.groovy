@@ -15,14 +15,13 @@ import static com.mongodb.ClusterFixture.getCredentialList
 import static com.mongodb.ClusterFixture.getPrimary
 import static com.mongodb.ClusterFixture.getSslSettings
 import static com.mongodb.connection.CommandHelper.executeCommandAsync
-import static com.mongodb.connection.EventListeners.NOOP_CONNECTION_LISTENER
 
 class CommandHelperSpecification extends Specification {
     InternalConnection connection
 
     def setup() {
         connection = new InternalStreamConnectionFactory(new NettyStreamFactory(SocketSettings.builder().build(), getSslSettings()),
-                getCredentialList(), NOOP_CONNECTION_LISTENER, null, null)
+                getCredentialList(), null, null)
                 .create(new ServerId(new ClusterId(), getPrimary()))
         connection.open()
     }

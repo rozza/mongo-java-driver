@@ -16,7 +16,6 @@
 
 package com.mongodb.connection;
 
-import com.mongodb.event.EventListenerSettings;
 import com.mongodb.selector.ServerSelector;
 import org.junit.After;
 import org.junit.Before;
@@ -28,6 +27,8 @@ import static com.mongodb.ClusterFixture.getCredentialList;
 import static com.mongodb.ClusterFixture.getPrimary;
 import static com.mongodb.ClusterFixture.getSslSettings;
 import static com.mongodb.connection.EventListeners.NOOP_CLUSTER_LISTENER;
+import static com.mongodb.connection.EventListeners.NOOP_CONNECTION_POOL_LISTENER;
+import static com.mongodb.connection.EventListeners.NOOP_SERVER_MONITOR_LISTENER;
 import static java.util.Collections.singletonList;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
@@ -48,11 +49,9 @@ public class SingleServerClusterTest {
                                           clusterSettings,
                                           new DefaultClusterableServerFactory(clusterId, clusterSettings, ServerSettings.builder().build(),
                                                                               ConnectionPoolSettings.builder().maxSize(1).build(),
-                                                                              EventListenerSettings.builder().build(),
-                                                                              streamFactory,
-                                                                              streamFactory,
-                                                                              getCredentialList(),
-                                                                              null, null),
+                                                                              streamFactory, streamFactory, getCredentialList(),
+                                                                              NOOP_CONNECTION_POOL_LISTENER, NOOP_SERVER_MONITOR_LISTENER,
+                                                                              null, null, null),
                                           NOOP_CLUSTER_LISTENER);
     }
 

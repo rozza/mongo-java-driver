@@ -18,8 +18,6 @@ package com.mongodb.connection;
 
 import com.mongodb.event.ClusterListener;
 import com.mongodb.event.ClusterListenerAdapter;
-import com.mongodb.event.ConnectionListener;
-import com.mongodb.event.ConnectionListenerAdapter;
 import com.mongodb.event.ConnectionPoolListener;
 import com.mongodb.event.ConnectionPoolListenerAdapter;
 import com.mongodb.event.ServerListener;
@@ -30,9 +28,6 @@ import com.mongodb.event.ServerMonitorListenerAdapter;
 public final class EventListeners {
 
     static final ClusterListener NOOP_CLUSTER_LISTENER = new ClusterListenerAdapter() {
-    };
-
-    static final ConnectionListener NOOP_CONNECTION_LISTENER = new ConnectionListenerAdapter() {
     };
 
     static final ConnectionPoolListener NOOP_CONNECTION_POOL_LISTENER = new ConnectionPoolListenerAdapter() {

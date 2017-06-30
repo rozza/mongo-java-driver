@@ -34,7 +34,6 @@ import static com.mongodb.ClusterFixture.getCredentialList
 import static com.mongodb.ClusterFixture.getPrimary
 import static com.mongodb.ClusterFixture.getSslSettings
 import static com.mongodb.connection.DefaultServerMonitor.shouldLogStageChange
-import static com.mongodb.connection.EventListeners.NOOP_CONNECTION_LISTENER
 import static com.mongodb.connection.EventListeners.NOOP_SERVER_MONITOR_LISTENER
 import static com.mongodb.connection.ServerConnectionState.CONNECTED
 import static com.mongodb.connection.ServerConnectionState.CONNECTING
@@ -218,7 +217,7 @@ class ServerMonitorSpecification extends OperationFunctionalSpecification {
                     }
                 },
                 new InternalStreamConnectionFactory(new SocketStreamFactory(SocketSettings.builder().build(),
-                        getSslSettings()), getCredentialList(), NOOP_CONNECTION_LISTENER, null, null),
+                        getSslSettings()), getCredentialList(), null, null),
                 new TestConnectionPool())
         serverMonitor.start()
         serverMonitor

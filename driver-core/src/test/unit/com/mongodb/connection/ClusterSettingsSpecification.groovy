@@ -25,7 +25,6 @@ import java.util.concurrent.TimeUnit
 
 import static com.mongodb.connection.EventListeners.NOOP_CLUSTER_LISTENER
 
-@SuppressWarnings('deprecated')
 class ClusterSettingsSpecification extends Specification {
     def hosts = [new ServerAddress('localhost'), new ServerAddress('localhost', 30000)]
     def serverSelector = new WritableServerSelector()

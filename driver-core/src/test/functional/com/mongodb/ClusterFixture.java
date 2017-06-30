@@ -42,7 +42,6 @@ import com.mongodb.connection.SocketStreamFactory;
 import com.mongodb.connection.SslSettings;
 import com.mongodb.connection.StreamFactory;
 import com.mongodb.connection.netty.NettyStreamFactory;
-import com.mongodb.event.EventListenerSettings;
 import com.mongodb.operation.AsyncReadOperation;
 import com.mongodb.operation.AsyncWriteOperation;
 import com.mongodb.operation.BatchCursor;
@@ -271,10 +270,9 @@ public final class ClusterFixture {
         return new DefaultClusterFactory().create(ClusterSettings.builder().applyConnectionString(getConnectionString()).build(),
                                                   ServerSettings.builder().build(),
                                                   ConnectionPoolSettings.builder().applyConnectionString(getConnectionString()).build(),
-                                                  EventListenerSettings.builder().build(),
                                                   streamFactory,
                                                   new SocketStreamFactory(SocketSettings.builder().build(), getSslSettings()),
-                                                  getConnectionString().getCredentialList(), null, null);
+                                                  getConnectionString().getCredentialList(), null, null, null, null);
     }
 
     public static StreamFactory getAsyncStreamFactory() {

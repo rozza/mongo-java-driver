@@ -24,9 +24,7 @@ import com.mongodb.connection.SocketSettings;
 import com.mongodb.connection.SslSettings;
 import com.mongodb.event.ClusterListener;
 import com.mongodb.event.CommandListener;
-import com.mongodb.event.ConnectionListener;
 import com.mongodb.event.ConnectionPoolListener;
-import com.mongodb.event.EventListenerSettings;
 import com.mongodb.event.ServerListener;
 import com.mongodb.event.ServerMonitorListener;
 import org.bson.codecs.configuration.CodecRegistry;
@@ -35,16 +33,12 @@ import javax.net.SocketFactory;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLSocketFactory;
 import java.nio.charset.Charset;
+import java.util.ArrayList;
 import java.util.List;
 
 import static com.mongodb.assertions.Assertions.isTrueArgument;
 import static com.mongodb.assertions.Assertions.notNull;
-import static com.mongodb.internal.event.EventListenerSettingsHelper.addAllClusterListeners;
-import static com.mongodb.internal.event.EventListenerSettingsHelper.addAllCommandListeners;
-import static com.mongodb.internal.event.EventListenerSettingsHelper.addAllConnectionListeners;
-import static com.mongodb.internal.event.EventListenerSettingsHelper.addAllConnectionPoolListeners;
-import static com.mongodb.internal.event.EventListenerSettingsHelper.addAllServerListeners;
-import static com.mongodb.internal.event.EventListenerSettingsHelper.addAllServerMonitorListeners;
+import static java.util.Collections.unmodifiableList;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 /**
@@ -100,7 +94,12 @@ public class MongoClientOptions {
     private final ServerSettings serverSettings;
     private final SocketSettings heartbeatSocketSettings;
     private final SslSettings sslSettings;
-    private final EventListenerSettings eventListenerSettings;
+
+    private final List<ClusterListener> clusterListeners;
+    private final List<CommandListener> commandListeners;
+    private final List<ConnectionPoolListener> connectionPoolListeners;
+    private final List<ServerListener> serverListeners;
+    private final List<ServerMonitorListener> serverMonitorListeners;
 
     private MongoClientOptions(final Builder builder) {
         description = builder.description;
@@ -134,16 +133,25 @@ public class MongoClientOptions {
         socketFactory = builder.socketFactory;
         cursorFinalizerEnabled = builder.cursorFinalizerEnabled;
 
-        eventListenerSettings = builder.eventListenerSettingsBuilder.build();
-        connectionPoolSettings = ConnectionPoolSettings.builder()
-                                                       .minSize(getMinConnectionsPerHost())
-                                                       .maxSize(getConnectionsPerHost())
-                                                       .maxWaitQueueSize(getThreadsAllowedToBlockForConnectionMultiplier()
-                                                                         * getConnectionsPerHost())
-                                                       .maxWaitTime(getMaxWaitTime(), MILLISECONDS)
-                                                       .maxConnectionIdleTime(getMaxConnectionIdleTime(), MILLISECONDS)
-                                                       .maxConnectionLifeTime(getMaxConnectionLifeTime(), MILLISECONDS)
-                                                       .build();
+        clusterListeners = unmodifiableList(builder.clusterListeners);
+        commandListeners = unmodifiableList(builder.commandListeners);
+        connectionPoolListeners = unmodifiableList(builder.connectionPoolListeners);
+        serverListeners = unmodifiableList(builder.serverListeners);
+        serverMonitorListeners = unmodifiableList(builder.serverMonitorListeners);
+
+        ConnectionPoolSettings.Builder connectionPoolSettingsBuilder = ConnectionPoolSettings.builder()
+                .minSize(getMinConnectionsPerHost())
+                .maxSize(getConnectionsPerHost())
+                .maxWaitQueueSize(getThreadsAllowedToBlockForConnectionMultiplier() * getConnectionsPerHost())
+                .maxWaitTime(getMaxWaitTime(), MILLISECONDS)
+                .maxConnectionIdleTime(getMaxConnectionIdleTime(), MILLISECONDS)
+                .maxConnectionLifeTime(getMaxConnectionLifeTime(), MILLISECONDS);
+
+        for (ConnectionPoolListener connectionPoolListener : connectionPoolListeners) {
+            connectionPoolSettingsBuilder.addConnectionPoolListener(connectionPoolListener);
+        }
+
+        connectionPoolSettings = connectionPoolSettingsBuilder.build();
 
         socketSettings = SocketSettings.builder()
                                        .connectTimeout(getConnectTimeout(), MILLISECONDS)
@@ -156,9 +164,19 @@ public class MongoClientOptions {
                                                 .keepAlive(isSocketKeepAlive())
                                                 .build();
 
-        serverSettings = ServerSettings.builder()
+        ServerSettings.Builder serverSettingsBuilder = ServerSettings.builder()
                 .heartbeatFrequency(getHeartbeatFrequency(), MILLISECONDS)
-                .minHeartbeatFrequency(getMinHeartbeatFrequency(), MILLISECONDS).build();
+                .minHeartbeatFrequency(getMinHeartbeatFrequency(), MILLISECONDS);
+
+        for (ServerListener serverListener : serverListeners) {
+            serverSettingsBuilder.addServerListener(serverListener);
+        }
+
+        for (ServerMonitorListener serverMonitorListener : serverMonitorListeners) {
+            serverSettingsBuilder.addServerMonitorListener(serverMonitorListener);
+        }
+
+        serverSettings = serverSettingsBuilder.build();
 
         try {
             sslSettings = SslSettings.builder()
@@ -518,23 +536,13 @@ public class MongoClientOptions {
     }
 
     /**
-     * Gets the event listener settings
-     *
-     * @return the event listener settings
-     * @since 3.5
-     */
-    public EventListenerSettings getEventListenerSettings() {
-        return eventListenerSettings;
-    }
-
-    /**
      * Gets the list of added {@code ClusterListener}. The default is an empty list.
      *
      * @return the unmodifiable list of cluster listeners
      * @since 3.3
      */
     public List<ClusterListener> getClusterListeners() {
-        return eventListenerSettings.getClusterListeners();
+        return clusterListeners;
     }
 
     /**
@@ -546,17 +554,7 @@ public class MongoClientOptions {
      * @since 3.1
      */
     public List<CommandListener> getCommandListeners() {
-        return eventListenerSettings.getCommandListeners();
-    }
-
-    /**
-     * Gets the list of added {@code ConnectionListener}. The default is an empty list.
-     *
-     * @return the unmodifiable list of connection listeners
-     * @since 3.5
-     */
-    public List<ConnectionListener> getConnectionListeners() {
-        return eventListenerSettings.getConnectionListeners();
+        return commandListeners;
     }
 
     /**
@@ -566,7 +564,7 @@ public class MongoClientOptions {
      * @since 3.5
      */
     public List<ConnectionPoolListener> getConnectionPoolListeners() {
-        return eventListenerSettings.getConnectionPoolListeners();
+        return connectionPoolListeners;
     }
 
     /**
@@ -576,7 +574,7 @@ public class MongoClientOptions {
      * @since 3.3
      */
     public List<ServerListener> getServerListeners() {
-        return eventListenerSettings.getServerListeners();
+        return serverListeners;
     }
 
     /**
@@ -586,7 +584,7 @@ public class MongoClientOptions {
      * @since 3.3
      */
     public List<ServerMonitorListener> getServerMonitorListeners() {
-        return eventListenerSettings.getServerMonitorListeners();
+        return serverMonitorListeners;
     }
 
     /**
@@ -769,7 +767,19 @@ public class MongoClientOptions {
         if (!codecRegistry.equals(that.codecRegistry)) {
             return false;
         }
-        if (!eventListenerSettings.equals(that.eventListenerSettings)) {
+        if (!clusterListeners.equals(that.clusterListeners)) {
+            return false;
+        }
+        if (!commandListeners.equals(that.commandListeners)) {
+            return false;
+        }
+        if (!connectionPoolListeners.equals(that.connectionPoolListeners)) {
+            return false;
+        }
+        if (!serverListeners.equals(that.serverListeners)) {
+            return false;
+        }
+        if (!serverMonitorListeners.equals(that.serverMonitorListeners)) {
             return false;
         }
         if (requiredReplicaSetName != null ? !requiredReplicaSetName.equals(that.requiredReplicaSetName)
@@ -791,7 +801,11 @@ public class MongoClientOptions {
         result = 31 * result + writeConcern.hashCode();
         result = 31 * result + (readConcern != null ? readConcern.hashCode() : 0);
         result = 31 * result + codecRegistry.hashCode();
-        result = 31 * result + eventListenerSettings.hashCode();
+        result = 31 * result + clusterListeners.hashCode();
+        result = 31 * result + commandListeners.hashCode();
+        result = 31 * result + connectionPoolListeners.hashCode();
+        result = 31 * result + serverListeners.hashCode();
+        result = 31 * result + serverMonitorListeners.hashCode();
         result = 31 * result + minConnectionsPerHost;
         result = 31 * result + maxConnectionsPerHost;
         result = 31 * result + threadsAllowedToBlockForConnectionMultiplier;
@@ -828,7 +842,11 @@ public class MongoClientOptions {
                + ", writeConcern=" + writeConcern
                + ", readConcern=" + readConcern
                + ", codecRegistry=" + codecRegistry
-               + ", eventListenerSettings=" + eventListenerSettings
+               + ", clusterListeners=" + clusterListeners
+               + ", commandListeners=" + commandListeners
+               + ", connectionPoolListeners=" + connectionPoolListeners
+               + ", serverListeners=" + serverListeners
+               + ", serverMonitorListeners=" + serverMonitorListeners
                + ", minConnectionsPerHost=" + minConnectionsPerHost
                + ", maxConnectionsPerHost=" + maxConnectionsPerHost
                + ", threadsAllowedToBlockForConnectionMultiplier=" + threadsAllowedToBlockForConnectionMultiplier
@@ -867,13 +885,18 @@ public class MongoClientOptions {
      */
     @NotThreadSafe
     public static class Builder {
+        private final List<ClusterListener> clusterListeners = new ArrayList<ClusterListener>();
+        private final List<CommandListener> commandListeners = new ArrayList<CommandListener>();
+        private final List<ConnectionPoolListener> connectionPoolListeners = new ArrayList<ConnectionPoolListener>();
+        private final List<ServerListener> serverListeners = new ArrayList<ServerListener>();
+        private final List<ServerMonitorListener> serverMonitorListeners = new ArrayList<ServerMonitorListener>();
+
         private String description;
         private String applicationName;
         private ReadPreference readPreference = ReadPreference.primary();
         private WriteConcern writeConcern = WriteConcern.ACKNOWLEDGED;
         private ReadConcern readConcern = ReadConcern.DEFAULT;
         private CodecRegistry codecRegistry = MongoClient.getDefaultCodecRegistry();
-        private final EventListenerSettings.Builder eventListenerSettingsBuilder = EventListenerSettings.builder();
 
         private int minConnectionsPerHost;
         private int maxConnectionsPerHost = 100;
@@ -949,13 +972,11 @@ public class MongoClientOptions {
             dbEncoderFactory = options.getDbEncoderFactory();
             socketFactory = options.socketFactory;
             cursorFinalizerEnabled = options.isCursorFinalizerEnabled();
-
-            addAllClusterListeners(eventListenerSettingsBuilder, options.getClusterListeners());
-            addAllCommandListeners(eventListenerSettingsBuilder, options.getCommandListeners());
-            addAllConnectionListeners(eventListenerSettingsBuilder, options.getConnectionListeners());
-            addAllConnectionPoolListeners(eventListenerSettingsBuilder, options.getConnectionPoolListeners());
-            addAllServerListeners(eventListenerSettingsBuilder, options.getServerListeners());
-            addAllServerMonitorListeners(eventListenerSettingsBuilder, options.getServerMonitorListeners());
+            clusterListeners.addAll(options.getClusterListeners());
+            commandListeners.addAll(options.getCommandListeners());
+            connectionPoolListeners.addAll(options.getConnectionPoolListeners());
+            serverListeners.addAll(options.getServerListeners());
+            serverMonitorListeners.addAll(options.getServerMonitorListeners());
         }
 
         /**
@@ -1240,19 +1261,7 @@ public class MongoClientOptions {
          * @since 3.1
          */
         public Builder addCommandListener(final CommandListener commandListener) {
-            eventListenerSettingsBuilder.addCommandListener(commandListener);
-            return this;
-        }
-
-        /**
-         * Adds the given connection listener.
-         *
-         * @param connectionListener the non-null connection listener
-         * @return this
-         * @since 3.5
-         */
-        public Builder addConnectionListener(final ConnectionListener connectionListener) {
-            eventListenerSettingsBuilder.addConnectionListener(connectionListener);
+            commandListeners.add(notNull("commandListener", commandListener));
             return this;
         }
 
@@ -1264,7 +1273,7 @@ public class MongoClientOptions {
          * @since 3.5
          */
         public Builder addConnectionPoolListener(final ConnectionPoolListener connectionPoolListener) {
-            eventListenerSettingsBuilder.addConnectionPoolListener(connectionPoolListener);
+            connectionPoolListeners.add(notNull("connectionPoolListener", connectionPoolListener));
             return this;
         }
 
@@ -1276,7 +1285,7 @@ public class MongoClientOptions {
          * @since 3.3
          */
         public Builder addClusterListener(final ClusterListener clusterListener) {
-            eventListenerSettingsBuilder.addClusterListener(clusterListener);
+            clusterListeners.add(notNull("clusterListener", clusterListener));
             return this;
         }
 
@@ -1288,7 +1297,7 @@ public class MongoClientOptions {
          * @since 3.3
          */
         public Builder addServerListener(final ServerListener serverListener) {
-            eventListenerSettingsBuilder.addServerListener(serverListener);
+            serverListeners.add(notNull("serverListener", serverListener));
             return this;
         }
 
@@ -1300,7 +1309,7 @@ public class MongoClientOptions {
          * @since 3.3
          */
         public Builder addServerMonitorListener(final ServerMonitorListener serverMonitorListener) {
-            eventListenerSettingsBuilder.addServerMonitorListener(serverMonitorListener);
+            serverMonitorListeners.add(notNull("serverMonitorListener", serverMonitorListener));
             return this;
         }
 
