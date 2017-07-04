@@ -34,7 +34,6 @@ import static com.mongodb.ClusterFixture.getCredentialList
 import static com.mongodb.ClusterFixture.getPrimary
 import static com.mongodb.ClusterFixture.getSslSettings
 import static com.mongodb.connection.DefaultServerMonitor.shouldLogStageChange
-import static com.mongodb.connection.EventListeners.NOOP_SERVER_MONITOR_LISTENER
 import static com.mongodb.connection.ServerConnectionState.CONNECTED
 import static com.mongodb.connection.ServerConnectionState.CONNECTING
 import static com.mongodb.connection.ServerDescription.builder
@@ -208,7 +207,6 @@ class ServerMonitorSpecification extends OperationFunctionalSpecification {
 
     def initializeServerMonitor(ServerAddress address) {
         serverMonitor = new DefaultServerMonitor(new ServerId(new ClusterId(), address), ServerSettings.builder().build(),
-                NOOP_SERVER_MONITOR_LISTENER,
                 new ChangeListener<ServerDescription>() {
                     @Override
                     void stateChanged(final ChangeEvent<ServerDescription> event) {

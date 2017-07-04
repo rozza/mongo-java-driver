@@ -68,7 +68,6 @@ public class ConnectionPoolSettings {
         return new Builder(connectionPoolSettings);
     }
 
-
     /**
      * A builder for creating ConnectionPoolSettings.
      */

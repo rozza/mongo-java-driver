@@ -451,10 +451,10 @@ class UserOperationsSpecification extends OperationFunctionalSpecification {
     }
 
     def getCluster(MongoCredential credential, StreamFactory streamFactory, ClusterSettings.Builder builder) {
-        new DefaultClusterFactory().create(builder.hosts(asList(getPrimary())).build(),
+        new DefaultClusterFactory().createCluster(builder.hosts(asList(getPrimary())).build(),
                                            ServerSettings.builder().build(),
                                            ConnectionPoolSettings.builder().maxSize(1).maxWaitQueueSize(1).build(),
-                                           streamFactory, streamFactory, asList(credential), null, null, null, null)
+                                           streamFactory, streamFactory, asList(credential), null, null, null)
     }
 
     def testConnection(Connection connection) {

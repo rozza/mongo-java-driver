@@ -35,6 +35,7 @@ import static com.mongodb.connection.CommandHelper.executeCommand;
 import static com.mongodb.connection.DescriptionHelper.createServerDescription;
 import static com.mongodb.connection.ServerConnectionState.CONNECTING;
 import static com.mongodb.connection.ServerType.UNKNOWN;
+import static com.mongodb.internal.event.EventListenerHelper.getServerMonitorListener;
 import static java.lang.String.format;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.NANOSECONDS;
@@ -56,12 +57,12 @@ class DefaultServerMonitor implements ServerMonitor {
     private final Condition condition = lock.newCondition();
     private volatile boolean isClosed;
 
-    DefaultServerMonitor(final ServerId serverId, final ServerSettings serverSettings, final ServerMonitorListener serverMonitorListener,
+    DefaultServerMonitor(final ServerId serverId, final ServerSettings serverSettings,
                          final ChangeListener<ServerDescription> serverStateListener,
                          final InternalConnectionFactory internalConnectionFactory, final ConnectionPool connectionPool) {
         this.serverSettings = serverSettings;
         this.serverId = serverId;
-        this.serverMonitorListener = serverMonitorListener;
+        this.serverMonitorListener = getServerMonitorListener(serverSettings);
         this.serverStateListener = serverStateListener;
         this.internalConnectionFactory = internalConnectionFactory;
         this.connectionPool = connectionPool;

@@ -267,12 +267,12 @@ public final class ClusterFixture {
     }
 
     public static Cluster createCluster(final StreamFactory streamFactory) {
-        return new DefaultClusterFactory().create(ClusterSettings.builder().applyConnectionString(getConnectionString()).build(),
+        return new DefaultClusterFactory().createCluster(ClusterSettings.builder().applyConnectionString(getConnectionString()).build(),
                                                   ServerSettings.builder().build(),
                                                   ConnectionPoolSettings.builder().applyConnectionString(getConnectionString()).build(),
                                                   streamFactory,
                                                   new SocketStreamFactory(SocketSettings.builder().build(), getSslSettings()),
-                                                  getConnectionString().getCredentialList(), null, null, null, null);
+                                                  getConnectionString().getCredentialList(), null, null, null);
     }
 
     public static StreamFactory getAsyncStreamFactory() {

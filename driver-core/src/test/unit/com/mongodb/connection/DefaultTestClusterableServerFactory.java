@@ -18,15 +18,12 @@
 package com.mongodb.connection;
 
 import com.mongodb.ServerAddress;
-import com.mongodb.event.ServerEventMulticaster;
 import com.mongodb.event.ServerListener;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
-import static com.mongodb.connection.EventListeners.NOOP_SERVER_LISTENER;
+import static com.mongodb.internal.event.EventListenerHelper.createServerListener;
 
 public class DefaultTestClusterableServerFactory implements ClusterableServerFactory {
     private final ServerSettings settings = ServerSettings.builder().build();
@@ -50,7 +47,8 @@ public class DefaultTestClusterableServerFactory implements ClusterableServerFac
 
         return new DefaultServer(new ServerId(clusterId, serverAddress), clusterConnectionMode, new TestConnectionPool(),
                 new TestConnectionFactory(), serverMonitorFactory,
-                createServerListener(serverListener, serverListenerFactory.create(serverAddress)), null);
+                createServerListener(ServerSettings.builder().addServerListener(serverListener).build(),
+                        serverListenerFactory.create(serverAddress)), null);
     }
 
     @Override
@@ -63,22 +61,4 @@ public class DefaultTestClusterableServerFactory implements ClusterableServerFac
         serverAddressToServerMonitorFactoryMap.get(serverAddress).sendNotification(serverDescription);
     }
 
-    private ServerListener createServerListener(final ServerListener serverListener, final ServerListener factoryListener) {
-        List<ServerListener> serverListeners = new ArrayList<ServerListener>();
-        if (serverListener != null) {
-            serverListeners.add(serverListener);
-        }
-        if (factoryListener != null) {
-            serverListeners.add(factoryListener);
-        }
-
-        switch (serverListeners.size()) {
-            case 0:
-                return NOOP_SERVER_LISTENER;
-            case 1:
-                return serverListeners.get(0);
-            default:
-                return new ServerEventMulticaster(serverListeners);
-        }
-    }
 }

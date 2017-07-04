@@ -45,6 +45,8 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static com.mongodb.assertions.Assertions.isTrue;
 import static com.mongodb.assertions.Assertions.notNull;
+import static com.mongodb.internal.event.EventListenerHelper.createServerListener;
+import static com.mongodb.internal.event.EventListenerHelper.getClusterListener;
 import static java.lang.String.format;
 import static java.util.Arrays.asList;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
@@ -67,12 +69,11 @@ abstract class BaseCluster implements Cluster {
     private volatile boolean isClosed;
     private volatile ClusterDescription description;
 
-    BaseCluster(final ClusterId clusterId, final ClusterSettings settings, final ClusterableServerFactory serverFactory,
-                final ClusterListener clusterListener) {
+    BaseCluster(final ClusterId clusterId, final ClusterSettings settings, final ClusterableServerFactory serverFactory) {
         this.clusterId = notNull("clusterId", clusterId);
         this.settings = notNull("settings", settings);
         this.serverFactory = notNull("serverFactory", serverFactory);
-        this.clusterListener = notNull("clusterListener", clusterListener);
+        this.clusterListener = getClusterListener(settings);
         clusterListener.clusterOpening(new ClusterOpeningEvent(clusterId));
     }
 
@@ -188,7 +189,7 @@ abstract class BaseCluster implements Cluster {
             }
             return curDescription;
         } catch (InterruptedException e) {
-            throw new MongoInterruptedException(format("Interrupted while waiting to connect"), e);
+            throw new MongoInterruptedException("Interrupted while waiting to connect", e);
         }
     }
 
@@ -355,8 +356,7 @@ abstract class BaseCluster implements Cluster {
     }
 
     protected ClusterableServer createServer(final ServerAddress serverAddress, final ServerListener serverListener) {
-        ClusterableServer server = serverFactory.create(serverAddress, serverListener);
-        return server;
+        return serverFactory.create(serverAddress, createServerListener(serverFactory.getSettings(), serverListener));
     }
 
     private void throwIfIncompatible(final ClusterDescription curDescription) {

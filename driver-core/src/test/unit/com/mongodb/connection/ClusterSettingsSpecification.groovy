@@ -18,12 +18,11 @@ package com.mongodb.connection
 
 import com.mongodb.ConnectionString
 import com.mongodb.ServerAddress
+import com.mongodb.event.ClusterListener
 import com.mongodb.selector.WritableServerSelector
 import spock.lang.Specification
 
 import java.util.concurrent.TimeUnit
-
-import static com.mongodb.connection.EventListeners.NOOP_CLUSTER_LISTENER
 
 class ClusterSettingsSpecification extends Specification {
     def hosts = [new ServerAddress('localhost'), new ServerAddress('localhost', 30000)]
@@ -48,8 +47,8 @@ class ClusterSettingsSpecification extends Specification {
 
     def 'should set all properties'() {
         when:
-        def listenerOne = NOOP_CLUSTER_LISTENER
-        def listenerTwo = NOOP_CLUSTER_LISTENER
+        def listenerOne = Mock(ClusterListener)
+        def listenerTwo = Mock(ClusterListener)
         def settings = ClusterSettings.builder()
                                       .hosts(hosts)
                                       .mode(ClusterConnectionMode.MULTIPLE)
@@ -319,7 +318,7 @@ class ClusterSettingsSpecification extends Specification {
         def settings = ClusterSettings.builder().hosts(hosts).build()
 
         when:
-        settings.clusterListeners.add(NOOP_CLUSTER_LISTENER)
+        settings.clusterListeners.add(Mock(ClusterListener))
 
         then:
         thrown(UnsupportedOperationException)

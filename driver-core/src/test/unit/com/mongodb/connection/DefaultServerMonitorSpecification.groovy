@@ -31,7 +31,6 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
 import static com.mongodb.connection.MessageHelper.buildSuccessfulReply
-import static com.mongodb.connection.EventListeners.NOOP_SERVER_MONITOR_LISTENER
 
 @SuppressWarnings('BusyWait')
 class DefaultServerMonitorSpecification extends Specification {
@@ -55,7 +54,7 @@ class DefaultServerMonitorSpecification extends Specification {
             }
         }
         monitor = new DefaultServerMonitor(new ServerId(new ClusterId(), new ServerAddress()), ServerSettings.builder().build(),
-                NOOP_SERVER_MONITOR_LISTENER, changeListener, internalConnectionFactory, new TestConnectionPool())
+                changeListener, internalConnectionFactory, new TestConnectionPool())
         monitor.start()
 
         when:
@@ -76,8 +75,8 @@ class DefaultServerMonitorSpecification extends Specification {
 
         def latch = new CountDownLatch(1)
         def startedEvent
-        def succeededEvent;
-        def failedEvent;
+        def succeededEvent
+        def failedEvent
 
         def serverMonitorListener = new ServerMonitorListener() {
             @Override
@@ -133,7 +132,7 @@ class DefaultServerMonitorSpecification extends Specification {
             }
         }
         monitor = new DefaultServerMonitor(new ServerId(new ClusterId(), new ServerAddress()),
-                ServerSettings.builder().heartbeatFrequency(1, TimeUnit.HOURS).build(), serverMonitorListener,
+                ServerSettings.builder().heartbeatFrequency(1, TimeUnit.HOURS).addServerMonitorListener(serverMonitorListener).build(),
                 changeListener, internalConnectionFactory, new TestConnectionPool())
 
         when:
@@ -208,7 +207,7 @@ class DefaultServerMonitorSpecification extends Specification {
             }
         }
         monitor = new DefaultServerMonitor(new ServerId(new ClusterId(), new ServerAddress()),
-                ServerSettings.builder().heartbeatFrequency(1, TimeUnit.HOURS).build(), serverMonitorListener,
+                ServerSettings.builder().heartbeatFrequency(1, TimeUnit.HOURS).addServerMonitorListener(serverMonitorListener).build(),
                 changeListener, internalConnectionFactory, new TestConnectionPool())
 
         when:

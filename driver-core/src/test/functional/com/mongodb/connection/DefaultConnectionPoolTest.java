@@ -22,7 +22,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import static com.mongodb.connection.EventListeners.NOOP_CONNECTION_POOL_LISTENER;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.MINUTES;
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -59,8 +58,7 @@ public class DefaultConnectionPoolTest {
                                                                    .maxSize(1)
                                                                    .maxWaitQueueSize(1)
                                                                    .maxWaitTime(50, MILLISECONDS)
-                                                                   .build(),
-                                             NOOP_CONNECTION_POOL_LISTENER);
+                                                                   .build());
         provider.get();
 
         // when
@@ -81,8 +79,7 @@ public class DefaultConnectionPoolTest {
                                                                    .maxSize(1)
                                                                    .maxWaitQueueSize(1)
                                                                    .maxWaitTime(500, MILLISECONDS)
-                                                                   .build(),
-                                             NOOP_CONNECTION_POOL_LISTENER);
+                                                                   .build());
 
         provider.get();
 
@@ -108,8 +105,7 @@ public class DefaultConnectionPoolTest {
                                                                    .maxWaitQueueSize(1)
                                                                    .maintenanceInitialDelay(5, MINUTES)
                                                                    .maxConnectionLifeTime(50, MILLISECONDS)
-                                                                   .build(),
-                                             NOOP_CONNECTION_POOL_LISTENER);
+                                                                   .build());
 
         // when
         provider.get().close();
@@ -129,8 +125,7 @@ public class DefaultConnectionPoolTest {
                                              ConnectionPoolSettings.builder()
                                                                    .maxSize(1)
                                                                    .maxWaitQueueSize(1)
-                                                                   .maxConnectionLifeTime(20, MILLISECONDS).build(),
-                                             NOOP_CONNECTION_POOL_LISTENER);
+                                                                   .maxConnectionLifeTime(20, MILLISECONDS).build());
 
         // when
         InternalConnection connection = provider.get();
@@ -150,8 +145,7 @@ public class DefaultConnectionPoolTest {
                                                                    .maxSize(1)
                                                                    .maxWaitQueueSize(1)
                                                                    .maintenanceInitialDelay(5, MINUTES)
-                                                                   .maxConnectionIdleTime(50, MILLISECONDS).build(),
-                                             NOOP_CONNECTION_POOL_LISTENER);
+                                                                   .maxConnectionIdleTime(50, MILLISECONDS).build());
 
         // when
         provider.get().close();
@@ -172,8 +166,7 @@ public class DefaultConnectionPoolTest {
                                                                    .maxSize(1)
                                                                    .maxWaitQueueSize(1)
                                                                    .maintenanceInitialDelay(5, MINUTES)
-                                                                   .maxConnectionLifeTime(20, MILLISECONDS).build(),
-                                             NOOP_CONNECTION_POOL_LISTENER);
+                                                                   .maxConnectionLifeTime(20, MILLISECONDS).build());
 
         // when
         provider.get().close();
@@ -194,8 +187,7 @@ public class DefaultConnectionPoolTest {
                                                                    .maxSize(1)
                                                                    .maxWaitQueueSize(1)
                                                                    .maintenanceInitialDelay(5, MINUTES)
-                                                                   .maxConnectionLifeTime(20, MILLISECONDS).build(),
-                                             NOOP_CONNECTION_POOL_LISTENER);
+                                                                   .maxConnectionLifeTime(20, MILLISECONDS).build());
 
         // when
         provider.get().close();
@@ -218,8 +210,7 @@ public class DefaultConnectionPoolTest {
                                                                    .maxConnectionLifeTime(1, MILLISECONDS)
                                                                    .maintenanceInitialDelay(5, MINUTES)
                                                                    .maxWaitQueueSize(1)
-                                                                   .build(),
-                                             NOOP_CONNECTION_POOL_LISTENER);
+                                                                   .build());
         provider.get().close();
 
         // when
@@ -241,7 +232,8 @@ public class DefaultConnectionPoolTest {
                                                                    .maxSize(1)
                                                                    .maxWaitQueueSize(1)
                                                                    .maxWaitTime(5, SECONDS)
-                                                                   .build(), listener);
+                                                                   .addConnectionPoolListener(listener)
+                                                                   .build());
 
         // then
         assertEquals(0, listener.getWaitQueueSize());

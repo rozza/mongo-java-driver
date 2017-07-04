@@ -50,6 +50,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static com.mongodb.assertions.Assertions.isTrue;
 import static com.mongodb.assertions.Assertions.notNull;
 import static com.mongodb.internal.async.ErrorHandlingResultCallback.errorHandlingCallback;
+import static com.mongodb.internal.event.EventListenerHelper.getConnectionPoolListener;
 import static java.lang.String.format;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
@@ -68,7 +69,7 @@ class DefaultConnectionPool implements ConnectionPool {
     private volatile boolean closed;
 
     DefaultConnectionPool(final ServerId serverId, final InternalConnectionFactory internalConnectionFactory,
-                          final ConnectionPoolSettings settings, final ConnectionPoolListener connectionPoolListener) {
+                          final ConnectionPoolSettings settings) {
         this.serverId = notNull("serverId", serverId);
         this.settings = notNull("settings", settings);
         UsageTrackingInternalConnectionItemFactory connectionItemFactory
@@ -76,7 +77,7 @@ class DefaultConnectionPool implements ConnectionPool {
         pool = new ConcurrentPool<UsageTrackingInternalConnection>(settings.getMaxSize(), connectionItemFactory);
         maintenanceTask = createMaintenanceTask();
         sizeMaintenanceTimer = createMaintenanceTimer();
-        this.connectionPoolListener = notNull("connectionPoolListener", connectionPoolListener);
+        this.connectionPoolListener = getConnectionPoolListener(settings);
         connectionPoolListener.connectionPoolOpened(new ConnectionPoolOpenedEvent(serverId, settings));
     }
 

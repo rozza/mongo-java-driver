@@ -136,10 +136,13 @@ public class AbstractServerDiscoveryAndMonitoringTest {
 
         factory = new DefaultTestClusterableServerFactory(clusterId, mode, serverListenerFactory);
 
+        ClusterSettings clusterSettings = settings.getClusterListeners().contains(clusterListener) ? settings
+                : ClusterSettings.builder(settings).addClusterListener(clusterListener).build();
+
         if (settings.getMode() == ClusterConnectionMode.SINGLE) {
-            cluster = new SingleServerCluster(clusterId, settings, factory, clusterListener);
+            cluster = new SingleServerCluster(clusterId, clusterSettings, factory);
         } else {
-            cluster = new MultiServerCluster(clusterId, settings, factory, clusterListener);
+            cluster = new MultiServerCluster(clusterId, clusterSettings, factory);
         }
     }
 

@@ -20,15 +20,14 @@ import com.mongodb.ServerAddress;
 import com.mongodb.diagnostics.logging.Logger;
 import com.mongodb.diagnostics.logging.Loggers;
 import com.mongodb.event.ClusterDescriptionChangedEvent;
-import com.mongodb.event.ClusterListener;
 import com.mongodb.event.ServerDescriptionChangedEvent;
 import com.mongodb.event.ServerListenerAdapter;
 
-import java.util.Arrays;
 import java.util.Collections;
 
 import static com.mongodb.assertions.Assertions.isTrue;
 import static java.lang.String.format;
+import static java.util.Collections.singletonList;
 
 /**
  * This class needs to be final because we are leaking a reference to "this" from the constructor
@@ -38,9 +37,8 @@ final class SingleServerCluster extends BaseCluster {
 
     private final ClusterableServer server;
 
-    SingleServerCluster(final ClusterId clusterId, final ClusterSettings settings, final ClusterableServerFactory serverFactory,
-                        final ClusterListener clusterListener) {
-        super(clusterId, settings, serverFactory, clusterListener);
+    SingleServerCluster(final ClusterId clusterId, final ClusterSettings settings, final ClusterableServerFactory serverFactory) {
+        super(clusterId, settings, serverFactory);
         isTrue("one server in a direct cluster", settings.getHosts().size() == 1);
         isTrue("connection mode is single", settings.getMode() == ClusterConnectionMode.SINGLE);
 
@@ -101,7 +99,7 @@ final class SingleServerCluster extends BaseCluster {
         }
         ClusterDescription oldDescription = getCurrentDescription();
         ClusterDescription description = new ClusterDescription(ClusterConnectionMode.SINGLE, clusterType,
-                serverDescription == null ? Collections.<ServerDescription>emptyList() : Arrays.asList(serverDescription), getSettings(),
+                serverDescription == null ? Collections.<ServerDescription>emptyList() : singletonList(serverDescription), getSettings(),
                 getServerFactory().getSettings());
 
         updateDescription(description);

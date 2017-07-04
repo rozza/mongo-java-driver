@@ -28,12 +28,14 @@ import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.Collection;
 
-import static com.mongodb.connection.EventListeners.NOOP_CLUSTER_LISTENER;
-import static com.mongodb.connection.EventListeners.NOOP_SERVER_LISTENER;
+import static com.mongodb.internal.event.EventListenerHelper.NO_OP_CLUSTER_LISTENER;
+import static com.mongodb.internal.event.EventListenerHelper.NO_OP_SERVER_LISTENER;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
+
+//import static com.mongodb.connection.EventListeners.NOOP_CLUSTER_LISTENER;
 
 // See https://github.com/mongodb/specifications/tree/master/source/server-discovery-and-monitoring/tests
 @RunWith(Parameterized.class)
@@ -44,9 +46,9 @@ public class ServerDiscoveryAndMonitoringTest extends AbstractServerDiscoveryAnd
         init(new ServerListenerFactory() {
             @Override
             public ServerListener create(final ServerAddress serverAddress) {
-                return NOOP_SERVER_LISTENER;
+                return NO_OP_SERVER_LISTENER;
             }
-        }, NOOP_CLUSTER_LISTENER);
+        }, NO_OP_CLUSTER_LISTENER);
     }
 
     @Test

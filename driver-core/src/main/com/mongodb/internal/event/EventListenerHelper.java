@@ -16,42 +16,34 @@
 
 package com.mongodb.internal.event;
 
-import com.mongodb.event.ClusterEventMulticaster;
+import com.mongodb.connection.ClusterSettings;
+import com.mongodb.connection.ConnectionPoolSettings;
+import com.mongodb.connection.ServerSettings;
 import com.mongodb.event.ClusterListener;
 import com.mongodb.event.ClusterListenerAdapter;
-import com.mongodb.event.CommandEventMulticaster;
 import com.mongodb.event.CommandListener;
-import com.mongodb.event.ConnectionPoolEventMulticaster;
 import com.mongodb.event.ConnectionPoolListener;
 import com.mongodb.event.ConnectionPoolListenerAdapter;
-import com.mongodb.event.ServerEventMulticaster;
 import com.mongodb.event.ServerListener;
 import com.mongodb.event.ServerListenerAdapter;
-import com.mongodb.event.ServerMonitorEventMulticaster;
 import com.mongodb.event.ServerMonitorListener;
 import com.mongodb.event.ServerMonitorListenerAdapter;
-import com.mongodb.management.JMXConnectionPoolListener;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public final class EventListenerHelper {
 
-    public static ClusterListener getClusterListener(final List<ClusterListener> clusterListeners) {
-        switch (clusterListeners.size()) {
+    public static ClusterListener getClusterListener(final ClusterSettings clusterSettings) {
+        switch (clusterSettings.getClusterListeners().size()) {
             case 0:
                 return NO_OP_CLUSTER_LISTENER;
             case 1:
-                return clusterListeners.get(0);
+                return clusterSettings.getClusterListeners().get(0);
             default:
-                return new ClusterEventMulticaster(clusterListeners);
+                return new ClusterListenerMulticaster(clusterSettings.getClusterListeners());
         }
     }
-
-    public static ClusterListener getClusterListenerOrDefault(final ClusterListener clusterListener) {
-        return clusterListener != null ? clusterListener : NO_OP_CLUSTER_LISTENER;
-    }
-
 
     public static CommandListener getCommandListener(final List<CommandListener> commandListeners) {
         switch (commandListeners.size()) {
@@ -60,47 +52,38 @@ public final class EventListenerHelper {
             case 1:
                 return commandListeners.get(0);
             default:
-                return new CommandEventMulticaster(commandListeners);
+                return new CommandListenerMulticaster(commandListeners);
         }
     }
 
-    public static ConnectionPoolListener getConnectionPoolListener(final List<ConnectionPoolListener> connectionPoolListeners) {
-        switch (connectionPoolListeners.size()) {
+    public static ConnectionPoolListener getConnectionPoolListener(final ConnectionPoolSettings connectionPoolSettings) {
+        switch (connectionPoolSettings.getConnectionPoolListeners().size()) {
             case 0:
-                return new JMXConnectionPoolListener();
+                return NO_OP_CONNECTION_POOL_LISTENER;
             case 1:
-                return connectionPoolListeners.get(0);
+                return connectionPoolSettings.getConnectionPoolListeners().get(0);
             default:
-                return new ConnectionPoolEventMulticaster(connectionPoolListeners);
+                return new ConnectionPoolListenerMulticaster(connectionPoolSettings.getConnectionPoolListeners());
         }
     }
 
-    public static ConnectionPoolListener getConnectionPoolListenerOrDefault(final ConnectionPoolListener connectionPoolListener) {
-        return connectionPoolListener != null ? connectionPoolListener : NO_OP_CONNECTION_POOL_LISTENER;
-    }
-
-    public static ServerMonitorListener getServerMonitorListener(final List<ServerMonitorListener> serverMonitorListeners) {
-        switch (serverMonitorListeners.size()) {
+    public static ServerMonitorListener getServerMonitorListener(final ServerSettings serverSettings) {
+        switch (serverSettings.getServerMonitorListeners().size()) {
             case 0:
                 return NO_OP_SERVER_MONITOR_LISTENER;
             case 1:
-                return serverMonitorListeners.get(0);
+                return serverSettings.getServerMonitorListeners().get(0);
             default:
-                return new ServerMonitorEventMulticaster(serverMonitorListeners);
+                return new ServerMonitorListenerMulticaster(serverSettings.getServerMonitorListeners());
         }
     }
 
-    public static ServerMonitorListener getServerMonitorListenerOrDefault(final ServerMonitorListener serverMonitorListener) {
-        return serverMonitorListener != null ? serverMonitorListener : NO_OP_SERVER_MONITOR_LISTENER;
-    }
-
-    public static ServerListener createServerListener(final List<ServerListener> serverListeners,
-                                                      final ServerListener initialServerListener) {
+    public static ServerListener createServerListener(final ServerSettings serverSettings, final ServerListener additionalServerListener) {
         List<ServerListener> mergedServerListeners = new ArrayList<ServerListener>();
-        if (initialServerListener != null) {
-            mergedServerListeners.add(initialServerListener);
+        if (additionalServerListener != null) {
+            mergedServerListeners.add(additionalServerListener);
         }
-        mergedServerListeners.addAll(serverListeners);
+        mergedServerListeners.addAll(serverSettings.getServerListeners());
 
         switch (mergedServerListeners.size()) {
             case 0:
@@ -108,20 +91,20 @@ public final class EventListenerHelper {
             case 1:
                 return mergedServerListeners.get(0);
             default:
-                return new ServerEventMulticaster(mergedServerListeners);
+                return new ServerListenerMulticaster(mergedServerListeners);
         }
     }
 
-    static final ServerListener NO_OP_SERVER_LISTENER = new ServerListenerAdapter() {
+    public static final ServerListener NO_OP_SERVER_LISTENER = new ServerListenerAdapter() {
     };
 
-    static final ServerMonitorListener NO_OP_SERVER_MONITOR_LISTENER = new ServerMonitorListenerAdapter() {
+    public static final ServerMonitorListener NO_OP_SERVER_MONITOR_LISTENER = new ServerMonitorListenerAdapter() {
     };
 
-    static final ClusterListener NO_OP_CLUSTER_LISTENER = new ClusterListenerAdapter() {
+    public static final ClusterListener NO_OP_CLUSTER_LISTENER = new ClusterListenerAdapter() {
     };
 
-    static final ConnectionPoolListener NO_OP_CONNECTION_POOL_LISTENER = new ConnectionPoolListenerAdapter() {
+    public static final ConnectionPoolListener NO_OP_CONNECTION_POOL_LISTENER = new ConnectionPoolListenerAdapter() {
     };
 
     private EventListenerHelper() {

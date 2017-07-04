@@ -97,9 +97,6 @@ public class MongoClientOptions {
 
     private final List<ClusterListener> clusterListeners;
     private final List<CommandListener> commandListeners;
-    private final List<ConnectionPoolListener> connectionPoolListeners;
-    private final List<ServerListener> serverListeners;
-    private final List<ServerMonitorListener> serverMonitorListeners;
 
     private MongoClientOptions(final Builder builder) {
         description = builder.description;
@@ -135,9 +132,6 @@ public class MongoClientOptions {
 
         clusterListeners = unmodifiableList(builder.clusterListeners);
         commandListeners = unmodifiableList(builder.commandListeners);
-        connectionPoolListeners = unmodifiableList(builder.connectionPoolListeners);
-        serverListeners = unmodifiableList(builder.serverListeners);
-        serverMonitorListeners = unmodifiableList(builder.serverMonitorListeners);
 
         ConnectionPoolSettings.Builder connectionPoolSettingsBuilder = ConnectionPoolSettings.builder()
                 .minSize(getMinConnectionsPerHost())
@@ -147,7 +141,7 @@ public class MongoClientOptions {
                 .maxConnectionIdleTime(getMaxConnectionIdleTime(), MILLISECONDS)
                 .maxConnectionLifeTime(getMaxConnectionLifeTime(), MILLISECONDS);
 
-        for (ConnectionPoolListener connectionPoolListener : connectionPoolListeners) {
+        for (ConnectionPoolListener connectionPoolListener : builder.connectionPoolListeners) {
             connectionPoolSettingsBuilder.addConnectionPoolListener(connectionPoolListener);
         }
 
@@ -168,11 +162,11 @@ public class MongoClientOptions {
                 .heartbeatFrequency(getHeartbeatFrequency(), MILLISECONDS)
                 .minHeartbeatFrequency(getMinHeartbeatFrequency(), MILLISECONDS);
 
-        for (ServerListener serverListener : serverListeners) {
+        for (ServerListener serverListener : builder.serverListeners) {
             serverSettingsBuilder.addServerListener(serverListener);
         }
 
-        for (ServerMonitorListener serverMonitorListener : serverMonitorListeners) {
+        for (ServerMonitorListener serverMonitorListener : builder.serverMonitorListeners) {
             serverSettingsBuilder.addServerMonitorListener(serverMonitorListener);
         }
 
@@ -564,7 +558,7 @@ public class MongoClientOptions {
      * @since 3.5
      */
     public List<ConnectionPoolListener> getConnectionPoolListeners() {
-        return connectionPoolListeners;
+        return connectionPoolSettings.getConnectionPoolListeners();
     }
 
     /**
@@ -574,7 +568,7 @@ public class MongoClientOptions {
      * @since 3.3
      */
     public List<ServerListener> getServerListeners() {
-        return serverListeners;
+        return serverSettings.getServerListeners();
     }
 
     /**
@@ -584,7 +578,7 @@ public class MongoClientOptions {
      * @since 3.3
      */
     public List<ServerMonitorListener> getServerMonitorListeners() {
-        return serverMonitorListeners;
+        return serverSettings.getServerMonitorListeners();
     }
 
     /**
@@ -773,15 +767,6 @@ public class MongoClientOptions {
         if (!commandListeners.equals(that.commandListeners)) {
             return false;
         }
-        if (!connectionPoolListeners.equals(that.connectionPoolListeners)) {
-            return false;
-        }
-        if (!serverListeners.equals(that.serverListeners)) {
-            return false;
-        }
-        if (!serverMonitorListeners.equals(that.serverMonitorListeners)) {
-            return false;
-        }
         if (requiredReplicaSetName != null ? !requiredReplicaSetName.equals(that.requiredReplicaSetName)
                                            : that.requiredReplicaSetName != null) {
             return false;
@@ -803,9 +788,6 @@ public class MongoClientOptions {
         result = 31 * result + codecRegistry.hashCode();
         result = 31 * result + clusterListeners.hashCode();
         result = 31 * result + commandListeners.hashCode();
-        result = 31 * result + connectionPoolListeners.hashCode();
-        result = 31 * result + serverListeners.hashCode();
-        result = 31 * result + serverMonitorListeners.hashCode();
         result = 31 * result + minConnectionsPerHost;
         result = 31 * result + maxConnectionsPerHost;
         result = 31 * result + threadsAllowedToBlockForConnectionMultiplier;
@@ -844,9 +826,6 @@ public class MongoClientOptions {
                + ", codecRegistry=" + codecRegistry
                + ", clusterListeners=" + clusterListeners
                + ", commandListeners=" + commandListeners
-               + ", connectionPoolListeners=" + connectionPoolListeners
-               + ", serverListeners=" + serverListeners
-               + ", serverMonitorListeners=" + serverMonitorListeners
                + ", minConnectionsPerHost=" + minConnectionsPerHost
                + ", maxConnectionsPerHost=" + maxConnectionsPerHost
                + ", threadsAllowedToBlockForConnectionMultiplier=" + threadsAllowedToBlockForConnectionMultiplier

@@ -21,14 +21,8 @@ import com.mongodb.client.MongoDriverInformation;
 import com.mongodb.event.ClusterListener;
 import com.mongodb.event.CommandListener;
 import com.mongodb.event.ConnectionPoolListener;
-import com.mongodb.event.ServerMonitorListener;
 
 import java.util.List;
-
-import static com.mongodb.internal.event.EventListenerHelper.getClusterListenerOrDefault;
-import static com.mongodb.internal.event.EventListenerHelper.getConnectionPoolListenerOrDefault;
-import static com.mongodb.internal.event.EventListenerHelper.getServerMonitorListener;
-import static com.mongodb.internal.event.EventListenerHelper.getServerMonitorListenerOrDefault;
 
 /**
  * The default factory for cluster implementations.
@@ -46,8 +40,10 @@ public final class DefaultClusterFactory implements ClusterFactory {
                           final ClusterListener clusterListener,
                           final ConnectionPoolListener connectionPoolListener,
                           final com.mongodb.event.ConnectionListener connectionListener) {
-        return create(settings, serverSettings, connectionPoolSettings, streamFactory, heartbeatStreamFactory, credentialList,
-                      clusterListener, connectionPoolListener, connectionListener, null);
+
+        return createCluster(getClusterSettings(settings, clusterListener), serverSettings,
+                getConnectionPoolSettings(connectionPoolSettings, connectionPoolListener), streamFactory,
+                heartbeatStreamFactory, credentialList, null, null, null);
     }
 
     /**
@@ -66,16 +62,21 @@ public final class DefaultClusterFactory implements ClusterFactory {
      * @return the cluster
      *
      * @since 3.1
+     * @deprecated use {@link #createCluster(ClusterSettings, ServerSettings, ConnectionPoolSettings, StreamFactory, StreamFactory,
+     * List, CommandListener, String, MongoDriverInformation)} instead
      */
+    @Deprecated
     public Cluster create(final ClusterSettings settings, final ServerSettings serverSettings,
                           final ConnectionPoolSettings connectionPoolSettings, final StreamFactory streamFactory,
                           final StreamFactory heartbeatStreamFactory,
                           final List<MongoCredential> credentialList,
-                          final ClusterListener clusterListener, final ConnectionPoolListener connectionPoolListener,
+                          final ClusterListener clusterListener,
+                          final ConnectionPoolListener connectionPoolListener,
                           final com.mongodb.event.ConnectionListener connectionListener,
                           final CommandListener commandListener) {
-        return create(settings, serverSettings, connectionPoolSettings, streamFactory, heartbeatStreamFactory, credentialList,
-                clusterListener, connectionPoolListener, connectionListener, commandListener, null, null);
+        return createCluster(getClusterSettings(settings, clusterListener), serverSettings,
+                getConnectionPoolSettings(connectionPoolSettings, connectionPoolListener), streamFactory, heartbeatStreamFactory,
+                credentialList, commandListener, null, null);
     }
 
     /**
@@ -96,7 +97,10 @@ public final class DefaultClusterFactory implements ClusterFactory {
      * @return the cluster
      *
      * @since 3.4
+     * @deprecated use {@link #createCluster(ClusterSettings, ServerSettings, ConnectionPoolSettings, StreamFactory, StreamFactory,
+     * List, CommandListener, String, MongoDriverInformation)} instead
      */
+    @Deprecated
     public Cluster create(final ClusterSettings settings, final ServerSettings serverSettings,
                           final ConnectionPoolSettings connectionPoolSettings, final StreamFactory streamFactory,
                           final StreamFactory heartbeatStreamFactory,
@@ -107,9 +111,9 @@ public final class DefaultClusterFactory implements ClusterFactory {
                           final CommandListener commandListener,
                           final String applicationName,
                           final MongoDriverInformation mongoDriverInformation) {
-        return create(settings, serverSettings, connectionPoolSettings, streamFactory, heartbeatStreamFactory, credentialList,
-                clusterListener, connectionPoolListener, getServerMonitorListener(serverSettings.getServerMonitorListeners()),
-                commandListener, applicationName, mongoDriverInformation);
+        return createCluster(getClusterSettings(settings, clusterListener), serverSettings,
+                getConnectionPoolSettings(connectionPoolSettings, connectionPoolListener), streamFactory, heartbeatStreamFactory,
+                credentialList, commandListener, applicationName, mongoDriverInformation);
     }
 
     /**
@@ -121,9 +125,6 @@ public final class DefaultClusterFactory implements ClusterFactory {
      * @param streamFactory          the stream factory
      * @param heartbeatStreamFactory the heartbeat stream factory
      * @param credentialList         the credential list
-     * @param clusterListener        an optional listener for cluster-related events
-     * @param connectionPoolListener an optional listener for connection pool-related events
-     * @param serverMonitorListener  an optional listener for server monitor-related events
      * @param commandListener        an optional listener for command-related events
      * @param applicationName        an optional application name to associate with connections to the servers in this cluster
      * @param mongoDriverInformation the optional driver information associate with connections to the servers in this cluster
@@ -131,31 +132,32 @@ public final class DefaultClusterFactory implements ClusterFactory {
      *
      * @since 3.5
      */
-    public Cluster create(final ClusterSettings clusterSettings, final ServerSettings serverSettings,
-                   final ConnectionPoolSettings connectionPoolSettings, final StreamFactory streamFactory,
-                   final StreamFactory heartbeatStreamFactory,
-                   final List<MongoCredential> credentialList,
-                   final ClusterListener clusterListener,
-                   final ConnectionPoolListener connectionPoolListener,
-                   final ServerMonitorListener serverMonitorListener,
-                   final CommandListener commandListener,
-                   final String applicationName,
-                   final MongoDriverInformation mongoDriverInformation) {
+    public Cluster createCluster(final ClusterSettings clusterSettings, final ServerSettings serverSettings,
+                                 final ConnectionPoolSettings connectionPoolSettings, final StreamFactory streamFactory,
+                                 final StreamFactory heartbeatStreamFactory, final List<MongoCredential> credentialList,
+                                 final CommandListener commandListener, final String applicationName,
+                                 final MongoDriverInformation mongoDriverInformation) {
 
         ClusterId clusterId = new ClusterId(clusterSettings.getDescription());
         ClusterableServerFactory serverFactory = new DefaultClusterableServerFactory(clusterId, clusterSettings, serverSettings,
-                connectionPoolSettings, streamFactory, heartbeatStreamFactory, credentialList,
-                getConnectionPoolListenerOrDefault(connectionPoolListener),
-                getServerMonitorListenerOrDefault(serverMonitorListener),
-                commandListener, applicationName,
+                connectionPoolSettings, streamFactory, heartbeatStreamFactory, credentialList, commandListener, applicationName,
                 mongoDriverInformation != null ? mongoDriverInformation : MongoDriverInformation.builder().build());
 
         if (clusterSettings.getMode() == ClusterConnectionMode.SINGLE) {
-            return new SingleServerCluster(clusterId, clusterSettings, serverFactory, getClusterListenerOrDefault(clusterListener));
+            return new SingleServerCluster(clusterId, clusterSettings, serverFactory);
         } else if (clusterSettings.getMode() == ClusterConnectionMode.MULTIPLE) {
-            return new MultiServerCluster(clusterId, clusterSettings, serverFactory,  getClusterListenerOrDefault(clusterListener));
+            return new MultiServerCluster(clusterId, clusterSettings, serverFactory);
         } else {
             throw new UnsupportedOperationException("Unsupported cluster mode: " + clusterSettings.getMode());
         }
+    }
+
+    private ClusterSettings getClusterSettings(final ClusterSettings settings, final ClusterListener clusterListener) {
+        return ClusterSettings.builder(settings).addClusterListener(clusterListener).build();
+    }
+
+    private ConnectionPoolSettings getConnectionPoolSettings(final ConnectionPoolSettings connPoolSettings,
+                                                             final ConnectionPoolListener connPoolListener) {
+        return ConnectionPoolSettings.builder(connPoolSettings).addConnectionPoolListener(connPoolListener).build();
     }
 }
