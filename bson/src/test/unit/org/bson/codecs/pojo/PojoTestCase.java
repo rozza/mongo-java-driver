@@ -68,6 +68,13 @@ import static org.junit.Assert.assertEquals;
 abstract class PojoTestCase {
 
     static final BsonDocumentCodec DOCUMENT_CODEC = new BsonDocumentCodec();
+    static final CodecRegistry AUTOMATIC_POJO_CODEC_REGISTRY = fromProviders(new ValueCodecProvider(), new AutomaticPojoCodecProvider());
+
+    @SuppressWarnings("unchecked")
+    <T> void roundTrip(final T value, final String json) {
+        encodesTo(AUTOMATIC_POJO_CODEC_REGISTRY, value, json);
+        decodesTo(AUTOMATIC_POJO_CODEC_REGISTRY, json, value);
+    }
 
     @SuppressWarnings("unchecked")
     <T> void roundTrip(final PojoCodecProvider.Builder builder, final T value, final String json) {
@@ -131,11 +138,11 @@ abstract class PojoTestCase {
         return builder;
     }
 
-    <T> PojoCodec<T> getCodec(final PojoCodecProvider.Builder builder, final Class<T> clazz) {
-        return (PojoCodec<T>) getCodecRegistry(builder).get(clazz);
+    <T> PojoCodecImpl<T> getCodec(final PojoCodecProvider.Builder builder, final Class<T> clazz) {
+        return (PojoCodecImpl<T>) getCodecRegistry(builder).get(clazz);
     }
 
-    <T> PojoCodec<T> getCodec(final Class<T> clazz) {
+    <T> PojoCodecImpl<T> getCodec(final Class<T> clazz) {
         return getCodec(getPojoCodecProviderBuilder(clazz), clazz);
     }
 
@@ -145,10 +152,6 @@ abstract class PojoTestCase {
             builders.add(classModelBuilder.build());
         }
         return PojoCodecProvider.builder().register(builders.toArray(new ClassModel<?>[builders.size()]));
-    }
-
-    CodecRegistry getCodecRegistry(final Class<?>... classes) {
-        return getCodecRegistry(getPojoCodecProviderBuilder(classes));
     }
 
     CodecRegistry getCodecRegistry(final PojoCodecProvider.Builder builder) {

@@ -131,42 +131,10 @@ public final class Address {
 }
 ```
 
-## Creating a Custom CodecRegistry
-
-Before you can use a POJO with the driver, you need to configure the [`CodecRegistry` ]({{< relref "bson/codecs.md" >}}) to include a codecs 
-to handle the translation to and from [`bson`]({{< relref "bson/index.md" >}}) for your POJOs. The simplest way to do that is to use the 
-[`PojoCodecProvider.builder()`]({{< apiref "org/bson/codecs/pojo/PojoCodecProvider.html">}}) to create and configure a `CodecProvider`.
-
-The following example will combine a codec registry for the `Person` and `Address` POJOs, with the default codec registry:
-```java
-CodecRegistry pojoCodecRegistry = fromRegistries(
-                fromProviders(PojoCodecProvider.builder().register(Person.class, Address.class).build()),
-                MongoClient.getDefaultCodecRegistry());
-```
-
-### Using the CodecRegistry
-
-There are multiple ways to set the `pojoCodecRegistry` for use:
-
- - You can set it when instantiating a MongoClient object:
- 
- ```java
- MongoClient mongoClient = new MongoClient("localhost", MongoClientOptions.builder().codecRegistry(pojoCodecRegistry).build());
-```
-
-- You can use an alternative `CodecRegistry` with a `MongoDatabase`:
-
- ```java
-database = database.withCodecRegistry(pojoCodecRegistry);
-```
-
-- You can use an alternative `CodecRegistry` with a `MongoCollection`:
-
- ```java
-collection = collection.withCodecRegistry(pojoCodecRegistry);
-```
-
 ## Inserting a POJO into MongoDB
+
+By default, the codec registry will automatically try to create a `PojoCodec` for unknown classes. This allows you to use POJOs out of the 
+box without any extra configuration. See the [Bson POJO page]({{< ref "bson/pojos.md" >}}) for information on configuring `PojoCodecs`.
 
 Before you can insert a POJO into MongoDB, you need a `MongoCollection` instance configured with the Pojo's type:
 

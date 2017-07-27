@@ -385,4 +385,5 @@ By default `null` values aren't serialized. This is controlled by the default im
 [`FieldSerialization`]({{<apiref "org/bson/codecs/pojo/FieldSerialization.html">}}) interface. Custom implementations can be set on 
 the `PropertyModelBuilder` which is available from the `ClassModelBuilder`.
 
-The 
+The [`BsonIgnore`]({{<apiref "org/bson/codecs/pojo/annotations/BsonIgnore.html">}}) can be used along with the `DEFAULT_CONVENTIONS` to mark
+a property to be ignored when serializing and or deserializing.

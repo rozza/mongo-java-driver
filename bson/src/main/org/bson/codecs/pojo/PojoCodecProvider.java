@@ -59,6 +59,17 @@ public final class PojoCodecProvider implements CodecProvider {
         return new Builder();
     }
 
+    /**
+     * Creates a Builder so classes or packages can be registered and configured before creating an immutable CodecProvider.
+     *
+     * @param pojoCodecProvider an existing pojoCodecProvider to extend before creating a new immutable CodecProvider.
+     * @return the Builder
+     * @see Builder#register(Class[])
+     */
+    public static Builder builder(final PojoCodecProvider pojoCodecProvider) {
+        return new Builder(pojoCodecProvider);
+    }
+
     @Override
     public <T> Codec<T> get(final Class<T> clazz, final CodecRegistry registry) {
         return getPojoCodec(clazz, registry);
@@ -71,7 +82,7 @@ public final class PojoCodecProvider implements CodecProvider {
             if (classModel == null) {
                 classModel = createClassModel(clazz, conventions);
             }
-            return new PojoCodec<T>(classModel, this, registry, discriminatorLookup);
+            return new PojoCodecImpl<T>(classModel, this, registry, discriminatorLookup);
         }
         return null;
     }
@@ -153,14 +164,17 @@ public final class PojoCodecProvider implements CodecProvider {
          * @return this
          */
         public Builder register(final String... packageNames) {
-            notNull("packageNames", packageNames);
-            for (String name : packageNames) {
-                packages.add(name);
-            }
+            packages.addAll(asList(notNull("packageNames", packageNames)));
             return this;
         }
 
         private Builder() {
+        }
+
+        private Builder(final PojoCodecProvider pojoCodecProvider) {
+            classModels.putAll(pojoCodecProvider.classModels);
+            packages.addAll(pojoCodecProvider.packages);
+            conventions = pojoCodecProvider.conventions;
         }
     }
 

@@ -30,6 +30,7 @@ import org.bson.codecs.IterableCodecProvider;
 import org.bson.codecs.MapCodecProvider;
 import org.bson.codecs.ValueCodecProvider;
 import org.bson.codecs.configuration.CodecRegistry;
+import org.bson.codecs.pojo.AutomaticPojoCodecProvider;
 
 import java.io.Closeable;
 import java.util.List;
@@ -92,7 +93,8 @@ public class MongoClient extends Mongo implements Closeable {
                     new IterableCodecProvider(new DocumentToDBRefTransformer()),
                     new MapCodecProvider(new DocumentToDBRefTransformer()),
                     new GeoJsonCodecProvider(),
-                    new GridFSFileCodecProvider()));
+                    new GridFSFileCodecProvider(),
+                    new AutomaticPojoCodecProvider()));
 
     /**
      * Gets the default codec registry.  It includes the following providers:
