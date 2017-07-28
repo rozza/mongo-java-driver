@@ -16,6 +16,7 @@
 
 package org.bson.codecs.pojo;
 
+import org.bson.Document;
 import org.bson.codecs.configuration.CodecConfigurationException;
 import org.bson.codecs.pojo.entities.CollectionNestedPojoModel;
 import org.bson.codecs.pojo.entities.ConstructorNotPublicModel;
@@ -33,6 +34,7 @@ import org.bson.codecs.pojo.entities.UpperBoundsConcreteModel;
 import org.bson.codecs.pojo.entities.conventions.CreatorConstructorModel;
 import org.junit.Test;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
@@ -155,6 +157,26 @@ public final class AutomaticPojoCodecProviderTest extends PojoTestCase {
     @Test(expected = CodecConfigurationException.class)
     public void testNoConstructor() {
         roundTrip(ConstructorNotPublicModel.create(10), "{integerField: 10}");
+    }
+
+    @Test (expected = CodecConfigurationException.class)
+    public void testUnknownMapGenericTypes() {
+        roundTrip(new HashMap<String, String>(), "{}");
+    }
+
+    @Test(expected = CodecConfigurationException.class)
+    public void testUnknownCollectionGenericTypes() {
+        roundTrip(new ArrayList<String>(), "{}");
+    }
+
+    @Test(expected = CodecConfigurationException.class)
+    public void testInvalidMapImplementation() {
+        roundTrip(new Document(), "{}");
+    }
+
+    @Test(expected = CodecConfigurationException.class)
+    public void testUnspecializedModel() {
+        roundTrip(new GenericHolderModel<String>(), "{}");
     }
 
 }

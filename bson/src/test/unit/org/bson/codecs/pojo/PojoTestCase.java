@@ -68,12 +68,12 @@ import static org.junit.Assert.assertEquals;
 abstract class PojoTestCase {
 
     static final BsonDocumentCodec DOCUMENT_CODEC = new BsonDocumentCodec();
-    static final CodecRegistry AUTOMATIC_POJO_CODEC_REGISTRY = fromProviders(new ValueCodecProvider(), new AutomaticPojoCodecProvider());
 
     @SuppressWarnings("unchecked")
     <T> void roundTrip(final T value, final String json) {
-        encodesTo(AUTOMATIC_POJO_CODEC_REGISTRY, value, json);
-        decodesTo(AUTOMATIC_POJO_CODEC_REGISTRY, json, value);
+        CodecRegistry registry = fromProviders(new ValueCodecProvider(), new AutomaticPojoCodecProvider());
+        encodesTo(registry, value, json);
+        decodesTo(registry, json, value);
     }
 
     @SuppressWarnings("unchecked")

@@ -28,20 +28,21 @@ import org.bson.codecs.configuration.CodecRegistry;
  * @since 3.5
  */
 public final class AutomaticPojoCodecProvider implements CodecProvider {
-    private PojoCodecProvider pojoCodecProvider = PojoCodecProvider.builder().build();
+    private final DiscriminatorLookup discriminatorLookup = new DiscriminatorLookup();
 
-    @SuppressWarnings("unchecked")
     @Override
     public <T> Codec<T> get(final Class<T> clazz, final CodecRegistry registry) {
-        Codec<T> pojoCodec = pojoCodecProvider.get(clazz, registry);
-        if (pojoCodec == null) {
-            ClassModel<T> classModel = ClassModel.builder(clazz).build();
-            if (classModel.getPropertyModels().isEmpty()) {
-                return null;
-            }
-            pojoCodecProvider = PojoCodecProvider.builder(pojoCodecProvider).register(classModel).build();
-            return PojoCodecProvider.builder(pojoCodecProvider).register(classModel).build().get(clazz, registry);
+        ClassModel<T> classModel;
+        try {
+            classModel = ClassModel.builder(clazz).build();
+        } catch (IllegalStateException e) {
+            return null;
         }
-        return pojoCodec;
+        if (classModel.getPropertyModels().isEmpty()) {
+            return null;
+        }
+        discriminatorLookup.addClassModel(classModel);
+        return new AutomaticPojoCodec<T>(new PojoCodecImpl<T>(classModel, registry, discriminatorLookup));
     }
+
 }

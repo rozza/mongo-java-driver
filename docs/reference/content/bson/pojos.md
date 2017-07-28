@@ -56,7 +56,11 @@ encoded and decoded.
 
 ## POJO support
 
-The entry point for POJO support is the `PojoCodecProvider`. New instances can be created via the
+Automatic POJO support can be provided by the [`AutomatocPojoCodecProvider`]({{<apiref "org/bson/codecs/pojo/AutomatocPojoCodecProvider.html">}}). 
+This `CodecProvider` will automatically create a `PojoCodec` for any class that contains at least one serializable or deserializable 
+property. All PojoCodecs provided by the `AutomatocPojoCodecProvider` use the default conventions and cannot be customised.
+
+The entry point for customisable POJO support is the `PojoCodecProvider`. New instances can be created via the
 [`PojoCodecProvider.builder()`]({{<apiref "org/bson/codecs/pojo/PojoCodecProvider.html#builder">}}) method. The `builder` allows users to 
 register any combination of:
 

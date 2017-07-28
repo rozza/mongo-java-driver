@@ -38,7 +38,7 @@ final class AutomaticPojoCodec<T> extends PojoCodec<T> {
         } catch (CodecConfigurationException e) {
             throw new CodecConfigurationException(
                     format("An exception occurred when decoding using the AutomaticPojoCodec.%n"
-                            + "Decoding into a '%s' failed with the following exception: \"%s\"%n%n"
+                            + "Decoding into a '%s' failed with the following exception:%n%n%s%n%n"
                             + "A custom Codec or PojoCodec may need to be explicitly configured and registered to handle this type.",
                             pojoCodec.getEncoderClass().getSimpleName(), e.getMessage()), e);
         }
@@ -51,9 +51,9 @@ final class AutomaticPojoCodec<T> extends PojoCodec<T> {
         } catch (CodecConfigurationException e) {
             throw new CodecConfigurationException(
                     format("An exception occurred when encoding using the AutomaticPojoCodec.%n"
-                            + "Encoding: '%s' failed with the following exception: \"%s\"%n%n"
+                            + "Encoding a %s: '%s' failed with the following exception:%n%n%s%n%n"
                             + "A custom Codec or PojoCodec may need to be explicitly configured and registered to handle this type.",
-                            value, e.getMessage()), e);
+                            getEncoderClass().getSimpleName(), value, e.getMessage()), e);
         }
     }
 

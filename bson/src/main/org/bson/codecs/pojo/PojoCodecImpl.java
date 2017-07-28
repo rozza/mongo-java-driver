@@ -43,24 +43,19 @@ import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
 final class PojoCodecImpl<T> extends PojoCodec<T> {
     private static final Logger LOGGER = Loggers.getLogger("PojoCodec");
     private final ClassModel<T> classModel;
-    private final PojoCodecProvider codecProvider;
     private final CodecRegistry registry;
     private final DiscriminatorLookup discriminatorLookup;
     private final ConcurrentMap<ClassModel<?>, Codec<?>> codecCache;
     private final boolean specialized;
 
 
-    PojoCodecImpl(final ClassModel<T> classModel, final PojoCodecProvider codecProvider, final CodecRegistry registry,
-                  final DiscriminatorLookup discriminatorLookup) {
-        this(classModel, codecProvider, registry, discriminatorLookup, new ConcurrentHashMap<ClassModel<?>, Codec<?>>(),
+    PojoCodecImpl(final ClassModel<T> classModel, final CodecRegistry registry, final DiscriminatorLookup discriminatorLookup) {
+        this(classModel, registry, discriminatorLookup, new ConcurrentHashMap<ClassModel<?>, Codec<?>>(),
                 !classModel.hasTypeParameters());
     }
-
-    PojoCodecImpl(final ClassModel<T> classModel, final PojoCodecProvider codecProvider, final CodecRegistry registry,
-                  final DiscriminatorLookup discriminatorLookup, final ConcurrentMap<ClassModel<?>, Codec<?>> codecCache,
-                  final boolean specialized) {
+    PojoCodecImpl(final ClassModel<T> classModel, final CodecRegistry registry, final DiscriminatorLookup discriminatorLookup,
+                  final ConcurrentMap<ClassModel<?>, Codec<?>> codecCache, final boolean specialized) {
         this.classModel = classModel;
-        this.codecProvider = codecProvider;
         this.registry = fromRegistries(fromCodecs(this), registry);
         this.discriminatorLookup = discriminatorLookup;
         this.codecCache = codecCache;
@@ -76,7 +71,8 @@ final class PojoCodecImpl<T> extends PojoCodec<T> {
     @Override
     public void encode(final BsonWriter writer, final T value, final EncoderContext encoderContext) {
         if (!specialized) {
-            throw new CodecConfigurationException("Cannot encode an unspecialized generic ClassModel");
+            throw new CodecConfigurationException(format("%s contains generic types that have not been specialised.%n"
+                            + "Top level classes with generic types are not supported by the PojoCodec.", classModel.getName()));
         }
         writer.writeStartDocument();
         PropertyModel<?> idPropertyModel = classModel.getIdPropertyModel();
@@ -101,7 +97,8 @@ final class PojoCodecImpl<T> extends PojoCodec<T> {
     public T decode(final BsonReader reader, final DecoderContext decoderContext) {
         if (decoderContext.hasCheckedDiscriminator()) {
             if (!specialized) {
-                throw new CodecConfigurationException("Cannot decode using an unspecialized generic ClassModel");
+                throw new CodecConfigurationException(format("%s contains generic types that have not been specialised.%n"
+                        + "Top level classes with generic types are not supported by the PojoCodec.", classModel.getName()));
             }
             InstanceCreator<T> instanceCreator = classModel.getInstanceCreator();
             decodeProperties(reader, decoderContext, instanceCreator);
@@ -238,8 +235,6 @@ final class PojoCodecImpl<T> extends PojoCodec<T> {
         Codec<S> codec = null;
         if (classModel.getType().equals(clazz)) {
             codec = (Codec<S>) this;
-        } else {
-            codec = codecProvider.getPojoCodec(clazz, registry);
         }
         if (codec == null) {
             codec = registry.get(clazz);
@@ -256,7 +251,7 @@ final class PojoCodecImpl<T> extends PojoCodec<T> {
             if (codecCache.containsKey(specialized)) {
                 codec = (Codec<S>) codecCache.get(specialized);
             } else {
-                codec = new LazyPojoCodec<S>(specialized, codecProvider, registry, discriminatorLookup, codecCache);
+                codec = new LazyPojoCodec<S>(specialized, registry, discriminatorLookup, codecCache);
             }
         }
         return codec;

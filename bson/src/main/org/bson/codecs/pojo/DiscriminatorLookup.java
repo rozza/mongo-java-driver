@@ -26,6 +26,10 @@ final class DiscriminatorLookup {
     private final Map<String, Class<?>> discriminatorClassMap = new ConcurrentHashMap<String, Class<?>>();
     private final Set<String> packages;
 
+    DiscriminatorLookup() {
+        packages = null;
+    }
+
     DiscriminatorLookup(final Map<Class<?>, ClassModel<?>> classModels, final Set<String> packages) {
         for (ClassModel<?> classModel : classModels.values()) {
             if (classModel.getDiscriminator() != null) {
@@ -35,13 +39,13 @@ final class DiscriminatorLookup {
         this.packages = packages;
     }
 
-    Class<?> lookup(final String discriminator) {
+    public Class<?> lookup(final String discriminator) {
         if (discriminatorClassMap.containsKey(discriminator)) {
             return discriminatorClassMap.get(discriminator);
         }
 
         Class<?> clazz = getClassForName(discriminator);
-        if (clazz == null) {
+        if (clazz == null && packages != null) {
             clazz = searchPackages(discriminator);
         }
 
@@ -51,6 +55,12 @@ final class DiscriminatorLookup {
             discriminatorClassMap.put(discriminator, clazz);
         }
         return clazz;
+    }
+
+    void addClassModel(final ClassModel<?> classModel) {
+        if (classModel.getDiscriminator() != null) {
+            discriminatorClassMap.put(classModel.getDiscriminator(), classModel.getType());
+        }
     }
 
     private Class<?> getClassForName(final String discriminator) {
