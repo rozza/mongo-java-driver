@@ -33,6 +33,7 @@ import org.bson.codecs.pojo.entities.SimpleEnum;
 import org.bson.codecs.pojo.entities.SimpleEnumModel;
 import org.bson.codecs.pojo.entities.SimpleModel;
 import org.bson.codecs.pojo.entities.SimpleNestedPojoModel;
+import org.bson.codecs.pojo.entities.conventions.AnnotationModel;
 import org.bson.codecs.pojo.entities.conventions.CreatorConstructorThrowsExceptionModel;
 import org.bson.codecs.pojo.entities.conventions.CreatorMethodModel;
 import org.bson.codecs.pojo.entities.conventions.CreatorMethodThrowsExceptionModel;
@@ -59,6 +60,15 @@ public final class PojoCustomTest extends PojoTestCase {
 
         roundTrip(builder, getSimpleModel(), "{_t: 'org.bson.codecs.pojo.entities.SimpleModel', 'integerField': 42,"
                 + "'stringField': 'myString'}");
+    }
+
+    @Test
+    public void testPackageDiscriminator() {
+        AnnotationModel model = new AnnotationModel("myId", new AnnotationModel("child", null, null),
+                new AnnotationModel("alternative", null, null));
+
+        roundTrip(PojoCodecProvider.builder().register("org.bson.codecs.pojo.entities", "org.bson.codecs.pojo.entities.conventions"), model,
+                "{_id: 'myId', _cls: 'MyAnnotationModel', renamed: {_id: 'alternative'}, child: {_id: 'child'}}");
     }
 
     @Test
