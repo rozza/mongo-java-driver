@@ -50,8 +50,7 @@ final class PojoCodecImpl<T> extends PojoCodec<T> {
 
 
     PojoCodecImpl(final ClassModel<T> classModel, final CodecRegistry registry, final DiscriminatorLookup discriminatorLookup) {
-        this(classModel, registry, discriminatorLookup, new ConcurrentHashMap<ClassModel<?>, Codec<?>>(),
-                !classModel.hasTypeParameters());
+        this(classModel, registry, discriminatorLookup, new ConcurrentHashMap<ClassModel<?>, Codec<?>>(), !classModel.hasTypeParameters());
     }
     PojoCodecImpl(final ClassModel<T> classModel, final CodecRegistry registry, final DiscriminatorLookup discriminatorLookup,
                   final ConcurrentMap<ClassModel<?>, Codec<?>> codecCache, final boolean specialized) {

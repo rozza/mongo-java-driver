@@ -24,6 +24,8 @@ import com.mongodb.async.client.MongoCollection;
 import com.mongodb.async.client.MongoDatabase;
 import com.mongodb.client.result.DeleteResult;
 import com.mongodb.client.result.UpdateResult;
+import org.bson.codecs.configuration.CodecRegistry;
+import org.bson.codecs.pojo.PojoCodecProvider;
 
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
@@ -34,6 +36,8 @@ import static com.mongodb.client.model.Filters.not;
 import static com.mongodb.client.model.Updates.combine;
 import static com.mongodb.client.model.Updates.set;
 import static java.util.Arrays.asList;
+import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
+import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
 
 /**
  * The POJO QuickTour code example see: https://mongodb.github.io/mongo-java-driver/3.5/getting-started-pojo
@@ -55,8 +59,12 @@ public class PojoQuickTour {
             mongoClient = MongoClients.create(args[0]);
         }
 
+        // create codec registry for POJOs
+        CodecRegistry pojoCodecRegistry = fromRegistries(MongoClients.getDefaultCodecRegistry(),
+                fromProviders(PojoCodecProvider.builder().automatic(true).build()));
+
         // get handle to "mydb" database
-        MongoDatabase database = mongoClient.getDatabase("mydb");
+        MongoDatabase database = mongoClient.getDatabase("mydb").withCodecRegistry(pojoCodecRegistry);
 
         // get a handle to the "people" collection
         final MongoCollection<Person> collection = database.getCollection("people", Person.class);

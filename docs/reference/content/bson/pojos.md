@@ -56,9 +56,9 @@ encoded and decoded.
 
 ## POJO support
 
-Automatic POJO support can be provided by the [`AutomatocPojoCodecProvider`]({{<apiref "org/bson/codecs/pojo/AutomatocPojoCodecProvider.html">}}). 
-This `CodecProvider` will automatically create a `PojoCodec` for any class that contains at least one serializable or deserializable 
-property. All PojoCodecs provided by the `AutomatocPojoCodecProvider` use the default conventions and cannot be customised.
+Automatic POJO support can be provided by setting `PojoCodecProvider.Builder#automatic(true)`, once built the `PojoCodecProvider` will 
+automatically create a `PojoCodec` for any class that contains at least one serializable or deserializable 
+property.
 
 The entry point for customisable POJO support is the `PojoCodecProvider`. New instances can be created via the
 [`PojoCodecProvider.builder()`]({{<apiref "org/bson/codecs/pojo/PojoCodecProvider.html#builder">}}) method. The `builder` allows users to 
@@ -88,7 +88,7 @@ import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
 
 // Create a CodecRegistry containing the PojoCodecProvider instance.
 CodecProvider pojoCodecProvider = PojoCodecProvider.builder().register("org.example.pojos").build();
-CodecRegistry pojoCodecRegistry = fromRegistries(fromProviders(pojoCodecProvider), defaultCodecRegistry);
+CodecRegistry pojoCodecRegistry = fromRegistries(defaultCodecRegistry, fromProviders(pojoCodecProvider));
 ```
 
 {{% note class="tip" %}}
@@ -334,7 +334,7 @@ ClassModel<SubscriberUser> subscriberUserModel = ClassModel.builder(SubscriberUs
 
 PojoCodecProvider pojoCodecProvider = PojoCodecProvider.builder().register(userModel, freeUserModel, subscriberUserModel).build();
 
-CodecRegistry pojoCodecRegistry = fromRegistries(fromProviders(pojoCodecProvider), defaultCodecRegistry);
+CodecRegistry pojoCodecRegistry = fromRegistries(defaultCodecRegistry, fromProviders(pojoCodecProvider));
 ```
 
 ### Supporting POJOs without no args constructors

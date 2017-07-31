@@ -37,7 +37,6 @@ import org.bson.codecs.IterableCodecProvider;
 import org.bson.codecs.MapCodecProvider;
 import org.bson.codecs.ValueCodecProvider;
 import org.bson.codecs.configuration.CodecRegistry;
-import org.bson.codecs.pojo.AutomaticPojoCodecProvider;
 
 import java.io.Closeable;
 
@@ -197,9 +196,13 @@ public final class MongoClients {
      *
      * <ul>
      *     <li>{@link org.bson.codecs.ValueCodecProvider}</li>
-     *     <li>{@link org.bson.codecs.DocumentCodecProvider}</li>
      *     <li>{@link org.bson.codecs.BsonValueCodecProvider}</li>
+     *     <li>{@link com.mongodb.DBRefCodecProvider}</li>
+     *     <li>{@link org.bson.codecs.DocumentCodecProvider}</li>
+     *     <li>{@link org.bson.codecs.IterableCodecProvider}</li>
+     *     <li>{@link org.bson.codecs.MapCodecProvider}</li>
      *     <li>{@link com.mongodb.client.model.geojson.codecs.GeoJsonCodecProvider}</li>
+     *     <li>{@link com.mongodb.client.gridfs.codecs.GridFSFileCodecProvider}</li>
      * </ul>
      *
      * @return the default codec registry
@@ -218,8 +221,7 @@ public final class MongoClients {
                     new IterableCodecProvider(new DocumentToDBRefTransformer()),
                     new MapCodecProvider(new DocumentToDBRefTransformer()),
                     new GeoJsonCodecProvider(),
-                    new GridFSFileCodecProvider(),
-                    new AutomaticPojoCodecProvider()));
+                    new GridFSFileCodecProvider()));
 
     private static StreamFactory getStreamFactory(final StreamFactoryFactory streamFactoryFactory,
                                                   final SocketSettings socketSettings, final SslSettings sslSettings,
