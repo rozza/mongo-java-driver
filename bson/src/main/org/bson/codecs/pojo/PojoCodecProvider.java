@@ -72,6 +72,7 @@ public final class PojoCodecProvider implements CodecProvider {
         if (classModel != null || (clazz.getPackage() != null && packages.contains(clazz.getPackage().getName()))) {
             if (classModel == null) {
                 classModel = createClassModel(clazz, conventions);
+                discriminatorLookup.addClassModel(classModel);
             }
             return new PojoCodecImpl<T>(classModel, registry, discriminatorLookup);
         } else if (automatic) {
@@ -118,7 +119,7 @@ public final class PojoCodecProvider implements CodecProvider {
         }
 
         /**
-         * Sets whether the provider should automatically try to create a {@link ClassModel} for unknown any classes.
+         * Sets whether the provider should automatically try to create a {@link ClassModel} for any class that is requested.
          *
          * <p>Note: As Java Beans are convention based, when using automatic settings the provider should be the last provider in the
          * registry.</p>
