@@ -52,6 +52,7 @@ import spock.lang.Specification
 
 import java.util.concurrent.TimeUnit
 
+import static com.mongodb.ClusterFixture.TIMEOUT
 import static com.mongodb.ClusterFixture.executeAsync
 import static com.mongodb.ClusterFixture.getPrimary
 import static com.mongodb.ClusterFixture.loopCursor
@@ -132,6 +133,34 @@ class OperationFunctionalSpecification extends Specification {
         results
     }
 
+    def next(cursor, boolean async) {
+        if (async) {
+            def futureResultCallback = new FutureResultCallback<List<BsonDocument>>()
+            cursor.next(futureResultCallback)
+            futureResultCallback.get(TIMEOUT, TimeUnit.SECONDS)
+        } else {
+            cursor.next()
+        }
+    }
+
+    def tryNext(cursor, boolean async) {
+        def next
+        if (async) {
+            def futureResultCallback = new FutureResultCallback<List<BsonDocument>>()
+            cursor.tryNext(futureResultCallback)
+            next = futureResultCallback.get(TIMEOUT, TimeUnit.SECONDS)
+        } else {
+            next = cursor.tryNext()
+        }
+        if (next != null) {
+            next = next.collect { doc ->
+                doc.getDocument('_id').remove('ts')
+                doc
+            }
+        }
+        next
+    }
+
     void testOperation(operation, List<Integer> serverVersion, BsonDocument expectedCommand, boolean async, result = null) {
         def test = async ? this.&testAsyncOperation : this.&testSyncOperation
         test(operation, serverVersion, result, true, expectedCommand)
@@ -150,6 +179,7 @@ class OperationFunctionalSpecification extends Specification {
     def testSyncOperation(operation, List<Integer> serverVersion, result, Boolean checkCommand=true,
                           BsonDocument expectedCommand=null, Boolean checkSlaveOk=false,
                           ReadPreference readPreference=ReadPreference.primary()) {
+        def connCounter = 0
         def connection = Mock(Connection) {
             _ * getDescription() >> Stub(ConnectionDescription) {
                 getServerVersion() >> new ServerVersion(serverVersion)
@@ -157,7 +187,10 @@ class OperationFunctionalSpecification extends Specification {
         }
 
         def connectionSource = Stub(ConnectionSource) {
-            getConnection() >> connection
+            getConnection() >> {
+                connCounter++
+                connection
+            }
         }
         def readBinding = Stub(ReadBinding) {
             getReadConnectionSource() >> connectionSource

@@ -394,6 +394,11 @@ public class ListCollectionsOperation<T> implements AsyncReadOperation<AsyncBatc
         }
 
         @Override
+        public void tryNext(final SingleResultCallback<List<T>> callback) {
+            throw new UnsupportedOperationException("The ProjectingAsyncBatchCursor does not support tryNext");
+        }
+
+        @Override
         public void setBatchSize(final int batchSize) {
             delegate.setBatchSize(batchSize);
         }

@@ -74,6 +74,23 @@ final class OperationHelper {
         void call(AsyncConnectionSource source, AsyncConnection connection, Throwable t);
     }
 
+    static void validateChangeStreams(final Connection connection) {
+        if (!serverIsAtLeastVersionThreeDotSix(connection.getDescription())) {
+            throw new IllegalArgumentException(format("ChangeStreams are not supported by server version: %s",
+                    connection.getDescription().getServerVersion()));
+        }
+    }
+
+    static void validateChangeStreams(final AsyncConnectionSource source, final AsyncConnection connection,
+                                      final AsyncCallableWithConnectionAndSource callable) {
+        Throwable throwable = null;
+        if (!serverIsAtLeastVersionThreeDotSix(connection.getDescription())) {
+            throwable = new IllegalArgumentException(format("ChangeStreams are not supported by server version: %s",
+                    connection.getDescription().getServerVersion()));
+        }
+        callable.call(source, connection, throwable);
+    }
+
     static void validateReadConcern(final Connection connection, final ReadConcern readConcern) {
         if (!serverIsAtLeastVersionThreeDotTwo(connection.getDescription()) && !readConcern.isServerDefault()) {
             throw new IllegalArgumentException(format("ReadConcern not supported by server version: %s",

@@ -216,8 +216,7 @@ class QueryBatchCursor<T> implements BatchCursor<T> {
                 }
             } else {
                 initFromQueryResult(connection.getMore(namespace, serverCursor.getId(),
-                                                       getNumberToReturn(limit, batchSize, count),
-                                                       decoder));
+                        getNumberToReturn(limit, batchSize, count), decoder));
             }
             if (limitReached()) {
                 killCursor(connection);
