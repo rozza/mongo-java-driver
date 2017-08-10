@@ -24,10 +24,10 @@ class ChangeStreamBatchCursorSpecification extends Specification {
 
     def 'should call the underlying QueryBatchCursor'() {
         given:
-        def changeStreamOpertation = Stub(ChangeStreamOperation)
+        def changeStreamOperation = Stub(ChangeStreamOperation)
         def binding = Stub(ReadBinding)
         def wrapped = Mock(QueryBatchCursor)
-        def cursor = new ChangeStreamBatchCursor(changeStreamOpertation, binding, wrapped)
+        def cursor = new ChangeStreamBatchCursor(changeStreamOperation, wrapped, binding)
 
         when:
         cursor.setBatchSize(10)

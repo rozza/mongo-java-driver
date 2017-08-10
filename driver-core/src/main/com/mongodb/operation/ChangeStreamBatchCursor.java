@@ -17,51 +17,47 @@
 package com.mongodb.operation;
 
 import com.mongodb.Function;
-import com.mongodb.MongoNamespace;
+import com.mongodb.MongoChangeStreamException;
+import com.mongodb.MongoCursorNotFoundException;
 import com.mongodb.MongoNotPrimaryException;
 import com.mongodb.MongoQueryException;
-import com.mongodb.MongoServerException;
+import com.mongodb.MongoSocketException;
+import com.mongodb.MongoSocketReadException;
 import com.mongodb.ServerAddress;
 import com.mongodb.ServerCursor;
 import com.mongodb.binding.ReadBinding;
-import org.bson.BsonArray;
 import org.bson.BsonDocument;
-import org.bson.BsonInt64;
-import org.bson.BsonString;
 import org.bson.RawBsonDocument;
-import org.bson.codecs.BsonDocumentCodec;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import static com.mongodb.operation.CommandOperationHelper.executeWrappedCommandProtocol;
-import static java.util.Collections.singletonList;
-
 final class ChangeStreamBatchCursor<T> implements BatchCursor<T> {
-    private static final BsonDocumentCodec BSON_DOCUMENT_CODEC = new BsonDocumentCodec();
     private final ReadBinding binding;
     private final ChangeStreamOperation<T> changeStreamOperation;
 
-    private volatile BsonDocument resumeToken;
-    private volatile QueryBatchCursor<RawBsonDocument> wrapped;
+    private boolean checked = false;
+    private BsonDocument resumeToken;
+    private BatchCursor<RawBsonDocument> wrapped;
 
-    ChangeStreamBatchCursor(final ChangeStreamOperation<T> changeStreamOperation, final ReadBinding binding,
-                            final QueryBatchCursor<RawBsonDocument> wrapped) {
+    ChangeStreamBatchCursor(final ChangeStreamOperation<T> changeStreamOperation,
+                            final BatchCursor<RawBsonDocument> wrapped,
+                            final ReadBinding binding) {
         this.changeStreamOperation = changeStreamOperation;
         this.resumeToken = changeStreamOperation.getResumeToken();
-        this.binding = binding;
         this.wrapped = wrapped;
+        this.binding = binding.retain();
     }
 
-    QueryBatchCursor<RawBsonDocument> getWrapped() {
+    BatchCursor<RawBsonDocument> getWrapped() {
         return wrapped;
     }
 
     @Override
     public boolean hasNext() {
-        return resumeAbleOperation(new Function<QueryBatchCursor<RawBsonDocument>, Boolean>() {
+        return resumeableOperation(new Function<BatchCursor<RawBsonDocument>, Boolean>() {
             @Override
-            public Boolean apply(final QueryBatchCursor<RawBsonDocument> queryBatchCursor) {
+            public Boolean apply(final BatchCursor<RawBsonDocument> queryBatchCursor) {
                 return queryBatchCursor.hasNext();
             }
         });
@@ -69,9 +65,9 @@ final class ChangeStreamBatchCursor<T> implements BatchCursor<T> {
 
     @Override
     public List<T> next() {
-        return resumeAbleOperation(new Function<QueryBatchCursor<RawBsonDocument>, List<T>>() {
+        return resumeableOperation(new Function<BatchCursor<RawBsonDocument>, List<T>>() {
             @Override
-            public List<T> apply(final QueryBatchCursor<RawBsonDocument> queryBatchCursor) {
+            public List<T> apply(final BatchCursor<RawBsonDocument> queryBatchCursor) {
                 return convertResults(queryBatchCursor.next());
             }
         });
@@ -79,9 +75,9 @@ final class ChangeStreamBatchCursor<T> implements BatchCursor<T> {
 
     @Override
     public List<T> tryNext() {
-        return resumeAbleOperation(new Function<QueryBatchCursor<RawBsonDocument>, List<T>>() {
+        return resumeableOperation(new Function<BatchCursor<RawBsonDocument>, List<T>>() {
             @Override
-            public List<T> apply(final QueryBatchCursor<RawBsonDocument> queryBatchCursor) {
+            public List<T> apply(final BatchCursor<RawBsonDocument> queryBatchCursor) {
                 return convertResults(queryBatchCursor.tryNext());
             }
         });
@@ -90,6 +86,7 @@ final class ChangeStreamBatchCursor<T> implements BatchCursor<T> {
     @Override
     public void close() {
         wrapped.close();
+        binding.release();
     }
 
     @Override
@@ -122,43 +119,35 @@ final class ChangeStreamBatchCursor<T> implements BatchCursor<T> {
         if (rawDocuments != null) {
             results = new ArrayList<T>();
             for (RawBsonDocument rawDocument : rawDocuments) {
+                if (!checked && !rawDocument.containsKey("_id")) {
+                    throw new MongoChangeStreamException("Cannot provide resume functionality when the resume token is missing.");
+                }
                 resumeToken = rawDocument.getDocument("_id");
-                results.add(rawDocument.decode(changeStreamOperation.getCodec()));
+                results.add(rawDocument.decode(changeStreamOperation.getDecoder()));
             }
         }
         return results;
     }
 
-    <R> R resumeAbleOperation(final Function<QueryBatchCursor<RawBsonDocument>, R> function) {
-        if (changeStreamOperation.isResumable()) {
-            try {
-                return function.apply(wrapped);
-            } catch (Exception e) {
-                if (e instanceof MongoServerException && !(e instanceof MongoNotPrimaryException || e instanceof MongoQueryException)) {
-                    throw (MongoServerException) e;
-                }
-
-                killPreviousCursor(wrapped.getServerCursor());
-                wrapped = ((ChangeStreamBatchCursor<T>) new ChangeStreamOperation<T>(changeStreamOperation, resumeToken)
-                        .execute(binding)).getWrapped();
-                return function.apply(wrapped);
-            }
-        } else {
+    <R> R resumeableOperation(final Function<BatchCursor<RawBsonDocument>, R> function) {
+        try {
             return function.apply(wrapped);
-        }
-    }
-
-    private void killPreviousCursor(final ServerCursor serverCursor) {
-        if (serverCursor != null) {
-            MongoNamespace namespace = changeStreamOperation.getNamespace();
-            BsonDocument command = new BsonDocument("killCursors", new BsonString(namespace.getCollectionName()))
-                    .append("cursors", new BsonArray(singletonList(new BsonInt64(serverCursor.getId()))));
-            try {
-                executeWrappedCommandProtocol(binding, namespace.getDatabaseName(), command, BSON_DOCUMENT_CODEC);
-            } catch (Exception e) {
-                // Ignore any exceptions killing old cursors
+        } catch (MongoNotPrimaryException e) {
+            throw e;
+        } catch (MongoQueryException e) {
+            if (!(e instanceof MongoCursorNotFoundException)) {
+                throw e;
             }
+        } catch (MongoSocketException e) {
+            if (!(e instanceof MongoSocketReadException)) {
+                throw e;
+            }
+        } catch (Exception e) {
+            // Ignore all other exceptions
         }
+        wrapped.close();
+        wrapped = ((ChangeStreamBatchCursor<T>) changeStreamOperation.resumeAfter(resumeToken).execute(binding)).getWrapped();
+        return function.apply(wrapped);
     }
 
 }

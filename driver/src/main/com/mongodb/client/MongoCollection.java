@@ -259,6 +259,7 @@ public interface MongoCollection<TDocument> {
      * Creates a change stream for this collection.
      *
      * @return the change stream iterable
+     * @mongodb.driver.manual reference/operator/aggregation/changeStream $changeStream
      * @since 3.6
      */
     ChangeStreamIterable<TDocument> watch();
@@ -269,6 +270,7 @@ public interface MongoCollection<TDocument> {
      * @param resultClass the class to decode each document into
      * @param <TResult>   the target document type of the iterable.
      * @return the change stream iterable
+     * @mongodb.driver.manual reference/operator/aggregation/changeStream $changeStream
      * @since 3.6
      */
     <TResult> ChangeStreamIterable<TResult> watch(Class<TResult> resultClass);
@@ -276,8 +278,9 @@ public interface MongoCollection<TDocument> {
     /**
      * Creates a change stream for this collection.
      *
-     * @param pipeline the aggregation pipeline to apply to the change stream
+     * @param pipeline the aggregation pipeline to apply to the change stream.
      * @return the change stream iterable
+     * @mongodb.driver.manual reference/operator/aggregation/changeStream $changeStream
      * @since 3.6
      */
     ChangeStreamIterable<TDocument> watch(List<? extends Bson> pipeline);
@@ -289,6 +292,7 @@ public interface MongoCollection<TDocument> {
      * @param resultClass the class to decode each document into
      * @param <TResult>   the target document type of the iterable.
      * @return the change stream iterable
+     * @mongodb.driver.manual reference/operator/aggregation/changeStream $changeStream
      * @since 3.6
      */
     <TResult> ChangeStreamIterable<TResult> watch(List<? extends Bson> pipeline, Class<TResult> resultClass);

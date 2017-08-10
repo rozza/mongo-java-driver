@@ -18,6 +18,8 @@ package documentation;
 
 import com.mongodb.MongoClient;
 import com.mongodb.MongoClientURI;
+import com.mongodb.ReadConcern;
+import com.mongodb.WriteConcern;
 import com.mongodb.client.ChangeStreamIterable;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
@@ -50,21 +52,24 @@ public final class ChangeStreamSamples {
         }
 
         MongoDatabase database = getMongoClient().getDatabase(getDefaultDatabaseName());
-        MongoCollection<Document> collection = database.getCollection("changes");
+        MongoCollection<Document> collection = database.getCollection("changes")
+                .withWriteConcern(WriteConcern.MAJORITY)
+                .withReadConcern(ReadConcern.MAJORITY);
         collection.insertOne(Document.parse("{test: 'a'}"));
+        collection.insertOne(Document.parse("{test: 'aa'}"));
 
         // 1. Create a simple change stream against an existing collection.
         ChangeStreamIterable<Document> changeStream = collection.watch();
 
         Document next = changeStream.iterator().tryNext();
-        assert (next != null);
+        assert next != null;
         System.out.println(format("1. Initial document from the Change Stream: %n %s", next.toJson()));
 
         // 2. Create a change stream with ‘lookup’ option enabled.
         changeStream = collection.watch().fullDocument(FullDocument.LOOKUP);
 
         next = changeStream.iterator().tryNext();
-        assert (next != null);
+        assert next != null;
         System.out.println(format("2. Document from the Change Stream, with lookup enabled: %n%s", next.toJson()));
 
          // 3. Create a change stream with ‘lookup’ option using a $match and ($redact or $project) stage
@@ -72,12 +77,12 @@ public final class ChangeStreamSamples {
         changeStream = collection.watch(pipeline).fullDocument(FullDocument.LOOKUP);
 
         next = changeStream.iterator().tryNext();
-        assert (next == null);
+        assert next == null;
 
         collection.updateOne(Document.parse("{test: 'a'}"), Document.parse("{$set: {test: 'b'}}"));
 
         next = changeStream.iterator().tryNext();
-        assert (next != null);
+        assert next != null;
 
         System.out.println(format("3. Document from the Change Stream, with lookup enabled, matching `update` operations only: "
                 + "%n - UpdateDescription: %s"
@@ -91,7 +96,7 @@ public final class ChangeStreamSamples {
         collection.insertOne(Document.parse("{test: 'c'}"));
 
         next = changeStream.iterator().tryNext();
-        assert (next != null);
+        assert next != null;
         System.out.println(format("4. Document from the Change Stream including a resume token:%n %s", next.toJson()));
     }
 

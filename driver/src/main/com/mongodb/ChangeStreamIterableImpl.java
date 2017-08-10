@@ -47,7 +47,6 @@ final class ChangeStreamIterableImpl<TResult> implements ChangeStreamIterable<TR
     private Integer batchSize;
     private FullDocument fullDocument = FullDocument.NONE;
     private Bson resumeToken;
-    private long maxTimeMS;
     private long maxAwaitTimeMS;
     private Collation collation;
 
@@ -80,13 +79,6 @@ final class ChangeStreamIterableImpl<TResult> implements ChangeStreamIterable<TR
     @Override
     public ChangeStreamIterable<TResult> batchSize(final int batchSize) {
         this.batchSize = notNull("batchSize", batchSize);
-        return this;
-    }
-
-    @Override
-    public ChangeStreamIterable<TResult> maxTime(final long maxTime, final TimeUnit timeUnit) {
-        notNull("timeUnit", timeUnit);
-        this.maxTimeMS = MILLISECONDS.convert(maxTime, timeUnit);
         return this;
     }
 
@@ -131,9 +123,8 @@ final class ChangeStreamIterableImpl<TResult> implements ChangeStreamIterable<TR
     private MongoIterable<TResult> execute() {
         List<BsonDocument> aggregateList = createBsonDocumentList(pipeline);
 
-        ChangeStreamOperation<TResult> changeStreamOperation = new ChangeStreamOperation<TResult>(namespace, fullDocument.getValue(),
-                aggregateList, codecRegistry.get(resultClass))
-                .maxTime(maxTimeMS, MILLISECONDS)
+        ChangeStreamOperation<TResult> changeStreamOperation = new ChangeStreamOperation<TResult>(namespace, fullDocument, aggregateList,
+                codecRegistry.get(resultClass))
                 .maxAwaitTime(maxAwaitTimeMS, MILLISECONDS)
                 .batchSize(batchSize)
                 .readConcern(readConcern)

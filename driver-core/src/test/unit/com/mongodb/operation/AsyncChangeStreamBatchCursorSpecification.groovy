@@ -28,7 +28,7 @@ class AsyncChangeStreamBatchCursorSpecification extends Specification {
         def binding = Stub(AsyncReadBinding)
         def wrapped = Mock(AsyncQueryBatchCursor)
         def callback = Stub(SingleResultCallback)
-        def cursor = new AsyncChangeStreamBatchCursor(changeStreamOpertation, binding, wrapped)
+        def cursor = new AsyncChangeStreamBatchCursor(changeStreamOpertation, wrapped, binding)
 
         when:
         cursor.setBatchSize(10)

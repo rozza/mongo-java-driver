@@ -43,6 +43,7 @@ import static com.mongodb.ClusterFixture.enableMaxTimeFailPoint
 import static com.mongodb.ClusterFixture.getBinding
 import static com.mongodb.ClusterFixture.getCluster
 import static com.mongodb.ClusterFixture.isDiscoverableReplicaSet
+import static com.mongodb.ClusterFixture.isSharded
 import static com.mongodb.ClusterFixture.serverVersionAtLeast
 import static java.util.concurrent.TimeUnit.MILLISECONDS
 import static java.util.concurrent.TimeUnit.SECONDS
@@ -273,7 +274,7 @@ class AggregateOperationSpecification extends OperationFunctionalSpecification {
         batchSize << [null, 0, 10]
     }
 
-    @IgnoreIf({ !serverVersionAtLeast(2, 6) })
+    @IgnoreIf({ isSharded() || !serverVersionAtLeast(2, 6) })
     def 'should throw execution timeout exception from execute'() {
         given:
         def operation = new AggregateOperation<Document>(getNamespace(), [], new DocumentCodec()).maxTime(1, SECONDS)
@@ -324,6 +325,54 @@ class AggregateOperationSpecification extends OperationFunctionalSpecification {
 
         where:
         [async, options] << [[true, false], [defaultCollation, null, Collation.builder().build()]].combinations()
+    }
+
+    @IgnoreIf({ isSharded() || !serverVersionAtLeast(3, 2) })
+    def 'should be able to respect maxTime with pipeline'() {
+        given:
+        enableMaxTimeFailPoint()
+        AggregateOperation operation = new AggregateOperation<Document>(getNamespace(), [], new DocumentCodec())
+                .maxTime(10, MILLISECONDS)
+
+        when:
+        execute(operation, async)
+
+        then:
+        thrown(MongoExecutionTimeoutException)
+
+        cleanup:
+        disableMaxTimeFailPoint()
+
+        where:
+        async << [true, false]
+    }
+
+    @IgnoreIf({ isSharded() || !serverVersionAtLeast(3, 2) })
+    def 'should be able to respect maxAwaitTime with pipeline'() {
+        given:
+        enableMaxTimeFailPoint()
+        AggregateOperation operation = new AggregateOperation<Document>(getNamespace(), [], new DocumentCodec())
+                .batchSize(2)
+                .maxAwaitTime(10, MILLISECONDS)
+
+        when:
+        def cursor = execute(operation, async)
+        next(cursor, async)
+
+        then:
+        notThrown(MongoExecutionTimeoutException)
+
+        when:
+        next(cursor, async)
+
+        then:
+        thrown(MongoExecutionTimeoutException)
+
+        cleanup:
+        disableMaxTimeFailPoint()
+
+        where:
+        async << [true, false]
     }
 
     def 'should use the ReadBindings readPreference to set slaveOK'() {

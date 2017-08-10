@@ -80,13 +80,19 @@ class AggregateIterableSpecification extends Specification {
         readPreference == secondary()
 
         when: 'overriding initial options'
-        aggregationIterable.maxTime(999, MILLISECONDS).collation(collation).useCursor(true).into([]) { result, t -> }
+        aggregationIterable
+                .maxAwaitTime(99, MILLISECONDS)
+                .maxTime(999, MILLISECONDS)
+                .collation(collation)
+                .useCursor(true)
+                .into([]) { result, t -> }
 
         operation = executor.getReadOperation() as AggregateOperation<Document>
 
         then: 'should use the overrides'
         expect operation, isTheSameAs(new AggregateOperation<Document>(namespace, [new BsonDocument('$match', new BsonInt32(1))],
                 new DocumentCodec())
+                .maxAwaitTime(99, MILLISECONDS)
                 .maxTime(999, MILLISECONDS)
                 .useCursor(true)
                 .collation(collation))
@@ -109,6 +115,7 @@ class AggregateIterableSpecification extends Specification {
         new AggregateIterableImpl(namespace, Document, Document, codecRegistry, readPreference, readConcern, writeConcern, executor,
                 pipeline)
                 .batchSize(99)
+                .maxAwaitTime(99, MILLISECONDS)
                 .maxTime(999, MILLISECONDS)
                 .allowDiskUse(true)
                 .useCursor(true)
@@ -129,6 +136,7 @@ class AggregateIterableSpecification extends Specification {
         then: 'should use the correct settings'
         operation.getNamespace() == collectionNamespace
         operation.getBatchSize() == 99
+        operation.getMaxAwaitTime(MILLISECONDS) == 99
 
         when: 'toCollection should work as expected'
         def futureResultCallback = new FutureResultCallback()

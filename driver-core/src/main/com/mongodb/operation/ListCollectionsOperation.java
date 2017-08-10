@@ -395,7 +395,16 @@ public class ListCollectionsOperation<T> implements AsyncReadOperation<AsyncBatc
 
         @Override
         public void tryNext(final SingleResultCallback<List<T>> callback) {
-            throw new UnsupportedOperationException("The ProjectingAsyncBatchCursor does not support tryNext");
+            delegate.tryNext(new SingleResultCallback<List<BsonDocument>>() {
+                @Override
+                public void onResult(final List<BsonDocument> result, final Throwable t) {
+                    if (t != null) {
+                        callback.onResult(null, t);
+                    } else {
+                        callback.onResult(projectFromFullNamespaceToCollectionName(result), null);
+                    }
+                }
+            });
         }
 
         @Override

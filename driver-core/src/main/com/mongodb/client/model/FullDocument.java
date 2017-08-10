@@ -22,7 +22,7 @@ import static java.lang.String.format;
  *
  * Change Stream fullDocument configuration.
  *
- * <p>Determines what to return when using a Change Stream. Defaults to {@link FullDocument#NONE}.
+ * <p>Determines what to return for update operations when using a Change Stream. Defaults to {@link FullDocument#NONE}.
  * When set to {@link FullDocument#LOOKUP}, the change stream for partial updates will include both a delta describing the
  * changes to the document as well as a copy of the entire document that was changed from <em>some time</em> after the change occurred.</p>
  *
@@ -34,7 +34,7 @@ public enum FullDocument {
     /**
      * None
      *
-     * <p>Returns the full document.</p>
+     * <p>For update operations returns `null`.</p>
      */
     NONE("none"),
 

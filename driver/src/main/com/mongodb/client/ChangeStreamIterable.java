@@ -57,23 +57,12 @@ public interface ChangeStreamIterable<TResult> extends MongoIterable<TResult> {
     ChangeStreamIterable<TResult> batchSize(int batchSize);
 
     /**
-     * Sets the maximum execution time on the server for this operation.
-     *
-     * @param maxTime  the max time
-     * @param timeUnit the time unit, which may not be null
-     * @return this
-     * @mongodb.driver.manual reference/method/cursor.maxTimeMS/#cursor.maxTimeMS Max Time
-     */
-    ChangeStreamIterable<TResult> maxTime(long maxTime, TimeUnit timeUnit);
-
-    /**
      * Sets the maximum await execution time on the server for this operation.
      *
      * @param maxAwaitTime  the max await time.  A zero value will be ignored, and indicates that the driver should respect the server's
      *                      default value
      * @param timeUnit the time unit, which may not be null
      * @return this
-     * @mongodb.driver.manual reference/method/cursor.maxTimeMS/#cursor.maxTimeMS Max Time
      */
     ChangeStreamIterable<TResult>  maxAwaitTime(long maxAwaitTime, TimeUnit timeUnit);
 

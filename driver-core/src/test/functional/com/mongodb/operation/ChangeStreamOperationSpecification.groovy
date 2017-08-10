@@ -17,12 +17,11 @@
 package com.mongodb.operation
 
 import com.mongodb.MongoChangeStreamException
-import com.mongodb.MongoExecutionTimeoutException
 import com.mongodb.MongoNamespace
 import com.mongodb.OperationFunctionalSpecification
 import com.mongodb.ReadConcern
 import com.mongodb.WriteConcern
-import com.mongodb.async.FutureResultCallback
+import com.mongodb.client.model.FullDocument
 import com.mongodb.client.test.CollectionHelper
 import org.bson.BsonArray
 import org.bson.BsonDocument
@@ -34,44 +33,37 @@ import org.bson.codecs.BsonDocumentCodec
 import org.bson.codecs.DocumentCodec
 import spock.lang.IgnoreIf
 
-import static com.mongodb.ClusterFixture.disableMaxTimeFailPoint
-import static com.mongodb.ClusterFixture.enableMaxTimeFailPoint
 import static com.mongodb.ClusterFixture.isDiscoverableReplicaSet
-import static com.mongodb.ClusterFixture.isSharded
 import static com.mongodb.ClusterFixture.serverVersionAtLeast
 import static java.util.concurrent.TimeUnit.MILLISECONDS
-import static java.util.concurrent.TimeUnit.SECONDS
 
 @IgnoreIf({ !serverVersionAtLeast([3, 5, 11]) || !isDiscoverableReplicaSet() })
 class ChangeStreamOperationSpecification extends OperationFunctionalSpecification {
 
     def 'should have the correct defaults'() {
         when:
-        ChangeStreamOperation operation = new ChangeStreamOperation<Document>(getNamespace(), 'none', [], new DocumentCodec())
+        ChangeStreamOperation operation = new ChangeStreamOperation<Document>(getNamespace(), FullDocument.NONE, [], new DocumentCodec())
 
         then:
         operation.getBatchSize() == null
         operation.getCollation() == null
-        operation.getFullDocument() == 'none'
+        operation.getFullDocument() == FullDocument.NONE
         operation.getMaxAwaitTime(MILLISECONDS) == 0
-        operation.getMaxTime(MILLISECONDS) == 0
         operation.getPipeline() == []
     }
 
     def 'should set optional values correctly'() {
         when:
-        ChangeStreamOperation operation = new ChangeStreamOperation<Document>(getNamespace(), 'lookup', [], new DocumentCodec())
+        ChangeStreamOperation operation = new ChangeStreamOperation<Document>(getNamespace(), FullDocument.LOOKUP, [], new DocumentCodec())
                 .batchSize(5)
                 .collation(defaultCollation)
                 .maxAwaitTime(15, MILLISECONDS)
-                .maxTime(10, MILLISECONDS)
 
         then:
         operation.getBatchSize() == 5
         operation.getCollation() == defaultCollation
-        operation.getFullDocument() == 'lookup'
+        operation.getFullDocument() == FullDocument.LOOKUP
         operation.getMaxAwaitTime(MILLISECONDS) == 15
-        operation.getMaxTime(MILLISECONDS) == 10
     }
 
     def 'should create the expected command'() {
@@ -83,38 +75,20 @@ class ChangeStreamOperationSpecification extends OperationFunctionalSpecificatio
                 .append('cursor', new BsonDocument('id', new BsonInt64(0)).append('ns', new BsonString('db.coll'))
                 .append('firstBatch', new BsonArrayWrapper([])))
 
-        def operation = new ChangeStreamOperation<Document>(namespace, 'none', pipeline, new DocumentCodec())
+        def operation = new ChangeStreamOperation<Document>(namespace, FullDocument.NONE, pipeline, new DocumentCodec())
                 .batchSize(5)
                 .collation(defaultCollation)
                 .maxAwaitTime(15, MILLISECONDS)
-                .maxTime(10, MILLISECONDS)
                 .readConcern(ReadConcern.MAJORITY)
 
         def expectedCommand = new BsonDocument('aggregate', new BsonString(namespace.getCollectionName()))
                 .append('collation', defaultCollation.asDocument())
                 .append('cursor', new BsonDocument('batchSize', new BsonInt32(5)))
-                .append('maxTimeMS', new BsonInt64(10))
                 .append('pipeline', new BsonArray([changeStream, *pipeline]))
                 .append('readConcern', new BsonDocument('level', new BsonString('majority')))
 
         then:
         testOperation(operation, [3, 6, 0], expectedCommand, async, cursorResult)
-
-        where:
-        async << [true, false]
-    }
-
-    def 'should throw an exception when using an older version of MongoDB'() {
-        given:
-        def pipeline = [BsonDocument.parse('{$match: {a: "A"}}')]
-        def operation = new ChangeStreamOperation<Document>(namespace, 'none', pipeline, new DocumentCodec())
-
-        when:
-        testOperationThrows(operation, [3, 4, 0], async)
-
-        then:
-        def exception = thrown(IllegalArgumentException)
-        exception.getMessage().startsWith('ChangeStreams are not supported by server version:')
 
         where:
         async << [true, false]
@@ -127,7 +101,7 @@ class ChangeStreamOperationSpecification extends OperationFunctionalSpecificatio
 
         def pipeline = ['{$match: {operationType: "insert"}}', '{$sort: {"_id.ts": -1}}', '{$limit: 2}',
                         '{$sort: {"_id.ts": 1}}'].collect { BsonDocument.parse(it) }
-        def operation = new ChangeStreamOperation<BsonDocument>(helper.getNamespace(), 'none', pipeline, CODEC)
+        def operation = new ChangeStreamOperation<BsonDocument>(helper.getNamespace(), FullDocument.NONE, pipeline, CODEC)
 
         when:
         def cursor = execute(operation, async)
@@ -147,10 +121,11 @@ class ChangeStreamOperationSpecification extends OperationFunctionalSpecificatio
         def helper = getCollectionHelper(async)
         insertDocuments(helper, [1, 2])
         def pipeline = [BsonDocument.parse('{$project: {"_id": 0}}')]
-        def operation = new ChangeStreamOperation<BsonDocument>(helper.getNamespace(), 'none', pipeline, CODEC)
+        def operation = new ChangeStreamOperation<BsonDocument>(helper.getNamespace(), FullDocument.NONE, pipeline, CODEC)
 
         when:
-        execute(operation, async)
+        def cursor = execute(operation, async)
+        tryNext(cursor, async)
 
         then:
         thrown(MongoChangeStreamException)
@@ -164,7 +139,7 @@ class ChangeStreamOperationSpecification extends OperationFunctionalSpecificatio
         def helper = getCollectionHelper(async)
 
         def pipeline = ['{$match: {operationType: "insert"}}'].collect { BsonDocument.parse(it) }
-        def operation = new ChangeStreamOperation<BsonDocument>(helper.getNamespace(), 'none', pipeline, CODEC)
+        def operation = new ChangeStreamOperation<BsonDocument>(helper.getNamespace(), FullDocument.NONE, pipeline, CODEC)
 
         when:
         def cursor = execute(operation, async)
@@ -200,7 +175,7 @@ class ChangeStreamOperationSpecification extends OperationFunctionalSpecificatio
         def helper = getCollectionHelper(async)
 
         def pipeline = ['{$match: {operationType: "insert"}}'].collect { BsonDocument.parse(it) }
-        def operation = new ChangeStreamOperation<BsonDocument>(helper.getNamespace(), 'none', pipeline, CODEC)
+        def operation = new ChangeStreamOperation<BsonDocument>(helper.getNamespace(), FullDocument.NONE, pipeline, CODEC)
 
         when:
         def cursor = execute(operation, async)
@@ -209,7 +184,7 @@ class ChangeStreamOperationSpecification extends OperationFunctionalSpecificatio
         tryNext(cursor, async) == null
 
         when:
-        helper.killCursor(helper.getNamespace(), cursor.getServerCursor())
+        helper.killCursor(helper.getNamespace(), cursor.getWrapped().getServerCursor())
         def expected = insertDocuments(helper, [1, 2])
 
         then:
@@ -220,7 +195,7 @@ class ChangeStreamOperationSpecification extends OperationFunctionalSpecificatio
 
         when:
         expected = insertDocuments(helper, [3, 4])
-        helper.killCursor(helper.getNamespace(), cursor.getServerCursor())
+        helper.killCursor(helper.getNamespace(), cursor.getWrapped().getServerCursor())
 
         then:
         tryNext(cursor, async) == expected
@@ -239,7 +214,7 @@ class ChangeStreamOperationSpecification extends OperationFunctionalSpecificatio
         insertDocuments(helper, [1, 2])
 
         def pipeline = ['{$match: {operationType: "insert"}}'].collect { BsonDocument.parse(it) }
-        def operation = new ChangeStreamOperation<BsonDocument>(helper.getNamespace(), 'none', pipeline, CODEC)
+        def operation = new ChangeStreamOperation<BsonDocument>(helper.getNamespace(), FullDocument.NONE, pipeline, CODEC)
 
         when:
         def cursor = execute(operation, async)
@@ -265,39 +240,11 @@ class ChangeStreamOperationSpecification extends OperationFunctionalSpecificatio
         async << [true, false]
     }
 
-    def 'should be not allow two async operations at once'() {
-        given:
-        def helper = getCollectionHelper(true)
-        insertDocuments(helper, (0..100))
-        def operation = new ChangeStreamOperation<BsonDocument>(helper.getNamespace(), 'none', [], CODEC)
-
-        when:
-        def cursor = execute(operation, true)
-        def futureResultCallback1 = new FutureResultCallback<List<BsonDocument>>()
-        def futureResultCallback2 = new FutureResultCallback<List<BsonDocument>>()
-        def futureResultCallback3 = new FutureResultCallback<List<BsonDocument>>()
-
-        cursor.tryNext(futureResultCallback1)
-        cursor.tryNext(futureResultCallback2)
-        cursor.tryNext(futureResultCallback3)
-
-        futureResultCallback1.get()
-        futureResultCallback2.get()
-        futureResultCallback3.get()
-
-        then:
-        thrown(MongoChangeStreamException)
-
-        cleanup:
-        cursor?.close()
-        helper?.drop()
-    }
-
     def 'should support hasNext on the sync API'() {
         given:
         def helper = getCollectionHelper(false)
         insertDocuments(helper, [1, 2])
-        def operation = new ChangeStreamOperation<BsonDocument>(helper.getNamespace(), 'none', [], CODEC)
+        def operation = new ChangeStreamOperation<BsonDocument>(helper.getNamespace(), FullDocument.NONE, [], CODEC)
 
         when:
         def cursor = execute(operation, false)
@@ -307,28 +254,6 @@ class ChangeStreamOperationSpecification extends OperationFunctionalSpecificatio
 
         cleanup:
         cursor?.close()
-    }
-
-    @IgnoreIf({ isSharded() })
-    def 'should handle timeouts'() {
-        given:
-        def helper = getCollectionHelper(true)
-        insertDocuments(helper, (0..100))
-        def operation = new ChangeStreamOperation<BsonDocument>(helper.getNamespace(), 'none', [], CODEC).maxTime(1, SECONDS)
-        enableMaxTimeFailPoint()
-
-        when:
-        execute(operation, async)
-
-        then:
-        thrown(MongoExecutionTimeoutException)
-
-        cleanup:
-        disableMaxTimeFailPoint()
-        helper?.drop()
-
-        where:
-        async << [true, false]
     }
 
     private final static CODEC = new BsonDocumentCodec()
