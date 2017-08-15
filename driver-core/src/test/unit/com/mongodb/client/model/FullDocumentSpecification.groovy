@@ -25,9 +25,9 @@ class FullDocumentSpecification extends Specification {
         fullDocument.getValue() == expectedString
 
         where:
-        fullDocument        | expectedString
-        FullDocument.NONE   | 'none'
-        FullDocument.LOOKUP | 'lookup'
+        fullDocument               | expectedString
+        FullDocument.DEFAULT       | 'none'
+        FullDocument.UPDATE_LOOKUP | 'lookup'
     }
 
     def 'should support valid string representations'() {
@@ -35,9 +35,9 @@ class FullDocumentSpecification extends Specification {
         FullDocument.fromString(stringValue) == fullDocument
 
         where:
-        fullDocument        | stringValue
-        FullDocument.NONE   | 'none'
-        FullDocument.LOOKUP | 'lookup'
+        fullDocument               | stringValue
+        FullDocument.DEFAULT       | 'none'
+        FullDocument.UPDATE_LOOKUP | 'lookup'
     }
 
     def 'should throw an illegal argument exception for invalid values'() {

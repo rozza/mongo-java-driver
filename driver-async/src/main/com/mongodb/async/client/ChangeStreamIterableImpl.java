@@ -49,7 +49,7 @@ final class ChangeStreamIterableImpl<TResult> implements ChangeStreamIterable<TR
     private final Class<TResult> resultClass;
 
     private Integer batchSize;
-    private FullDocument fullDocument = FullDocument.NONE;
+    private FullDocument fullDocument = FullDocument.DEFAULT;
     private Bson resumeToken;
     private long maxAwaitTimeMS;
     private Collation collation;

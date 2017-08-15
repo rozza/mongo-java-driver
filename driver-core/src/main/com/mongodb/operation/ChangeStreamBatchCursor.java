@@ -36,7 +36,6 @@ final class ChangeStreamBatchCursor<T> implements BatchCursor<T> {
     private final ReadBinding binding;
     private final ChangeStreamOperation<T> changeStreamOperation;
 
-    private boolean checked = false;
     private BsonDocument resumeToken;
     private BatchCursor<RawBsonDocument> wrapped;
 
@@ -119,7 +118,7 @@ final class ChangeStreamBatchCursor<T> implements BatchCursor<T> {
         if (rawDocuments != null) {
             results = new ArrayList<T>();
             for (RawBsonDocument rawDocument : rawDocuments) {
-                if (!checked && !rawDocument.containsKey("_id")) {
+                if (!rawDocument.containsKey("_id")) {
                     throw new MongoChangeStreamException("Cannot provide resume functionality when the resume token is missing.");
                 }
                 resumeToken = rawDocument.getDocument("_id");
@@ -133,17 +132,11 @@ final class ChangeStreamBatchCursor<T> implements BatchCursor<T> {
         try {
             return function.apply(wrapped);
         } catch (MongoNotPrimaryException e) {
-            throw e;
-        } catch (MongoQueryException e) {
-            if (!(e instanceof MongoCursorNotFoundException)) {
-                throw e;
-            }
-        } catch (MongoSocketException e) {
-            if (!(e instanceof MongoSocketReadException)) {
-                throw e;
-            }
-        } catch (Exception e) {
-            // Ignore all other exceptions
+            // Ignore
+        } catch (MongoCursorNotFoundException w) {
+            // Ignore
+        } catch (MongoSocketReadException e) {
+            // Ignore
         }
         wrapped.close();
         wrapped = ((ChangeStreamBatchCursor<T>) changeStreamOperation.resumeAfter(resumeToken).execute(binding)).getWrapped();

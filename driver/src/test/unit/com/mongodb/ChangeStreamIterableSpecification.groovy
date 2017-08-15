@@ -58,19 +58,19 @@ class ChangeStreamIterableSpecification extends Specification {
         def readPreference = executor.getReadPreference()
 
         then:
-        expect operation, isTheSameAs(new ChangeStreamOperation<Document>(namespace, FullDocument.NONE,
+        expect operation, isTheSameAs(new ChangeStreamOperation<Document>(namespace, FullDocument.DEFAULT,
                 [BsonDocument.parse('{$match: 1}')], codecRegistry.get(Document)))
         readPreference == secondary()
 
         when: 'overriding initial options'
         def resumeToken = BsonDocument.parse('{_id: {a: 1}}')
         changeStreamIterable.collation(collation).maxAwaitTime(99, MILLISECONDS)
-                .fullDocument(FullDocument.LOOKUP).resumeAfter(resumeToken).iterator()
+                .fullDocument(FullDocument.UPDATE_LOOKUP).resumeAfter(resumeToken).iterator()
 
         operation = executor.getReadOperation() as ChangeStreamOperation<Document>
 
         then: 'should use the overrides'
-        expect operation, isTheSameAs(new ChangeStreamOperation<Document>(namespace, FullDocument.LOOKUP,
+        expect operation, isTheSameAs(new ChangeStreamOperation<Document>(namespace, FullDocument.UPDATE_LOOKUP,
                 [BsonDocument.parse('{$match: 1}')], codecRegistry.get(Document))
                 .collation(collation).maxAwaitTime(99, MILLISECONDS)
                 .resumeAfter(resumeToken))

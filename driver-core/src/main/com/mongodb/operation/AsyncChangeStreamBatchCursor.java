@@ -38,7 +38,6 @@ final class AsyncChangeStreamBatchCursor<T> implements AsyncBatchCursor<T> {
     private final AsyncReadBinding binding;
     private final ChangeStreamOperation<T> changeStreamOperation;
 
-    private volatile boolean checked = false;
     private volatile BsonDocument resumeToken;
     private volatile AsyncBatchCursor<RawBsonDocument> wrapped;
 
@@ -105,18 +104,15 @@ final class AsyncChangeStreamBatchCursor<T> implements AsyncBatchCursor<T> {
         asyncBlock.apply(wrapped, new SingleResultCallback<List<RawBsonDocument>>() {
             @Override
             public void onResult(final List<RawBsonDocument> result, final Throwable t) {
-
                 if (t == null) {
                     callback.onResult(result, null);
-                } else if (t instanceof MongoNotPrimaryException) {
-                    callback.onResult(null, t);
-                } else if (t instanceof  MongoQueryException && !(t instanceof MongoCursorNotFoundException)) {
-                    callback.onResult(null, t);
-                } else if (t instanceof MongoSocketException && !(t instanceof MongoSocketReadException)) {
-                    callback.onResult(null, t);
-                } else {
+                } else if (t instanceof MongoNotPrimaryException
+                        || t instanceof MongoCursorNotFoundException
+                        || t instanceof MongoSocketReadException) {
                     wrapped.close();
                     retryOperation(asyncBlock, callback);
+                } else {
+                    callback.onResult(null, t);
                 }
             }
         });
@@ -145,13 +141,12 @@ final class AsyncChangeStreamBatchCursor<T> implements AsyncBatchCursor<T> {
                 } else if (rawDocuments != null) {
                     List<T> results = new ArrayList<T>();
                     for (RawBsonDocument rawDocument : rawDocuments) {
-                        if (!checked && !rawDocument.containsKey("_id")) {
+                        if (!rawDocument.containsKey("_id")) {
                             callback.onResult(null,
                                     new MongoChangeStreamException("Cannot provide resume functionality when the resume token is missing.")
                             );
                             return;
                         }
-                        checked = true;
                         resumeToken = rawDocument.getDocument("_id");
                         results.add(rawDocument.decode(changeStreamOperation.getDecoder()));
                     }
