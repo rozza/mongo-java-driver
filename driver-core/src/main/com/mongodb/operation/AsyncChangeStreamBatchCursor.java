@@ -19,7 +19,7 @@ package com.mongodb.operation;
 import com.mongodb.MongoChangeStreamException;
 import com.mongodb.MongoCursorNotFoundException;
 import com.mongodb.MongoNotPrimaryException;
-import com.mongodb.MongoSocketReadException;
+import com.mongodb.MongoSocketException;
 import com.mongodb.async.AsyncBatchCursor;
 import com.mongodb.async.SingleResultCallback;
 import com.mongodb.binding.AsyncReadBinding;
@@ -106,7 +106,7 @@ final class AsyncChangeStreamBatchCursor<T> implements AsyncBatchCursor<T> {
                     callback.onResult(result, null);
                 } else if (t instanceof MongoNotPrimaryException
                         || t instanceof MongoCursorNotFoundException
-                        || t instanceof MongoSocketReadException) {
+                        || t instanceof MongoSocketException) {
                     wrapped.close();
                     retryOperation(asyncBlock, callback);
                 } else {

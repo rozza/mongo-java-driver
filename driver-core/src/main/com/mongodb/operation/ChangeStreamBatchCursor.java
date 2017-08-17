@@ -20,7 +20,7 @@ import com.mongodb.Function;
 import com.mongodb.MongoChangeStreamException;
 import com.mongodb.MongoCursorNotFoundException;
 import com.mongodb.MongoNotPrimaryException;
-import com.mongodb.MongoSocketReadException;
+import com.mongodb.MongoSocketException;
 import com.mongodb.ServerAddress;
 import com.mongodb.ServerCursor;
 import com.mongodb.binding.ReadBinding;
@@ -134,7 +134,7 @@ final class ChangeStreamBatchCursor<T> implements BatchCursor<T> {
             // Ignore
         } catch (MongoCursorNotFoundException w) {
             // Ignore
-        } catch (MongoSocketReadException e) {
+        } catch (MongoSocketException e) {
             // Ignore
         }
         wrapped.close();
