@@ -18,19 +18,20 @@ package documentation;
 
 import com.mongodb.MongoClient;
 import com.mongodb.MongoClientURI;
-import com.mongodb.ReadConcern;
-import com.mongodb.WriteConcern;
-import com.mongodb.client.ChangeStreamIterable;
 import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.model.Aggregates;
+import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.FullDocument;
+import com.mongodb.client.model.Updates;
 import org.bson.Document;
+import org.bson.conversions.Bson;
 
 import java.util.List;
 
-import static com.mongodb.Fixture.getDefaultDatabaseName;
-import static com.mongodb.Fixture.getMongoClient;
 import static java.lang.String.format;
+import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 
 
@@ -44,6 +45,7 @@ public final class ChangeStreamSamples {
     public static void main(final String[] args) {
         MongoClient mongoClient;
 
+        // Create a new MongoClient with a MongoDB URI string.
         if (args.length == 0) {
             // Defaults to a localhost replicaset on ports: 27017, 27018, 27019
             mongoClient = new MongoClient(new MongoClientURI("mongodb://localhost:27017,localhost:27018,localhost:27019"));
@@ -51,53 +53,115 @@ public final class ChangeStreamSamples {
             mongoClient = new MongoClient(new MongoClientURI(args[0]));
         }
 
-        MongoDatabase database = getMongoClient().getDatabase(getDefaultDatabaseName());
-        MongoCollection<Document> collection = database.getCollection("changes")
-                .withWriteConcern(WriteConcern.MAJORITY)
-                .withReadConcern(ReadConcern.MAJORITY);
+        // Select the MongoDB database.
+        MongoDatabase database = mongoClient.getDatabase("testChangeStreams");
+        database.drop();
+
+        // Select the collection to query.
+        MongoCollection<Document> collection = database.getCollection("changes");
+
+        /*
+         * Example 1
+         * Create a simple change stream against an existing collection.
+         */
+        System.out.println("1. Initial document from the Change Stream:");
+
+        // Create the change stream cursor.
+        MongoCursor<Document> cursor = collection.watch().iterator();
+
+        // Forward to the end of the change stream
+        Document next = cursor.tryNext();
+        while (next != null) {
+            next = cursor.tryNext();
+        }
+
+        // Insert a test document into the collection.
         collection.insertOne(Document.parse("{test: 'a'}"));
-        collection.insertOne(Document.parse("{test: 'aa'}"));
+        next = cursor.next();
 
-        // 1. Create a simple change stream against an existing collection.
-        ChangeStreamIterable<Document> changeStream = collection.watch();
+        System.out.println(next.toJson());
+        cursor.close();
 
-        Document next = changeStream.iterator().tryNext();
-        assert next != null;
-        System.out.println(format("1. Initial document from the Change Stream: %n %s", next.toJson()));
+        /*
+         * Example 2
+         * Create a change stream with ‘lookup’ option enabled.
+         * The test document will be returned with a full version of the updated document.
+         */
+        System.out.println("2. Document from the Change Stream, with lookup enabled:");
 
-        // 2. Create a change stream with ‘lookup’ option enabled.
-        changeStream = collection.watch().fullDocument(FullDocument.LOOKUP);
+        // Create the change stream cursor.
+        cursor = collection.watch().fullDocument(FullDocument.UPDATE_LOOKUP).iterator();
 
-        next = changeStream.iterator().tryNext();
-        assert next != null;
-        System.out.println(format("2. Document from the Change Stream, with lookup enabled: %n%s", next.toJson()));
+        // Forward to the end of the change stream
+        next = cursor.tryNext();
+        while (next != null) {
+            next = cursor.tryNext();
+        }
 
-         // 3. Create a change stream with ‘lookup’ option using a $match and ($redact or $project) stage
-        List<Document> pipeline = singletonList(Document.parse("{ $match : { operationType: 'update'}}"));
-        changeStream = collection.watch(pipeline).fullDocument(FullDocument.LOOKUP);
-
-        next = changeStream.iterator().tryNext();
-        assert next == null;
-
+        // Update the test document.
         collection.updateOne(Document.parse("{test: 'a'}"), Document.parse("{$set: {test: 'b'}}"));
 
-        next = changeStream.iterator().tryNext();
-        assert next != null;
-
-        System.out.println(format("3. Document from the Change Stream, with lookup enabled, matching `update` operations only: "
-                + "%n - UpdateDescription: %s"
-                + "%n - Full response: %s", next.get("updateDescription", Document.class).toJson(), next.toJson()));
+        // Block until the next result is returned
+        next = cursor.next();
+        System.out.println(next.toJson());
+        cursor.close();
 
 
-        // 4. Resume a change stream
+        /*
+         * Example 3
+         * Create a change stream with ‘lookup’ option using a $match and ($redact or $project) stage.
+         */
+        System.out.println("3. Document from the Change Stream, with lookup enabled, matching `update` operations only: ");
+        // Insert some dummy data.
+        collection.insertMany(asList(Document.parse("{updateMe: 1}"), Document.parse("{replaceMe: 1}"), Document.parse("{deleteMe: 1}")));
+
+        // Create $match pipeline stage.
+        List<Bson> pipeline = singletonList(
+                Aggregates.match(Filters.in("operationType", asList("update", "replace", "delete"))));
+
+        // Create the change stream cursor with $match.
+        cursor = collection.watch(pipeline).fullDocument(FullDocument.UPDATE_LOOKUP).iterator();
+
+        // Forward to the end of the change stream
+        next = cursor.tryNext();
+        while (next != null) {
+            next = cursor.tryNext();
+        }
+
+        // Update the test document.
+        collection.updateOne(Filters.eq("updateMe", 1), Updates.set("updated", true));
+        next = cursor.next();
+        System.out.println(format("Update operationType: %s", next.get("updateDescription", Document.class).toJson(), next.toJson()));
+
+        // Replace the test document.
+        collection.replaceOne(Filters.eq("replaceMe", 1), Document.parse("{replaced: true}"));
+        next = cursor.next();
+        System.out.println(format("Replace operationType: %s", next.get("updateDescription", Document.class).toJson(), next.toJson()));
+
+        // Delete the test document.
+        collection.deleteOne(Filters.eq("deleteMe", 1));
+        next = cursor.next();
+        System.out.println(format("Delete operationType: %s", next.get("updateDescription", Document.class).toJson(), next.toJson()));
+        cursor.close();
+
+        /**
+         * Example 4
+         * Resume a change stream using a resume token.
+         */
+        System.out.println("4. Document from the Change Stream including a resume token:");
+
+        // Get the resume token from the last document we saw in the previous change stream cursor.
         Document resumeToken = next.get("_id", Document.class);
-        changeStream = collection.watch().resumeAfter(resumeToken);
 
-        collection.insertOne(Document.parse("{test: 'c'}"));
+        // Pass the resume token to the resume after function to continue the change stream cursor.
+        cursor = collection.watch().resumeAfter(resumeToken).iterator();
 
-        next = changeStream.iterator().tryNext();
-        assert next != null;
-        System.out.println(format("4. Document from the Change Stream including a resume token:%n %s", next.toJson()));
+        // Insert a test document.
+        collection.insertOne(Document.parse("{test: 'd'}"));
+
+        // Block until the next result is returned
+        next = cursor.next();
+        System.out.println(next.toJson());
     }
 
     private ChangeStreamSamples() {

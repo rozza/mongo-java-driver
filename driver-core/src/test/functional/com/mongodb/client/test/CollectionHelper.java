@@ -140,7 +140,7 @@ public final class CollectionHelper<T> {
             BsonDocument command = new BsonDocument("killCursors", new BsonString(namespace.getCollectionName()))
                     .append("cursors", new BsonArray(singletonList(new BsonInt64(serverCursor.getId()))));
             try {
-                BsonDocument res = new CommandWriteOperation<BsonDocument>(namespace.getDatabaseName(), command, new BsonDocumentCodec())
+                new CommandWriteOperation<BsonDocument>(namespace.getDatabaseName(), command, new BsonDocumentCodec())
                         .execute(getBinding());
             } catch (Exception e) {
                 // Ignore any exceptions killing old cursors

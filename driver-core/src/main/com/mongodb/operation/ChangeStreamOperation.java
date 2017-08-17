@@ -257,7 +257,6 @@ public class ChangeStreamOperation<T> implements AsyncReadOperation<AsyncBatchCu
         }
         changeStreamPipeline.add(new BsonDocument("$changeStream", changeStream));
         changeStreamPipeline.addAll(pipeline);
-
         return new AggregateOperation<RawBsonDocument>(namespace, changeStreamPipeline, RAW_BSON_DOCUMENT_CODEC)
                 .maxAwaitTime(maxAwaitTimeMS, MILLISECONDS)
                 .readConcern(readConcern)

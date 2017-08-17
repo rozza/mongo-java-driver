@@ -152,12 +152,6 @@ class OperationFunctionalSpecification extends Specification {
         } else {
             next = cursor.tryNext()
         }
-        if (next != null) {
-            next = next.collect { doc ->
-                doc.getDocument('_id').remove('ts')
-                doc
-            }
-        }
         next
     }
 

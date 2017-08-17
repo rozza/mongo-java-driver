@@ -7,6 +7,17 @@ title = "What's New"
   pre = "<i class='fa fa-level-up'></i>"
 +++
 
+## What's New in 3.6
+
+Key new features of the 3.6 Java driver release:
+
+### Change Stream support
+
+The 3.6 release add support for [change streams](https://docs.mongodb.com/manual/operator/aggregation/changeStream).
+
+* [Change Stream Quick Start]({{<ref "driver/getting-started/quick-start-pojo.md">}}) 
+* [Change Stream Quick Start (Async)]({{<ref "driver-async/getting-started/quick-start-pojo.md">}})
+
 ## What's New in 3.5
 
 Key new features of the 3.5 Java driver release:

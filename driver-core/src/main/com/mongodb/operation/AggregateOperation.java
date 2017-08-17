@@ -425,4 +425,20 @@ public class AggregateOperation<T> implements AsyncReadOperation<AsyncBatchCurso
             }
         };
     }
+
+    @Override
+    public String toString() {
+        return "AggregateOperation{"
+                + "namespace=" + namespace
+                + ", pipeline=" + pipeline
+                + ", decoder=" + decoder
+                + ", allowDiskUse=" + allowDiskUse
+                + ", batchSize=" + batchSize
+                + ", collation=" + collation
+                + ", maxAwaitTimeMS=" + maxAwaitTimeMS
+                + ", maxTimeMS=" + maxTimeMS
+                + ", useCursor=" + useCursor
+                + ", readConcern=" + readConcern
+                + "}";
+    }
 }

@@ -54,7 +54,8 @@ class ChangeStreamOperationSpecification extends OperationFunctionalSpecificatio
 
     def 'should set optional values correctly'() {
         when:
-        ChangeStreamOperation operation = new ChangeStreamOperation<Document>(getNamespace(), FullDocument.UPDATE_LOOKUP, [], new DocumentCodec())
+        ChangeStreamOperation operation = new ChangeStreamOperation<Document>(getNamespace(), FullDocument.UPDATE_LOOKUP, [],
+                new DocumentCodec())
                 .batchSize(5)
                 .collation(defaultCollation)
                 .maxAwaitTime(15, MILLISECONDS)
@@ -97,17 +98,36 @@ class ChangeStreamOperationSpecification extends OperationFunctionalSpecificatio
     def 'should support return the expected results'() {
         given:
         def helper = getCollectionHelper(async)
-        def expected = insertDocuments(helper, [1, 2])
-
-        def pipeline = ['{$match: {operationType: "insert"}}', '{$sort: {"_id.ts": -1}}', '{$limit: 2}',
-                        '{$sort: {"_id.ts": 1}}'].collect { BsonDocument.parse(it) }
+        def pipeline = [BsonDocument.parse('{$match: {operationType: "insert"}}')]
         def operation = new ChangeStreamOperation<BsonDocument>(helper.getNamespace(), FullDocument.DEFAULT, pipeline, CODEC)
 
         when:
         def cursor = execute(operation, async)
 
         then:
-        tryNext(cursor, async) == expected
+        tryNextAndClean(cursor, async) == null
+
+        when:
+        def expected = insertDocuments(helper, [1, 2])
+
+        then:
+        nextAndClean(cursor, async) == expected
+
+        when:
+        expected = insertDocuments(helper, [3, 4, 5, 6, 7])
+        cursor.setBatchSize(5)
+
+        then:
+        cursor.getBatchSize()
+        nextAndClean(cursor, async) == expected
+
+        then:
+        if (async) {
+            !cursor.isClosed()
+        } else {
+            cursor.getServerCursor() == cursor.getWrapped().getServerCursor()
+            cursor.getServerAddress() == cursor.getWrapped().getServerAddress()
+        }
 
         cleanup:
         cursor?.close()
@@ -119,13 +139,12 @@ class ChangeStreamOperationSpecification extends OperationFunctionalSpecificatio
     def 'should throw if the _id field is projected out'() {
         given:
         def helper = getCollectionHelper(async)
-        insertDocuments(helper, [1, 2])
         def pipeline = [BsonDocument.parse('{$project: {"_id": 0}}')]
         def operation = new ChangeStreamOperation<BsonDocument>(helper.getNamespace(), FullDocument.DEFAULT, pipeline, CODEC)
+        insertDocuments(helper, [1, 2])
 
         when:
-        def cursor = execute(operation, async)
-        tryNext(cursor, async)
+        nextAndClean(execute(operation, async), async)
 
         then:
         thrown(MongoChangeStreamException)
@@ -145,22 +164,22 @@ class ChangeStreamOperationSpecification extends OperationFunctionalSpecificatio
         def cursor = execute(operation, async)
 
         then:
-        tryNext(cursor, async) == null
+        tryNextAndClean(cursor, async) == null
 
         when:
         def expected = insertDocuments(helper, [1, 2])
 
         then:
-        tryNext(cursor, async) == expected
+        nextAndClean(cursor, async) == expected
 
         then:
-        tryNext(cursor, async) == null
+        tryNextAndClean(cursor, async) == null
 
         when:
         expected = insertDocuments(helper, [3, 4])
 
         then:
-        tryNext(cursor, async) == expected
+        nextAndClean(cursor, async) == expected
 
         cleanup:
         cursor?.close()
@@ -173,6 +192,7 @@ class ChangeStreamOperationSpecification extends OperationFunctionalSpecificatio
     def 'should be resumable'() {
         given:
         def helper = getCollectionHelper(async)
+        def expected = insertDocuments(helper, [1, 2])
 
         def pipeline = ['{$match: {operationType: "insert"}}'].collect { BsonDocument.parse(it) }
         def operation = new ChangeStreamOperation<BsonDocument>(helper.getNamespace(), FullDocument.DEFAULT, pipeline, CODEC)
@@ -181,24 +201,24 @@ class ChangeStreamOperationSpecification extends OperationFunctionalSpecificatio
         def cursor = execute(operation, async)
 
         then:
-        tryNext(cursor, async) == null
+        nextAndClean(cursor, async) == expected
 
         when:
         helper.killCursor(helper.getNamespace(), cursor.getWrapped().getServerCursor())
-        def expected = insertDocuments(helper, [1, 2])
-
-        then:
-        tryNext(cursor, async) == expected
-
-        then:
-        tryNext(cursor, async) == null
-
-        when:
         expected = insertDocuments(helper, [3, 4])
+
+        then:
+        nextAndClean(cursor, async) == expected
+
+        then:
+        tryNextAndClean(cursor, async) == null
+
+        when:
+        expected = insertDocuments(helper, [5, 6])
         helper.killCursor(helper.getNamespace(), cursor.getWrapped().getServerCursor())
 
         then:
-        tryNext(cursor, async) == expected
+        nextAndClean(cursor, async) == expected
 
         cleanup:
         cursor?.close()
@@ -211,26 +231,27 @@ class ChangeStreamOperationSpecification extends OperationFunctionalSpecificatio
     def 'should work with a resumeToken'() {
         given:
         def helper = getCollectionHelper(async)
-        insertDocuments(helper, [1, 2])
 
-        def pipeline = ['{$match: {operationType: "insert"}}'].collect { BsonDocument.parse(it) }
+        def pipeline = [BsonDocument.parse('{$match: {operationType: "insert"}}')]
         def operation = new ChangeStreamOperation<BsonDocument>(helper.getNamespace(), FullDocument.DEFAULT, pipeline, CODEC)
+        def expected = insertDocuments(helper, [1, 2])
 
         when:
         def cursor = execute(operation, async)
-        def result = next(cursor, async)
+        def result = tryNext(cursor, async)
 
         then:
-        result.size() == 2
+        result?.size() == 2
 
         when:
         cursor.close()
+
         operation.resumeAfter(result.head().getDocument('_id'))
         cursor = execute(operation, async)
-        result = tryNext(cursor, async)
+        result = tryNextAndClean(cursor, async)
 
         then:
-        result == [createExpectedChangeNotification(helper.getNamespace(), 2)]
+        result == expected.tail()
 
         cleanup:
         cursor?.close()
@@ -243,8 +264,8 @@ class ChangeStreamOperationSpecification extends OperationFunctionalSpecificatio
     def 'should support hasNext on the sync API'() {
         given:
         def helper = getCollectionHelper(false)
-        insertDocuments(helper, [1, 2])
         def operation = new ChangeStreamOperation<BsonDocument>(helper.getNamespace(), FullDocument.DEFAULT, [], CODEC)
+        insertDocuments(helper, [1, 2, 3])
 
         when:
         def cursor = execute(operation, false)
@@ -265,19 +286,33 @@ class ChangeStreamOperationSpecification extends OperationFunctionalSpecificatio
 
     private static List<BsonDocument> insertDocuments(final CollectionHelper<?> helper, final List<Integer> docs) {
         helper.insertDocuments(docs.collect { BsonDocument.parse("{_id: $it, a: $it}") }, WriteConcern.W2)
-        docs.collect { createExpectedChangeNotification(helper.getNamespace(), it) }
+        docs.collect {
+            BsonDocument.parse("""{
+                "_id": {
+                    "_id": $it,
+                    "ns": "${helper.getNamespace()}",
+                },
+                "documentKey": {"_id": $it},
+                "fullDocument": {"_id": $it, "a": $it},
+                "ns": {"coll": "${helper.getNamespace().getCollectionName()}", "db": "${helper.getNamespace().getDatabaseName()}"},
+                "operationType": "insert"
+            }""")
+        }
     }
 
-    private static BsonDocument createExpectedChangeNotification(MongoNamespace namespace, int idValue) {
-        BsonDocument.parse("""{
-            "_id": {
-                "_id": $idValue,
-                "ns": "$namespace",
-            },
-            "documentKey": {"_id": $idValue},
-            "fullDocument": {"_id": $idValue, "a": $idValue},
-            "ns": {"coll": "${namespace.getCollectionName()}", "db": "${namespace.getDatabaseName()}"},
-            "operationType": "insert"
-        }""")
+    def tryNextAndClean(cursor, boolean async) {
+        removeTimestamp(tryNext(cursor, async))
     }
+
+    def nextAndClean(cursor, boolean async) {
+        removeTimestamp(next(cursor, async))
+    }
+
+    def removeTimestamp(List<BsonDocument> next) {
+        next?.collect { doc ->
+            doc.getDocument('_id').remove('ts')
+            doc
+        }
+    }
+
 }

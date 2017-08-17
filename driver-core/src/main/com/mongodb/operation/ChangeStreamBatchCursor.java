@@ -20,8 +20,6 @@ import com.mongodb.Function;
 import com.mongodb.MongoChangeStreamException;
 import com.mongodb.MongoCursorNotFoundException;
 import com.mongodb.MongoNotPrimaryException;
-import com.mongodb.MongoQueryException;
-import com.mongodb.MongoSocketException;
 import com.mongodb.MongoSocketReadException;
 import com.mongodb.ServerAddress;
 import com.mongodb.ServerCursor;
@@ -77,7 +75,8 @@ final class ChangeStreamBatchCursor<T> implements BatchCursor<T> {
         return resumeableOperation(new Function<BatchCursor<RawBsonDocument>, List<T>>() {
             @Override
             public List<T> apply(final BatchCursor<RawBsonDocument> queryBatchCursor) {
-                return convertResults(queryBatchCursor.tryNext());
+                List<RawBsonDocument> results = queryBatchCursor.tryNext();
+                return convertResults(results);
             }
         });
     }
@@ -110,7 +109,7 @@ final class ChangeStreamBatchCursor<T> implements BatchCursor<T> {
 
     @Override
     public void remove() {
-        throw new UnsupportedOperationException("Not implemented yet!");
+        throw new UnsupportedOperationException("Not implemented!");
     }
 
     private List<T> convertResults(final List<RawBsonDocument> rawDocuments) {
