@@ -36,7 +36,7 @@ public enum FullDocument {
      *
      * <p>Returns the servers default value in the {@code fullDocument} field.</p>
      */
-    DEFAULT("none"),
+    DEFAULT("default"),
 
     /**
      * Lookup
@@ -44,7 +44,7 @@ public enum FullDocument {
      * <p>The change stream for partial updates will include both a delta describing the changes to the document as well as a copy of the
      * entire document that was changed from <em>some time</em> after the change occurred.</p>
      */
-    UPDATE_LOOKUP("lookup");
+    UPDATE_LOOKUP("updateLookup");
 
     private final String value;
     FullDocument(final String caseFirst) {
