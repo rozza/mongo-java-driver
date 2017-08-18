@@ -56,9 +56,10 @@ public final class ChangeStreamSamples {
         // Select the MongoDB database.
         MongoDatabase database = mongoClient.getDatabase("testChangeStreams");
         database.drop();
+        sleep();
 
         // Select the collection to query.
-        MongoCollection<Document> collection = database.getCollection("changes");
+        MongoCollection<Document> collection = database.getCollection("documents");
 
         /*
          * Example 1
@@ -66,25 +67,20 @@ public final class ChangeStreamSamples {
          */
         System.out.println("1. Initial document from the Change Stream:");
 
+
         // Create the change stream cursor.
         MongoCursor<Document> cursor = collection.watch().iterator();
 
-        // Forward to the end of the change stream
-        Document next = cursor.tryNext();
-        while (next != null) {
-            next = cursor.tryNext();
-        }
-
         // Insert a test document into the collection.
-        collection.insertOne(Document.parse("{test: 'a'}"));
-        next = cursor.next();
-
+        collection.insertOne(Document.parse("{username: 'alice123', name: 'Alice'}"));
+        Document next = cursor.next();
         System.out.println(next.toJson());
         cursor.close();
+        sleep();
 
         /*
          * Example 2
-         * Create a change stream with ‘lookup’ option enabled.
+         * Create a change stream with 'lookup' option enabled.
          * The test document will be returned with a full version of the updated document.
          */
         System.out.println("2. Document from the Change Stream, with lookup enabled:");
@@ -92,57 +88,56 @@ public final class ChangeStreamSamples {
         // Create the change stream cursor.
         cursor = collection.watch().fullDocument(FullDocument.UPDATE_LOOKUP).iterator();
 
-        // Forward to the end of the change stream
-        next = cursor.tryNext();
-        while (next != null) {
-            next = cursor.tryNext();
-        }
-
         // Update the test document.
-        collection.updateOne(Document.parse("{test: 'a'}"), Document.parse("{$set: {test: 'b'}}"));
+        collection.updateOne(Document.parse("{username: 'alice123'}"), Document.parse("{$set : { email: 'alice@example.com'}}"));
 
         // Block until the next result is returned
         next = cursor.next();
         System.out.println(next.toJson());
         cursor.close();
-
+        sleep();
 
         /*
          * Example 3
-         * Create a change stream with ‘lookup’ option using a $match and ($redact or $project) stage.
+         * Create a change stream with 'lookup' option using a $match and ($redact or $project) stage.
          */
         System.out.println("3. Document from the Change Stream, with lookup enabled, matching `update` operations only: ");
+
         // Insert some dummy data.
-        collection.insertMany(asList(Document.parse("{updateMe: 1}"), Document.parse("{replaceMe: 1}"), Document.parse("{deleteMe: 1}")));
+        collection.insertMany(asList(Document.parse("{updateMe: 1}"), Document.parse("{replaceMe: 1}")));
 
         // Create $match pipeline stage.
         List<Bson> pipeline = singletonList(
-                Aggregates.match(Filters.in("operationType", asList("update", "replace", "delete"))));
+                Aggregates.match(
+                        Filters.or(
+                                Document.parse("{'fullDocument.username': 'alice123'}"),
+                                Filters.in("operationType", asList("update", "replace", "delete"))
+                        )
+                )
+        );
 
         // Create the change stream cursor with $match.
         cursor = collection.watch(pipeline).fullDocument(FullDocument.UPDATE_LOOKUP).iterator();
 
         // Forward to the end of the change stream
         next = cursor.tryNext();
-        while (next != null) {
-            next = cursor.tryNext();
-        }
 
         // Update the test document.
         collection.updateOne(Filters.eq("updateMe", 1), Updates.set("updated", true));
         next = cursor.next();
-        System.out.println(format("Update operationType: %s", next.get("updateDescription", Document.class).toJson(), next.toJson()));
+        System.out.println(format("Update operationType: %s %n %s", next.get("updateDescription", Document.class).toJson(), next.toJson()));
 
         // Replace the test document.
         collection.replaceOne(Filters.eq("replaceMe", 1), Document.parse("{replaced: true}"));
         next = cursor.next();
-        System.out.println(format("Replace operationType: %s", next.get("updateDescription", Document.class).toJson(), next.toJson()));
+        System.out.println(format("Replace operationType: %s", next.toJson()));
 
         // Delete the test document.
-        collection.deleteOne(Filters.eq("deleteMe", 1));
+        collection.deleteOne(Filters.eq("username", "alice123"));
         next = cursor.next();
-        System.out.println(format("Delete operationType: %s", next.get("updateDescription", Document.class).toJson(), next.toJson()));
+        System.out.println(format("Delete operationType: %s", next.toJson()));
         cursor.close();
+        sleep();
 
         /**
          * Example 4
@@ -162,6 +157,15 @@ public final class ChangeStreamSamples {
         // Block until the next result is returned
         next = cursor.next();
         System.out.println(next.toJson());
+        cursor.close();
+    }
+
+    private static void sleep() {
+        try {
+            Thread.sleep(100);
+        } catch (InterruptedException e) {
+            // Ignore.
+        }
     }
 
     private ChangeStreamSamples() {
