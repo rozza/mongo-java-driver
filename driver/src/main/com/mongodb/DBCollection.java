@@ -871,16 +871,14 @@ public class DBCollection {
      * Creates a change stream for this collection.
      *
      * @param pipeline the aggregation pipeline to apply to the change stream.
-     * @param changeStreamOptions the options for the change stream.
+     * @param options the options for the change stream.
      * @return the change stream iterable
      * @mongodb.driver.manual reference/operator/aggregation/changeStream $changeStream
      * @since 3.6
      */
-    Cursor watch(final List<? extends DBObject> pipeline, final DBCollectionChangeStreamOptions changeStreamOptions) {
+    Cursor watch(final List<? extends DBObject> pipeline, final DBCollectionChangeStreamOptions options) {
         notNull("pipeline", pipeline);
-        notNull("changeStreamOptions", changeStreamOptions);
-
-        DBCollectionChangeStreamOptions options = changeStreamOptions.copy();
+        notNull("options", options);
         List<BsonDocument> stages = preparePipeline(pipeline);
 
         ChangeStreamOperation<DBObject> operation = new ChangeStreamOperation<DBObject>(getNamespace(), options.getFullDocument(), stages,

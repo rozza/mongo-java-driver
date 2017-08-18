@@ -45,23 +45,6 @@ public final class DBCollectionChangeStreamOptions {
     }
 
     /**
-     * Copy this DBCollectionChangeStreamOptions instance into a new instance.
-     *
-     * @return the new DBCollectionChangeStreamOptions with the same settings as this instance.
-     */
-    public DBCollectionChangeStreamOptions copy() {
-        DBCollectionChangeStreamOptions copiedOptions = new DBCollectionChangeStreamOptions();
-        copiedOptions.batchSize(batchSize);
-        copiedOptions.collation(collation);
-        copiedOptions.fullDocument(fullDocument);
-        copiedOptions.maxAwaitTime(maxAwaitTimeMS, TimeUnit.MILLISECONDS);
-        copiedOptions.readConcern(readConcern);
-        copiedOptions.readPreference(readPreference);
-        copiedOptions.resumeToken(resumeToken);
-        return copiedOptions;
-    }
-
-    /**
      * Returns the batchSize
      *
      * @return the batchSize

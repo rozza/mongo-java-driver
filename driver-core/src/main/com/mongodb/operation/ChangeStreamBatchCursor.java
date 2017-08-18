@@ -75,8 +75,7 @@ final class ChangeStreamBatchCursor<T> implements BatchCursor<T> {
         return resumeableOperation(new Function<BatchCursor<RawBsonDocument>, List<T>>() {
             @Override
             public List<T> apply(final BatchCursor<RawBsonDocument> queryBatchCursor) {
-                List<RawBsonDocument> results = queryBatchCursor.tryNext();
-                return convertResults(results);
+                return convertResults(queryBatchCursor.tryNext());
             }
         });
     }
