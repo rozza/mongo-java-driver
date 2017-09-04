@@ -96,6 +96,7 @@ class ServerAddressSpecification extends Specification {
     }
 
     @Unroll
+    @SuppressWarnings("deprecated")
     def 'sameHost should parse hosts correctly'() {
         expect:
         new ServerAddress(host).sameHost(host)

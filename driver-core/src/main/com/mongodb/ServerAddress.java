@@ -217,9 +217,9 @@ public class ServerAddress implements Serializable {
      *
      * @param hostName the address to compare
      * @return if they are the same
+     * @Deprecated use the {@link #equals(Object)} method instead
      */
     public boolean sameHost(final String hostName) {
-        ServerAddress alternativeAddress = new ServerAddress(hostName);
-        return getPort() == alternativeAddress.getPort() && getHost().equalsIgnoreCase(alternativeAddress.getHost());
+        return equals(new ServerAddress(hostName));
     }
 }
