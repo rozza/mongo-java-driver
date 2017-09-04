@@ -219,14 +219,7 @@ public class ServerAddress implements Serializable {
      * @return if they are the same
      */
     public boolean sameHost(final String hostName) {
-        String hostToUse = hostName;
-        int idx = hostToUse.indexOf(":");
-        int portToUse = defaultPort();
-        if (idx > 0) {
-            portToUse = Integer.parseInt(hostToUse.substring(idx + 1));
-            hostToUse = hostToUse.substring(0, idx);
-        }
-
-        return getPort() == portToUse && getHost().equalsIgnoreCase(hostToUse);
+        ServerAddress alternativeAddress = new ServerAddress(hostName);
+        return getPort() == alternativeAddress.getPort() && getHost().equalsIgnoreCase(alternativeAddress.getHost());
     }
 }
