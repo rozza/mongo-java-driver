@@ -16,6 +16,12 @@
 
 package com.mongodb.connection;
 
+import com.mongodb.internal.connection.PowerOfTwoBufferPool;
+
+import java.nio.channels.AsynchronousChannelGroup;
+
+import static com.mongodb.assertions.Assertions.notNull;
+
 /**
  * A {@code StreamFactoryFactory} implementation for AsynchronousSocketChannel-based streams.
  *
@@ -23,8 +29,76 @@ package com.mongodb.connection;
  * @since 3.1
  */
 public class AsynchronousSocketChannelStreamFactoryFactory implements StreamFactoryFactory {
+    private final BufferProvider bufferProvider;
+    private final AsynchronousChannelGroup group;
+
+    /**
+     * Construct an instance with the default {@code BufferProvider} and {@code AsynchronousChannelGroup}.
+     *
+     * @deprecated Use {@link AsynchronousSocketChannelStreamFactoryFactory#builder()} instead to construct the
+     * {@code AsynchronousSocketChannelStreamFactoryFactory}.
+     */
+    @Deprecated
+    public AsynchronousSocketChannelStreamFactoryFactory() {
+        this(builder());
+    }
+
+    /**
+     * Gets a builder for an instance of {@code AsynchronousSocketChannelStreamFactoryFactory}.
+     * @return the builder
+     * @since 3.6
+     */
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    /**
+     * A builder for an instance of {@code AsynchronousSocketChannelStreamFactoryFactory}.
+     *
+     * @since 3.6
+     */
+    public static final class Builder {
+        private BufferProvider bufferProvider;
+        private AsynchronousChannelGroup group;
+
+        /**
+         * Sets the bufferProvider
+         *
+         * @param bufferProvider the bufferProvider
+         * @return this
+         */
+        public Builder bufferProvider(final BufferProvider bufferProvider) {
+            this.bufferProvider = notNull("bufferProvider", bufferProvider);
+            return this;
+        }
+
+        /**
+         * Sets the {@code AsynchronousChannelGroup}
+         *
+         * @param group the {@code AsynchronousChannelGroup}
+         * @return this
+         */
+        public Builder group(final AsynchronousChannelGroup group) {
+            this.group = group;
+            return this;
+        }
+
+        /**
+         * Build an instance of {@code AsynchronousSocketChannelStreamFactoryFactory}.
+         * @return the AsynchronousSocketChannelStreamFactoryFactory
+         */
+        public AsynchronousSocketChannelStreamFactoryFactory build() {
+            return new AsynchronousSocketChannelStreamFactoryFactory(this);
+        }
+    }
+
     @Override
     public StreamFactory create(final SocketSettings socketSettings, final SslSettings sslSettings) {
-        return new AsynchronousSocketChannelStreamFactory(socketSettings, sslSettings);
+        return new AsynchronousSocketChannelStreamFactory(socketSettings, sslSettings, bufferProvider,  group);
+    }
+
+    private AsynchronousSocketChannelStreamFactoryFactory(final Builder builder) {
+        bufferProvider = builder.bufferProvider != null ? builder.bufferProvider : new PowerOfTwoBufferPool();
+        group = builder.group;
     }
 }
