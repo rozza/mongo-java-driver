@@ -17,7 +17,6 @@
 configure(subprojects.findAll { it.name != 'util' && it.name != 'mongo-java-driver' }) {
     tasks.withType(Test) {
 
-        boolean IS_DEBUG = logger.isEnabled(LogLevel.DEBUG)
         boolean IS_LIFECYCLE = logger.isEnabled(LogLevel.LIFECYCLE)
         boolean IS_TRAVIS = project.hasProperty('travistest') ? project.travistest : false  && IS_LIFECYCLE
         String ANSI_BOLD_WHITE = "\u001B[0;1m"
@@ -26,13 +25,11 @@ configure(subprojects.findAll { it.name != 'util' && it.name != 'mongo-java-driv
         String ANSI_RED = "\u001B[31m"
         String ANSI_GREEN = "\u001B[32m"
         String ANSI_YELLOW = "\u001B[33m"
-        String ANSI_BLUE = "\u001B[34m"
-        String ANSI_PURPLE = "\u001B[35m"
-        String ANSI_CYAN = "\u001B[36m"
         String ANSI_WHITE = "\u001B[37m"
-        String CHECK_MARK = "\u2713"
+        String PASSED = "\u2713"
         String SKIPPED = "\u005F"
-        String X_MARK = "\u274C"
+        String FAILED = "\u2717" + ' [TEST FAILURE]'
+
 
         beforeSuite { suite ->
             if (!IS_LIFECYCLE || suite.name.startsWith("Test Run") || suite.name.startsWith("Gradle Worker")) return
@@ -47,20 +44,23 @@ configure(subprojects.findAll { it.name != 'util' && it.name != 'mongo-java-driv
         }
 
         beforeTest { descr ->
-            if (IS_DEBUG) logger.debug("    [Test ${descr.className} > ${descr.name}]")
+            if (IS_LIFECYCLE) {
+                System.out.print("     Starting ${descr.name}")
+            }
         }
 
         afterTest { descr, result ->
             if (!IS_LIFECYCLE) return
             def indicator = ANSI_WHITE
 
-            if (result.failedTestCount > 0) indicator = ANSI_RED + X_MARK + ANSI_RESET
+            if (result.failedTestCount > 0) indicator = ANSI_RED + FAILED + ANSI_RESET
             else if (result.skippedTestCount > 0) indicator = ANSI_YELLOW + SKIPPED + ANSI_RESET
-            else indicator = ANSI_GREEN + CHECK_MARK + ANSI_RESET
+            else indicator = ANSI_GREEN + PASSED + ANSI_RESET
 
-            def timeTaken = result.getEndTime() - result.getStartTime()
-            def failureStartTime = result.getResultType().toString() == "TEST FAILURE" ? " Started at: ${result.getStartTime()}" : ""
-            logger.lifecycle("     ${indicator} ${descr.name} (${result.getEndTime() - result.getStartTime()} ms) ${failureStartTime}")
+            System.out.print("\033[1A") // Move up
+            System.out.print("\033[2K") // Erase line content
+
+            logger.lifecycle("     ${indicator} ${descr.name} (${result.getEndTime() - result.getStartTime()} ms)")
             if (result.failedTestCount > 0) {
                 logger.lifecycle(' ')
             }
