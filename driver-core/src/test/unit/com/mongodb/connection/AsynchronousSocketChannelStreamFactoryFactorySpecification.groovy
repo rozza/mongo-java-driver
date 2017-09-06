@@ -17,7 +17,6 @@
 package com.mongodb.connection
 
 import com.mongodb.ServerAddress
-import com.mongodb.internal.connection.PowerOfTwoBufferPool
 import spock.lang.IgnoreIf
 import spock.lang.Specification
 import spock.lang.Unroll
@@ -41,16 +40,15 @@ class AsynchronousSocketChannelStreamFactoryFactorySpecification extends Specifi
         then:
         stream.getSettings() == socketSettings
         stream.getAddress() == serverAddress
-        stream.getBufferProvider().getClass() == bufferProviderClass
         (stream.getGroup() == null) == hasCustomGroup
 
         cleanup:
         stream.getGroup()?.shutdown()
 
         where:
-        description | factoryFactory  | bufferProviderClass  | hasCustomGroup
-        'default'   | DEFAULT_FACTORY | PowerOfTwoBufferPool | true
-        'custom'    | CUSTOM_FACTORY  | SimpleBufferProvider | false
+        description | factoryFactory  | hasCustomGroup
+        'default'   | DEFAULT_FACTORY | true
+        'custom'    | CUSTOM_FACTORY  | false
     }
 
     SocketSettings socketSettings = SocketSettings.builder().build()
@@ -59,7 +57,6 @@ class AsynchronousSocketChannelStreamFactoryFactorySpecification extends Specifi
     ExecutorService service = Executors.newFixedThreadPool(1)
     static final DEFAULT_FACTORY = AsynchronousSocketChannelStreamFactoryFactory.builder().build()
     static final CUSTOM_FACTORY = AsynchronousSocketChannelStreamFactoryFactory.builder()
-            .bufferProvider(new SimpleBufferProvider())
             .group(java.nio.channels.AsynchronousChannelGroup.withThreadPool(Executors.newFixedThreadPool(5)))
             .build()
 }

@@ -165,10 +165,6 @@ final class AsynchronousSocketChannelStream implements Stream {
         return settings;
     }
 
-    public BufferProvider getBufferProvider() {
-        return bufferProvider;
-    }
-
     public AsynchronousChannelGroup getGroup() {
         return group;
     }

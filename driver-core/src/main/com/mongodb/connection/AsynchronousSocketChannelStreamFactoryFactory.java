@@ -16,11 +16,7 @@
 
 package com.mongodb.connection;
 
-import com.mongodb.internal.connection.PowerOfTwoBufferPool;
-
 import java.nio.channels.AsynchronousChannelGroup;
-
-import static com.mongodb.assertions.Assertions.notNull;
 
 /**
  * A {@code StreamFactoryFactory} implementation for AsynchronousSocketChannel-based streams.
@@ -29,7 +25,6 @@ import static com.mongodb.assertions.Assertions.notNull;
  * @since 3.1
  */
 public class AsynchronousSocketChannelStreamFactoryFactory implements StreamFactoryFactory {
-    private final BufferProvider bufferProvider;
     private final AsynchronousChannelGroup group;
 
     /**
@@ -58,19 +53,7 @@ public class AsynchronousSocketChannelStreamFactoryFactory implements StreamFact
      * @since 3.6
      */
     public static final class Builder {
-        private BufferProvider bufferProvider;
         private AsynchronousChannelGroup group;
-
-        /**
-         * Sets the bufferProvider
-         *
-         * @param bufferProvider the bufferProvider
-         * @return this
-         */
-        public Builder bufferProvider(final BufferProvider bufferProvider) {
-            this.bufferProvider = notNull("bufferProvider", bufferProvider);
-            return this;
-        }
 
         /**
          * Sets the {@code AsynchronousChannelGroup}
@@ -94,11 +77,10 @@ public class AsynchronousSocketChannelStreamFactoryFactory implements StreamFact
 
     @Override
     public StreamFactory create(final SocketSettings socketSettings, final SslSettings sslSettings) {
-        return new AsynchronousSocketChannelStreamFactory(socketSettings, sslSettings, bufferProvider,  group);
+        return new AsynchronousSocketChannelStreamFactory(socketSettings, sslSettings,  group);
     }
 
     private AsynchronousSocketChannelStreamFactoryFactory(final Builder builder) {
-        bufferProvider = builder.bufferProvider != null ? builder.bufferProvider : new PowerOfTwoBufferPool();
         group = builder.group;
     }
 }

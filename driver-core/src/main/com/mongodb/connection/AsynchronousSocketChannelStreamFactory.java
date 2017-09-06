@@ -29,8 +29,8 @@ import static com.mongodb.assertions.Assertions.notNull;
  * @since 3.0
  */
 public class AsynchronousSocketChannelStreamFactory implements StreamFactory {
+    private final BufferProvider bufferProvider = new PowerOfTwoBufferPool();
     private final SocketSettings settings;
-    private final BufferProvider bufferProvider;
     private final AsynchronousChannelGroup group;
 
     /**
@@ -40,7 +40,7 @@ public class AsynchronousSocketChannelStreamFactory implements StreamFactory {
      * @param sslSettings the settings for connecting via SSL
      */
     public AsynchronousSocketChannelStreamFactory(final SocketSettings settings, final SslSettings sslSettings) {
-        this(settings, sslSettings, new PowerOfTwoBufferPool(), null);
+        this(settings, sslSettings, null);
     }
 
     /**
@@ -48,20 +48,18 @@ public class AsynchronousSocketChannelStreamFactory implements StreamFactory {
      *
      * @param settings the socket settings
      * @param sslSettings the SSL settings
-     * @param bufferProvider the buffer provider to use
      * @param group the {@code AsynchronousChannelGroup} to use or null for the default group
      *
      * @since 3.6
      */
     public AsynchronousSocketChannelStreamFactory(final SocketSettings settings, final SslSettings sslSettings,
-                                                  final BufferProvider bufferProvider, final AsynchronousChannelGroup group) {
+                                                  final AsynchronousChannelGroup group) {
         if (sslSettings.isEnabled()) {
             throw new UnsupportedOperationException("No SSL support in java.nio.channels.AsynchronousSocketChannel. For SSL support use "
                     + "com.mongodb.connection.netty.NettyStreamFactoryFactory");
         }
 
         this.settings = notNull("settings", settings);
-        this.bufferProvider = notNull("bufferProvider", bufferProvider);
         this.group = group;
     }
 
