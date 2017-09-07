@@ -30,7 +30,7 @@ import com.mongodb.client.model.DBCollectionFindAndModifyOptions
 import com.mongodb.client.model.DBCollectionFindOptions
 import com.mongodb.client.model.DBCollectionRemoveOptions
 import com.mongodb.client.model.DBCollectionUpdateOptions
-import com.mongodb.client.model.FullDocument
+import com.mongodb.client.model.changestream.FullDocument
 import com.mongodb.operation.AggregateOperation
 import com.mongodb.operation.AggregateToCollectionOperation
 import com.mongodb.operation.BatchCursor

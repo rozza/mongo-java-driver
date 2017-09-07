@@ -17,7 +17,7 @@
 package com.mongodb;
 
 import com.mongodb.client.model.Collation;
-import com.mongodb.client.model.FullDocument;
+import com.mongodb.client.model.changestream.FullDocument;
 
 import java.util.concurrent.TimeUnit;
 

@@ -24,10 +24,13 @@ import com.mongodb.ReadPreference;
 import com.mongodb.async.AsyncBatchCursor;
 import com.mongodb.async.SingleResultCallback;
 import com.mongodb.client.model.Collation;
-import com.mongodb.client.model.FullDocument;
+import com.mongodb.client.model.changestream.ChangeStreamOutput;
+import com.mongodb.client.model.changestream.FullDocument;
+import com.mongodb.client.model.changestream.ResumeToken;
 import com.mongodb.operation.AsyncOperationExecutor;
 import com.mongodb.operation.ChangeStreamOperation;
 import org.bson.BsonDocument;
+import org.bson.codecs.Codec;
 import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.conversions.Bson;
 
@@ -46,11 +49,11 @@ final class ChangeStreamIterableImpl<TResult> implements ChangeStreamIterable<TR
     private final CodecRegistry codecRegistry;
     private final AsyncOperationExecutor executor;
     private final List<? extends Bson> pipeline;
-    private final Class<TResult> resultClass;
+    private final Codec<ChangeStreamOutput<TResult>> codec;
 
     private Integer batchSize;
     private FullDocument fullDocument = FullDocument.DEFAULT;
-    private Bson resumeToken;
+    private ResumeToken resumeToken;
     private long maxAwaitTimeMS;
     private Collation collation;
 
@@ -63,7 +66,7 @@ final class ChangeStreamIterableImpl<TResult> implements ChangeStreamIterable<TR
         this.readConcern = notNull("readConcern", readConcern);
         this.executor = notNull("executor", executor);
         this.pipeline = notNull("pipeline", pipeline);
-        this.resultClass = notNull("resultClass", resultClass);
+        this.codec = ChangeStreamOutput.createCodec(notNull("resultClass", resultClass), codecRegistry);
     }
 
     @Override
@@ -73,8 +76,8 @@ final class ChangeStreamIterableImpl<TResult> implements ChangeStreamIterable<TR
     }
 
     @Override
-    public ChangeStreamIterable<TResult> resumeAfter(final Bson resumeAfter) {
-        this.resumeToken = notNull("resumeAfter", resumeAfter);
+    public ChangeStreamIterable<TResult> resumeAfter(final ResumeToken resumeToken) {
+        this.resumeToken = notNull("resumeToken", resumeToken);
         return this;
     }
 
@@ -98,51 +101,55 @@ final class ChangeStreamIterableImpl<TResult> implements ChangeStreamIterable<TR
     }
 
     @Override
-    public void first(final SingleResultCallback<TResult> callback) {
-        notNull("callback", callback);
-        execute().first(callback);
+    public <S> MongoIterable<S> rawResult(final Class<S> resultClass) {
+        return execute(codecRegistry.get(resultClass));
     }
 
     @Override
-    public void forEach(final Block<? super TResult> block, final SingleResultCallback<Void> callback) {
+    public void first(final SingleResultCallback<ChangeStreamOutput<TResult>> callback) {
+        notNull("callback", callback);
+        execute(codec).first(callback);
+    }
+
+    @Override
+    public void forEach(final Block<? super ChangeStreamOutput<TResult>> block, final SingleResultCallback<Void> callback) {
         notNull("block", block);
         notNull("callback", callback);
-        execute().forEach(block, callback);
+        execute(codec).forEach(block, callback);
     }
 
     @Override
-    public <A extends Collection<? super TResult>> void into(final A target, final SingleResultCallback<A> callback) {
+    public <A extends Collection<? super ChangeStreamOutput<TResult>>> void into(final A target, final SingleResultCallback<A> callback) {
         notNull("target", target);
         notNull("callback", callback);
-        execute().into(target, callback);
+        execute(codec).into(target, callback);
     }
 
     @Override
-    public <U> MongoIterable<U> map(final Function<TResult, U> mapper) {
-        return new MappingIterable<TResult, U>(this, mapper);
+    public <U> MongoIterable<U> map(final Function<ChangeStreamOutput<TResult>, U> mapper) {
+        return new MappingIterable<ChangeStreamOutput<TResult>, U>(this, mapper);
     }
 
     @Override
-    public void batchCursor(final SingleResultCallback<AsyncBatchCursor<TResult>> callback) {
+    public void batchCursor(final SingleResultCallback<AsyncBatchCursor<ChangeStreamOutput<TResult>>> callback) {
         notNull("callback", callback);
-        execute().batchCursor(callback);
+        execute(codec).batchCursor(callback);
     }
 
-    private MongoIterable<TResult> execute() {
+    private <S> MongoIterable<S> execute(final Codec<S> codec) {
         List<BsonDocument> aggregateList = createBsonDocumentList(pipeline);
 
-        ChangeStreamOperation<TResult> changeStreamOperation = new ChangeStreamOperation<TResult>(namespace, fullDocument, aggregateList,
-                codecRegistry.get(resultClass))
+        ChangeStreamOperation<S> changeStreamOperation = new ChangeStreamOperation<S>(namespace, fullDocument, aggregateList, codec)
                 .maxAwaitTime(maxAwaitTimeMS, MILLISECONDS)
                 .batchSize(batchSize)
                 .readConcern(readConcern)
                 .collation(collation);
 
         if (resumeToken != null) {
-            changeStreamOperation.resumeAfter(resumeToken.toBsonDocument(BsonDocument.class, codecRegistry));
+            changeStreamOperation.resumeAfter(resumeToken.getResumeToken());
         }
 
-        return new OperationIterable<TResult>(changeStreamOperation, readPreference, executor);
+        return new OperationIterable<S>(changeStreamOperation, readPreference, executor);
     }
 
     private List<BsonDocument> createBsonDocumentList(final List<? extends Bson> pipeline) {

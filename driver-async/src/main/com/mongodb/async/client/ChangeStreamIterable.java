@@ -17,8 +17,9 @@
 package com.mongodb.async.client;
 
 import com.mongodb.client.model.Collation;
-import com.mongodb.client.model.FullDocument;
-import org.bson.conversions.Bson;
+import com.mongodb.client.model.changestream.ChangeStreamOutput;
+import com.mongodb.client.model.changestream.FullDocument;
+import com.mongodb.client.model.changestream.ResumeToken;
 
 import java.util.concurrent.TimeUnit;
 
@@ -29,7 +30,7 @@ import java.util.concurrent.TimeUnit;
  * @mongodb.server.release 3.6
  * @since 3.6
  */
-public interface ChangeStreamIterable<TResult> extends MongoIterable<TResult> {
+public interface ChangeStreamIterable<TResult> extends MongoIterable<ChangeStreamOutput<TResult>> {
 
     /**
      * Sets the fullDocument value.
@@ -45,7 +46,7 @@ public interface ChangeStreamIterable<TResult> extends MongoIterable<TResult> {
      * @param resumeToken the resume token
      * @return this
      */
-    ChangeStreamIterable<TResult> resumeAfter(Bson resumeToken);
+    ChangeStreamIterable<TResult> resumeAfter(ResumeToken resumeToken);
 
     /**
      * Sets the number of documents to return per batch.
@@ -74,5 +75,14 @@ public interface ChangeStreamIterable<TResult> extends MongoIterable<TResult> {
      * @return this
      */
     ChangeStreamIterable<TResult> collation(Collation collation);
+
+    /**
+     * Returns the raw result from the change stream.
+     *
+     * @param clazz the class to use for the raw result.
+     * @param <TDocument> the result type
+     * @return the new Mongo Iterable
+     */
+    <TDocument> MongoIterable<TDocument> rawResult(Class<TDocument> clazz);
 
 }

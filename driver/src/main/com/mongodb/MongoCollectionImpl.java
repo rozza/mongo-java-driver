@@ -234,7 +234,7 @@ class MongoCollectionImpl<TDocument> implements MongoCollection<TDocument> {
     }
 
     @Override
-    public ChangeStreamIterable<TDocument> watch() {
+    public ChangeStreamIterable<Document> watch() {
         return watch(Collections.<Bson>emptyList());
     }
 
@@ -244,8 +244,8 @@ class MongoCollectionImpl<TDocument> implements MongoCollection<TDocument> {
     }
 
     @Override
-    public ChangeStreamIterable<TDocument> watch(final List<? extends Bson> pipeline) {
-        return watch(pipeline, documentClass);
+    public ChangeStreamIterable<Document> watch(final List<? extends Bson> pipeline) {
+        return watch(pipeline, Document.class);
     }
 
     @Override
