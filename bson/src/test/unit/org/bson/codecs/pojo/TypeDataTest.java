@@ -92,6 +92,11 @@ public final class TypeDataTest {
     }
 
     @Test(expected = IllegalStateException.class)
+    public void testMapNoParamsValidation() {
+        TypeData.builder(Map.class).build();
+    }
+
+    @Test(expected = IllegalStateException.class)
     public void testMapKeyValidation() {
         TypeData.builder(Map.class).addTypeParameter(TypeData.builder(Integer.class).build()).build();
     }
