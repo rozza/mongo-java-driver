@@ -102,6 +102,11 @@ public final class TypeDataTest {
     }
 
     @Test(expected = IllegalStateException.class)
+    public void testInvalidMapImplementationValidation() {
+        TypeData.builder(InvalidMapImplementation.class).build();
+    }
+
+    @Test(expected = IllegalStateException.class)
     public void testMapToManyParamsValidation() {
         TypeData<String> stringTypeData = TypeData.builder(String.class).build();
         TypeData.builder(Map.class).addTypeParameter(stringTypeData).addTypeParameter(stringTypeData)
