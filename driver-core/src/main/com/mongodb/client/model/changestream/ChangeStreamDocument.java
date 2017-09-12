@@ -24,12 +24,15 @@ import org.bson.codecs.pojo.annotations.BsonId;
 import org.bson.codecs.pojo.annotations.BsonProperty;
 
 /**
- * Represents the output from a {@code $changeStream} aggregation.
+ * Represents the {@code $changeStream} aggregation output document.
+ *
+ * <p>Note: this class will not be applicable for all change stream outputs. If using custom pipelines that radically change the
+ * change stream result, then an alternative document format should be used.</p>
  *
  * @param <TDocument> The type that this collection will encode the {@code fullDocument} field into.
  * @since 3.6
  */
-public final class ChangeStreamOutput<TDocument> {
+public final class ChangeStreamDocument<TDocument> {
 
     @BsonId()
     private final ResumeToken resumeToken;
@@ -49,11 +52,11 @@ public final class ChangeStreamOutput<TDocument> {
      * @param updateDescription the update description
      */
     @BsonCreator
-    public ChangeStreamOutput(@BsonProperty("resumeToken") final ResumeToken resumeToken,
-                              @BsonProperty("namespace") final MongoNamespace namespace,
-                              @BsonProperty("fullDocument") final TDocument fullDocument,
-                              @BsonProperty("operationType") final OperationType operationType,
-                              @BsonProperty("updateDescription") final UpdateDescription updateDescription) {
+    public ChangeStreamDocument(@BsonProperty("resumeToken") final ResumeToken resumeToken,
+                                @BsonProperty("namespace") final MongoNamespace namespace,
+                                @BsonProperty("fullDocument") final TDocument fullDocument,
+                                @BsonProperty("operationType") final OperationType operationType,
+                                @BsonProperty("updateDescription") final UpdateDescription updateDescription) {
         this.resumeToken = resumeToken;
         this.namespace = namespace;
         this.fullDocument = fullDocument;
@@ -114,9 +117,9 @@ public final class ChangeStreamOutput<TDocument> {
      * @param <TFullDocument> the fullDocument type
      * @return the codec
      */
-    public static <TFullDocument> Codec<ChangeStreamOutput<TFullDocument>> createCodec(final Class<TFullDocument> fullDocumentClass,
-                                                                                       final CodecRegistry codecRegistry) {
-        return new ChangeStreamOutputCodec<TFullDocument>(fullDocumentClass, codecRegistry);
+    public static <TFullDocument> Codec<ChangeStreamDocument<TFullDocument>> createCodec(final Class<TFullDocument> fullDocumentClass,
+                                                                                         final CodecRegistry codecRegistry) {
+        return new ChangeStreamDocumentCodec<TFullDocument>(fullDocumentClass, codecRegistry);
     }
 
     @Override
@@ -128,7 +131,7 @@ public final class ChangeStreamOutput<TDocument> {
             return false;
         }
 
-        ChangeStreamOutput<?> that = (ChangeStreamOutput<?>) o;
+        ChangeStreamDocument<?> that = (ChangeStreamDocument<?>) o;
 
         if (!getResumeToken().equals(that.getResumeToken())) {
             return false;

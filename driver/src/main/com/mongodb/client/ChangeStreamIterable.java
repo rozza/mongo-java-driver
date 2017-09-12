@@ -17,7 +17,7 @@
 package com.mongodb.client;
 
 import com.mongodb.client.model.Collation;
-import com.mongodb.client.model.changestream.ChangeStreamOutput;
+import com.mongodb.client.model.changestream.ChangeStreamDocument;
 import com.mongodb.client.model.changestream.FullDocument;
 import com.mongodb.client.model.changestream.ResumeToken;
 
@@ -26,11 +26,14 @@ import java.util.concurrent.TimeUnit;
 /**
  * Iterable for change streams.
  *
+ * <p>Note: the {@link ChangeStreamDocument} class will not be applicable for all change stream outputs. If using custom pipelines that
+ * radically change the result, then the {@link #withDocumentClass(Class)} method can be used to provide an alternative document format.</p>
+ *
  * @param <TResult> The type of the result.
  * @mongodb.server.release 3.6
  * @since 3.6
  */
-public interface ChangeStreamIterable<TResult> extends MongoIterable<ChangeStreamOutput<TResult>> {
+public interface ChangeStreamIterable<TResult> extends MongoIterable<ChangeStreamDocument<TResult>> {
 
     /**
      * Sets the fullDocument value.
@@ -77,11 +80,11 @@ public interface ChangeStreamIterable<TResult> extends MongoIterable<ChangeStrea
     ChangeStreamIterable<TResult> collation(Collation collation);
 
     /**
-     * Returns the raw result from the change stream.
+     * Returns a {@code MongoIterable} containing the results of the change stream based on the document class provided.
      *
      * @param clazz the class to use for the raw result.
      * @param <TDocument> the result type
      * @return the new Mongo Iterable
      */
-    <TDocument> MongoIterable<TDocument> rawResult(Class<TDocument> clazz);
+    <TDocument> MongoIterable<TDocument> withDocumentClass(Class<TDocument> clazz);
 }

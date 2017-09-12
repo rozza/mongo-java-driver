@@ -26,11 +26,11 @@ class OperationTypeSpecification extends Specification {
 
         where:
         operationType            | expectedString
-        OperationType.Delete     | 'delete'
-        OperationType.Insert     | 'insert'
-        OperationType.Invalidate | 'invalidate'
-        OperationType.Replace    | 'replace'
-        OperationType.Update     | 'update'
+        OperationType.DELETE     | 'delete'
+        OperationType.INSERT     | 'insert'
+        OperationType.INVALIDATE | 'invalidate'
+        OperationType.REPLACE    | 'replace'
+        OperationType.UPDATE     | 'update'
 
     }
 
@@ -40,11 +40,11 @@ class OperationTypeSpecification extends Specification {
 
         where:
         operationType            | stringValue
-        OperationType.Delete     | 'delete'
-        OperationType.Insert     | 'insert'
-        OperationType.Invalidate | 'invalidate'
-        OperationType.Replace    | 'replace'
-        OperationType.Update     | 'update'
+        OperationType.DELETE     | 'delete'
+        OperationType.INSERT     | 'insert'
+        OperationType.INVALIDATE | 'invalidate'
+        OperationType.REPLACE    | 'replace'
+        OperationType.UPDATE     | 'update'
     }
 
     def 'should throw an illegal argument exception for invalid values'() {

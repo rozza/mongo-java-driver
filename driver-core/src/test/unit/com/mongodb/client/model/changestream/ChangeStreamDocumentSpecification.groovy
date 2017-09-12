@@ -22,24 +22,24 @@ import org.bson.Document
 import org.bson.RawBsonDocument
 import spock.lang.Specification
 
-class ChangeStreamOutputSpecification extends Specification {
+class ChangeStreamDocumentSpecification extends Specification {
 
     def 'should return the expected string value'() {
         given:
         def resumeToken = new ResumeToken(RawBsonDocument.parse('{token: true}'))
         def namespace = new MongoNamespace('databaseName.collectionName')
         def fullDocument = BsonDocument.parse('{key: "value for fullDocument"}')
-        def operationType = OperationType.Update
+        def operationType = OperationType.UPDATE
         def updateDesc = new UpdateDescription(['a', 'b'], Document.parse('{c: 1}'))
 
         when:
-        def changeStreamOutput = new ChangeStreamOutput<BsonDocument>(resumeToken, namespace, fullDocument, operationType, updateDesc)
+        def changeStreamDocument = new ChangeStreamDocument<BsonDocument>(resumeToken, namespace, fullDocument, operationType, updateDesc)
 
         then:
-        changeStreamOutput.getResumeToken() == resumeToken
-        changeStreamOutput.getFullDocument() == fullDocument
-        changeStreamOutput.getNamespace() == namespace
-        changeStreamOutput.getOperationType() == operationType
-        changeStreamOutput.getUpdateDescription() == updateDesc
+        changeStreamDocument.getResumeToken() == resumeToken
+        changeStreamDocument.getFullDocument() == fullDocument
+        changeStreamDocument.getNamespace() == namespace
+        changeStreamDocument.getOperationType() == operationType
+        changeStreamDocument.getUpdateDescription() == updateDesc
     }
 }

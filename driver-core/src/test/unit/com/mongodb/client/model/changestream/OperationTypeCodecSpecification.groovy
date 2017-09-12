@@ -55,11 +55,11 @@ class OperationTypeCodecSpecification extends Specification {
 
         where:
         operationType << [
-                OperationType.Delete,
-                OperationType.Insert,
-                OperationType.Invalidate,
-                OperationType.Replace,
-                OperationType.Update
+                OperationType.DELETE,
+                OperationType.INSERT,
+                OperationType.INVALIDATE,
+                OperationType.REPLACE,
+                OperationType.UPDATE
         ]
 
     }

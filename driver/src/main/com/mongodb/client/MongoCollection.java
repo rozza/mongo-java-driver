@@ -262,7 +262,7 @@ public interface MongoCollection<TDocument> {
      * @mongodb.driver.manual reference/operator/aggregation/changeStream $changeStream
      * @since 3.6
      */
-    ChangeStreamIterable<Document> watch();
+    ChangeStreamIterable<TDocument> watch();
 
     /**
      * Creates a change stream for this collection.
@@ -283,7 +283,7 @@ public interface MongoCollection<TDocument> {
      * @mongodb.driver.manual reference/operator/aggregation/changeStream $changeStream
      * @since 3.6
      */
-    ChangeStreamIterable<Document> watch(List<? extends Bson> pipeline);
+    ChangeStreamIterable<TDocument> watch(List<? extends Bson> pipeline);
 
     /**
      * Creates a change stream for this collection.

@@ -26,8 +26,8 @@ import com.mongodb.async.AsyncBatchCursor
 import com.mongodb.async.FutureResultCallback
 import com.mongodb.async.SingleResultCallback
 import com.mongodb.client.model.Collation
-import com.mongodb.client.model.changestream.ChangeStreamOutput
-import com.mongodb.client.model.changestream.ChangeStreamOutputCodec
+import com.mongodb.client.model.changestream.ChangeStreamDocument
+import com.mongodb.client.model.changestream.ChangeStreamDocumentCodec
 import com.mongodb.client.model.changestream.FullDocument
 import com.mongodb.client.model.changestream.ResumeToken
 import com.mongodb.operation.AsyncOperationExecutor
@@ -66,7 +66,7 @@ class ChangeStreamIterableSpecification extends Specification {
         }
         def executor = new TestOperationExecutor([cursor, cursor, cursor, cursor, cursor])
         def pipeline = [new Document('$match', 1)]
-        def codec = new ChangeStreamOutputCodec(Document, codecRegistry)
+        def codec = new ChangeStreamDocumentCodec(Document, codecRegistry)
         def changeStreamIterable = new ChangeStreamIterableImpl(namespace, codecRegistry, readPreference, readConcern, executor, pipeline,
                 Document)
 
@@ -134,7 +134,7 @@ class ChangeStreamIterableSpecification extends Specification {
         given:
         def count = 0
         def cannedResults = ['{_id: 1}', '{_id: 2}', '{_id: 3}'].collect {
-            new ChangeStreamOutput(new ResumeToken(RawBsonDocument.parse(it)), null, Document.parse(it), null, null)
+            new ChangeStreamDocument(new ResumeToken(RawBsonDocument.parse(it)), null, Document.parse(it), null, null)
 
         }
         def executor = new TestOperationExecutor([cursor(cannedResults), cursor(cannedResults), cursor(cannedResults),
@@ -150,9 +150,9 @@ class ChangeStreamIterableSpecification extends Specification {
 
         when:
         results = new FutureResultCallback()
-        mongoIterable.forEach(new Block<ChangeStreamOutput<Document>>() {
+        mongoIterable.forEach(new Block<ChangeStreamDocument<Document>>() {
             @Override
-            void apply(ChangeStreamOutput<Document> document) {
+            void apply(ChangeStreamDocument<Document> document) {
                 count++
             }
         }, results)
@@ -172,9 +172,9 @@ class ChangeStreamIterableSpecification extends Specification {
         when:
         target = []
         results = new FutureResultCallback()
-        mongoIterable.map(new Function<ChangeStreamOutput<Document>, Integer>() {
+        mongoIterable.map(new Function<ChangeStreamDocument<Document>, Integer>() {
             @Override
-            Integer apply(ChangeStreamOutput<Document> document) {
+            Integer apply(ChangeStreamDocument<Document> document) {
                 document.getFullDocument().getInteger('_id')
             }
         }).into(target, results)
@@ -198,14 +198,14 @@ class ChangeStreamIterableSpecification extends Specification {
         batchCursor.isClosed()
     }
 
-    def 'should be able to return the raw results'() {
+    def 'should be able to provide custom document class'() {
         given:
         def count = 0
         def cannedResults = ['{_id: 1}', '{_id: 2}', '{_id: 3}'].collect { RawBsonDocument.parse(it) }
         def executor = new TestOperationExecutor([cursor(cannedResults), cursor(cannedResults), cursor(cannedResults),
                                                   cursor(cannedResults), cursor(cannedResults)])
         def mongoIterable = new ChangeStreamIterableImpl(namespace, codecRegistry, readPreference, readConcern, executor, [], Document)
-                .rawResult(RawBsonDocument)
+                .withDocumentClass(RawBsonDocument)
 
         when:
         def results = new FutureResultCallback()

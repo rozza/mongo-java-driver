@@ -23,7 +23,7 @@ import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.Aggregates;
 import com.mongodb.client.model.Filters;
-import com.mongodb.client.model.changestream.ChangeStreamOutput;
+import com.mongodb.client.model.changestream.ChangeStreamDocument;
 import com.mongodb.client.model.changestream.FullDocument;
 import com.mongodb.client.model.Updates;
 import com.mongodb.client.model.changestream.ResumeToken;
@@ -70,11 +70,11 @@ public final class ChangeStreamSamples {
         System.out.println("1. Initial document from the Change Stream:");
 
         // Create the change stream cursor.
-        MongoCursor<ChangeStreamOutput<Document>> cursor = collection.watch().iterator();
+        MongoCursor<ChangeStreamDocument<Document>> cursor = collection.watch().iterator();
 
         // Insert a test document into the collection.
         collection.insertOne(Document.parse("{username: 'alice123', name: 'Alice'}"));
-        ChangeStreamOutput<Document> next = cursor.next();
+        ChangeStreamDocument<Document> next = cursor.next();
         System.out.println(next);
         cursor.close();
         sleep();

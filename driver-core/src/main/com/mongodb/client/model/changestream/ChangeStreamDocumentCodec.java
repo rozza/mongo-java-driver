@@ -32,45 +32,44 @@ import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
 import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
 
 @SuppressWarnings({"unchecked", "rawtypes"})
-final class ChangeStreamOutputCodec<TResult> implements Codec<ChangeStreamOutput<TResult>> {
+final class ChangeStreamDocumentCodec<TResult> implements Codec<ChangeStreamDocument<TResult>> {
 
     private static final ResumeTokenCodec RESUME_TOKEN_CODEC = new ResumeTokenCodec();
-    private static final MongoNamespaceCodec MONGO_NAMESPACE_CODEC = new MongoNamespaceCodec();
     private static final OperationTypeCodec OPERATION_TYPE_CODEC = new OperationTypeCodec();
 
-    private final Codec<ChangeStreamOutput<TResult>> codec;
+    private final Codec<ChangeStreamDocument<TResult>> codec;
 
-    ChangeStreamOutputCodec(final Class<TResult> fullDocumentClass, final CodecRegistry codecRegistry) {
+    ChangeStreamDocumentCodec(final Class<TResult> fullDocumentClass, final CodecRegistry codecRegistry) {
 
-        ClassModelBuilder<ChangeStreamOutput> classModelBuilder = ClassModel.builder(ChangeStreamOutput.class);
+        ClassModelBuilder<ChangeStreamDocument> classModelBuilder = ClassModel.builder(ChangeStreamDocument.class);
         ((PropertyModelBuilder<TResult>) classModelBuilder.getProperty("fullDocument")).codec(codecRegistry.get(fullDocumentClass));
         ((PropertyModelBuilder<ResumeToken>) classModelBuilder.getProperty("resumeToken")).codec(RESUME_TOKEN_CODEC);
-        ((PropertyModelBuilder<MongoNamespace>) classModelBuilder.getProperty("namespace")).codec(MONGO_NAMESPACE_CODEC);
         ((PropertyModelBuilder<OperationType>) classModelBuilder.getProperty("operationType")).codec(OPERATION_TYPE_CODEC);
-        ClassModel<ChangeStreamOutput> changeStreamOutputClassModel = classModelBuilder.build();
+        ClassModel<ChangeStreamDocument> changeStreamDocumentClassModel = classModelBuilder.build();
 
         PojoCodecProvider provider = PojoCodecProvider.builder()
-                .register(changeStreamOutputClassModel)
-                .register(OperationType.class)
+                .register(MongoNamespace.class)
                 .register(UpdateDescription.class)
+                .register(changeStreamDocumentClassModel)
                 .build();
 
         CodecRegistry registry = fromRegistries(codecRegistry, fromProviders(provider));
-        this.codec = (Codec<ChangeStreamOutput<TResult>>) (Codec<? extends ChangeStreamOutput>) registry.get(ChangeStreamOutput.class);
+        this.codec = (Codec<ChangeStreamDocument<TResult>>) (Codec<? extends ChangeStreamDocument>)
+                registry.get(ChangeStreamDocument.class);
     }
 
     @Override
-    public ChangeStreamOutput<TResult> decode(final BsonReader reader, final DecoderContext decoderContext) {
+    public ChangeStreamDocument<TResult> decode(final BsonReader reader, final DecoderContext decoderContext) {
         return codec.decode(reader, decoderContext);
     }
 
     @Override
-    public void encode(final BsonWriter writer, final ChangeStreamOutput<TResult> value, final EncoderContext encoderContext) {
+    public void encode(final BsonWriter writer, final ChangeStreamDocument<TResult> value, final EncoderContext encoderContext) {
         codec.encode(writer, value, encoderContext);
     }
 
     @Override
-    public Class<ChangeStreamOutput<TResult>> getEncoderClass() {
-        return (Class<ChangeStreamOutput<TResult>>) (Class<? extends ChangeStreamOutput>) ChangeStreamOutput.class;
+    public Class<ChangeStreamDocument<TResult>> getEncoderClass() {
+        return (Class<ChangeStreamDocument<TResult>>) (Class<? extends ChangeStreamDocument>) ChangeStreamDocument.class;
     }
 }

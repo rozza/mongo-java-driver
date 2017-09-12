@@ -20,7 +20,7 @@ import com.mongodb.client.ChangeStreamIterable;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoIterable;
 import com.mongodb.client.model.Collation;
-import com.mongodb.client.model.changestream.ChangeStreamOutput;
+import com.mongodb.client.model.changestream.ChangeStreamDocument;
 import com.mongodb.client.model.changestream.FullDocument;
 import com.mongodb.client.model.changestream.ResumeToken;
 import com.mongodb.operation.ChangeStreamOperation;
@@ -45,7 +45,7 @@ final class ChangeStreamIterableImpl<TResult> implements ChangeStreamIterable<TR
     private final CodecRegistry codecRegistry;
     private final OperationExecutor executor;
     private final List<? extends Bson> pipeline;
-    private final Codec<ChangeStreamOutput<TResult>> codec;
+    private final Codec<ChangeStreamDocument<TResult>> codec;
 
     private Integer batchSize;
     private FullDocument fullDocument = FullDocument.DEFAULT;
@@ -63,7 +63,7 @@ final class ChangeStreamIterableImpl<TResult> implements ChangeStreamIterable<TR
         this.readConcern = notNull("readConcern", readConcern);
         this.executor = notNull("executor", executor);
         this.pipeline = notNull("pipeline", pipeline);
-        this.codec = ChangeStreamOutput.createCodec(notNull("resultClass", resultClass), codecRegistry);
+        this.codec = ChangeStreamDocument.createCodec(notNull("resultClass", resultClass), codecRegistry);
     }
 
     @Override
@@ -98,32 +98,32 @@ final class ChangeStreamIterableImpl<TResult> implements ChangeStreamIterable<TR
     }
 
     @Override
-    public <TDocument> MongoIterable<TDocument> rawResult(final Class<TDocument> clazz) {
+    public <TDocument> MongoIterable<TDocument> withDocumentClass(final Class<TDocument> clazz) {
         return execute(codecRegistry.get(clazz));
     }
 
     @Override
-    public MongoCursor<ChangeStreamOutput<TResult>> iterator() {
+    public MongoCursor<ChangeStreamDocument<TResult>> iterator() {
         return execute(codec).iterator();
     }
 
     @Override
-    public ChangeStreamOutput<TResult> first() {
+    public ChangeStreamDocument<TResult> first() {
         return execute(codec).first();
     }
 
     @Override
-    public <U> MongoIterable<U> map(final Function<ChangeStreamOutput<TResult>, U> mapper) {
+    public <U> MongoIterable<U> map(final Function<ChangeStreamDocument<TResult>, U> mapper) {
         return execute(codec).map(mapper);
     }
 
     @Override
-    public void forEach(final Block<? super ChangeStreamOutput<TResult>> block) {
+    public void forEach(final Block<? super ChangeStreamDocument<TResult>> block) {
         execute(codec).forEach(block);
     }
 
     @Override
-    public <A extends Collection<? super ChangeStreamOutput<TResult>>> A into(final A target) {
+    public <A extends Collection<? super ChangeStreamDocument<TResult>>> A into(final A target) {
         return execute(codec).into(target);
     }
 

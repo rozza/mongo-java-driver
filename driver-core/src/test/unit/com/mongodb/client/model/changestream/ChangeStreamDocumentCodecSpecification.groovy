@@ -32,41 +32,41 @@ import spock.lang.Specification
 
 import static org.bson.codecs.configuration.CodecRegistries.fromProviders
 
-class ChangeStreamOutputCodecSpecification extends Specification {
+class ChangeStreamDocumentCodecSpecification extends Specification {
 
-    def 'should round trip ChangeStreamOutput successfully'() {
+    def 'should round trip ChangeStreamDocument successfully'() {
 
         given:
         def codecRegistry = fromProviders([new DocumentCodecProvider(), new BsonValueCodecProvider(), new ValueCodecProvider()])
-        def codec = new ChangeStreamOutputCodec(clazz, codecRegistry)
+        def codec = new ChangeStreamDocumentCodec(clazz, codecRegistry)
 
         when:
         def writer = new BsonDocumentWriter(new BsonDocument())
-        codec.encode(writer, changeStreamOutput, EncoderContext.builder().build())
+        codec.encode(writer, changeStreamDocument, EncoderContext.builder().build())
 
         then:
         BsonDocument.parse(json) == writer.getDocument()
 
         BsonReader bsonReader = new BsonDocumentReader(writer.getDocument())
-        ChangeStreamOutput actual = codec.decode(bsonReader, DecoderContext.builder().build())
+        ChangeStreamDocument actual = codec.decode(bsonReader, DecoderContext.builder().build())
 
         then:
-        changeStreamOutput == actual
+        changeStreamDocument == actual
 
         where:
-        changeStreamOutput << [
-                new ChangeStreamOutput<Document>(
+        changeStreamDocument << [
+                new ChangeStreamDocument<Document>(
                         new ResumeToken(RawBsonDocument.parse('{token: true}')),
                         new MongoNamespace('databaseName.collectionName'),
                         Document.parse('{key: "value for fullDocument"}'),
-                        OperationType.Insert,
+                        OperationType.INSERT,
                         null
                 ),
-                new ChangeStreamOutput<BsonDocument>(
+                new ChangeStreamDocument<BsonDocument>(
                         new ResumeToken(RawBsonDocument.parse('{token: true}')),
                         new MongoNamespace('databaseName.collectionName'),
                         BsonDocument.parse('{key: "value for fullDocument"}'),
-                        OperationType.Update,
+                        OperationType.UPDATE,
                         new UpdateDescription(['a', 'b'], Document.parse('{c: 1}'))
                 )
         ]

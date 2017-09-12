@@ -28,35 +28,35 @@ public enum OperationType {
     /**
      * The insert operation type
      */
-    Insert("insert"),
+    INSERT("insert"),
 
     /**
      * The update operation type
      */
-    Update("update"),
+    UPDATE("update"),
 
     /**
      * The replace operation type
      */
-    Replace("replace"),
+    REPLACE("replace"),
 
     /**
      * The delete operation type
      */
-    Delete("delete"),
+    DELETE("delete"),
 
     /**
      * The invalidate operation type
      */
-    Invalidate("invalidate");
+    INVALIDATE("invalidate");
 
     private final String value;
-    OperationType(final String caseFirst) {
-        this.value = caseFirst;
+    OperationType(final String operationTypeName) {
+        this.value = operationTypeName;
     }
 
     /**
-     * @return the String representation of the collation case first value
+     * @return the String representation of the operation type
      */
     public String getValue() {
         return value;
