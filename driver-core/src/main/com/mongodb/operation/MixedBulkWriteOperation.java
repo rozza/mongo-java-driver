@@ -1,11 +1,11 @@
 /*
- * Copyright (c) 2008-2014 MongoDB, Inc.
+ * Copyright 2017 MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *   http://www.apache.org/licenses/LICENSE-2.0
+ *    http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -17,16 +17,21 @@
 package com.mongodb.operation;
 
 import com.mongodb.MongoBulkWriteException;
+import com.mongodb.MongoInternalException;
 import com.mongodb.MongoNamespace;
+import com.mongodb.ServerAddress;
 import com.mongodb.WriteConcern;
 import com.mongodb.WriteConcernResult;
 import com.mongodb.async.SingleResultCallback;
 import com.mongodb.binding.AsyncWriteBinding;
 import com.mongodb.binding.WriteBinding;
+import com.mongodb.bulk.BulkWriteError;
 import com.mongodb.bulk.BulkWriteResult;
+import com.mongodb.bulk.BulkWriteUpsert;
 import com.mongodb.bulk.DeleteRequest;
 import com.mongodb.bulk.InsertRequest;
 import com.mongodb.bulk.UpdateRequest;
+import com.mongodb.bulk.WriteConcernError;
 import com.mongodb.bulk.WriteRequest;
 import com.mongodb.connection.AsyncConnection;
 import com.mongodb.connection.BulkWriteBatchCombiner;
@@ -34,11 +39,26 @@ import com.mongodb.connection.Connection;
 import com.mongodb.connection.ConnectionDescription;
 import com.mongodb.connection.SessionContext;
 import com.mongodb.internal.connection.IndexMap;
+import com.mongodb.internal.validator.NoOpFieldNameValidator;
+import org.bson.BsonArray;
+import org.bson.BsonBinaryWriter;
+import org.bson.BsonBinaryWriterSettings;
+import org.bson.BsonDocument;
+import org.bson.BsonInt32;
+import org.bson.BsonNumber;
+import org.bson.BsonValue;
+import org.bson.BsonWriterSettings;
+import org.bson.RawBsonDocument;
+import org.bson.codecs.BsonDocumentCodec;
+import org.bson.codecs.EncoderContext;
+import org.bson.io.BasicOutputBuffer;
+import org.bson.io.BsonOutput;
 
 import java.util.ArrayList;
-import java.util.Iterator;
+import java.util.Collections;
 import java.util.List;
 
+import static com.mongodb.ReadPreference.primary;
 import static com.mongodb.assertions.Assertions.isTrueArgument;
 import static com.mongodb.assertions.Assertions.notNull;
 import static com.mongodb.bulk.WriteRequest.Type.DELETE;
@@ -46,7 +66,6 @@ import static com.mongodb.bulk.WriteRequest.Type.INSERT;
 import static com.mongodb.bulk.WriteRequest.Type.REPLACE;
 import static com.mongodb.bulk.WriteRequest.Type.UPDATE;
 import static com.mongodb.internal.async.ErrorHandlingResultCallback.errorHandlingCallback;
-import static com.mongodb.operation.OperationHelper.AsyncCallableWithConnection;
 import static com.mongodb.operation.OperationHelper.CallableWithConnection;
 import static com.mongodb.operation.OperationHelper.LOGGER;
 import static com.mongodb.operation.OperationHelper.releasingCallback;
@@ -54,6 +73,7 @@ import static com.mongodb.operation.OperationHelper.serverIsAtLeastVersionThreeD
 import static com.mongodb.operation.OperationHelper.validateWriteRequests;
 import static com.mongodb.operation.OperationHelper.withConnection;
 import static java.lang.String.format;
+import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 
 /**
@@ -62,6 +82,9 @@ import static java.util.Collections.singletonList;
  * @since 3.0
  */
 public class MixedBulkWriteOperation implements AsyncWriteOperation<BulkWriteResult>, WriteOperation<BulkWriteResult> {
+    private static final BsonDocumentCodec BSON_DOCUMENT_CODEC = new BsonDocumentCodec();
+    private static final int HEADROOM = 16 * 1024;
+
     private final MongoNamespace namespace;
     private final List<? extends WriteRequest> writeRequests;
     private final boolean ordered;
@@ -76,15 +99,14 @@ public class MixedBulkWriteOperation implements AsyncWriteOperation<BulkWriteRes
      * @param ordered       whether the writeRequests must be executed in order.
      * @param writeConcern  the write concern for the operation.
      */
-    public MixedBulkWriteOperation(final MongoNamespace namespace, final List<? extends WriteRequest> writeRequests, final boolean ordered,
-                                   final WriteConcern writeConcern) {
+    public MixedBulkWriteOperation(final MongoNamespace namespace, final List<? extends WriteRequest> writeRequests,
+                                   final boolean ordered, final WriteConcern writeConcern) {
         this.ordered = ordered;
         this.namespace = notNull("namespace", namespace);
         this.writeRequests = notNull("writes", writeRequests);
         this.writeConcern = notNull("writeConcern", writeConcern);
         isTrueArgument("writes is not an empty list", !writeRequests.isEmpty());
     }
-
 
     /**
      * Gets the namespace of the collection to write to.
@@ -151,58 +173,51 @@ public class MixedBulkWriteOperation implements AsyncWriteOperation<BulkWriteRes
      *
      * @param binding the WriteBinding        for the operation
      * @return the bulk write result.
-     * @throws com.mongodb.MongoBulkWriteException if a failure to complete the bulk write is detected based on the server response
+     * @throws MongoBulkWriteException if a failure to complete the bulk write is detected based on the server response
      */
     @Override
     public BulkWriteResult execute(final WriteBinding binding) {
         return withConnection(binding, new CallableWithConnection<BulkWriteResult>() {
             @Override
             public BulkWriteResult call(final Connection connection) {
-                validateWriteRequests(connection, bypassDocumentValidation, writeRequests,
-                        writeConcern);
-                BulkWriteBatchCombiner bulkWriteBatchCombiner = new BulkWriteBatchCombiner(connection.getDescription().getServerAddress(),
-                                                                                           ordered, writeConcern);
-                for (Run run : getRunGenerator(connection.getDescription())) {
-                    try {
-                        BulkWriteResult result = run.execute(connection, binding.getSessionContext());
-                        if (result.wasAcknowledged()) {
-                            bulkWriteBatchCombiner.addResult(result, run.indexMap);
-                        }
-                    } catch (MongoBulkWriteException e) {
-                        bulkWriteBatchCombiner.addErrorResult(e, run.indexMap);
-                        if (bulkWriteBatchCombiner.shouldStopSendingMoreBatches()) {
-                            break;
-                        }
-                    }
+                validateWriteRequests(connection, bypassDocumentValidation, writeRequests, writeConcern);
+                if (getWriteConcern().isAcknowledged() || serverIsAtLeastVersionThreeDotSix(connection.getDescription())) {
+                    return executeBatches(connection, binding.getSessionContext(), getWriteRequestsWithIndices());
+                } else {
+                    return executeLegacyBatches(connection);
                 }
-                return bulkWriteBatchCombiner.getResult();
             }
         });
     }
 
     @Override
     public void executeAsync(final AsyncWriteBinding binding, final SingleResultCallback<BulkWriteResult> callback) {
-        withConnection(binding, new AsyncCallableWithConnection() {
+        withConnection(binding, new OperationHelper.AsyncCallableWithConnection() {
             @Override
             public void call(final AsyncConnection connection, final Throwable t) {
-
                 final SingleResultCallback<BulkWriteResult> errHandlingCallback = errorHandlingCallback(callback, LOGGER);
-
                 if (t != null) {
                     errHandlingCallback.onResult(null, t);
                 } else {
-                    validateWriteRequests(connection, bypassDocumentValidation, writeRequests,
-                            writeConcern, new AsyncCallableWithConnection() {
+                    validateWriteRequests(connection, bypassDocumentValidation, getWriteRequests(), writeConcern,
+                            new OperationHelper.AsyncCallableWithConnection() {
                                 @Override
-                                public void call(final AsyncConnection connection, final Throwable t) {
-                                    if (t != null) {
-                                        releasingCallback(errHandlingCallback, connection).onResult(null, t);
+                                public void call(final AsyncConnection connection, final Throwable t1) {
+                                    if (t1 != null) {
+                                        releasingCallback(errHandlingCallback, connection).onResult(null, t1);
                                     } else {
-                                        Iterator<Run> runs = getRunGenerator(connection.getDescription()).iterator();
-                                        executeRunsAsync(runs, binding, connection,
-                                                new BulkWriteBatchCombiner(connection.getDescription().getServerAddress(), ordered,
-                                                        writeConcern),
-                                                errHandlingCallback);
+                                        SingleResultCallback<BulkWriteResult> wrappedCallback =
+                                                releasingCallback(errHandlingCallback, connection);
+                                        if (writeConcern.isAcknowledged()
+                                                || serverIsAtLeastVersionThreeDotSix(connection.getDescription())) {
+                                            executeBatchesAsync(connection,
+                                                    binding.getSessionContext(),
+                                                    new BulkWriteBatchCombiner(connection.getDescription().getServerAddress(), isOrdered(),
+                                                            getWriteConcern()),
+                                                    new BatchMetadata(getWriteRequestsWithIndices(), 0), wrappedCallback);
+                                        } else {
+                                            executeLegacyBatchesAsync(connection,  getWriteRequests(), 1, wrappedCallback);
+                                        }
                                     }
                                 }
                             });
@@ -211,423 +226,443 @@ public class MixedBulkWriteOperation implements AsyncWriteOperation<BulkWriteRes
         });
     }
 
-    private void executeRunsAsync(final Iterator<Run> runs, final AsyncWriteBinding binding, final AsyncConnection connection,
-                                  final BulkWriteBatchCombiner bulkWriteBatchCombiner,
-                                  final SingleResultCallback<BulkWriteResult> callback) {
+    private BulkWriteResult executeBatches(final Connection connection, final SessionContext sessionContext,
+                                           final List<WriteRequestWithIndex> writeRequestsWithIndices) {
+        BulkWriteBatchCombiner bulkWriteBatchCombiner = new BulkWriteBatchCombiner(connection.getDescription().getServerAddress(),
+                ordered, writeConcern);
 
-        final Run run = runs.next();
-        final SingleResultCallback<BulkWriteResult> wrappedCallback = releasingCallback(callback, connection);
-        run.executeAsync(connection, new SingleResultCallback<BulkWriteResult>() {
-            @Override
-            public void onResult(final BulkWriteResult result, final Throwable t) {
-                if (t != null) {
-                    if (t instanceof MongoBulkWriteException) {
-                        bulkWriteBatchCombiner.addErrorResult((MongoBulkWriteException) t, run.indexMap);
-                    } else {
-                        wrappedCallback.onResult(null, t);
-                        return;
-                    }
-                } else if (result.wasAcknowledged()) {
-                    bulkWriteBatchCombiner.addResult(result, run.indexMap);
-                }
+        BatchMetadata batchMetadata = new BatchMetadata(writeRequestsWithIndices, 0);
+        do {
+            RawBsonDocument command = createCommand(connection.getDescription(), batchMetadata);
 
-                // Execute next run or complete
-                if (runs.hasNext() && !bulkWriteBatchCombiner.shouldStopSendingMoreBatches()) {
-                    executeRunsAsync(runs, binding, connection, bulkWriteBatchCombiner, callback);
-                } else {
-                    if (bulkWriteBatchCombiner.hasErrors()) {
-                        wrappedCallback.onResult(null, bulkWriteBatchCombiner.getError());
-                    } else {
-                        wrappedCallback.onResult(bulkWriteBatchCombiner.getResult(), null);
-                    }
-                }
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug(format("Sending batch %d", batchMetadata.batchNumber));
             }
-        }, binding.getSessionContext());
+
+            BsonDocument result = connection.command(getNamespace().getDatabaseName(), command, primary(),
+                    new NoOpFieldNameValidator(), BSON_DOCUMENT_CODEC, sessionContext);
+
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug(format("Received response for batch %d", batchMetadata.batchNumber));
+            }
+
+            processCommandResult(connection.getDescription().getServerAddress(), bulkWriteBatchCombiner, batchMetadata, result);
+            batchMetadata = batchMetadata.getNextBatchMetadata();
+        } while (!batchMetadata.isEmpty() && !bulkWriteBatchCombiner.shouldStopSendingMoreBatches());
+
+        return bulkWriteBatchCombiner.getResult();
     }
 
-    private Iterable<Run> getRunGenerator(final ConnectionDescription connectionDescription) {
-        if (ordered) {
-            return new OrderedRunGenerator(connectionDescription, bypassDocumentValidation);
-        } else {
-            return new UnorderedRunGenerator(connectionDescription, bypassDocumentValidation);
+    List<WriteRequestWithIndex> getWriteRequestsWithIndices() {
+        ArrayList<WriteRequestWithIndex> writeRequestsWithIndex = new ArrayList<WriteRequestWithIndex>();
+        for (int i = 0; i < writeRequests.size(); i++) {
+            writeRequestsWithIndex.add(new WriteRequestWithIndex(writeRequests.get(i), i));
         }
+        return writeRequestsWithIndex;
     }
 
-    private class OrderedRunGenerator implements Iterable<Run> {
-        private final int maxBatchCount;
-        private final Boolean bypassDocumentValidation;
+    static class WriteRequestWithIndex {
+        private final int index;
+        private final WriteRequest writeRequest;
 
-        OrderedRunGenerator(final ConnectionDescription connectionDescription, final Boolean bypassDocumentValidation) {
-            this.maxBatchCount = connectionDescription.getMaxBatchCount();
-            this.bypassDocumentValidation = bypassDocumentValidation;
+        WriteRequestWithIndex(final WriteRequest writeRequest, final int index) {
+            this.writeRequest = writeRequest;
+            this.index = index;
+        }
+
+        WriteRequest.Type getType() {
+            return writeRequest.getType();
         }
 
         @Override
-        public Iterator<Run> iterator() {
-            return new Iterator<Run>() {
-                private int curIndex;
-
-                @Override
-                public boolean hasNext() {
-                    return curIndex < writeRequests.size();
-                }
-
-                @Override
-                public Run next() {
-                    Run run = new Run(writeRequests.get(curIndex).getType(), true, bypassDocumentValidation);
-                    int nextIndex = getNextIndex();
-                    for (int i = curIndex; i < nextIndex; i++) {
-                        run.add(writeRequests.get(i), i);
-                    }
-                    curIndex = nextIndex;
-                    return run;
-                }
-
-                private int getNextIndex() {
-                    WriteRequest.Type type = writeRequests.get(curIndex).getType();
-                    for (int i = curIndex; i < writeRequests.size(); i++) {
-                        if (i == curIndex + maxBatchCount || writeRequests.get(i).getType() != type) {
-                            return i;
-                        }
-                    }
-                    return writeRequests.size();
-                }
-
-                @Override
-                public void remove() {
-                    throw new UnsupportedOperationException("Not implemented");
-                }
-            };
+        public String toString() {
+            return "WriteRequestWithIndex{"
+                    + "index=" + index
+                    + ", writeRequestType=" + writeRequest.getType()
+                    + "}";
         }
     }
 
+    class BatchMetadata {
+        private final IndexMap indexMap = IndexMap.create();
+        private final List<WriteRequestWithIndex> writeRequestsWithIndices;
+        private final int batchNumber;
+        private List<WriteRequestWithIndex> unprocessed = emptyList();
 
-    private class UnorderedRunGenerator implements Iterable<Run> {
-        private final int maxBatchCount;
-        private final Boolean bypassDocumentValidation;
-
-        UnorderedRunGenerator(final ConnectionDescription connectionDescription, final Boolean bypassDocumentValidation) {
-            this.maxBatchCount = connectionDescription.getMaxBatchCount();
-            this.bypassDocumentValidation = bypassDocumentValidation;
+        BatchMetadata(final List<WriteRequestWithIndex> writeRequestsWithIndices, final int batchNumber) {
+            this.writeRequestsWithIndices = writeRequestsWithIndices;
+            this.batchNumber = batchNumber;
         }
 
-        @Override
-        public Iterator<Run> iterator() {
-            return new Iterator<Run>() {
-                private final List<Run> runs = new ArrayList<Run>();
-                private int curIndex;
+        WriteRequest.Type getBatchType() {
+            return writeRequestsWithIndices.get(0).writeRequest.getType();
+        }
 
-                @Override
-                public boolean hasNext() {
-                    return curIndex < writeRequests.size() || !runs.isEmpty();
-                }
+        void setUnprocessed(final List<WriteRequestWithIndex> unprocessed) {
+            this.unprocessed = unprocessed;
+        }
 
-                @Override
-                public Run next() {
-                    while (curIndex < writeRequests.size()) {
-                        WriteRequest writeRequest = writeRequests.get(curIndex);
-                        Run run = findRunOfType(writeRequest.getType());
-                        if (run == null) {
-                            run = new Run(writeRequest.getType(), false, bypassDocumentValidation);
-                            runs.add(run);
-                        }
-                        run.add(writeRequest, curIndex);
-                        curIndex++;
-                        if (run.size() == maxBatchCount) {
-                            runs.remove(run);
-                            return run;
-                        }
-                    }
+        BatchMetadata getNextBatchMetadata() {
+            return new BatchMetadata(unprocessed, batchNumber + 1);
+        }
 
-                    return runs.remove(0);
-                }
+        void addIndex(final int batchIndex, final int writeRequestIndex) {
+            indexMap.add(batchIndex, writeRequestIndex);
+        }
 
-                private Run findRunOfType(final WriteRequest.Type type) {
-                    for (Run cur : runs) {
-                        if (cur.type == type) {
-                            return cur;
-                        }
-                    }
-                    return null;
-                }
+        int getSize() {
+            return writeRequests.size() - unprocessed.size();
+        }
 
-                @Override
-                public void remove() {
-                    throw new UnsupportedOperationException("Not implemented");
-                }
-            };
+        boolean isEmpty() {
+            return writeRequestsWithIndices.isEmpty();
         }
     }
 
-    private class Run {
-        @SuppressWarnings("rawtypes")
-        private final List runWrites = new ArrayList();
-        private final WriteRequest.Type type;
-        private final boolean ordered;
-        private final Boolean bypassDocumentValidation;
-        private IndexMap indexMap = IndexMap.create();
-
-        Run(final WriteRequest.Type type, final boolean ordered, final Boolean bypassDocumentValidation) {
-            this.type = type;
-            this.ordered = ordered;
-            this.bypassDocumentValidation = bypassDocumentValidation;
-        }
-
-        @SuppressWarnings("unchecked")
-        void add(final WriteRequest writeRequest, final int originalIndex) {
-            indexMap = indexMap.add(runWrites.size(), originalIndex);
-            runWrites.add(writeRequest);
-        }
-
-        public int size() {
-            return runWrites.size();
-        }
-
-        @SuppressWarnings("unchecked")
-        BulkWriteResult execute(final Connection connection, final SessionContext sessionContext) {
-            final BulkWriteResult nextWriteResult;
-
-            if (type == UPDATE || type == REPLACE) {
-                nextWriteResult = getUpdatesRunExecutor((List<UpdateRequest>) runWrites, bypassDocumentValidation, connection,
-                        sessionContext)
-                                          .execute();
-            } else if (type == INSERT) {
-                nextWriteResult = getInsertsRunExecutor((List<InsertRequest>) runWrites, bypassDocumentValidation, connection,
-                        sessionContext)
-                                          .execute();
-            } else if (type == DELETE) {
-                nextWriteResult = getDeletesRunExecutor((List<DeleteRequest>) runWrites, connection, sessionContext)
-                                          .execute();
+    private BulkWriteResult executeLegacyBatches(final Connection connection) {
+        int batchNum = 0;
+        for (WriteRequest writeRequest : getWriteRequests()) {
+            batchNum++;
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug(format("Asynchronously sending batch %d", batchNum));
+            }
+            if (writeRequest.getType() == INSERT) {
+                connection.insert(getNamespace(), isOrdered(), getWriteConcern(), singletonList((InsertRequest) writeRequest));
+            } else if (writeRequest.getType() == UPDATE || writeRequest.getType() == REPLACE) {
+                connection.update(getNamespace(), isOrdered(), getWriteConcern(), singletonList((UpdateRequest) writeRequest));
+            } else if (writeRequest.getType() == DELETE) {
+                connection.delete(getNamespace(), isOrdered(), getWriteConcern(), singletonList((DeleteRequest) writeRequest));
             } else {
-                throw new UnsupportedOperationException(format("Unsupported write of type %s", type));
+                throw getUnsupportedType(writeRequest.getType());
             }
-            return nextWriteResult;
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug(format("Received response for batch %d", batchNum));
+            }
         }
+        return BulkWriteResult.unacknowledged();
+    }
 
-        @SuppressWarnings("unchecked")
-        void executeAsync(final AsyncConnection connection, final SingleResultCallback<BulkWriteResult> callback,
-                          final SessionContext sessionContext) {
-            if (type == UPDATE || type == REPLACE) {
-                getUpdatesRunExecutor((List<UpdateRequest>) runWrites, bypassDocumentValidation, connection, sessionContext)
-                        .executeAsync(callback);
-            } else if (type == INSERT) {
-                getInsertsRunExecutor((List<InsertRequest>) runWrites, bypassDocumentValidation, connection, sessionContext)
-                        .executeAsync(callback);
-            } else if (type == DELETE) {
-                getDeletesRunExecutor((List<DeleteRequest>) runWrites, connection, sessionContext).executeAsync(callback);
+    private void executeBatchesAsync(final AsyncConnection connection, final SessionContext sessionContext,
+                                     final BulkWriteBatchCombiner bulkWriteBatchCombiner,
+                                     final BatchMetadata batchMetadata,
+                                     final SingleResultCallback<BulkWriteResult> callback) {
+        try {
+
+            if (!batchMetadata.isEmpty() && !bulkWriteBatchCombiner.shouldStopSendingMoreBatches()) {
+                RawBsonDocument command = createCommand(connection.getDescription(), batchMetadata);
+
+                if (LOGGER.isDebugEnabled()) {
+                    LOGGER.debug(format("Asynchronously sending batch %d", batchMetadata.batchNumber));
+                }
+                connection.commandAsync(getNamespace().getDatabaseName(), command, primary(),
+                        new NoOpFieldNameValidator(), BSON_DOCUMENT_CODEC, sessionContext, new SingleResultCallback<BsonDocument>() {
+                            @Override
+                            public void onResult(final BsonDocument result, final Throwable t) {
+                                if (t != null) {
+                                    callback.onResult(null, t);
+                                } else {
+                                    if (LOGGER.isDebugEnabled()) {
+                                        LOGGER.debug(format("Asynchronously received response for batch %d", batchMetadata.batchNumber));
+                                    }
+
+                                    processCommandResult(connection.getDescription().getServerAddress(), bulkWriteBatchCombiner,
+                                            batchMetadata, result);
+
+                                    executeBatchesAsync(connection, sessionContext, bulkWriteBatchCombiner, batchMetadata
+                                            .getNextBatchMetadata(), callback);
+                                }
+                            }
+                        });
             } else {
-                callback.onResult(null, new UnsupportedOperationException(format("Unsupported write of type %s", type)));
-            }
-        }
-
-        RunExecutor getDeletesRunExecutor(final List<DeleteRequest> deleteRequests, final Connection connection,
-                                          final SessionContext sessionContext) {
-            return new RunExecutor(connection.getDescription()) {
-
-                @Override
-                void executeWriteProtocol(final int index) {
-                    connection.delete(namespace, ordered, writeConcern, singletonList(deleteRequests.get(index)));
-                }
-
-                @Override
-                BulkWriteResult executeWriteCommandProtocol() {
-                    return connection.deleteCommand(namespace, ordered, writeConcern, deleteRequests, sessionContext);
-                }
-
-                @Override
-                WriteRequest.Type getType() {
-                    return DELETE;
-                }
-            };
-        }
-
-        @SuppressWarnings("unchecked")
-        RunExecutor getInsertsRunExecutor(final List<InsertRequest> insertRequests, final Boolean bypassDocumentValidation,
-                                          final Connection connection, final SessionContext sessionContext) {
-            return new RunExecutor(connection.getDescription()) {
-
-                @Override
-                void executeWriteProtocol(final int index) {
-                    connection.insert(namespace, ordered, writeConcern, singletonList(insertRequests.get(index)));
-                }
-
-                @Override
-                BulkWriteResult executeWriteCommandProtocol() {
-                    return connection.insertCommand(namespace, ordered, writeConcern, bypassDocumentValidation, insertRequests,
-                            sessionContext);
-                }
-
-                @Override
-                WriteRequest.Type getType() {
-                    return INSERT;
-                }
-            };
-        }
-
-        RunExecutor getUpdatesRunExecutor(final List<UpdateRequest> updates, final Boolean bypassDocumentValidation,
-                                          final Connection connection, final SessionContext sessionContext) {
-            return new RunExecutor(connection.getDescription()) {
-
-                @Override
-                void executeWriteProtocol(final int index) {
-                    connection.update(namespace, ordered, writeConcern, singletonList(updates.get(index)));
-                }
-
-                @Override
-                BulkWriteResult executeWriteCommandProtocol() {
-                    return connection.updateCommand(namespace, ordered, writeConcern, bypassDocumentValidation, updates, sessionContext);
-                }
-
-                @Override
-                WriteRequest.Type getType() {
-                    return UPDATE;
-                }
-
-            };
-        }
-
-        AsyncRunExecutor getDeletesRunExecutor(final List<DeleteRequest> deleteRequests, final AsyncConnection connection,
-                                               final SessionContext sessionContext) {
-            return new AsyncRunExecutor(connection.getDescription()) {
-
-                @Override
-                void executeWriteProtocolAsync(final int index, final SingleResultCallback<WriteConcernResult> callback) {
-                    connection.deleteAsync(namespace, ordered, writeConcern, singletonList(deleteRequests.get(index)), callback);
-                }
-
-                @Override
-                void executeWriteCommandProtocolAsync(final SingleResultCallback<BulkWriteResult> callback) {
-                    connection.deleteCommandAsync(namespace, ordered, writeConcern, deleteRequests, sessionContext, callback);
-                }
-
-                @Override
-                WriteRequest.Type getType() {
-                    return DELETE;
-                }
-            };
-        }
-
-        @SuppressWarnings("unchecked")
-        AsyncRunExecutor getInsertsRunExecutor(final List<InsertRequest> insertRequests, final Boolean bypassDocumentValidation,
-                                               final AsyncConnection connection, final SessionContext sessionContext) {
-            return new AsyncRunExecutor(connection.getDescription()) {
-
-                @Override
-                void executeWriteProtocolAsync(final int index, final SingleResultCallback<WriteConcernResult> callback) {
-                    connection.insertAsync(namespace, ordered, writeConcern, singletonList(insertRequests.get(index)), callback);
-                }
-
-                @Override
-                void executeWriteCommandProtocolAsync(final SingleResultCallback<BulkWriteResult> callback) {
-                    connection.insertCommandAsync(namespace, ordered, writeConcern, bypassDocumentValidation, insertRequests,
-                            sessionContext, callback);
-                }
-
-                @Override
-                WriteRequest.Type getType() {
-                    return INSERT;
-                }
-            };
-        }
-
-        AsyncRunExecutor getUpdatesRunExecutor(final List<UpdateRequest> updates, final Boolean bypassDocumentValidation,
-                                               final AsyncConnection connection, final SessionContext sessionContext) {
-            return new AsyncRunExecutor(connection.getDescription()) {
-
-                @Override
-                void executeWriteProtocolAsync(final int index, final SingleResultCallback<WriteConcernResult> callback) {
-                    connection.updateAsync(namespace, ordered, writeConcern, singletonList(updates.get(index)), callback);
-                }
-
-                @Override
-                void executeWriteCommandProtocolAsync(final SingleResultCallback<BulkWriteResult> callback) {
-                    connection.updateCommandAsync(namespace, ordered, writeConcern, bypassDocumentValidation, updates,
-                            sessionContext, callback);
-                }
-
-                @Override
-                WriteRequest.Type getType() {
-                    return UPDATE;
-                }
-
-            };
-        }
-
-        private abstract class BaseRunExecutor {
-
-            abstract WriteRequest.Type getType();
-
-        }
-
-        private abstract class RunExecutor extends BaseRunExecutor {
-
-            private final ConnectionDescription description;
-
-            RunExecutor(final ConnectionDescription description) {
-                super();
-                this.description = description;
-            }
-
-            abstract void executeWriteProtocol(int index);
-
-            abstract BulkWriteResult executeWriteCommandProtocol();
-
-            BulkWriteResult execute() {
-                if (writeConcern.isAcknowledged() || serverIsAtLeastVersionThreeDotSix(description)) {
-                    return executeWriteCommandProtocol();
+                if (bulkWriteBatchCombiner.hasErrors()) {
+                    callback.onResult(null, bulkWriteBatchCombiner.getError());
                 } else {
-                    for (int i = 0; i < runWrites.size(); i++) {
-                        IndexMap indexMap = IndexMap.create(i, 1);
-                        indexMap = indexMap.add(0, i);
-                        executeWriteProtocol(i);
-                    }
-                    return BulkWriteResult.unacknowledged();
+                    callback.onResult(bulkWriteBatchCombiner.getResult(), null);
                 }
             }
+        } catch (Throwable t) {
+            callback.onResult(null, t);
         }
+    }
 
-        private abstract class AsyncRunExecutor extends BaseRunExecutor {
+    private void executeLegacyBatchesAsync(final AsyncConnection connection, final List<? extends WriteRequest> writeRequests,
+                                           final int batchNum, final SingleResultCallback<BulkWriteResult> callback) {
+        try {
+            if (!writeRequests.isEmpty()) {
+                WriteRequest writeRequest = writeRequests.get(0);
+                final List<? extends WriteRequest> remaining = writeRequests.subList(1, writeRequests.size());
 
-            private final ConnectionDescription description;
-
-            AsyncRunExecutor(final ConnectionDescription description) {
-                this.description = description;
-            }
-
-            abstract void executeWriteProtocolAsync(int index, SingleResultCallback<WriteConcernResult> callback);
-
-            abstract void executeWriteCommandProtocolAsync(SingleResultCallback<BulkWriteResult> callback);
-
-            void executeAsync(final SingleResultCallback<BulkWriteResult> callback) {
-                if (writeConcern.isAcknowledged() || serverIsAtLeastVersionThreeDotSix(description)) {
-                    executeWriteCommandProtocolAsync(callback);
-                } else {
-                    executeRunWritesAsync(runWrites.size(), 0, callback);
+                if (LOGGER.isDebugEnabled()) {
+                    LOGGER.debug(format("Asynchronously sending batch %d", batchNum));
                 }
-            }
 
-            private void executeRunWritesAsync(final int numberOfRuns, final int currentPosition,
-                                               final SingleResultCallback<BulkWriteResult> callback) {
-
-                executeWriteProtocolAsync(currentPosition, new SingleResultCallback<WriteConcernResult>() {
-
+                SingleResultCallback<WriteConcernResult> writeCallback = new SingleResultCallback<WriteConcernResult>() {
                     @Override
                     public void onResult(final WriteConcernResult result, final Throwable t) {
-                        final int nextRunPosition = currentPosition + 1;
+                        if (LOGGER.isDebugEnabled()) {
+                            LOGGER.debug(format("Received response for batch %d", batchNum));
+                        }
                         if (t != null) {
                             callback.onResult(null, t);
-                            return;
-                        }
-
-                        // Execute next run or complete
-                        if (numberOfRuns != nextRunPosition) {
-                            executeRunWritesAsync(numberOfRuns, nextRunPosition, callback);
                         } else {
-                            callback.onResult(BulkWriteResult.unacknowledged(), null);
+                            executeLegacyBatchesAsync(connection, remaining, batchNum + 1, callback);
                         }
                     }
-                });
+                };
+
+                if (writeRequest.getType() == INSERT) {
+                    connection.insertAsync(getNamespace(), isOrdered(), getWriteConcern(), singletonList((InsertRequest) writeRequest),
+                            writeCallback);
+                } else if (writeRequest.getType() == UPDATE || writeRequest.getType() == REPLACE) {
+                    connection.updateAsync(getNamespace(), isOrdered(), getWriteConcern(), singletonList((UpdateRequest) writeRequest),
+                            writeCallback);
+                } else if (writeRequest.getType() == DELETE) {
+                    connection.deleteAsync(getNamespace(), isOrdered(), getWriteConcern(), singletonList((DeleteRequest) writeRequest),
+                            writeCallback);
+                } else {
+                    throw new UnsupportedOperationException(format("Unsupported write of type %s", writeRequest.getType()));
+                }
+            } else {
+                callback.onResult(BulkWriteResult.unacknowledged(), null);
             }
-       }
+        } catch (Throwable t) {
+            callback.onResult(null, t);
+        }
     }
+
+    // Command generation
+    private RawBsonDocument createCommand(final ConnectionDescription description, final BatchMetadata batchMetaData) {
+        BasicOutputBuffer bsonOutput = new BasicOutputBuffer();
+
+
+        BulkWriteFieldValidator fieldValidator = new BulkWriteFieldValidator(batchMetaData.getBatchType());
+        BsonBinaryWriter writer = new BsonBinaryWriter(new BsonWriterSettings(),
+                new BsonBinaryWriterSettings(description.getMaxDocumentSize() + HEADROOM), bsonOutput,
+                fieldValidator);
+
+        writeBatch(description, bsonOutput, writer, batchMetaData, fieldValidator);
+
+        return new RawBsonDocument(bsonOutput.getInternalBuffer());
+    }
+
+    private void writeBatch(final ConnectionDescription description, final BsonOutput bsonOutput, final BsonBinaryWriter writer,
+                            final BatchMetadata batchMetadata, final BulkWriteFieldValidator fieldValidator) {
+        writer.writeStartDocument();
+
+        writer.writeString(getCommandName(batchMetadata.getBatchType()), getNamespace().getCollectionName());
+        writer.writeBoolean("ordered", isOrdered());
+        if (!getWriteConcern().isServerDefault()) {
+            writer.writeName("writeConcern");
+            BsonDocument document = getWriteConcern().asDocument();
+            BSON_DOCUMENT_CODEC.encode(writer, document, EncoderContext.builder().build());
+        }
+        if (getBypassDocumentValidation() != null) {
+            writer.writeBoolean("bypassDocumentValidation", getBypassDocumentValidation());
+        }
+
+        List<WriteRequestWithIndex> unprocessedWrites = Collections.emptyList();
+        List<WriteRequestWithIndex> batchItems = new ArrayList<WriteRequestWithIndex>();
+
+        writer.writeStartArray(getArrayName(batchMetadata.getBatchType()));
+        List<WriteRequestWithIndex> writeRequestsWithIndices = batchMetadata.writeRequestsWithIndices;
+        int lastWriteIndex = 0;
+        for (int i = 0; i < writeRequestsWithIndices.size(); i++) {
+            WriteRequestWithIndex writeRequestWithIndex = writeRequestsWithIndices.get(i);
+            if (writeRequestWithIndex.getType() != batchMetadata.getBatchType()) {
+                break;
+            }
+            fieldValidator.setWriteRequest(writeRequestWithIndex.writeRequest);
+
+            writer.mark();
+
+            if (batchMetadata.getBatchType() == INSERT) {
+                writer.pushMaxDocumentSize(description.getMaxDocumentSize());
+                BsonDocument document = ((InsertRequest) writeRequestWithIndex.writeRequest).getDocument();
+                BSON_DOCUMENT_CODEC.encode(writer, document, EncoderContext.builder().isEncodingCollectibleDocument(true).build());
+                writer.popMaxDocumentSize();
+            } else if (batchMetadata.getBatchType() == UPDATE || batchMetadata.getBatchType() == REPLACE) {
+                UpdateRequest update = (UpdateRequest) writeRequestWithIndex.writeRequest;
+                writer.writeStartDocument();
+                writer.pushMaxDocumentSize(description.getMaxDocumentSize());
+
+                writer.writeName("q");
+                BSON_DOCUMENT_CODEC.encode(writer, update.getFilter(), EncoderContext.builder().build());
+                writer.writeName("u");
+
+                int bufferPosition = bsonOutput.getPosition();
+                BSON_DOCUMENT_CODEC.encode(writer, update.getUpdate(), EncoderContext.builder().build());
+                if (update.getType() == WriteRequest.Type.UPDATE && bsonOutput.getPosition() == bufferPosition + 8) {
+                    throw new IllegalArgumentException("Invalid BSON document for an update");
+                }
+
+                if (update.isMulti()) {
+                    writer.writeBoolean("multi", update.isMulti());
+                }
+                if (update.isUpsert()) {
+                    writer.writeBoolean("upsert", update.isUpsert());
+                }
+                if (update.getCollation() != null) {
+                    writer.writeName("collation");
+                    BsonDocument collation = update.getCollation().asDocument();
+                    BSON_DOCUMENT_CODEC.encode(writer, collation, EncoderContext.builder().build());
+                }
+                writer.popMaxDocumentSize();
+                writer.writeEndDocument();
+            } else if (batchMetadata.getBatchType() == DELETE) {
+                DeleteRequest deleteRequest = (DeleteRequest) writeRequestWithIndex.writeRequest;
+                writer.writeStartDocument();
+                writer.pushMaxDocumentSize(description.getMaxDocumentSize());
+                writer.writeName("q");
+                BSON_DOCUMENT_CODEC.encode(writer, deleteRequest.getFilter(), EncoderContext.builder().build());
+                writer.writeInt32("limit", deleteRequest.isMulti() ? 0 : 1);
+                if (deleteRequest.getCollation() != null) {
+                    writer.writeName("collation");
+                    BsonDocument collation = deleteRequest.getCollation().asDocument();
+                    BSON_DOCUMENT_CODEC.encode(writer, collation, EncoderContext.builder().build());
+                }
+                writer.popMaxDocumentSize();
+                writer.writeEndDocument();
+            } else {
+                throw new UnsupportedOperationException(format("Unsupported write of type %s", batchMetadata.getBatchType()));
+            }
+
+            if (exceedsLimits(bsonOutput.getPosition(), i + 1, description.getMaxDocumentSize(), description.getMaxBatchCount())) {
+                writer.reset();
+                break;
+            }
+            lastWriteIndex = i;
+            batchItems.add(writeRequestWithIndex);
+            batchMetadata.addIndex(batchItems.size(), writeRequestWithIndex.index);
+        }
+        writer.writeEndArray();
+        writer.writeEndDocument();
+
+        if (ordered) {
+            unprocessedWrites = writeRequestsWithIndices.subList(lastWriteIndex + 1, writeRequestsWithIndices.size());
+        } else {
+            unprocessedWrites = new ArrayList<WriteRequestWithIndex>(writeRequestsWithIndices);
+            unprocessedWrites.removeAll(batchItems);
+        }
+        batchMetadata.setUnprocessed(unprocessedWrites);
+    }
+
+    private String getCommandName(final WriteRequest.Type batchType) {
+        if (batchType == INSERT) {
+            return "insert";
+        } else if (batchType == UPDATE || batchType == REPLACE) {
+            return "update";
+        } else if (batchType == DELETE) {
+            return "delete";
+        } else {
+            throw getUnsupportedType(batchType);
+        }
+    }
+
+    private String getArrayName(final WriteRequest.Type batchType) {
+        if (batchType == INSERT) {
+            return "documents";
+        } else if (batchType == UPDATE || batchType == REPLACE) {
+            return "updates";
+        } else if (batchType == DELETE) {
+            return "deletes";
+        } else {
+            throw getUnsupportedType(batchType);
+        }
+    }
+
+    private UnsupportedOperationException getUnsupportedType(final WriteRequest.Type batchType) {
+        return new UnsupportedOperationException(format("Unsupported write of type %s", batchType));
+    }
+
+    // make a special exception for a command with only a single item added to it.  It's allowed to exceed maximum document size so that
+    // it's possible to, say, send a replacement document that is itself 16MB, which would push the size of the containing command
+    // document to be greater than the maximum document size.
+    private boolean exceedsLimits(final int batchLength, final int batchItemCount, final int maxDocumentSize, final int maxBatchCount) {
+        return (batchLength > maxDocumentSize && batchItemCount > 1) || (batchItemCount > maxBatchCount);
+    }
+
+    // Response processing
+    private void processCommandResult(final ServerAddress serverAddress, final BulkWriteBatchCombiner bulkWriteBatchCombiner,
+                                      final BatchMetadata batchMetadata, final BsonDocument result) {
+        if (getWriteConcern().isAcknowledged()) {
+            if (hasError(result)) {
+                MongoBulkWriteException bulkWriteException = getBulkWriteException(batchMetadata.getBatchType(), result, serverAddress);
+                bulkWriteBatchCombiner.addErrorResult(bulkWriteException, batchMetadata.indexMap);
+            } else {
+                bulkWriteBatchCombiner.addResult(getBulkWriteResult(batchMetadata.getBatchType(), result), batchMetadata.indexMap);
+            }
+        }
+    }
+
+    private boolean hasError(final BsonDocument result) {
+        return result.get("writeErrors") != null || result.get("writeConcernError") != null;
+    }
+
+    private MongoBulkWriteException getBulkWriteException(final WriteRequest.Type type, final BsonDocument result,
+                                                          final ServerAddress serverAddress) {
+        if (!hasError(result)) {
+            throw new MongoInternalException("This method should not have been called");
+        }
+        return new MongoBulkWriteException(getBulkWriteResult(type, result), getWriteErrors(result),
+                getWriteConcernError(result), serverAddress);
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<BulkWriteError> getWriteErrors(final BsonDocument result) {
+        List<BulkWriteError> writeErrors = new ArrayList<BulkWriteError>();
+        BsonArray writeErrorsDocuments = (BsonArray) result.get("writeErrors");
+        if (writeErrorsDocuments != null) {
+            for (BsonValue cur : writeErrorsDocuments) {
+                BsonDocument curDocument = (BsonDocument) cur;
+                writeErrors.add(new BulkWriteError(curDocument.getNumber("code").intValue(),
+                        curDocument.getString("errmsg").getValue(),
+                        curDocument.getDocument("errInfo", new BsonDocument()),
+                        curDocument.getNumber("index").intValue()));
+            }
+        }
+        return writeErrors;
+    }
+
+    private WriteConcernError getWriteConcernError(final BsonDocument result) {
+        BsonDocument writeConcernErrorDocument = (BsonDocument) result.get("writeConcernError");
+        if (writeConcernErrorDocument == null) {
+            return null;
+        } else {
+            return new WriteConcernError(writeConcernErrorDocument.getNumber("code").intValue(),
+                    writeConcernErrorDocument.getString("errmsg").getValue(),
+                    writeConcernErrorDocument.getDocument("errInfo", new BsonDocument()));
+        }
+    }
+
+    private BulkWriteResult getBulkWriteResult(final WriteRequest.Type type, final BsonDocument result) {
+        int count = getCount(result);
+        List<BulkWriteUpsert> upsertedItems = getUpsertedItems(result);
+        return BulkWriteResult.acknowledged(type, count - upsertedItems.size(), getModifiedCount(type, result), upsertedItems);
+    }
+
+    private int getCount(final BsonDocument result) {
+        return result.getNumber("n").intValue();
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<BulkWriteUpsert> getUpsertedItems(final BsonDocument result) {
+        BsonValue upsertedValue = result.get("upserted");
+        if (upsertedValue == null) {
+            return Collections.emptyList();
+        } else {
+            List<BulkWriteUpsert> bulkWriteUpsertList = new ArrayList<BulkWriteUpsert>();
+            for (BsonValue upsertedItem : (BsonArray) upsertedValue) {
+                BsonDocument upsertedItemDocument = (BsonDocument) upsertedItem;
+                bulkWriteUpsertList.add(new BulkWriteUpsert(upsertedItemDocument.getNumber("index").intValue(),
+                        upsertedItemDocument.get("_id")));
+            }
+            return bulkWriteUpsertList;
+        }
+    }
+
+    private Integer getModifiedCount(final WriteRequest.Type type, final BsonDocument result) {
+        BsonNumber modifiedCount = result.getNumber("nModified", (type == UPDATE || type == REPLACE) ? null : new BsonInt32(0));
+        return modifiedCount == null ? null : modifiedCount.intValue();
+    }
+
 }

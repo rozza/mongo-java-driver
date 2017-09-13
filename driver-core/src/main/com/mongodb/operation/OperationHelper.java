@@ -151,7 +151,7 @@ final class OperationHelper {
     }
 
     static void validateWriteRequestCollations(final Connection connection, final List<? extends WriteRequest> requests,
-                                                 final WriteConcern writeConcern) {
+                                               final WriteConcern writeConcern) {
         Collation collation = null;
         for (WriteRequest request : requests) {
             if (request instanceof UpdateRequest) {
@@ -188,14 +188,14 @@ final class OperationHelper {
     }
 
     static void validateWriteRequests(final Connection connection, final Boolean bypassDocumentValidation,
-                                        final List<? extends WriteRequest> requests, final WriteConcern writeConcern) {
+                                      final List<? extends WriteRequest> requests, final WriteConcern writeConcern) {
         checkBypassDocumentValidationIsSupported(connection, bypassDocumentValidation, writeConcern);
         validateWriteRequestCollations(connection, requests, writeConcern);
     }
 
     static void validateWriteRequests(final AsyncConnection connection, final Boolean bypassDocumentValidation,
-                                        final List<? extends WriteRequest> requests, final WriteConcern writeConcern,
-                                        final AsyncCallableWithConnection callable) {
+                                      final List<? extends WriteRequest> requests, final WriteConcern writeConcern,
+                                      final AsyncCallableWithConnection callable) {
         checkBypassDocumentValidationIsSupported(connection, bypassDocumentValidation, writeConcern, new AsyncCallableWithConnection() {
             @Override
             public void call(final AsyncConnection connection, final Throwable t) {
