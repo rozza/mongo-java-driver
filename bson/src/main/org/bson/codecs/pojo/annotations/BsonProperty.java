@@ -42,7 +42,7 @@ public @interface BsonProperty {
      * <p>
      *     For asymmetrical property names, the context of the {@code BsonProperty} can be important.
      *     For example, when used with {@code @BsonCreator} the value will relate to the read name.
-     *     When used directly on a field it will set both the read if not set and the write name if unset.
+     *     When used directly on a field it will set both the read name if unset and the write name if unset.
      * </p>
      *
      * @return the name to use for the property
