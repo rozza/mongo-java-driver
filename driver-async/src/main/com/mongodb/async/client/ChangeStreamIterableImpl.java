@@ -26,7 +26,6 @@ import com.mongodb.async.SingleResultCallback;
 import com.mongodb.client.model.Collation;
 import com.mongodb.client.model.changestream.ChangeStreamDocument;
 import com.mongodb.client.model.changestream.FullDocument;
-import com.mongodb.client.model.changestream.ResumeToken;
 import com.mongodb.operation.AsyncOperationExecutor;
 import com.mongodb.operation.ChangeStreamOperation;
 import org.bson.BsonDocument;
@@ -53,7 +52,7 @@ final class ChangeStreamIterableImpl<TResult> implements ChangeStreamIterable<TR
 
     private Integer batchSize;
     private FullDocument fullDocument = FullDocument.DEFAULT;
-    private ResumeToken resumeToken;
+    private BsonDocument resumeToken;
     private long maxAwaitTimeMS;
     private Collation collation;
 
@@ -76,7 +75,7 @@ final class ChangeStreamIterableImpl<TResult> implements ChangeStreamIterable<TR
     }
 
     @Override
-    public ChangeStreamIterable<TResult> resumeAfter(final ResumeToken resumeToken) {
+    public ChangeStreamIterable<TResult> resumeAfter(final BsonDocument resumeToken) {
         this.resumeToken = notNull("resumeToken", resumeToken);
         return this;
     }
@@ -146,7 +145,7 @@ final class ChangeStreamIterableImpl<TResult> implements ChangeStreamIterable<TR
                 .collation(collation);
 
         if (resumeToken != null) {
-            changeStreamOperation.resumeAfter(resumeToken.getResumeToken());
+            changeStreamOperation.resumeAfter(resumeToken);
         }
 
         return new OperationIterable<S>(changeStreamOperation, readPreference, executor);

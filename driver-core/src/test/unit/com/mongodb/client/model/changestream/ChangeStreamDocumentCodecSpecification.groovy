@@ -56,18 +56,18 @@ class ChangeStreamDocumentCodecSpecification extends Specification {
         where:
         changeStreamDocument << [
                 new ChangeStreamDocument<Document>(
-                        new ResumeToken(RawBsonDocument.parse('{token: true}')),
+                        RawBsonDocument.parse('{token: true}'),
                         new MongoNamespace('databaseName.collectionName'),
                         Document.parse('{key: "value for fullDocument"}'),
                         OperationType.INSERT,
                         null
                 ),
                 new ChangeStreamDocument<BsonDocument>(
-                        new ResumeToken(RawBsonDocument.parse('{token: true}')),
+                        RawBsonDocument.parse('{token: true}'),
                         new MongoNamespace('databaseName.collectionName'),
                         BsonDocument.parse('{key: "value for fullDocument"}'),
                         OperationType.UPDATE,
-                        new UpdateDescription(['a', 'b'], Document.parse('{c: 1}'))
+                        new UpdateDescription(['a', 'b'], BsonDocument.parse('{c: 1}'))
                 )
         ]
         clazz << [Document, BsonDocument]

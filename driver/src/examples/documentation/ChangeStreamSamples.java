@@ -23,10 +23,10 @@ import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.Aggregates;
 import com.mongodb.client.model.Filters;
+import com.mongodb.client.model.Updates;
 import com.mongodb.client.model.changestream.ChangeStreamDocument;
 import com.mongodb.client.model.changestream.FullDocument;
-import com.mongodb.client.model.Updates;
-import com.mongodb.client.model.changestream.ResumeToken;
+import org.bson.BsonDocument;
 import org.bson.Document;
 import org.bson.conversions.Bson;
 
@@ -147,7 +147,7 @@ public final class ChangeStreamSamples {
         System.out.println("4. Document from the Change Stream including a resume token:");
 
         // Get the resume token from the last document we saw in the previous change stream cursor.
-        ResumeToken resumeToken = next.getResumeToken();
+        BsonDocument resumeToken = next.getResumeToken();
         System.out.println(resumeToken);
 
         // Pass the resume token to the resume after function to continue the change stream cursor.

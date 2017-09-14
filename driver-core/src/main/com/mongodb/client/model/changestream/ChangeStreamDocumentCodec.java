@@ -19,9 +19,11 @@ package com.mongodb.client.model.changestream;
 import com.mongodb.MongoNamespace;
 import org.bson.BsonReader;
 import org.bson.BsonWriter;
+import org.bson.RawBsonDocument;
 import org.bson.codecs.Codec;
 import org.bson.codecs.DecoderContext;
 import org.bson.codecs.EncoderContext;
+import org.bson.codecs.RawBsonDocumentCodec;
 import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.codecs.pojo.ClassModel;
 import org.bson.codecs.pojo.ClassModelBuilder;
@@ -34,7 +36,7 @@ import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
 @SuppressWarnings({"unchecked", "rawtypes"})
 final class ChangeStreamDocumentCodec<TResult> implements Codec<ChangeStreamDocument<TResult>> {
 
-    private static final ResumeTokenCodec RESUME_TOKEN_CODEC = new ResumeTokenCodec();
+    private static final RawBsonDocumentCodec RESUME_TOKEN_CODEC = new RawBsonDocumentCodec();
     private static final OperationTypeCodec OPERATION_TYPE_CODEC = new OperationTypeCodec();
 
     private final Codec<ChangeStreamDocument<TResult>> codec;
@@ -43,7 +45,7 @@ final class ChangeStreamDocumentCodec<TResult> implements Codec<ChangeStreamDocu
 
         ClassModelBuilder<ChangeStreamDocument> classModelBuilder = ClassModel.builder(ChangeStreamDocument.class);
         ((PropertyModelBuilder<TResult>) classModelBuilder.getProperty("fullDocument")).codec(codecRegistry.get(fullDocumentClass));
-        ((PropertyModelBuilder<ResumeToken>) classModelBuilder.getProperty("resumeToken")).codec(RESUME_TOKEN_CODEC);
+        ((PropertyModelBuilder<RawBsonDocument>) classModelBuilder.getProperty("resumeToken")).codec(RESUME_TOKEN_CODEC);
         ((PropertyModelBuilder<OperationType>) classModelBuilder.getProperty("operationType")).codec(OPERATION_TYPE_CODEC);
         ClassModel<ChangeStreamDocument> changeStreamDocumentClassModel = classModelBuilder.build();
 

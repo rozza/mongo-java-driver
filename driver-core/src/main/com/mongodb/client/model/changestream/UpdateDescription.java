@@ -16,7 +16,7 @@
 
 package com.mongodb.client.model.changestream;
 
-import org.bson.Document;
+import org.bson.BsonDocument;
 import org.bson.codecs.pojo.annotations.BsonCreator;
 import org.bson.codecs.pojo.annotations.BsonProperty;
 
@@ -29,7 +29,7 @@ import java.util.List;
  */
 public final class UpdateDescription {
     private final List<String> removedFields;
-    private final Document updatedFields;
+    private final BsonDocument updatedFields;
 
     /**
      * Creates a new instance
@@ -39,7 +39,7 @@ public final class UpdateDescription {
      */
     @BsonCreator
     public UpdateDescription(@BsonProperty("removedFields") final List<String> removedFields,
-                             @BsonProperty("updatedFields") final Document updatedFields) {
+                             @BsonProperty("updatedFields") final BsonDocument updatedFields) {
         this.removedFields = removedFields;
         this.updatedFields = updatedFields;
     }
@@ -58,7 +58,7 @@ public final class UpdateDescription {
      *
      * @return the updatedFields
      */
-    public Document getUpdatedFields() {
+    public BsonDocument getUpdatedFields() {
         return updatedFields;
     }
 

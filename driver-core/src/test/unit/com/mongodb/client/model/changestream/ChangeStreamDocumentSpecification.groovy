@@ -18,7 +18,6 @@ package com.mongodb.client.model.changestream
 
 import com.mongodb.MongoNamespace
 import org.bson.BsonDocument
-import org.bson.Document
 import org.bson.RawBsonDocument
 import spock.lang.Specification
 
@@ -26,11 +25,11 @@ class ChangeStreamDocumentSpecification extends Specification {
 
     def 'should return the expected string value'() {
         given:
-        def resumeToken = new ResumeToken(RawBsonDocument.parse('{token: true}'))
+        def resumeToken = RawBsonDocument.parse('{token: true}')
         def namespace = new MongoNamespace('databaseName.collectionName')
         def fullDocument = BsonDocument.parse('{key: "value for fullDocument"}')
         def operationType = OperationType.UPDATE
-        def updateDesc = new UpdateDescription(['a', 'b'], Document.parse('{c: 1}'))
+        def updateDesc = new UpdateDescription(['a', 'b'], BsonDocument.parse('{c: 1}'))
 
         when:
         def changeStreamDocument = new ChangeStreamDocument<BsonDocument>(resumeToken, namespace, fullDocument, operationType, updateDesc)

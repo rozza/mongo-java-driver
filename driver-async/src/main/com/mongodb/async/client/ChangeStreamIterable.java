@@ -19,7 +19,7 @@ package com.mongodb.async.client;
 import com.mongodb.client.model.Collation;
 import com.mongodb.client.model.changestream.ChangeStreamDocument;
 import com.mongodb.client.model.changestream.FullDocument;
-import com.mongodb.client.model.changestream.ResumeToken;
+import org.bson.BsonDocument;
 
 import java.util.concurrent.TimeUnit;
 
@@ -49,7 +49,7 @@ public interface ChangeStreamIterable<TResult> extends MongoIterable<ChangeStrea
      * @param resumeToken the resume token
      * @return this
      */
-    ChangeStreamIterable<TResult> resumeAfter(ResumeToken resumeToken);
+    ChangeStreamIterable<TResult> resumeAfter(BsonDocument resumeToken);
 
     /**
      * Sets the number of documents to return per batch.

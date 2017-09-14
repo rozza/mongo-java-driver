@@ -16,7 +16,7 @@
 
 package com.mongodb.client.model.changestream
 
-import org.bson.Document
+import org.bson.BsonDocument
 import spock.lang.Specification
 
 class UpdateDescriptionSpecification extends Specification {
@@ -32,7 +32,7 @@ class UpdateDescriptionSpecification extends Specification {
         where:
         removedFields | updatedFields
         ['a', 'b']    | null
-        null          | Document.parse('{c: 1}')
-        ['a', 'b']    | Document.parse('{c: 1}')
+        null          | BsonDocument.parse('{c: 1}')
+        ['a', 'b']    | BsonDocument.parse('{c: 1}')
     }
 }

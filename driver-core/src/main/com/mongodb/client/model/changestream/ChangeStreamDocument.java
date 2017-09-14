@@ -17,11 +17,13 @@
 package com.mongodb.client.model.changestream;
 
 import com.mongodb.MongoNamespace;
+import org.bson.BsonDocument;
 import org.bson.codecs.Codec;
 import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.codecs.pojo.annotations.BsonCreator;
 import org.bson.codecs.pojo.annotations.BsonId;
 import org.bson.codecs.pojo.annotations.BsonProperty;
+import org.bson.conversions.Bson;
 
 /**
  * Represents the {@code $changeStream} aggregation output document.
@@ -35,7 +37,7 @@ import org.bson.codecs.pojo.annotations.BsonProperty;
 public final class ChangeStreamDocument<TDocument> {
 
     @BsonId()
-    private final ResumeToken resumeToken;
+    private final BsonDocument resumeToken;
     @BsonProperty("ns")
     private final MongoNamespace namespace;
     private final TDocument fullDocument;
@@ -52,7 +54,7 @@ public final class ChangeStreamDocument<TDocument> {
      * @param updateDescription the update description
      */
     @BsonCreator
-    public ChangeStreamDocument(@BsonProperty("resumeToken") final ResumeToken resumeToken,
+    public ChangeStreamDocument(@BsonProperty("resumeToken") final BsonDocument resumeToken,
                                 @BsonProperty("namespace") final MongoNamespace namespace,
                                 @BsonProperty("fullDocument") final TDocument fullDocument,
                                 @BsonProperty("operationType") final OperationType operationType,
@@ -69,7 +71,7 @@ public final class ChangeStreamDocument<TDocument> {
      *
      * @return the resumeToken
      */
-    public ResumeToken getResumeToken() {
+    public BsonDocument getResumeToken() {
         return resumeToken;
     }
 
