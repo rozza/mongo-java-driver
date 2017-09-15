@@ -22,7 +22,6 @@ import org.bson.BsonDocumentReader
 import org.bson.BsonDocumentWriter
 import org.bson.BsonReader
 import org.bson.Document
-import org.bson.RawBsonDocument
 import org.bson.codecs.BsonValueCodecProvider
 import org.bson.codecs.DecoderContext
 import org.bson.codecs.DocumentCodecProvider
@@ -56,14 +55,14 @@ class ChangeStreamDocumentCodecSpecification extends Specification {
         where:
         changeStreamDocument << [
                 new ChangeStreamDocument<Document>(
-                        RawBsonDocument.parse('{token: true}'),
+                        BsonDocument.parse('{token: true}'),
                         new MongoNamespace('databaseName.collectionName'),
                         Document.parse('{key: "value for fullDocument"}'),
                         OperationType.INSERT,
                         null
                 ),
                 new ChangeStreamDocument<BsonDocument>(
-                        RawBsonDocument.parse('{token: true}'),
+                        BsonDocument.parse('{token: true}'),
                         new MongoNamespace('databaseName.collectionName'),
                         BsonDocument.parse('{key: "value for fullDocument"}'),
                         OperationType.UPDATE,
