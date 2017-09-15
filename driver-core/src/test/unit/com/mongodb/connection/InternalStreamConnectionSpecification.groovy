@@ -19,15 +19,12 @@ package com.mongodb.connection
 import category.Async
 import com.mongodb.MongoCommandException
 import com.mongodb.MongoInternalException
-import com.mongodb.MongoNamespace
 import com.mongodb.MongoSocketClosedException
 import com.mongodb.MongoSocketException
 import com.mongodb.MongoSocketReadException
 import com.mongodb.MongoSocketWriteException
 import com.mongodb.ServerAddress
-import com.mongodb.WriteConcern
 import com.mongodb.async.FutureResultCallback
-import com.mongodb.bulk.InsertRequest
 import com.mongodb.event.CommandFailedEvent
 import com.mongodb.event.CommandStartedEvent
 import com.mongodb.event.CommandSucceededEvent
@@ -531,26 +528,6 @@ class InternalStreamConnectionSpecification extends Specification {
         true
     }
 
-
-    def 'should send events for one-way command'() {
-        given:
-        def connection = getOpenedConnection()
-        def commandMessage = new InsertCommandMessage(new MongoNamespace('db', 'test'),
-        true, WriteConcern.UNACKNOWLEDGED, false, messageSettings, [new InsertRequest(new BsonDocument())])
-        stream.getBuffer(1024) >> { new ByteBufNIO(ByteBuffer.wrap(new byte[1024])) }
-
-        when:
-        connection.sendAndReceive(commandMessage, new BsonDocumentCodec(), NoOpSessionContext.INSTANCE)
-
-        then:
-        commandListener.eventsWereDelivered([
-                new CommandStartedEvent(1, connection.getDescription(), 'db', 'insert',
-                        BsonDocument.parse('{ "insert" : "test", "ordered" : true, "writeConcern" : { "w" : 0 }, ' +
-                                '"bypassDocumentValidation" : false, "documents" : [{ }], "$db" : "db" }')),
-                new CommandSucceededEvent(1, connection.getDescription(), 'insert',
-                        new BsonDocument('ok', new BsonInt32(1)), 1000)])
-    }
-
     def 'should send events for command failure with exception writing message'() {
         given:
         def connection = getOpenedConnection()
@@ -722,31 +699,6 @@ class InternalStreamConnectionSpecification extends Specification {
                 new CommandStartedEvent(1, connection.getDescription(), 'admin', 'ping',
                         pingCommandDocument.append('$db', new BsonString('admin'))),
                 new CommandSucceededEvent(1, connection.getDescription(), 'ping',
-                        new BsonDocument('ok', new BsonInt32(1)), 1000)])
-    }
-
-    def 'should send events for asynchronous one-way command'() {
-        given:
-        def connection = getOpenedConnection()
-        def commandMessage = new InsertCommandMessage(new MongoNamespace('db', 'test'),
-                true, WriteConcern.UNACKNOWLEDGED, false, messageSettings, [new InsertRequest(new BsonDocument())])
-        def callback = new FutureResultCallback()
-
-        stream.getBuffer(1024) >> { new ByteBufNIO(ByteBuffer.wrap(new byte[1024])) }
-        stream.writeAsync(_, _) >> { buffers, handler ->
-            handler.completed(null)
-        }
-
-        when:
-        connection.sendAndReceiveAsync(commandMessage, new BsonDocumentCodec(), NoOpSessionContext.INSTANCE, callback)
-        callback.get()
-
-        then:
-        commandListener.eventsWereDelivered([
-                new CommandStartedEvent(1, connection.getDescription(), 'db', 'insert',
-                        BsonDocument.parse('{ "insert" : "test", "ordered" : true, "writeConcern" : { "w" : 0 }, ' +
-                                '"bypassDocumentValidation" : false, "documents" : [{ }], "$db" : "db" }')),
-                new CommandSucceededEvent(1, connection.getDescription(), 'insert',
                         new BsonDocument('ok', new BsonInt32(1)), 1000)])
     }
 

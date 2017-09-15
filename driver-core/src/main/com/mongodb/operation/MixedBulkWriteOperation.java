@@ -573,6 +573,7 @@ public class MixedBulkWriteOperation implements AsyncWriteOperation<BulkWriteRes
         }
     }
 
+    @SuppressWarnings("unchecked")
     private Codec<BsonDocument> getCodec(final BsonDocument document) {
         return (Codec<BsonDocument>) REGISTRY.get(document.getClass());
     }
