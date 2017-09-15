@@ -49,8 +49,10 @@ import org.bson.BsonNumber;
 import org.bson.BsonValue;
 import org.bson.BsonWriterSettings;
 import org.bson.RawBsonDocument;
-import org.bson.codecs.BsonDocumentCodec;
+import org.bson.codecs.BsonValueCodecProvider;
+import org.bson.codecs.Codec;
 import org.bson.codecs.EncoderContext;
+import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.io.BasicOutputBuffer;
 import org.bson.io.BsonOutput;
 
@@ -75,6 +77,7 @@ import static com.mongodb.operation.OperationHelper.withConnection;
 import static java.lang.String.format;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
+import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
 
 /**
  * An operation to execute a series of write operations in bulk.
@@ -82,7 +85,7 @@ import static java.util.Collections.singletonList;
  * @since 3.0
  */
 public class MixedBulkWriteOperation implements AsyncWriteOperation<BulkWriteResult>, WriteOperation<BulkWriteResult> {
-    private static final BsonDocumentCodec BSON_DOCUMENT_CODEC = new BsonDocumentCodec();
+    private static final CodecRegistry REGISTRY = fromProviders(new BsonValueCodecProvider());
     private static final int HEADROOM = 16 * 1024;
 
     private final MongoNamespace namespace;
@@ -240,7 +243,7 @@ public class MixedBulkWriteOperation implements AsyncWriteOperation<BulkWriteRes
             }
 
             BsonDocument result = connection.command(getNamespace().getDatabaseName(), command, primary(),
-                    new NoOpFieldNameValidator(), BSON_DOCUMENT_CODEC, sessionContext);
+                    new NoOpFieldNameValidator(), getCodec(command), sessionContext);
 
             if (LOGGER.isDebugEnabled()) {
                 LOGGER.debug(format("Received response for batch %d", batchMetadata.batchNumber));
@@ -355,7 +358,7 @@ public class MixedBulkWriteOperation implements AsyncWriteOperation<BulkWriteRes
                     LOGGER.debug(format("Asynchronously sending batch %d", batchMetadata.batchNumber));
                 }
                 connection.commandAsync(getNamespace().getDatabaseName(), command, primary(),
-                        new NoOpFieldNameValidator(), BSON_DOCUMENT_CODEC, sessionContext, new SingleResultCallback<BsonDocument>() {
+                        new NoOpFieldNameValidator(), getCodec(command), sessionContext, new SingleResultCallback<BsonDocument>() {
                             @Override
                             public void onResult(final BsonDocument result, final Throwable t) {
                                 if (t != null) {
@@ -454,7 +457,7 @@ public class MixedBulkWriteOperation implements AsyncWriteOperation<BulkWriteRes
         if (!getWriteConcern().isServerDefault()) {
             writer.writeName("writeConcern");
             BsonDocument document = getWriteConcern().asDocument();
-            BSON_DOCUMENT_CODEC.encode(writer, document, EncoderContext.builder().build());
+            getCodec(document).encode(writer, document, EncoderContext.builder().build());
         }
         if (getBypassDocumentValidation() != null) {
             writer.writeBoolean("bypassDocumentValidation", getBypassDocumentValidation());
@@ -478,7 +481,7 @@ public class MixedBulkWriteOperation implements AsyncWriteOperation<BulkWriteRes
             if (batchMetadata.getBatchType() == INSERT) {
                 writer.pushMaxDocumentSize(description.getMaxDocumentSize());
                 BsonDocument document = ((InsertRequest) writeRequestWithIndex.writeRequest).getDocument();
-                BSON_DOCUMENT_CODEC.encode(writer, document, EncoderContext.builder().isEncodingCollectibleDocument(true).build());
+                getCodec(document).encode(writer, document, EncoderContext.builder().isEncodingCollectibleDocument(true).build());
                 writer.popMaxDocumentSize();
             } else if (batchMetadata.getBatchType() == UPDATE || batchMetadata.getBatchType() == REPLACE) {
                 UpdateRequest update = (UpdateRequest) writeRequestWithIndex.writeRequest;
@@ -486,11 +489,11 @@ public class MixedBulkWriteOperation implements AsyncWriteOperation<BulkWriteRes
                 writer.pushMaxDocumentSize(description.getMaxDocumentSize());
 
                 writer.writeName("q");
-                BSON_DOCUMENT_CODEC.encode(writer, update.getFilter(), EncoderContext.builder().build());
+                getCodec(update.getFilter()).encode(writer, update.getFilter(), EncoderContext.builder().build());
                 writer.writeName("u");
 
                 int bufferPosition = bsonOutput.getPosition();
-                BSON_DOCUMENT_CODEC.encode(writer, update.getUpdate(), EncoderContext.builder().build());
+                getCodec(update.getUpdate()).encode(writer, update.getUpdate(), EncoderContext.builder().build());
                 if (update.getType() == WriteRequest.Type.UPDATE && bsonOutput.getPosition() == bufferPosition + 8) {
                     throw new IllegalArgumentException("Invalid BSON document for an update");
                 }
@@ -504,7 +507,7 @@ public class MixedBulkWriteOperation implements AsyncWriteOperation<BulkWriteRes
                 if (update.getCollation() != null) {
                     writer.writeName("collation");
                     BsonDocument collation = update.getCollation().asDocument();
-                    BSON_DOCUMENT_CODEC.encode(writer, collation, EncoderContext.builder().build());
+                    getCodec(collation).encode(writer, collation, EncoderContext.builder().build());
                 }
                 writer.popMaxDocumentSize();
                 writer.writeEndDocument();
@@ -513,12 +516,12 @@ public class MixedBulkWriteOperation implements AsyncWriteOperation<BulkWriteRes
                 writer.writeStartDocument();
                 writer.pushMaxDocumentSize(description.getMaxDocumentSize());
                 writer.writeName("q");
-                BSON_DOCUMENT_CODEC.encode(writer, deleteRequest.getFilter(), EncoderContext.builder().build());
+                getCodec(deleteRequest.getFilter()).encode(writer, deleteRequest.getFilter(), EncoderContext.builder().build());
                 writer.writeInt32("limit", deleteRequest.isMulti() ? 0 : 1);
                 if (deleteRequest.getCollation() != null) {
                     writer.writeName("collation");
                     BsonDocument collation = deleteRequest.getCollation().asDocument();
-                    BSON_DOCUMENT_CODEC.encode(writer, collation, EncoderContext.builder().build());
+                    getCodec(collation).encode(writer, collation, EncoderContext.builder().build());
                 }
                 writer.popMaxDocumentSize();
                 writer.writeEndDocument();
@@ -568,6 +571,10 @@ public class MixedBulkWriteOperation implements AsyncWriteOperation<BulkWriteRes
         } else {
             throw getUnsupportedType(batchType);
         }
+    }
+
+    private Codec<BsonDocument> getCodec(final BsonDocument document) {
+        return (Codec<BsonDocument>) REGISTRY.get(document.getClass());
     }
 
     private UnsupportedOperationException getUnsupportedType(final WriteRequest.Type batchType) {
