@@ -117,8 +117,7 @@ class DefaultServerConnection extends AbstractReferenceCounted implements Connec
     @Override
     public BulkWriteResult insertCommand(final MongoNamespace namespace, final boolean ordered, final WriteConcern writeConcern,
                                          final Boolean bypassDocumentValidation, final List<InsertRequest> inserts) {
-        return executeProtocol(new InsertCommandProtocol(namespace, ordered, writeConcern, bypassDocumentValidation, inserts),
-                NoOpSessionContext.INSTANCE);
+        return insertCommand(namespace, ordered, writeConcern, bypassDocumentValidation, inserts, NoOpSessionContext.INSTANCE);
     }
 
     @Override
@@ -127,7 +126,6 @@ class DefaultServerConnection extends AbstractReferenceCounted implements Connec
                                          final SessionContext sessionContext) {
         return executeProtocol(new InsertCommandProtocol(namespace, ordered, writeConcern, bypassDocumentValidation, inserts),
                 sessionContext);
-
     }
 
     @Override
@@ -160,8 +158,7 @@ class DefaultServerConnection extends AbstractReferenceCounted implements Connec
     @Override
     public BulkWriteResult updateCommand(final MongoNamespace namespace, final boolean ordered, final WriteConcern writeConcern,
                                          final Boolean bypassDocumentValidation, final List<UpdateRequest> updates) {
-        return executeProtocol(new UpdateCommandProtocol(namespace, ordered, writeConcern, bypassDocumentValidation, updates),
-                NoOpSessionContext.INSTANCE);
+        return updateCommand(namespace, ordered, writeConcern, bypassDocumentValidation, updates, NoOpSessionContext.INSTANCE);
     }
 
     @Override
