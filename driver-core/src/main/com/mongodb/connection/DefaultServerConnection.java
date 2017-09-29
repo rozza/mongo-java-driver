@@ -111,111 +111,64 @@ class DefaultServerConnection extends AbstractReferenceCounted implements Connec
     @Override
     public BulkWriteResult insertCommand(final MongoNamespace namespace, final boolean ordered, final WriteConcern writeConcern,
                                          final List<InsertRequest> inserts) {
-        return insertCommand(namespace, ordered, writeConcern, null, inserts);
+        throw new UnsupportedOperationException("insertCommand is not supported");
     }
 
     @Override
     public BulkWriteResult insertCommand(final MongoNamespace namespace, final boolean ordered, final WriteConcern writeConcern,
                                          final Boolean bypassDocumentValidation, final List<InsertRequest> inserts) {
-        return executeProtocol(new InsertCommandProtocol(namespace, ordered, writeConcern, bypassDocumentValidation, inserts),
-                NoOpSessionContext.INSTANCE);
-    }
-
-    @Override
-    public BulkWriteResult insertCommand(final MongoNamespace namespace, final boolean ordered, final WriteConcern writeConcern,
-                                         final Boolean bypassDocumentValidation, final List<InsertRequest> inserts,
-                                         final SessionContext sessionContext) {
-        return executeProtocol(new InsertCommandProtocol(namespace, ordered, writeConcern, bypassDocumentValidation, inserts),
-                sessionContext);
-
+        throw new UnsupportedOperationException("insertCommand is not supported");
     }
 
     @Override
     public void insertCommandAsync(final MongoNamespace namespace, final boolean ordered, final WriteConcern writeConcern,
                                    final List<InsertRequest> inserts, final SingleResultCallback<BulkWriteResult> callback) {
-        insertCommandAsync(namespace, ordered, writeConcern, null, inserts, NoOpSessionContext.INSTANCE, callback);
+        throw new UnsupportedOperationException("insertCommandAsync is not supported");
     }
 
     @Override
     public void insertCommandAsync(final MongoNamespace namespace, final boolean ordered, final WriteConcern writeConcern,
                                    final Boolean bypassDocumentValidation, final List<InsertRequest> inserts,
                                    final SingleResultCallback<BulkWriteResult> callback) {
-        insertCommandAsync(namespace, ordered, writeConcern, bypassDocumentValidation, inserts, NoOpSessionContext.INSTANCE, callback);
-    }
-
-    @Override
-    public void insertCommandAsync(final MongoNamespace namespace, final boolean ordered, final WriteConcern writeConcern,
-                                   final Boolean bypassDocumentValidation, final List<InsertRequest> inserts,
-                                   final SessionContext sessionContext, final SingleResultCallback<BulkWriteResult> callback) {
-        executeProtocolAsync(new InsertCommandProtocol(namespace, ordered, writeConcern, bypassDocumentValidation, inserts),
-                sessionContext, callback);
+        throw new UnsupportedOperationException("insertCommandAsync is not supported");
     }
 
     @Override
     public BulkWriteResult updateCommand(final MongoNamespace namespace, final boolean ordered, final WriteConcern writeConcern,
                                          final List<UpdateRequest> updates) {
-        return updateCommand(namespace, ordered, writeConcern, null, updates, NoOpSessionContext.INSTANCE);
+        throw new UnsupportedOperationException("updateCommand is not supported");
     }
 
     @Override
     public BulkWriteResult updateCommand(final MongoNamespace namespace, final boolean ordered, final WriteConcern writeConcern,
                                          final Boolean bypassDocumentValidation, final List<UpdateRequest> updates) {
-        return executeProtocol(new UpdateCommandProtocol(namespace, ordered, writeConcern, bypassDocumentValidation, updates),
-                NoOpSessionContext.INSTANCE);
-    }
-
-    @Override
-    public BulkWriteResult updateCommand(final MongoNamespace namespace, final boolean ordered, final WriteConcern writeConcern,
-                                         final Boolean bypassDocumentValidation, final List<UpdateRequest> updates,
-                                         final SessionContext sessionContext) {
-        return executeProtocol(new UpdateCommandProtocol(namespace, ordered, writeConcern, bypassDocumentValidation, updates),
-                sessionContext);
+        throw new UnsupportedOperationException("updateCommand is not supported");
     }
 
     @Override
     public void updateCommandAsync(final MongoNamespace namespace, final boolean ordered, final WriteConcern writeConcern,
                                    final List<UpdateRequest> updates, final SingleResultCallback<BulkWriteResult> callback) {
-        updateCommandAsync(namespace, ordered, writeConcern, null, updates, NoOpSessionContext.INSTANCE, callback);
+        throw new UnsupportedOperationException("updateCommandAsync is not supported");
     }
 
     @Override
     public void updateCommandAsync(final MongoNamespace namespace, final boolean ordered, final WriteConcern writeConcern,
                                    final Boolean bypassDocumentValidation, final List<UpdateRequest> updates,
                                    final SingleResultCallback<BulkWriteResult> callback) {
-        updateCommandAsync(namespace, ordered, writeConcern, bypassDocumentValidation, updates, NoOpSessionContext.INSTANCE, callback);
+        throw new UnsupportedOperationException("updateCommandAsync is not supported");
     }
 
-    @Override
-    public void updateCommandAsync(final MongoNamespace namespace, final boolean ordered, final WriteConcern writeConcern,
-                                   final Boolean bypassDocumentValidation, final List<UpdateRequest> updates,
-                                   final SessionContext sessionContext, final SingleResultCallback<BulkWriteResult> callback) {
-        executeProtocolAsync(new UpdateCommandProtocol(namespace, ordered, writeConcern, bypassDocumentValidation, updates), sessionContext,
-                callback);
-    }
 
     @Override
     public BulkWriteResult deleteCommand(final MongoNamespace namespace, final boolean ordered, final WriteConcern writeConcern,
                                          final List<DeleteRequest> deletes) {
-        return executeProtocol(new DeleteCommandProtocol(namespace, ordered, writeConcern, deletes), NoOpSessionContext.INSTANCE);
-    }
-
-    @Override
-    public BulkWriteResult deleteCommand(final MongoNamespace namespace, final boolean ordered, final WriteConcern writeConcern,
-                                         final List<DeleteRequest> deletes, final SessionContext sessionContext) {
-        return executeProtocol(new DeleteCommandProtocol(namespace, ordered, writeConcern, deletes), sessionContext);
+        throw new UnsupportedOperationException("deleteCommand is not supported");
     }
 
     @Override
     public void deleteCommandAsync(final MongoNamespace namespace, final boolean ordered, final WriteConcern writeConcern,
                                    final List<DeleteRequest> deletes, final SingleResultCallback<BulkWriteResult> callback) {
-        deleteCommandAsync(namespace, ordered, writeConcern, deletes, NoOpSessionContext.INSTANCE, callback);
-    }
-
-    @Override
-    public void deleteCommandAsync(final MongoNamespace namespace, final boolean ordered, final WriteConcern writeConcern,
-                                   final List<DeleteRequest> deletes, final SessionContext sessionContext,
-                                   final SingleResultCallback<BulkWriteResult> callback) {
-        executeProtocolAsync(new DeleteCommandProtocol(namespace, ordered, writeConcern, deletes), sessionContext, callback);
+        throw new UnsupportedOperationException("deleteCommandAsync is not supported");
     }
 
     @Override

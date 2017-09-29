@@ -23,6 +23,7 @@ import org.bson.BsonReader;
 import org.bson.BsonType;
 import org.bson.BsonValue;
 import org.bson.BsonWriter;
+import org.bson.RawBsonDocument;
 import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.types.ObjectId;
 
@@ -41,6 +42,8 @@ import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
 public class BsonDocumentCodec implements CollectibleCodec<BsonDocument> {
     private static final String ID_FIELD_NAME = "_id";
     private static final CodecRegistry DEFAULT_REGISTRY = fromProviders(new BsonValueCodecProvider());
+    private static final RawBsonDocumentCodec RAW_BSON_DOCUMENT_CODEC = new RawBsonDocumentCodec();
+
 
     private final CodecRegistry codecRegistry;
     private final BsonTypeCodecMap bsonTypeCodecMap;
@@ -103,19 +106,23 @@ public class BsonDocumentCodec implements CollectibleCodec<BsonDocument> {
 
     @Override
     public void encode(final BsonWriter writer, final BsonDocument value, final EncoderContext encoderContext) {
-        writer.writeStartDocument();
+        if (value instanceof RawBsonDocument) {
+            RAW_BSON_DOCUMENT_CODEC.encode(writer, (RawBsonDocument) value, encoderContext);
+        } else {
+            writer.writeStartDocument();
 
-        beforeFields(writer, encoderContext, value);
-        for (Map.Entry<String, BsonValue> entry : value.entrySet()) {
-            if (skipField(encoderContext, entry.getKey())) {
-                continue;
+            beforeFields(writer, encoderContext, value);
+            for (Map.Entry<String, BsonValue> entry : value.entrySet()) {
+                if (skipField(encoderContext, entry.getKey())) {
+                    continue;
+                }
+
+                writer.writeName(entry.getKey());
+                writeValue(writer, encoderContext, entry.getValue());
             }
 
-            writer.writeName(entry.getKey());
-            writeValue(writer, encoderContext, entry.getValue());
+            writer.writeEndDocument();
         }
-
-        writer.writeEndDocument();
     }
 
     private void beforeFields(final BsonWriter bsonWriter, final EncoderContext encoderContext, final BsonDocument value) {

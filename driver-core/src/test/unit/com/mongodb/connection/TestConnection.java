@@ -113,13 +113,6 @@ class TestConnection implements Connection, AsyncConnection {
     }
 
     @Override
-    public BulkWriteResult insertCommand(final MongoNamespace namespace, final boolean ordered, final WriteConcern writeConcern,
-                                         final Boolean bypassDocumentValidation, final List<InsertRequest> inserts,
-                                         final SessionContext sessionContext) {
-        return executeEnqueuedCommandBasedProtocol(sessionContext);
-    }
-
-    @Override
     public void insertCommandAsync(final MongoNamespace namespace, final boolean ordered, final WriteConcern writeConcern,
                                    final List<InsertRequest> inserts, final SingleResultCallback<BulkWriteResult> callback) {
         throw new UnsupportedOperationException("Deprecated method called directly - this should have been updated");
@@ -133,13 +126,6 @@ class TestConnection implements Connection, AsyncConnection {
     }
 
     @Override
-    public void insertCommandAsync(final MongoNamespace namespace, final boolean ordered, final WriteConcern writeConcern,
-                                   final Boolean bypassDocumentValidation, final List<InsertRequest> inserts,
-                                   final SessionContext sessionContext, final SingleResultCallback<BulkWriteResult> callback) {
-        executeEnqueuedCommandBasedProtocolAsync(null, callback);
-    }
-
-    @Override
     public BulkWriteResult updateCommand(final MongoNamespace namespace, final boolean ordered, final WriteConcern writeConcern,
                                          final List<UpdateRequest> updates) {
         throw new UnsupportedOperationException("Deprecated method called directly - this should have been updated");
@@ -149,13 +135,6 @@ class TestConnection implements Connection, AsyncConnection {
     public BulkWriteResult updateCommand(final MongoNamespace namespace, final boolean ordered, final WriteConcern writeConcern,
                                          final Boolean bypassDocumentValidation, final List<UpdateRequest> updates) {
         throw new UnsupportedOperationException("Deprecated method called directly - this should have been updated");
-    }
-
-    @Override
-    public BulkWriteResult updateCommand(final MongoNamespace namespace, final boolean ordered, final WriteConcern writeConcern,
-                                         final Boolean bypassDocumentValidation, final List<UpdateRequest> updates,
-                                         final SessionContext sessionContext) {
-        return executeEnqueuedCommandBasedProtocol(sessionContext);
     }
 
     @Override
@@ -172,22 +151,9 @@ class TestConnection implements Connection, AsyncConnection {
     }
 
     @Override
-    public void updateCommandAsync(final MongoNamespace namespace, final boolean ordered, final WriteConcern writeConcern,
-                                   final Boolean bypassDocumentValidation, final List<UpdateRequest> updates,
-                                   final SessionContext sessionContext, final SingleResultCallback<BulkWriteResult> callback) {
-        executeEnqueuedCommandBasedProtocolAsync(null, callback);
-    }
-
-    @Override
     public BulkWriteResult deleteCommand(final MongoNamespace namespace, final boolean ordered, final WriteConcern writeConcern,
                                          final List<DeleteRequest> deletes) {
         throw new UnsupportedOperationException("Deprecated method called directly - this should have been updated");
-    }
-
-    @Override
-    public BulkWriteResult deleteCommand(final MongoNamespace namespace, final boolean ordered, final WriteConcern writeConcern,
-                                         final List<DeleteRequest> deletes, final SessionContext sessionContext) {
-        return executeEnqueuedCommandBasedProtocol(sessionContext);
     }
 
     @Override
@@ -195,13 +161,6 @@ class TestConnection implements Connection, AsyncConnection {
                                    final List<DeleteRequest> deletes,
                                    final SingleResultCallback<BulkWriteResult> callback) {
         throw new UnsupportedOperationException("Deprecated method called directly - this should have been updated");
-    }
-
-    @Override
-    public void deleteCommandAsync(final MongoNamespace namespace, final boolean ordered, final WriteConcern writeConcern,
-                                   final List<DeleteRequest> deletes, final SessionContext sessionContext,
-                                   final SingleResultCallback<BulkWriteResult> callback) {
-        executeEnqueuedCommandBasedProtocolAsync(null, callback);
     }
 
     @Override

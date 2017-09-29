@@ -31,9 +31,7 @@ import java.util.List;
 import static com.mongodb.ReadPreference.primary;
 
 /**
- * A command message that uses OP_QUERY to send the command.
- *
- * @mongodb.driver.manual ../meta-driver/latest/legacy/mongodb-wire-protocol/#op-query OP_QUERY
+ * A command message that uses OP_MSG or OP_QUERY to send the command.
  */
 class SimpleCommandMessage extends CommandMessage {
     private final ReadPreference readPreference;

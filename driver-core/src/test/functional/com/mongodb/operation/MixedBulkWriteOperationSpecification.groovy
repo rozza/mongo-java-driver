@@ -85,8 +85,8 @@ class MixedBulkWriteOperationSpecification extends OperationFunctionalSpecificat
 
     def 'when no document with the same id exists, should insert the document'() {
         given:
-        def operation = new MixedBulkWriteOperation(getNamespace(), [new InsertRequest(new BsonDocument('_id', new BsonInt32(1)))], ordered,
-                                             ACKNOWLEDGED)
+        def operation = new MixedBulkWriteOperation(getNamespace(), [new InsertRequest(new BsonDocument('_id', new BsonInt32(1)))],
+                ordered, ACKNOWLEDGED)
 
         when:
         BulkWriteResult result = execute(operation, async)
@@ -385,7 +385,7 @@ class MixedBulkWriteOperationSpecification extends OperationFunctionalSpecificat
         getCollectionHelper().count() == 3
 
         where:
-        [async, ordered] << [[true, false], [true, false]].combinations()
+        [async, ordered] << [[false], [false]].combinations()
     }
 
     def 'unacknowledged upserts with custom _id should not error'() {

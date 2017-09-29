@@ -21,7 +21,6 @@ import com.mongodb.ReadPreference
 import com.mongodb.ServerAddress
 import com.mongodb.WriteConcernResult
 import com.mongodb.async.SingleResultCallback
-import com.mongodb.bulk.BulkWriteResult
 import com.mongodb.bulk.DeleteRequest
 import com.mongodb.bulk.InsertRequest
 import com.mongodb.bulk.UpdateRequest
@@ -106,59 +105,43 @@ class DefaultServerConnectionSpecification extends Specification {
         result == WriteConcernResult.unacknowledged()
     }
 
-    def 'should execute insert command protocol'() {
+    def 'should throw UnsupportedOperationException when calling insertCommand'() {
         given:
         def inserts = asList(new InsertRequest(new BsonDocument()))
-        def executor = Mock(ProtocolExecutor) {
-            1 * execute({
-                compare(new InsertCommandProtocol(namespace, true, UNACKNOWLEDGED, null, inserts), it) },
-                    internalConnection, NoOpSessionContext.INSTANCE) >> { (BulkWriteResult.unacknowledged())
-            }
-        }
+        def executor = Stub(ProtocolExecutor)
         def connection = new DefaultServerConnection(internalConnection, executor, ClusterConnectionMode.MULTIPLE)
 
         when:
-        def result = connection.insertCommand(namespace, true, UNACKNOWLEDGED, inserts)
+        connection.insertCommand(namespace, true, UNACKNOWLEDGED, inserts)
 
         then:
-        result == BulkWriteResult.unacknowledged()
+        thrown(UnsupportedOperationException)
     }
 
-    def 'should execute update command protocol'() {
+    def 'should throw UnsupportedOperationException when calling updateCommand'() {
         given:
         def updates = asList(new UpdateRequest(new BsonDocument(), new BsonDocument(), WriteRequest.Type.REPLACE))
-        def executor = Mock(ProtocolExecutor) {
-            1 * execute({
-                compare(new UpdateCommandProtocol(namespace, true, UNACKNOWLEDGED, null, updates), it) },
-                    internalConnection, NoOpSessionContext.INSTANCE) >> {
-                BulkWriteResult.unacknowledged()
-            }
-        }
+        def executor = Stub(ProtocolExecutor)
         def connection = new DefaultServerConnection(internalConnection, executor, ClusterConnectionMode.MULTIPLE)
 
         when:
-        def result = connection.updateCommand(namespace, true, ACKNOWLEDGED, updates)
+        connection.updateCommand(namespace, true, ACKNOWLEDGED, updates)
 
         then:
-        result == BulkWriteResult.unacknowledged()
+        thrown(UnsupportedOperationException)
     }
 
-    def 'should execute delete command protocol'() {
+    def 'should throw UnsupportedOperationException when calling deleteCommand'() {
         given:
         def deletes = asList(new DeleteRequest(new BsonDocument()))
-        def executor = Mock(ProtocolExecutor) {
-            1 * execute({ compare(new DeleteCommandProtocol(namespace, true, UNACKNOWLEDGED, deletes), it) },
-                    internalConnection, NoOpSessionContext.INSTANCE) >> {
-                BulkWriteResult.unacknowledged()
-            }
-        }
+        def executor = Stub(ProtocolExecutor)
         def connection = new DefaultServerConnection(internalConnection, executor, ClusterConnectionMode.MULTIPLE)
 
         when:
-        def result = connection.deleteCommand(namespace, true, ACKNOWLEDGED, deletes)
+        connection.deleteCommand(namespace, true, ACKNOWLEDGED, deletes)
 
         then:
-        result == BulkWriteResult.unacknowledged()
+        thrown(UnsupportedOperationException)
     }
 
     def 'should execute command protocol with slaveok'() {
@@ -356,46 +339,43 @@ class DefaultServerConnectionSpecification extends Specification {
                 callback)
     }
 
-    def 'should execute insert command protocol asynchronously'() {
+    def 'should throw UnsupportedOperationException when calling insertCommandAsync'() {
         given:
         def inserts = asList(new InsertRequest(new BsonDocument()))
-        def executor = Mock(ProtocolExecutor)
+        def executor = Stub(ProtocolExecutor)
         def connection = new DefaultServerConnection(internalConnection, executor, ClusterConnectionMode.MULTIPLE)
 
         when:
         connection.insertCommandAsync(namespace, true, ACKNOWLEDGED, inserts, callback)
 
         then:
-        1 * executor.executeAsync({ compare(new InsertCommandProtocol(namespace, true, ACKNOWLEDGED, null, inserts), it) },
-                                  internalConnection, NoOpSessionContext.INSTANCE, callback)
+        thrown(UnsupportedOperationException)
     }
 
-    def 'should execute update command protocol asynchronously'() {
+    def 'should throw UnsupportedOperationException when calling updateCommandAsync'() {
         given:
         def updates = asList(new UpdateRequest(new BsonDocument(), new BsonDocument(), WriteRequest.Type.REPLACE))
-        def executor = Mock(ProtocolExecutor)
+        def executor = Stub(ProtocolExecutor)
         def connection = new DefaultServerConnection(internalConnection, executor, ClusterConnectionMode.MULTIPLE)
 
         when:
         connection.updateCommandAsync(namespace, true, ACKNOWLEDGED, updates, callback)
 
         then:
-        1 * executor.executeAsync({ compare(new UpdateCommandProtocol(namespace, true, ACKNOWLEDGED, null, updates), it) },
-                                  internalConnection, NoOpSessionContext.INSTANCE, callback)
+        thrown(UnsupportedOperationException)
     }
 
-    def 'should execute delete command protocol asynchronously'() {
+    def 'should throw UnsupportedOperationException when calling deleteCommandAsync'() {
         given:
         def deletes = asList(new DeleteRequest(new BsonDocument()))
-        def executor = Mock(ProtocolExecutor)
+        def executor = Stub(ProtocolExecutor)
         def connection = new DefaultServerConnection(internalConnection, executor, ClusterConnectionMode.MULTIPLE)
 
         when:
         connection.deleteCommandAsync(namespace, true, ACKNOWLEDGED, deletes, callback)
 
         then:
-        1 * executor.executeAsync({ compare(new DeleteCommandProtocol(namespace, true, ACKNOWLEDGED, deletes), it) },
-                                  internalConnection, NoOpSessionContext.INSTANCE, callback)
+        thrown(UnsupportedOperationException)
     }
 
     def 'should execute command protocol asynchronously'() {
