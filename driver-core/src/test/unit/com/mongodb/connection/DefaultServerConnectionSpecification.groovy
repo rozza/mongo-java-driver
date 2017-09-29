@@ -27,6 +27,7 @@ import com.mongodb.bulk.InsertRequest
 import com.mongodb.bulk.UpdateRequest
 import com.mongodb.bulk.WriteRequest
 import com.mongodb.diagnostics.logging.Logger
+import com.mongodb.internal.client.model.BulkWriteBatch
 import com.mongodb.internal.connection.NoOpSessionContext
 import com.mongodb.internal.validator.NoOpFieldNameValidator
 import org.bson.BsonBoolean
@@ -37,7 +38,6 @@ import spock.lang.Shared
 import spock.lang.Specification
 
 import static com.mongodb.CustomMatchers.compare
-import static com.mongodb.WriteConcern.ACKNOWLEDGED
 import static com.mongodb.WriteConcern.UNACKNOWLEDGED
 import static com.mongodb.connection.ServerType.SHARD_ROUTER
 import static com.mongodb.connection.ServerType.STANDALONE
@@ -51,6 +51,9 @@ class DefaultServerConnectionSpecification extends Specification {
     @Shared
     def standaloneConnectionDescription = new ConnectionDescription(new ConnectionId(new ServerId(new ClusterId(), new ServerAddress())),
             new ServerVersion(3, 0), STANDALONE, 100, 100, 100, [])
+    @Shared
+    def threeSixConnectionDescription = new ConnectionDescription(new ConnectionId(new ServerId(new ClusterId(), new ServerAddress())),
+            new ServerVersion(3, 6), STANDALONE, 100, 100, 100, [])
     @Shared
     def mongosConnectionDescription = new ConnectionDescription(new ConnectionId(new ServerId(new ClusterId(), new ServerAddress())),
             new ServerVersion(3, 0), SHARD_ROUTER, 100, 100, 100, [])
@@ -106,59 +109,58 @@ class DefaultServerConnectionSpecification extends Specification {
         result == WriteConcernResult.unacknowledged()
     }
 
-    def 'should execute insert command protocol'() {
+    def 'should support insertCommand'() {
         given:
         def inserts = asList(new InsertRequest(new BsonDocument()))
-        def executor = Mock(ProtocolExecutor) {
-            1 * execute({
-                compare(new InsertCommandProtocol(namespace, true, UNACKNOWLEDGED, null, inserts), it) },
-                    internalConnection, NoOpSessionContext.INSTANCE) >> { (BulkWriteResult.unacknowledged())
-            }
-        }
-        def connection = new DefaultServerConnection(internalConnection, executor, ClusterConnectionMode.MULTIPLE)
+        def executor = Mock(ProtocolExecutor)
+        def connection = new DefaultServerConnection(internalConnection, executor, ClusterConnectionMode.SINGLE)
+        internalConnection.description >> threeSixConnectionDescription
 
         when:
-        def result = connection.insertCommand(namespace, true, UNACKNOWLEDGED, inserts)
+        connection.insertCommand(namespace, true, UNACKNOWLEDGED, inserts)
 
         then:
-        result == BulkWriteResult.unacknowledged()
+        1 * executor.execute({
+            compare(new BulkWriteBatchCommandProtocol(namespace.getDatabaseName(),
+                    BulkWriteBatch.createBulkWriteBatch(namespace, threeSixConnectionDescription.getServerAddress(),
+                            true, UNACKNOWLEDGED, null, inserts)), it) },
+                internalConnection, NoOpSessionContext.INSTANCE) >> { (BulkWriteResult.unacknowledged()) }
     }
 
-    def 'should execute update command protocol'() {
+    def 'should support updateCommand'() {
         given:
         def updates = asList(new UpdateRequest(new BsonDocument(), new BsonDocument(), WriteRequest.Type.REPLACE))
-        def executor = Mock(ProtocolExecutor) {
-            1 * execute({
-                compare(new UpdateCommandProtocol(namespace, true, UNACKNOWLEDGED, null, updates), it) },
-                    internalConnection, NoOpSessionContext.INSTANCE) >> {
-                BulkWriteResult.unacknowledged()
-            }
-        }
-        def connection = new DefaultServerConnection(internalConnection, executor, ClusterConnectionMode.MULTIPLE)
+        def executor = Mock(ProtocolExecutor)
+        def connection = new DefaultServerConnection(internalConnection, executor, ClusterConnectionMode.SINGLE)
+        internalConnection.description >> threeSixConnectionDescription
 
         when:
-        def result = connection.updateCommand(namespace, true, ACKNOWLEDGED, updates)
+        connection.updateCommand(namespace, true, UNACKNOWLEDGED, updates)
 
         then:
-        result == BulkWriteResult.unacknowledged()
+        1 * executor.execute({
+            compare(new BulkWriteBatchCommandProtocol(namespace.getDatabaseName(),
+                    BulkWriteBatch.createBulkWriteBatch(namespace, threeSixConnectionDescription.getServerAddress(),
+                            true, UNACKNOWLEDGED, null, updates)), it) },
+                internalConnection, NoOpSessionContext.INSTANCE)
     }
 
-    def 'should execute delete command protocol'() {
+    def 'should support deleteCommand'() {
         given:
         def deletes = asList(new DeleteRequest(new BsonDocument()))
-        def executor = Mock(ProtocolExecutor) {
-            1 * execute({ compare(new DeleteCommandProtocol(namespace, true, UNACKNOWLEDGED, deletes), it) },
-                    internalConnection, NoOpSessionContext.INSTANCE) >> {
-                BulkWriteResult.unacknowledged()
-            }
-        }
-        def connection = new DefaultServerConnection(internalConnection, executor, ClusterConnectionMode.MULTIPLE)
+        def executor = Mock(ProtocolExecutor)
+        def connection = new DefaultServerConnection(internalConnection, executor, ClusterConnectionMode.SINGLE)
+        internalConnection.description >> threeSixConnectionDescription
 
         when:
-        def result = connection.deleteCommand(namespace, true, ACKNOWLEDGED, deletes)
+        connection.deleteCommand(namespace, true, UNACKNOWLEDGED, deletes)
 
         then:
-        result == BulkWriteResult.unacknowledged()
+        1 * executor.execute({
+            compare(new BulkWriteBatchCommandProtocol(namespace.getDatabaseName(),
+                    BulkWriteBatch.createBulkWriteBatch(namespace, threeSixConnectionDescription.getServerAddress(),
+                            true, UNACKNOWLEDGED, null, deletes)), it) },
+                internalConnection, NoOpSessionContext.INSTANCE)
     }
 
     def 'should execute command protocol with slaveok'() {
@@ -345,7 +347,6 @@ class DefaultServerConnectionSpecification extends Specification {
         given:
         def deletes = asList(new DeleteRequest(new BsonDocument()))
         def executor = Mock(ProtocolExecutor)
-
         def connection = new DefaultServerConnection(internalConnection, executor, ClusterConnectionMode.MULTIPLE)
 
         when:
@@ -356,46 +357,58 @@ class DefaultServerConnectionSpecification extends Specification {
                 callback)
     }
 
-    def 'should execute insert command protocol asynchronously'() {
+    def 'should support insertCommandAsync'() {
         given:
         def inserts = asList(new InsertRequest(new BsonDocument()))
         def executor = Mock(ProtocolExecutor)
         def connection = new DefaultServerConnection(internalConnection, executor, ClusterConnectionMode.MULTIPLE)
+        internalConnection.description >> threeSixConnectionDescription
 
         when:
-        connection.insertCommandAsync(namespace, true, ACKNOWLEDGED, inserts, callback)
+        connection.insertCommandAsync(namespace, true, UNACKNOWLEDGED, inserts, callback)
 
         then:
-        1 * executor.executeAsync({ compare(new InsertCommandProtocol(namespace, true, ACKNOWLEDGED, null, inserts), it) },
-                                  internalConnection, NoOpSessionContext.INSTANCE, callback)
+        1 * executor.executeAsync({
+            compare(new BulkWriteBatchCommandProtocol(namespace.getDatabaseName(),
+                    BulkWriteBatch.createBulkWriteBatch(namespace, threeSixConnectionDescription.getServerAddress(),
+                            true, UNACKNOWLEDGED, null, inserts)), it) },
+                internalConnection, NoOpSessionContext.INSTANCE, callback)
     }
 
-    def 'should execute update command protocol asynchronously'() {
+    def 'should support updateCommandAsync'() {
         given:
         def updates = asList(new UpdateRequest(new BsonDocument(), new BsonDocument(), WriteRequest.Type.REPLACE))
         def executor = Mock(ProtocolExecutor)
         def connection = new DefaultServerConnection(internalConnection, executor, ClusterConnectionMode.MULTIPLE)
+        internalConnection.description >> threeSixConnectionDescription
 
         when:
-        connection.updateCommandAsync(namespace, true, ACKNOWLEDGED, updates, callback)
+        connection.updateCommandAsync(namespace, true, UNACKNOWLEDGED, updates, callback)
 
         then:
-        1 * executor.executeAsync({ compare(new UpdateCommandProtocol(namespace, true, ACKNOWLEDGED, null, updates), it) },
-                                  internalConnection, NoOpSessionContext.INSTANCE, callback)
+        1 * executor.executeAsync({
+            compare(new BulkWriteBatchCommandProtocol(namespace.getDatabaseName(),
+                    BulkWriteBatch.createBulkWriteBatch(namespace, threeSixConnectionDescription.getServerAddress(),
+                            true, UNACKNOWLEDGED, null, updates)), it) },
+                internalConnection, NoOpSessionContext.INSTANCE, callback)
     }
 
-    def 'should execute delete command protocol asynchronously'() {
+    def 'should support deleteCommandAsync'() {
         given:
         def deletes = asList(new DeleteRequest(new BsonDocument()))
         def executor = Mock(ProtocolExecutor)
         def connection = new DefaultServerConnection(internalConnection, executor, ClusterConnectionMode.MULTIPLE)
+        internalConnection.description >> threeSixConnectionDescription
 
         when:
-        connection.deleteCommandAsync(namespace, true, ACKNOWLEDGED, deletes, callback)
+        connection.deleteCommandAsync(namespace, true, UNACKNOWLEDGED, deletes, callback)
 
         then:
-        1 * executor.executeAsync({ compare(new DeleteCommandProtocol(namespace, true, ACKNOWLEDGED, deletes), it) },
-                                  internalConnection, NoOpSessionContext.INSTANCE, callback)
+        1 * executor.executeAsync({
+            compare(new BulkWriteBatchCommandProtocol(namespace.getDatabaseName(),
+                    BulkWriteBatch.createBulkWriteBatch(namespace, threeSixConnectionDescription.getServerAddress(),
+                            true, UNACKNOWLEDGED, null, deletes)), it) },
+                internalConnection, NoOpSessionContext.INSTANCE, callback)
     }
 
     def 'should execute command protocol asynchronously'() {

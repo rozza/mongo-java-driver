@@ -27,6 +27,7 @@ import com.mongodb.bulk.BulkWriteResult;
 import com.mongodb.bulk.DeleteRequest;
 import com.mongodb.bulk.InsertRequest;
 import com.mongodb.bulk.UpdateRequest;
+import com.mongodb.client.model.SplittablePayload;
 import org.bson.BsonDocument;
 import org.bson.FieldNameValidator;
 import org.bson.codecs.Decoder;
@@ -248,6 +249,21 @@ public interface AsyncConnection extends ReferenceCounted {
      */
     <T> void commandAsync(String database, BsonDocument command, ReadPreference readPreference, FieldNameValidator fieldNameValidator,
                           Decoder<T> commandResultDecoder, SessionContext sessionContext, SingleResultCallback<T> callback);
+
+    /**
+     * Executes the command, consuming as much of the {@code SplittablePayload} as possible.
+     *
+     * @param <T>                  the type of the result
+     * @param database             the database to execute the command in
+     * @param command              the command document
+     * @param payload              the splittable payload to incorporate with the command
+     * @param commandResultDecoder the decoder for the result
+     * @param sessionContext       the session context
+     * @param callback             the callback to be passed the write result
+     * @since 3.6
+     */
+    <T> void commandAsync(String database, BsonDocument command, SplittablePayload payload, Decoder<T> commandResultDecoder,
+                          SessionContext sessionContext, SingleResultCallback<T> callback);
 
     /**
      * Execute the query asynchronously.

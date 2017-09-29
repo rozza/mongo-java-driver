@@ -345,6 +345,8 @@ public class BsonBinaryWriter extends AbstractBsonWriter {
                 }
                 setState(getNextState());
             }
+
+           validateSize(bsonOutput.getPosition() - pipedDocumentStartPosition);
         } else if (extraElements != null) {
             super.pipe(reader, extraElements);
         } else {
@@ -399,11 +401,15 @@ public class BsonBinaryWriter extends AbstractBsonWriter {
 
     private void backpatchSize() {
         int size = bsonOutput.getPosition() - getContext().startPosition;
+        validateSize(size);
+        bsonOutput.writeInt32(bsonOutput.getPosition() - size, size);
+    }
+
+    private void validateSize(final int size) {
         if (size > maxDocumentSizeStack.peek()) {
             throw new BsonSerializationException(format("Document size of %d is larger than maximum of %d.", size,
                     maxDocumentSizeStack.peek()));
         }
-        bsonOutput.writeInt32(bsonOutput.getPosition() - size, size);
     }
 
     protected class Context extends AbstractBsonWriter.Context {

@@ -25,6 +25,7 @@ import com.mongodb.bulk.BulkWriteResult;
 import com.mongodb.bulk.DeleteRequest;
 import com.mongodb.bulk.InsertRequest;
 import com.mongodb.bulk.UpdateRequest;
+import com.mongodb.client.model.SplittablePayload;
 import org.bson.BsonDocument;
 import org.bson.FieldNameValidator;
 import org.bson.codecs.Decoder;
@@ -55,7 +56,6 @@ class TestConnection implements Connection, AsyncConnection {
 
     @Override
     public void release() {
-
     }
 
     @Override
@@ -191,6 +191,12 @@ class TestConnection implements Connection, AsyncConnection {
     }
 
     @Override
+    public <T> T command(final String database, final BsonDocument command, final SplittablePayload payload,
+                         final Decoder<T> commandResultDecoder, final SessionContext sessionContext) {
+        return executeEnqueuedCommandBasedProtocol(sessionContext);
+    }
+
+    @Override
     public void deleteCommandAsync(final MongoNamespace namespace, final boolean ordered, final WriteConcern writeConcern,
                                    final List<DeleteRequest> deletes,
                                    final SingleResultCallback<BulkWriteResult> callback) {
@@ -229,6 +235,13 @@ class TestConnection implements Connection, AsyncConnection {
     public <T> void commandAsync(final String database, final BsonDocument command, final ReadPreference readPreference,
                                  final FieldNameValidator fieldNameValidator, final Decoder<T> commandResultDecoder,
                                  final SessionContext sessionContext, final SingleResultCallback<T> callback) {
+        executeEnqueuedCommandBasedProtocolAsync(sessionContext, callback);
+    }
+
+    @Override
+    public <T> void commandAsync(final String database, final BsonDocument command, final SplittablePayload payload,
+                                 final Decoder<T> commandResultDecoder, final SessionContext sessionContext,
+                                 final SingleResultCallback<T> callback) {
         executeEnqueuedCommandBasedProtocolAsync(sessionContext, callback);
     }
 
