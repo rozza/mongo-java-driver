@@ -18,20 +18,20 @@ package com.mongodb.connection;
 
 import com.mongodb.MongoNamespace;
 import com.mongodb.client.model.SplittablePayload;
+import com.mongodb.internal.validator.MappedFieldNameValidator;
 import com.mongodb.internal.validator.NoOpFieldNameValidator;
 import org.bson.BsonBinaryWriter;
-import org.bson.BsonBinaryWriterSettings;
 import org.bson.BsonDocument;
+import org.bson.BsonElement;
 import org.bson.BsonString;
-import org.bson.BsonValue;
-import org.bson.BsonWriterSettings;
 import org.bson.FieldNameValidator;
 import org.bson.codecs.BsonValueCodecProvider;
-import org.bson.codecs.Codec;
-import org.bson.codecs.EncoderContext;
 import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.io.BsonOutput;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
@@ -46,90 +46,59 @@ class SplittablePayloadCommandMessage extends CommandMessage {
     private final MongoNamespace namespace;
     private final BsonDocument command;
     private final SplittablePayload payload;
+    private final FieldNameValidator fieldNameValidator;
 
     SplittablePayloadCommandMessage(final MongoNamespace namespace, final BsonDocument command, final SplittablePayload payload,
-                                    final MessageSettings settings) {
+                                    final FieldNameValidator fieldNameValidator, final MessageSettings settings) {
         super(namespace.getFullName(), getOpCode(settings), settings);
         this.namespace = namespace;
         this.command = command;
         this.payload = payload;
+        this.fieldNameValidator = fieldNameValidator;
     }
 
     @Override
     protected EncodingMetadata encodeMessageBodyWithMetadata(final BsonOutput bsonOutput, final SessionContext sessionContext) {
+        int commandStartPosition;
         if (useOpMsg()) {
             bsonOutput.writeInt32(0);  // flag bits
             bsonOutput.writeByte(0);   // payload type
+            commandStartPosition = bsonOutput.getPosition();
 
-            int commandStartPosition = bsonOutput.getPosition();
-
-            BsonBinaryWriter commandWriter = new BsonBinaryWriter(new BsonWriterSettings(),
-                    new BsonBinaryWriterSettings(getSettings().getMaxDocumentSize()), bsonOutput, NOOP_FIELD_NAME_VALIDATOR);
-
-            commandWriter.writeStartDocument();
-            encodeCommand(command, commandWriter);
-            encodeBsonValue("$db", new BsonString(namespace.getDatabaseName()), commandWriter);
+            List<BsonElement> extraElements = new ArrayList<BsonElement>();
+            extraElements.add(new BsonElement("$db", new BsonString(new MongoNamespace(getCollectionName()).getDatabaseName())));
             if (sessionContext.hasSession()) {
                 if (sessionContext.getClusterTime() != null) {
-                    encodeBsonValue("$clusterTime", sessionContext.getClusterTime(), commandWriter);
+                    extraElements.add(new BsonElement("$clusterTime", sessionContext.getClusterTime()));
                 }
-                encodeBsonValue("lsid", sessionContext.getSessionId(), commandWriter);
+                extraElements.add(new BsonElement("lsid", sessionContext.getSessionId()));
             }
-            commandWriter.writeEndDocument();
+            addDocument(command, bsonOutput, fieldNameValidator, extraElements);
 
             bsonOutput.writeByte(1);   // payload type
             int sectionPosition = bsonOutput.getPosition();
             bsonOutput.writeInt32(0); // size
             bsonOutput.writeCString(payload.getPayloadName());
-            BsonBinaryWriter payloadWriter = new BsonBinaryWriter(new BsonWriterSettings(),
-                    new BsonBinaryWriterSettings(getSettings().getMaxDocumentSize() + HEADROOM), bsonOutput,
-                    NOOP_FIELD_NAME_VALIDATOR);
-            for (int i = 0; i < payload.getPayload().size(); i++) {
-                if (writeDocument(payload.getPayload().get(i), bsonOutput.getPosition(), payloadWriter, i + 1)) {
-                    payload.setPosition(i + 1);
-                } else {
-                    break;
-                }
-            }
+            new BsonWriterHelper(new BsonBinaryWriter(bsonOutput, fieldNameValidator)).writePayload(payload);
+
             int messageLength = bsonOutput.getPosition() - sectionPosition;
             bsonOutput.writeInt32(sectionPosition, messageLength);
-            return new EncodingMetadata(null, commandStartPosition);
         } else {
             bsonOutput.writeInt32(0);
             bsonOutput.writeCString(namespace.getFullName());
             bsonOutput.writeInt32(0);
             bsonOutput.writeInt32(-1);
 
-            int commandStartPosition = bsonOutput.getPosition();
-            BsonBinaryWriter commandWriter = new BsonBinaryWriter(new BsonWriterSettings(),
-                    new BsonBinaryWriterSettings(getSettings().getMaxDocumentSize() + HEADROOM),
-                    bsonOutput, NOOP_FIELD_NAME_VALIDATOR);
-            commandWriter.writeStartDocument();
-            encodeCommand(command, commandWriter);
-            commandWriter.writeStartArray(payload.getPayloadName());
-            for (int i = 0; i < payload.getPayload().size(); i++) {
-                if (writeDocument(payload.getPayload().get(i), commandStartPosition, commandWriter, i + 1)) {
-                    payload.setPosition(i + 1);
-                } else {
-                    break;
-                }
-            }
-            commandWriter.writeEndArray();
-            commandWriter.writeEndDocument();
-            return new EncodingMetadata(null, commandStartPosition);
+            commandStartPosition = bsonOutput.getPosition();
+            addPayload(command, bsonOutput, getPayloadArrayFieldNameValidator(), payload);
         }
+        return new EncodingMetadata(null, commandStartPosition);
     }
 
-    private void encodeCommand(final BsonDocument command, final BsonBinaryWriter commandWriter) {
-        for (Map.Entry<String, BsonValue> bsonValueEntry : command.entrySet()) {
-            encodeBsonValue(bsonValueEntry.getKey(), bsonValueEntry.getValue(), commandWriter);
-        }
-    }
-
-    @SuppressWarnings("unchecked")
-    private void encodeBsonValue(final String fieldName, final BsonValue fieldValue, final BsonBinaryWriter writer) {
-        writer.writeName(fieldName);
-        ((Codec<BsonValue>) REGISTRY.get(fieldValue.getClass())).encode(writer, fieldValue, EncoderContext.builder().build());
+    private FieldNameValidator getPayloadArrayFieldNameValidator() {
+        Map<String, FieldNameValidator> rootMap = new HashMap<String, FieldNameValidator>();
+        rootMap.put(payload.getPayloadName(), fieldNameValidator);
+        return new MappedFieldNameValidator(new NoOpFieldNameValidator(), rootMap);
     }
 
     @Override
@@ -137,29 +106,4 @@ class SplittablePayloadCommandMessage extends CommandMessage {
         return true;
     }
 
-    private boolean writeDocument(final BsonDocument document, final int startPosition, final BsonBinaryWriter writer,
-                                  final int batchItemCount) {
-        int currentPosition = writer.getBsonOutput().getPosition();
-        getCodec(document).encode(writer, document, EncoderContext.builder().build());
-        if (exceedsLimits(writer.getBsonOutput().getPosition() - startPosition, batchItemCount)) {
-            writer.getBsonOutput().truncateToPosition(currentPosition);
-            return false;
-        }
-        return true;
-    }
-
-    private boolean exceedsLimits(final int batchLength, final int batchItemCount) {
-        return (exceedsBatchLengthLimit(batchLength, batchItemCount) || exceedsBatchItemCountLimit(batchItemCount));
-    }
-
-    // make a special exception for a command with only a single item added to it.  It's allowed to exceed maximum document size so that
-    // it's possible to, say, send a replacement document that is itself 16MB, which would push the size of the containing command
-    // document to be greater than the maximum document size.
-    private boolean exceedsBatchLengthLimit(final int batchLength, final int batchItemCount) {
-        return batchLength > getSettings().getMaxDocumentSize() && batchItemCount > 1;
-    }
-
-    private boolean exceedsBatchItemCountLimit(final int batchItemCount) {
-        return batchItemCount > getSettings().getMaxBatchCount();
-    }
 }

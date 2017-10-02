@@ -17,9 +17,18 @@
 
 package com.mongodb.connection;
 
+import com.mongodb.client.model.SplittablePayload;
+import org.bson.BsonBinaryWriter;
+import org.bson.BsonBinaryWriterSettings;
+import org.bson.BsonDocument;
+import org.bson.BsonWriter;
+import org.bson.BsonWriterSettings;
+import org.bson.FieldNameValidator;
+import org.bson.codecs.EncoderContext;
 import org.bson.io.BsonOutput;
 
 abstract class CommandMessage extends RequestMessage {
+
     CommandMessage(final String collectionName, final OpCode opCode, final MessageSettings settings) {
         super(collectionName, opCode, settings);
     }
@@ -48,5 +57,16 @@ abstract class CommandMessage extends RequestMessage {
 
     protected boolean useOpMsg() {
         return useOpMsg(getSettings());
+    }
+
+    protected void addPayload(final BsonDocument document, final BsonOutput bsonOutput, final FieldNameValidator validator,
+                              final SplittablePayload payload) {
+        BsonWriter writer = new BsonBinaryWriter(new BsonWriterSettings(),
+                new BsonBinaryWriterSettings(getSettings().getMaxDocumentSize() + getDocumentHeadroom()), bsonOutput,
+                validator);
+        if (payload != null) {
+            writer =  new SplittablePayloadBsonWriter((BsonBinaryWriter) writer, getSettings(), payload);
+        }
+        getCodec(document).encode(writer, document, EncoderContext.builder().build());
     }
 }

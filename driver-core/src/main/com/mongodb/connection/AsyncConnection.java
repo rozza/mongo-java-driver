@@ -23,7 +23,6 @@ import com.mongodb.WriteConcernResult;
 import com.mongodb.annotations.ThreadSafe;
 import com.mongodb.async.SingleResultCallback;
 import com.mongodb.binding.ReferenceCounted;
-import com.mongodb.bulk.BulkWriteResult;
 import com.mongodb.bulk.DeleteRequest;
 import com.mongodb.bulk.InsertRequest;
 import com.mongodb.bulk.UpdateRequest;
@@ -93,132 +92,6 @@ public interface AsyncConnection extends ReferenceCounted {
                      SingleResultCallback<WriteConcernResult> callback);
 
     /**
-     * Insert the documents using the insert command asynchronously.
-     *
-     * @param namespace    the namespace
-     * @param ordered      whether the writes are ordered
-     * @param writeConcern the write concern
-     * @param inserts      the inserts
-     * @param callback     the callback to be passed the bulk write result
-     * @deprecated Replaced by {@link AsyncConnection#insertCommandAsync(MongoNamespace, boolean, WriteConcern, Boolean, List,
-     * SingleResultCallback)}
-     */
-    @Deprecated
-    void insertCommandAsync(MongoNamespace namespace, boolean ordered, WriteConcern writeConcern, List<InsertRequest> inserts,
-                            SingleResultCallback<BulkWriteResult> callback);
-
-    /**
-     * Insert the documents using the insert command asynchronously.
-     *
-     * @param namespace                the namespace
-     * @param ordered                  whether the writes are ordered
-     * @param writeConcern             the write concern
-     * @param bypassDocumentValidation the bypassDocumentValidation flag
-     * @param inserts                  the inserts
-     * @param callback                 the callback to be passed the bulk write result
-     * @since 3.2
-     * @mongodb.driver.manual reference/command/insert/ Insert
-     * @deprecated Prefer {@link #insertCommandAsync(MongoNamespace, boolean, WriteConcern, Boolean, List, SessionContext,
-     * SingleResultCallback)}
-     */
-    @Deprecated
-    void insertCommandAsync(MongoNamespace namespace, boolean ordered, WriteConcern writeConcern, Boolean bypassDocumentValidation,
-                            List<InsertRequest> inserts, SingleResultCallback<BulkWriteResult> callback);
-
-    /**
-     * Insert the documents using the insert command asynchronously.
-     *
-     * @param namespace                the namespace
-     * @param ordered                  whether the writes are ordered
-     * @param writeConcern             the write concern
-     * @param bypassDocumentValidation the bypassDocumentValidation flag
-     * @param inserts                  the inserts
-     * @param sessionContext           the session context
-     * @param callback                 the callback to be passed the bulk write result
-     * @since 3.6
-     * @mongodb.driver.manual reference/command/insert/ Insert
-     */
-    void insertCommandAsync(MongoNamespace namespace, boolean ordered, WriteConcern writeConcern, Boolean bypassDocumentValidation,
-                            List<InsertRequest> inserts, SessionContext sessionContext, SingleResultCallback<BulkWriteResult> callback);
-
-    /**
-     * Update the documents using the update command asynchronously.
-     *
-     * @param namespace    the namespace
-     * @param ordered      whether the writes are ordered
-     * @param writeConcern the write concern
-     * @param updates      the updates
-     * @param callback     the callback to be passed the BulkWriteResult
-     * @deprecated Replaced by {@link AsyncConnection#updateCommandAsync(MongoNamespace, boolean, WriteConcern, Boolean, List,
-     * SingleResultCallback)}
-     */
-    @Deprecated
-    void updateCommandAsync(MongoNamespace namespace, boolean ordered, WriteConcern writeConcern, List<UpdateRequest> updates,
-                            SingleResultCallback<BulkWriteResult> callback);
-
-    /**
-     * Update the documents using the update command asynchronously.
-     *
-     * @param namespace                the namespace
-     * @param ordered                  whether the writes are ordered
-     * @param writeConcern             the write concern
-     * @param bypassDocumentValidation the bypassDocumentValidation flag
-     * @param updates                  the updates
-     * @param callback                 the callback to be passed the BulkWriteResult
-     * @since 3.2
-     * @mongodb.driver.manual reference/command/update/ Update
-     * @deprecated Prefer {@link #updateCommandAsync(MongoNamespace, boolean, WriteConcern, Boolean, List, SessionContext,
-     * SingleResultCallback)}
-     */
-    @Deprecated
-    void updateCommandAsync(MongoNamespace namespace, boolean ordered, WriteConcern writeConcern, Boolean bypassDocumentValidation,
-                            List<UpdateRequest> updates, SingleResultCallback<BulkWriteResult> callback);
-
-    /**
-     * Update the documents using the update command asynchronously.
-     *
-     * @param namespace                the namespace
-     * @param ordered                  whether the writes are ordered
-     * @param writeConcern             the write concern
-     * @param bypassDocumentValidation the bypassDocumentValidation flag
-     * @param updates                  the updates
-     * @param sessionContext           the session context
-     * @param callback                 the callback to be passed the BulkWriteResult
-     * @since 3.6
-     * @mongodb.driver.manual reference/command/update/ Update
-     */
-    void updateCommandAsync(MongoNamespace namespace, boolean ordered, WriteConcern writeConcern, Boolean bypassDocumentValidation,
-                            List<UpdateRequest> updates, SessionContext sessionContext, SingleResultCallback<BulkWriteResult> callback);
-
-    /**
-     * Delete the documents using the delete command asynchronously.
-     *
-     * @param namespace    the namespace
-     * @param ordered      whether the writes are ordered
-     * @param writeConcern the write concern
-     * @param deletes      the deletes
-     * @param callback     the callback to be passed the BulkWriteResult
-     * @deprecated Prefer {@link #deleteCommandAsync(MongoNamespace, boolean, WriteConcern, List, SessionContext, SingleResultCallback)}
-     */
-    @Deprecated
-    void deleteCommandAsync(MongoNamespace namespace, boolean ordered, WriteConcern writeConcern, List<DeleteRequest> deletes,
-                            SingleResultCallback<BulkWriteResult> callback);
-
-    /**
-     * Delete the documents using the delete command asynchronously.
-     *
-     * @param namespace    the namespace
-     * @param ordered      whether the writes are ordered
-     * @param writeConcern the write concern
-     * @param deletes      the deletes
-     * @param sessionContext the session context
-     * @param callback     the callback to be passed the BulkWriteResult
-     * @since 3.6
-     */
-    void deleteCommandAsync(MongoNamespace namespace, boolean ordered, WriteConcern writeConcern, List<DeleteRequest> deletes,
-                            SessionContext sessionContext, SingleResultCallback<BulkWriteResult> callback);
-
-    /**
      * Execute the command asynchronously.
      *
      * @param database             the database to execute the command in
@@ -257,13 +130,14 @@ public interface AsyncConnection extends ReferenceCounted {
      * @param database             the database to execute the command in
      * @param command              the command document
      * @param payload              the splittable payload to incorporate with the command
+     * @param fieldNameValidator   the field name validator for the payload document
      * @param commandResultDecoder the decoder for the result
      * @param sessionContext       the session context
      * @param callback             the callback to be passed the write result
      * @since 3.6
      */
-    <T> void commandAsync(String database, BsonDocument command, SplittablePayload payload, Decoder<T> commandResultDecoder,
-                          SessionContext sessionContext, SingleResultCallback<T> callback);
+    <T> void commandAsync(String database, BsonDocument command, SplittablePayload payload, FieldNameValidator fieldNameValidator,
+                          Decoder<T> commandResultDecoder, SessionContext sessionContext, SingleResultCallback<T> callback);
 
     /**
      * Execute the query asynchronously.

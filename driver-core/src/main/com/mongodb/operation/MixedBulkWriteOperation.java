@@ -31,7 +31,6 @@ import com.mongodb.bulk.WriteRequest;
 import com.mongodb.connection.AsyncConnection;
 import com.mongodb.connection.Connection;
 import com.mongodb.connection.SessionContext;
-import com.mongodb.internal.client.model.BulkWriteBatch;
 import org.bson.BsonDocument;
 
 import java.util.List;
@@ -184,8 +183,8 @@ public class MixedBulkWriteOperation implements AsyncWriteOperation<BulkWriteRes
 
                                             try {
                                                 BulkWriteBatch batch = BulkWriteBatch.createBulkWriteBatch(namespace,
-                                                        connection.getDescription().getServerAddress(), ordered, writeConcern,
-                                                        bypassDocumentValidation, writeRequests);
+                                                        connection.getDescription(), ordered, writeConcern, bypassDocumentValidation,
+                                                        writeRequests);
                                                 executeBatchesAsync(connection, binding.getSessionContext(), batch, wrappedCallback);
                                             } catch (Throwable t) {
                                                 wrappedCallback.onResult(null, t);
@@ -202,12 +201,12 @@ public class MixedBulkWriteOperation implements AsyncWriteOperation<BulkWriteRes
     }
 
     private BulkWriteResult executeBatches(final Connection connection, final SessionContext sessionContext) {
-        BulkWriteBatch batch = BulkWriteBatch.createBulkWriteBatch(namespace, connection.getDescription().getServerAddress(), ordered,
+        BulkWriteBatch batch = BulkWriteBatch.createBulkWriteBatch(namespace, connection.getDescription(), ordered,
                 writeConcern, bypassDocumentValidation, writeRequests);
 
         while (batch.shouldProcessBatch()) {
             BsonDocument result = connection.command(namespace.getDatabaseName(), batch.getCommand(), batch.getPayload(),
-                    batch.getDecoder(), sessionContext);
+                    batch.getFieldNameValidator(), batch.getDecoder(), sessionContext);
             batch.addResult(result);
             batch = batch.getNextBatch();
         }
@@ -231,8 +230,8 @@ public class MixedBulkWriteOperation implements AsyncWriteOperation<BulkWriteRes
     private void executeBatchesAsync(final AsyncConnection connection, final SessionContext sessionContext,
                                      final BulkWriteBatch batch, final SingleResultCallback<BulkWriteResult> callback) {
         try {
-            connection.commandAsync(namespace.getDatabaseName(), batch.getCommand(), batch.getPayload(), batch.getDecoder(),
-                    sessionContext, new SingleResultCallback<BsonDocument>() {
+            connection.commandAsync(namespace.getDatabaseName(), batch.getCommand(), batch.getPayload(), batch.getFieldNameValidator(),
+                    batch.getDecoder(), sessionContext, new SingleResultCallback<BsonDocument>() {
                 @Override
                 public void onResult(final BsonDocument result, final Throwable t) {
                     if (t != null) {

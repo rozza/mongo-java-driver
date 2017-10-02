@@ -14,12 +14,11 @@
  * limitations under the License.
  */
 
-package com.mongodb.internal.client.model;
+package com.mongodb.operation;
 
 import com.mongodb.MongoBulkWriteException;
 import com.mongodb.MongoInternalException;
 import com.mongodb.MongoNamespace;
-import com.mongodb.ServerAddress;
 import com.mongodb.WriteConcern;
 import com.mongodb.bulk.BulkWriteError;
 import com.mongodb.bulk.BulkWriteResult;
@@ -31,6 +30,7 @@ import com.mongodb.bulk.WriteConcernError;
 import com.mongodb.bulk.WriteRequest;
 import com.mongodb.client.model.SplittablePayload;
 import com.mongodb.connection.BulkWriteBatchCombiner;
+import com.mongodb.connection.ConnectionDescription;
 import com.mongodb.internal.connection.IndexMap;
 import com.mongodb.internal.validator.CollectibleDocumentFieldNameValidator;
 import com.mongodb.internal.validator.MappedFieldNameValidator;
@@ -40,21 +40,19 @@ import org.bson.BsonArray;
 import org.bson.BsonBinaryWriter;
 import org.bson.BsonBoolean;
 import org.bson.BsonDocument;
+import org.bson.BsonDocumentWrapper;
 import org.bson.BsonInt32;
 import org.bson.BsonNumber;
 import org.bson.BsonString;
 import org.bson.BsonValue;
 import org.bson.BsonWriter;
 import org.bson.FieldNameValidator;
-import org.bson.RawBsonDocument;
 import org.bson.codecs.BsonValueCodecProvider;
 import org.bson.codecs.Codec;
 import org.bson.codecs.Decoder;
 import org.bson.codecs.Encoder;
 import org.bson.codecs.EncoderContext;
 import org.bson.codecs.configuration.CodecRegistry;
-import org.bson.io.BasicOutputBuffer;
-import org.bson.io.OutputBuffer;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -66,13 +64,13 @@ import static com.mongodb.bulk.WriteRequest.Type.REPLACE;
 import static com.mongodb.bulk.WriteRequest.Type.UPDATE;
 import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
 
-public final class BulkWriteBatch {
+final class BulkWriteBatch {
     private static final CodecRegistry REGISTRY = fromProviders(new BsonValueCodecProvider());
     private static final Decoder<BsonDocument> DECODER = REGISTRY.get(BsonDocument.class);
-    private static final Encoder<WriteRequest> WRITE_REQUEST_ENCODER = new WriteRequestEncoder();
+    private static final FieldNameValidator NOOP_FIELD_NAME_VALIDATOR = new NoOpFieldNameValidator();
 
     private final MongoNamespace namespace;
-    private final ServerAddress serverAddress;
+    private final ConnectionDescription connectionDescription;
     private final boolean ordered;
     private final WriteConcern writeConcern;
     private final Boolean bypassDocumentValidation;
@@ -83,25 +81,25 @@ public final class BulkWriteBatch {
     private final SplittablePayload payload;
     private final List<WriteRequestWithIndex> unprocessed;
 
-
-    public static BulkWriteBatch createBulkWriteBatch(final MongoNamespace namespace, final ServerAddress serverAddress,
-                                               final boolean ordered, final WriteConcern writeConcern,
-                                               final Boolean bypassDocumentValidation, final List<? extends WriteRequest> writeRequests) {
+    public static BulkWriteBatch createBulkWriteBatch(final MongoNamespace namespace, final ConnectionDescription connectionDescription,
+                                                      final boolean ordered, final WriteConcern writeConcern,
+                                                      final Boolean bypassDocumentValidation,
+                                                      final List<? extends WriteRequest> writeRequests) {
         List<WriteRequestWithIndex> writeRequestsWithIndex = new ArrayList<WriteRequestWithIndex>();
         for (int i = 0; i < writeRequests.size(); i++) {
             writeRequestsWithIndex.add(new WriteRequestWithIndex(writeRequests.get(i), i));
         }
 
-        return new BulkWriteBatch(namespace, serverAddress, ordered, writeConcern, bypassDocumentValidation,
-                new BulkWriteBatchCombiner(serverAddress, ordered, writeConcern), writeRequestsWithIndex);
+        return new BulkWriteBatch(namespace, connectionDescription, ordered, writeConcern, bypassDocumentValidation,
+                new BulkWriteBatchCombiner(connectionDescription.getServerAddress(), ordered, writeConcern), writeRequestsWithIndex);
     }
 
-    private BulkWriteBatch(final MongoNamespace namespace, final ServerAddress serverAddress,
+    private BulkWriteBatch(final MongoNamespace namespace, final ConnectionDescription connectionDescription,
                            final boolean ordered, final WriteConcern writeConcern, final Boolean bypassDocumentValidation,
                            final BulkWriteBatchCombiner bulkWriteBatchCombiner,
                            final List<WriteRequestWithIndex> writeRequestsWithIndices) {
         this.namespace = namespace;
-        this.serverAddress = serverAddress;
+        this.connectionDescription = connectionDescription;
         this.ordered = ordered;
         this.writeConcern = writeConcern;
         this.bypassDocumentValidation = bypassDocumentValidation;
@@ -130,7 +128,8 @@ public final class BulkWriteBatch {
             }
 
             indexMap = indexMap.add(payloadItems.size(), writeRequestWithIndex.index);
-            payloadItems.add(createAndValidatePayloadItem(writeRequestWithIndex.writeRequest));
+            payloadItems.add(new BsonDocumentWrapper<WriteRequest>(writeRequestWithIndex.writeRequest,
+                    new WriteRequestEncoder(connectionDescription.getMaxDocumentSize())));
         }
 
         this.indexMap = indexMap;
@@ -138,12 +137,12 @@ public final class BulkWriteBatch {
         this.payload = new SplittablePayload(getPayloadName(batchType), payloadItems);
     }
 
-    private BulkWriteBatch(final MongoNamespace namespace, final ServerAddress serverAddress,
+    private BulkWriteBatch(final MongoNamespace namespace, final ConnectionDescription connectionDescription,
                            final boolean ordered, final WriteConcern writeConcern, final Boolean bypassDocumentValidation,
                            final BulkWriteBatchCombiner bulkWriteBatchCombiner, final IndexMap indexMap, final WriteRequest.Type batchType,
                            final BsonDocument command, final SplittablePayload payload, final List<WriteRequestWithIndex> unprocessed) {
         this.namespace = namespace;
-        this.serverAddress = serverAddress;
+        this.connectionDescription = connectionDescription;
         this.ordered = ordered;
         this.writeConcern = writeConcern;
         this.bypassDocumentValidation = bypassDocumentValidation;
@@ -203,15 +202,15 @@ public final class BulkWriteBatch {
                 newIndex++;
             }
 
-            return new BulkWriteBatch(namespace, serverAddress, ordered, writeConcern, bypassDocumentValidation, bulkWriteBatchCombiner,
-                    nextIndexMap, batchType, command, payload.getNextSplit(), unprocessed);
+            return new BulkWriteBatch(namespace, connectionDescription, ordered, writeConcern, bypassDocumentValidation,
+                    bulkWriteBatchCombiner, nextIndexMap, batchType, command, payload.getNextSplit(), unprocessed);
         } else {
-            return new BulkWriteBatch(namespace, serverAddress, ordered, writeConcern, bypassDocumentValidation, bulkWriteBatchCombiner,
-                    unprocessed);
+            return new BulkWriteBatch(namespace, connectionDescription, ordered, writeConcern, bypassDocumentValidation,
+                    bulkWriteBatchCombiner, unprocessed);
         }
     }
 
-    private FieldNameValidator getFieldNameValidator() {
+    public FieldNameValidator getFieldNameValidator() {
         if (batchType == INSERT) {
             return new CollectibleDocumentFieldNameValidator();
         } else if (batchType == UPDATE || batchType == REPLACE) {
@@ -221,17 +220,10 @@ public final class BulkWriteBatch {
             } else {
                 rootMap.put("u", new UpdateFieldNameValidator());
             }
-            return new MappedFieldNameValidator(new NoOpFieldNameValidator(), rootMap);
+            return new MappedFieldNameValidator(NOOP_FIELD_NAME_VALIDATOR, rootMap);
         } else {
-            return new NoOpFieldNameValidator();
+            return NOOP_FIELD_NAME_VALIDATOR;
         }
-    }
-
-    private BsonDocument createAndValidatePayloadItem(final WriteRequest writeRequest) {
-        OutputBuffer buffer = new BasicOutputBuffer();
-        BsonWriter writer = new BsonBinaryWriter(buffer, getFieldNameValidator());
-        WRITE_REQUEST_ENCODER.encode(writer, writeRequest, EncoderContext.builder().build());
-        return new RawBsonDocument(buffer.toByteArray());
     }
 
     private BulkWriteResult getBulkWriteResult(final BsonDocument result) {
@@ -267,7 +259,7 @@ public final class BulkWriteBatch {
             throw new MongoInternalException("This method should not have been called");
         }
         return new MongoBulkWriteException(getBulkWriteResult(result), getWriteErrors(result), getWriteConcernError(result),
-                serverAddress);
+                connectionDescription.getServerAddress());
     }
 
     @SuppressWarnings("unchecked")
@@ -323,15 +315,25 @@ public final class BulkWriteBatch {
     }
 
     static class WriteRequestEncoder implements Encoder<WriteRequest> {
+        private final int maxDocumentSize;
+
+        WriteRequestEncoder(final int maxDocumentSize) {
+            this.maxDocumentSize = maxDocumentSize;
+        }
 
         @Override
-        public void encode(final BsonWriter writer, final WriteRequest writeRequest, final EncoderContext encoderContext) {
+        @SuppressWarnings("unchecked")
+        public void encode(final BsonWriter bsonWriter, final WriteRequest writeRequest, final EncoderContext encoderContext) {
+            BsonBinaryWriter writer = (BsonBinaryWriter) bsonWriter;
             if (writeRequest.getType() == INSERT) {
+                writer.pushMaxDocumentSize(maxDocumentSize);
                 BsonDocument document = ((InsertRequest) writeRequest).getDocument();
                 getCodec(document).encode(writer, document, EncoderContext.builder().isEncodingCollectibleDocument(true).build());
+                writer.popMaxDocumentSize();
             } else if (writeRequest.getType() == UPDATE || writeRequest.getType() == REPLACE) {
                 UpdateRequest update = (UpdateRequest) writeRequest;
                 writer.writeStartDocument();
+                writer.pushMaxDocumentSize(maxDocumentSize);
                 writer.writeName("q");
                 getCodec(update.getFilter()).encode(writer, update.getFilter(), EncoderContext.builder().build());
                 writer.writeName("u");
@@ -352,10 +354,12 @@ public final class BulkWriteBatch {
                     BsonDocument collation = update.getCollation().asDocument();
                     getCodec(collation).encode(writer, collation, EncoderContext.builder().build());
                 }
+                writer.popMaxDocumentSize();
                 writer.writeEndDocument();
             } else {
                 DeleteRequest deleteRequest = (DeleteRequest) writeRequest;
                 writer.writeStartDocument();
+                writer.pushMaxDocumentSize(maxDocumentSize);
                 writer.writeName("q");
                 getCodec(deleteRequest.getFilter()).encode(writer, deleteRequest.getFilter(), EncoderContext.builder().build());
                 writer.writeInt32("limit", deleteRequest.isMulti() ? 0 : 1);
@@ -364,6 +368,7 @@ public final class BulkWriteBatch {
                     BsonDocument collation = deleteRequest.getCollation().asDocument();
                     getCodec(collation).encode(writer, collation, EncoderContext.builder().build());
                 }
+                writer.popMaxDocumentSize();
                 writer.writeEndDocument();
             }
         }

@@ -20,11 +20,11 @@ import category.Slow
 import com.mongodb.DuplicateKeyException
 import com.mongodb.MongoClientException
 import com.mongodb.OperationFunctionalSpecification
-import com.mongodb.WriteConcernException
 import com.mongodb.bulk.InsertRequest
 import org.bson.BsonBinary
 import org.bson.BsonDocument
 import org.bson.BsonInt32
+import org.bson.BsonSerializationException
 import org.bson.codecs.BsonDocumentCodec
 import org.junit.experimental.categories.Category
 import spock.lang.IgnoreIf
@@ -193,7 +193,7 @@ class InsertOperationSpecification extends OperationFunctionalSpecification {
         execute(operation, async)
 
         then:
-        thrown(WriteConcernException)
+        thrown(BsonSerializationException)
 
         where:
         async << [true, false]

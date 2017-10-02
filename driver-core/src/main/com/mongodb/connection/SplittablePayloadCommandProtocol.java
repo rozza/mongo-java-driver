@@ -22,6 +22,7 @@ import com.mongodb.client.model.SplittablePayload;
 import com.mongodb.diagnostics.logging.Logger;
 import com.mongodb.diagnostics.logging.Loggers;
 import org.bson.BsonDocument;
+import org.bson.FieldNameValidator;
 import org.bson.codecs.Decoder;
 
 import static com.mongodb.assertions.Assertions.notNull;
@@ -33,15 +34,17 @@ class SplittablePayloadCommandProtocol<T> implements CommandProtocol<T> {
     private final MongoNamespace namespace;
     private final BsonDocument command;
     private final SplittablePayload payload;
+    private final FieldNameValidator fieldNameValidator;
     private final Decoder<T> commandResultDecoder;
     private SessionContext sessionContext;
 
     SplittablePayloadCommandProtocol(final String database, final BsonDocument command, final SplittablePayload payload,
-                                     final Decoder<T> commandResultDecoder) {
+                                     final FieldNameValidator fieldNameValidator, final Decoder<T> commandResultDecoder) {
         notNull("database", database);
         this.namespace = new MongoNamespace(notNull("database", database), MongoNamespace.COMMAND_COLLECTION_NAME);
         this.command = notNull("command", command);
         this.payload = notNull("payload", payload);
+        this.fieldNameValidator = notNull("fieldNameValidator", fieldNameValidator);
         this.commandResultDecoder = notNull("commandResultDecoder", commandResultDecoder);
     }
 
@@ -92,7 +95,8 @@ class SplittablePayloadCommandProtocol<T> implements CommandProtocol<T> {
     }
 
     private SplittablePayloadCommandMessage getSplittablePayloadCommandMessage(final InternalConnection connection) {
-        return new SplittablePayloadCommandMessage(namespace, command, payload, getMessageSettings(connection.getDescription()));
+        return new SplittablePayloadCommandMessage(namespace, command, payload, fieldNameValidator,
+                getMessageSettings(connection.getDescription()));
     }
 
     private String getCommandName() {

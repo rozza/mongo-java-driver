@@ -21,15 +21,12 @@ import com.mongodb.ReadPreference;
 import com.mongodb.WriteConcern;
 import com.mongodb.WriteConcernResult;
 import com.mongodb.async.SingleResultCallback;
-import com.mongodb.bulk.BulkWriteResult;
 import com.mongodb.bulk.DeleteRequest;
 import com.mongodb.bulk.InsertRequest;
 import com.mongodb.bulk.UpdateRequest;
-import com.mongodb.bulk.WriteRequest;
 import com.mongodb.client.model.SplittablePayload;
 import com.mongodb.diagnostics.logging.Logger;
 import com.mongodb.diagnostics.logging.Loggers;
-import com.mongodb.internal.client.model.BulkWriteBatch;
 import com.mongodb.internal.connection.NoOpSessionContext;
 import org.bson.BsonDocument;
 import org.bson.FieldNameValidator;
@@ -112,109 +109,6 @@ class DefaultServerConnection extends AbstractReferenceCounted implements Connec
     }
 
     @Override
-    public BulkWriteResult insertCommand(final MongoNamespace namespace, final boolean ordered, final WriteConcern writeConcern,
-                                         final List<InsertRequest> inserts) {
-        return insertCommand(namespace, ordered, writeConcern, null, inserts);
-    }
-
-    @Override
-    public BulkWriteResult insertCommand(final MongoNamespace namespace, final boolean ordered, final WriteConcern writeConcern,
-                                         final Boolean bypassDocumentValidation, final List<InsertRequest> inserts) {
-        return insertCommand(namespace, ordered, writeConcern, bypassDocumentValidation, inserts, NoOpSessionContext.INSTANCE);
-    }
-
-    @Override
-    public BulkWriteResult insertCommand(final MongoNamespace namespace, final boolean ordered, final WriteConcern writeConcern,
-                                         final Boolean bypassDocumentValidation, final List<InsertRequest> inserts,
-                                         final SessionContext sessionContext) {
-        return bulkWriteCommand(namespace, ordered, writeConcern, bypassDocumentValidation, inserts, sessionContext);
-    }
-
-    @Override
-    public void insertCommandAsync(final MongoNamespace namespace, final boolean ordered, final WriteConcern writeConcern,
-                                   final List<InsertRequest> inserts, final SingleResultCallback<BulkWriteResult> callback) {
-        insertCommandAsync(namespace, ordered, writeConcern, null, inserts, NoOpSessionContext.INSTANCE, callback);
-    }
-
-    @Override
-    public void insertCommandAsync(final MongoNamespace namespace, final boolean ordered, final WriteConcern writeConcern,
-                                   final Boolean bypassDocumentValidation, final List<InsertRequest> inserts,
-                                   final SingleResultCallback<BulkWriteResult> callback) {
-        insertCommandAsync(namespace, ordered, writeConcern, bypassDocumentValidation, inserts, NoOpSessionContext.INSTANCE, callback);
-    }
-
-    @Override
-    public void insertCommandAsync(final MongoNamespace namespace, final boolean ordered, final WriteConcern writeConcern,
-                                   final Boolean bypassDocumentValidation, final List<InsertRequest> inserts,
-                                   final SessionContext sessionContext, final SingleResultCallback<BulkWriteResult> callback) {
-        bulkWriteCommandAsync(namespace, ordered, writeConcern, bypassDocumentValidation, inserts, sessionContext, callback);
-    }
-
-    @Override
-    public BulkWriteResult updateCommand(final MongoNamespace namespace, final boolean ordered, final WriteConcern writeConcern,
-                                         final List<UpdateRequest> updates) {
-        return updateCommand(namespace, ordered, writeConcern, null, updates, NoOpSessionContext.INSTANCE);
-    }
-
-    @Override
-    public BulkWriteResult updateCommand(final MongoNamespace namespace, final boolean ordered, final WriteConcern writeConcern,
-                                         final Boolean bypassDocumentValidation, final List<UpdateRequest> updates) {
-        return updateCommand(namespace, ordered, writeConcern, bypassDocumentValidation, updates, NoOpSessionContext.INSTANCE);
-    }
-
-    @Override
-    public BulkWriteResult updateCommand(final MongoNamespace namespace, final boolean ordered, final WriteConcern writeConcern,
-                                         final Boolean bypassDocumentValidation, final List<UpdateRequest> updates,
-                                         final SessionContext sessionContext) {
-        return bulkWriteCommand(namespace, ordered, writeConcern, bypassDocumentValidation, updates, sessionContext);
-    }
-
-    @Override
-    public void updateCommandAsync(final MongoNamespace namespace, final boolean ordered, final WriteConcern writeConcern,
-                                   final List<UpdateRequest> updates, final SingleResultCallback<BulkWriteResult> callback) {
-        updateCommandAsync(namespace, ordered, writeConcern, null, updates, NoOpSessionContext.INSTANCE, callback);
-    }
-
-    @Override
-    public void updateCommandAsync(final MongoNamespace namespace, final boolean ordered, final WriteConcern writeConcern,
-                                   final Boolean bypassDocumentValidation, final List<UpdateRequest> updates,
-                                   final SingleResultCallback<BulkWriteResult> callback) {
-        updateCommandAsync(namespace, ordered, writeConcern, bypassDocumentValidation, updates, NoOpSessionContext.INSTANCE, callback);
-    }
-
-    @Override
-    public void updateCommandAsync(final MongoNamespace namespace, final boolean ordered, final WriteConcern writeConcern,
-                                   final Boolean bypassDocumentValidation, final List<UpdateRequest> updates,
-                                   final SessionContext sessionContext, final SingleResultCallback<BulkWriteResult> callback) {
-        bulkWriteCommandAsync(namespace, ordered, writeConcern, bypassDocumentValidation, updates, sessionContext, callback);
-    }
-
-    @Override
-    public BulkWriteResult deleteCommand(final MongoNamespace namespace, final boolean ordered, final WriteConcern writeConcern,
-                                         final List<DeleteRequest> deletes) {
-        return deleteCommand(namespace, ordered, writeConcern, deletes, NoOpSessionContext.INSTANCE);
-    }
-
-    @Override
-    public BulkWriteResult deleteCommand(final MongoNamespace namespace, final boolean ordered, final WriteConcern writeConcern,
-                                         final List<DeleteRequest> deletes, final SessionContext sessionContext) {
-        return bulkWriteCommand(namespace, ordered, writeConcern, null, deletes, sessionContext);
-    }
-
-    @Override
-    public void deleteCommandAsync(final MongoNamespace namespace, final boolean ordered, final WriteConcern writeConcern,
-                                   final List<DeleteRequest> deletes, final SingleResultCallback<BulkWriteResult> callback) {
-        deleteCommandAsync(namespace, ordered, writeConcern, deletes, NoOpSessionContext.INSTANCE, callback);
-    }
-
-    @Override
-    public void deleteCommandAsync(final MongoNamespace namespace, final boolean ordered, final WriteConcern writeConcern,
-                                   final List<DeleteRequest> deletes, final SessionContext sessionContext,
-                                   final SingleResultCallback<BulkWriteResult> callback) {
-        bulkWriteCommandAsync(namespace, ordered, writeConcern, null, deletes, sessionContext, callback);
-    }
-
-    @Override
     public <T> T command(final String database, final BsonDocument command, final boolean slaveOk,
                          final FieldNameValidator fieldNameValidator,
                          final Decoder<T> commandResultDecoder) {
@@ -232,8 +126,10 @@ class DefaultServerConnection extends AbstractReferenceCounted implements Connec
 
     @Override
     public <T> T command(final String database, final BsonDocument command, final SplittablePayload payload,
-                         final Decoder<T> commandResultDecoder, final SessionContext sessionContext) {
-        return executeProtocol(new SplittablePayloadCommandProtocol<T>(database, command, payload, commandResultDecoder), sessionContext);
+                         final FieldNameValidator fieldNameValidator, final Decoder<T> commandResultDecoder,
+                         final SessionContext sessionContext) {
+        return executeProtocol(new SplittablePayloadCommandProtocol<T>(database, command, payload, fieldNameValidator,
+                        commandResultDecoder), sessionContext);
     }
 
     @Override
@@ -254,10 +150,10 @@ class DefaultServerConnection extends AbstractReferenceCounted implements Connec
 
     @Override
     public <T> void commandAsync(final String database, final BsonDocument command, final SplittablePayload payload,
-                                 final Decoder<T> commandResultDecoder, final SessionContext sessionContext,
-                                 final SingleResultCallback<T> callback) {
-        executeProtocolAsync(new SplittablePayloadCommandProtocol<T>(database, command, payload, commandResultDecoder), sessionContext,
-                callback);
+                                 final FieldNameValidator fieldNameValidator, final Decoder<T> commandResultDecoder,
+                                 final SessionContext sessionContext, final SingleResultCallback<T> callback) {
+        executeProtocolAsync(new SplittablePayloadCommandProtocol<T>(database, command, payload, fieldNameValidator, commandResultDecoder),
+                sessionContext, callback);
     }
 
     @Override
@@ -388,22 +284,5 @@ class DefaultServerConnection extends AbstractReferenceCounted implements Connec
         } catch (Throwable t) {
             errHandlingCallback.onResult(null, t);
         }
-    }
-
-    private BulkWriteResult bulkWriteCommand(final MongoNamespace namespace, final boolean ordered, final WriteConcern writeConcern,
-                                             final Boolean bypassDocumentValidation, final List<? extends WriteRequest> writeRequests,
-                                             final SessionContext sessionContext) {
-
-        BulkWriteBatch batch = BulkWriteBatch.createBulkWriteBatch(namespace, getDescription().getServerAddress(), ordered, writeConcern,
-                bypassDocumentValidation, writeRequests);
-        return executeProtocol(new BulkWriteBatchCommandProtocol(namespace.getDatabaseName(), batch), sessionContext);
-    }
-
-    private void bulkWriteCommandAsync(final MongoNamespace namespace, final boolean ordered, final WriteConcern writeConcern,
-                                       final Boolean bypassDocumentValidation, final List<? extends WriteRequest> writeRequests,
-                                       final SessionContext sessionContext, final SingleResultCallback<BulkWriteResult> callback) {
-        BulkWriteBatch batch = BulkWriteBatch.createBulkWriteBatch(namespace, getDescription().getServerAddress(), ordered, writeConcern,
-                bypassDocumentValidation, writeRequests);
-        executeProtocolAsync(new BulkWriteBatchCommandProtocol(namespace.getDatabaseName(), batch), sessionContext, callback);
     }
 }
