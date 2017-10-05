@@ -17,72 +17,65 @@
 package com.mongodb.connection;
 
 import com.mongodb.MongoNamespace;
-import com.mongodb.client.model.SplittablePayload;
+import com.mongodb.ReadPreference;
 import com.mongodb.internal.validator.MappedFieldNameValidator;
-import com.mongodb.internal.validator.NoOpFieldNameValidator;
 import org.bson.BsonBinaryWriter;
 import org.bson.BsonDocument;
-import org.bson.BsonElement;
-import org.bson.BsonString;
+import org.bson.BsonWriter;
 import org.bson.FieldNameValidator;
-import org.bson.codecs.BsonValueCodecProvider;
-import org.bson.codecs.configuration.CodecRegistry;
+import org.bson.codecs.EncoderContext;
 import org.bson.io.BsonOutput;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
-import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
+import static com.mongodb.connection.BsonWriterHelper.writePayload;
 
 /**
  * A command message that uses OP_MSG or OP_QUERY to send the command.
  */
 class SplittablePayloadCommandMessage extends CommandMessage {
-    private static final CodecRegistry REGISTRY = fromProviders(new BsonValueCodecProvider());
-    private static final FieldNameValidator NOOP_FIELD_NAME_VALIDATOR = new NoOpFieldNameValidator();
-    private static final int HEADROOM = 16 * 1024;
     private final MongoNamespace namespace;
     private final BsonDocument command;
     private final SplittablePayload payload;
-    private final FieldNameValidator fieldNameValidator;
+    private final FieldNameValidator commandFieldNameValidator;
+    private final FieldNameValidator payloadFieldNameValidator;
+    private final ReadPreference readPreference;
+    private final boolean responseExpected;
 
     SplittablePayloadCommandMessage(final MongoNamespace namespace, final BsonDocument command, final SplittablePayload payload,
-                                    final FieldNameValidator fieldNameValidator, final MessageSettings settings) {
+                                    final ReadPreference readPreference, final FieldNameValidator commandFieldNameValidator,
+                                    final FieldNameValidator payloadFieldNameValidator, final MessageSettings settings,
+                                    final boolean responseExpected) {
         super(namespace.getFullName(), getOpCode(settings), settings);
         this.namespace = namespace;
         this.command = command;
         this.payload = payload;
-        this.fieldNameValidator = fieldNameValidator;
+        this.commandFieldNameValidator = commandFieldNameValidator;
+        this.payloadFieldNameValidator = payloadFieldNameValidator;
+        this.readPreference = readPreference;
+        this.responseExpected = responseExpected;
     }
 
     @Override
     protected EncodingMetadata encodeMessageBodyWithMetadata(final BsonOutput bsonOutput, final SessionContext sessionContext) {
         int commandStartPosition;
         if (useOpMsg()) {
-            bsonOutput.writeInt32(0);  // flag bits
-            bsonOutput.writeByte(0);   // payload type
+            bsonOutput.writeInt32(getFlagBits());   // flag bits
+            bsonOutput.writeByte(0);          // payload type
             commandStartPosition = bsonOutput.getPosition();
 
-            List<BsonElement> extraElements = new ArrayList<BsonElement>();
-            extraElements.add(new BsonElement("$db", new BsonString(new MongoNamespace(getCollectionName()).getDatabaseName())));
-            if (sessionContext.hasSession()) {
-                if (sessionContext.getClusterTime() != null) {
-                    extraElements.add(new BsonElement("$clusterTime", sessionContext.getClusterTime()));
-                }
-                extraElements.add(new BsonElement("lsid", sessionContext.getSessionId()));
-            }
-            addDocument(command, bsonOutput, fieldNameValidator, extraElements);
+            addDocument(getCommandToEncode(command), bsonOutput, commandFieldNameValidator, getExtraElements(sessionContext));
 
-            bsonOutput.writeByte(1);   // payload type
-            int sectionPosition = bsonOutput.getPosition();
-            bsonOutput.writeInt32(0); // size
+            bsonOutput.writeByte(1);          // payload type
+            int payloadPosition = bsonOutput.getPosition();
+            bsonOutput.writeInt32(0);         // size
             bsonOutput.writeCString(payload.getPayloadName());
-            new BsonWriterHelper(new BsonBinaryWriter(bsonOutput, fieldNameValidator)).writePayload(payload);
+            writePayload(new BsonBinaryWriter(bsonOutput, payloadFieldNameValidator), bsonOutput, getSettings(),
+                    commandStartPosition, payload);
 
-            int messageLength = bsonOutput.getPosition() - sectionPosition;
-            bsonOutput.writeInt32(sectionPosition, messageLength);
+            int payloadLength = bsonOutput.getPosition() - payloadPosition;
+            bsonOutput.writeInt32(payloadPosition, payloadLength);
         } else {
             bsonOutput.writeInt32(0);
             bsonOutput.writeCString(namespace.getFullName());
@@ -90,20 +83,46 @@ class SplittablePayloadCommandMessage extends CommandMessage {
             bsonOutput.writeInt32(-1);
 
             commandStartPosition = bsonOutput.getPosition();
-            addPayload(command, bsonOutput, getPayloadArrayFieldNameValidator(), payload);
+            addPayload(getCommandToEncode(command), bsonOutput, getPayloadArrayFieldNameValidator(), payload);
         }
         return new EncodingMetadata(null, commandStartPosition);
     }
 
+    @Override
+    boolean containsPayload() {
+        return true;
+    }
+
     private FieldNameValidator getPayloadArrayFieldNameValidator() {
         Map<String, FieldNameValidator> rootMap = new HashMap<String, FieldNameValidator>();
-        rootMap.put(payload.getPayloadName(), fieldNameValidator);
-        return new MappedFieldNameValidator(new NoOpFieldNameValidator(), rootMap);
+        rootMap.put(payload.getPayloadName(), payloadFieldNameValidator);
+        return new MappedFieldNameValidator(commandFieldNameValidator, rootMap);
+    }
+
+    private void addPayload(final BsonDocument document, final BsonOutput bsonOutput, final FieldNameValidator validator,
+                            final SplittablePayload payload) {
+        BsonWriter writer = new BsonBinaryWriter(bsonOutput, validator);
+        if (payload != null) {
+            writer =  new SplittablePayloadBsonWriter(writer, bsonOutput, getSettings(), payload);
+        }
+        getCodec(document).encode(writer, document, EncoderContext.builder().build());
     }
 
     @Override
     boolean isResponseExpected() {
-        return true;
+        return !useOpMsg() || responseExpected;
     }
 
+    @Override
+    public ReadPreference getReadPreference() {
+        return readPreference;
+    }
+
+    private int getFlagBits() {
+        if (responseExpected) {
+            return 0;
+        } else {
+            return 1 << 1;
+        }
+    }
 }

@@ -16,20 +16,25 @@
 
 package com.mongodb.connection;
 
-import com.mongodb.client.model.SplittablePayload;
-import org.bson.BsonBinaryWriter;
+import org.bson.BsonWriter;
+import org.bson.io.BsonOutput;
+
+import static com.mongodb.connection.BsonWriterHelper.writePayloadArray;
 
 
 class SplittablePayloadBsonWriter extends LevelCountingBsonWriter {
-    private final BsonBinaryWriter writer;
-    private final BsonWriterHelper helper;
+    private final BsonWriter writer;
+    private final BsonOutput bsonOutput;
     private final SplittablePayload payload;
+    private final MessageSettings settings;
     private int commandStartPosition;
 
-    SplittablePayloadBsonWriter(final BsonBinaryWriter writer, final MessageSettings settings, final SplittablePayload payload) {
+    SplittablePayloadBsonWriter(final BsonWriter writer, final BsonOutput bsonOutput, final MessageSettings settings,
+                                final SplittablePayload payload) {
         super(writer);
         this.writer = writer;
-        this.helper = new BsonWriterHelper(writer, settings.getMaxBatchCount());
+        this.bsonOutput = bsonOutput;
+        this.settings = settings;
         this.payload = payload;
     }
 
@@ -37,14 +42,14 @@ class SplittablePayloadBsonWriter extends LevelCountingBsonWriter {
     public void writeStartDocument() {
         super.writeStartDocument();
         if (getCurrentLevel() == 0) {
-            commandStartPosition = writer.getBsonOutput().getPosition();
+            commandStartPosition = bsonOutput.getPosition();
         }
     }
 
     @Override
     public void writeEndDocument() {
-        if (getCurrentLevel() == 0) {
-            helper.writePayloadArray(payload, commandStartPosition);
+        if (getCurrentLevel() == 0 && payload.getPayload().size() > 0) {
+            writePayloadArray(writer, bsonOutput, settings, commandStartPosition, payload);
         }
         super.writeEndDocument();
     }

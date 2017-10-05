@@ -235,10 +235,6 @@ abstract class RequestMessage {
         return collectionName;
     }
 
-    int getDocumentHeadroom() {
-        return DOCUMENT_HEADROOM;
-    }
-
     @SuppressWarnings("unchecked")
     Codec<BsonDocument> getCodec(final BsonDocument document) {
         return (Codec<BsonDocument>) REGISTRY.get(document.getClass());

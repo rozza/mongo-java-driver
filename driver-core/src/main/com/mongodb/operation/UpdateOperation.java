@@ -60,7 +60,7 @@ public class UpdateOperation extends BaseWriteOperation {
 
     @Override
     protected List<? extends WriteRequest> getWriteRequests() {
-        return updates;
+        return getUpdateRequests();
     }
 
     @Override

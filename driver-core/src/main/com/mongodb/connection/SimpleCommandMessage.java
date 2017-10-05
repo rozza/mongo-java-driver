@@ -16,19 +16,11 @@
 
 package com.mongodb.connection;
 
-import com.mongodb.MongoNamespace;
 import com.mongodb.ReadPreference;
 import com.mongodb.internal.validator.NoOpFieldNameValidator;
 import org.bson.BsonDocument;
-import org.bson.BsonElement;
-import org.bson.BsonString;
 import org.bson.FieldNameValidator;
 import org.bson.io.BsonOutput;
-
-import java.util.ArrayList;
-import java.util.List;
-
-import static com.mongodb.ReadPreference.primary;
 
 /**
  * A command message that uses OP_MSG or OP_QUERY to send the command.
@@ -53,47 +45,34 @@ class SimpleCommandMessage extends CommandMessage {
 
     @Override
     protected EncodingMetadata encodeMessageBodyWithMetadata(final BsonOutput bsonOutput, final SessionContext sessionContext) {
-        BsonDocument commandToEncode;
-        List<BsonElement> extraElements = null;
         if (useOpMsg()) {
             bsonOutput.writeInt32(0);  // flag bits
             bsonOutput.writeByte(0);   // payload type
 
-            extraElements = new ArrayList<BsonElement>();
-            extraElements.add(new BsonElement("$db", new BsonString(new MongoNamespace(getCollectionName()).getDatabaseName())));
-            if (sessionContext.hasSession()) {
-                if (sessionContext.getClusterTime() != null) {
-                    extraElements.add(new BsonElement("$clusterTime", sessionContext.getClusterTime()));
-                }
-                extraElements.add(new BsonElement("lsid", sessionContext.getSessionId()));
-            }
-            if (!isDefaultReadPreference()) {
-                extraElements.add(new BsonElement("$readPreference", readPreference.toDocument()));
-            }
-            commandToEncode = command;
         } else {
             bsonOutput.writeInt32(readPreference.isSlaveOk() ? 1 << 2 : 0);
             bsonOutput.writeCString(getCollectionName());
             bsonOutput.writeInt32(0);
             bsonOutput.writeInt32(-1);
-            if (!isDefaultReadPreference()) {
-                commandToEncode = new BsonDocument("$query", command).append("$readPreference", readPreference.toDocument());
-            } else {
-                commandToEncode = command;
-            }
         }
-
         int firstDocumentPosition = bsonOutput.getPosition();
-        addDocument(commandToEncode, bsonOutput, validator, extraElements);
+
+        addDocument(getCommandToEncode(command), bsonOutput, validator, getExtraElements(sessionContext));
         return new EncodingMetadata(null, firstDocumentPosition);
     }
 
-    private boolean isDefaultReadPreference() {
-        return readPreference.equals(primary());
+    @Override
+    boolean containsPayload() {
+        return false;
     }
 
     @Override
     boolean isResponseExpected() {
         return true;
+    }
+
+    @Override
+    public ReadPreference getReadPreference() {
+        return readPreference;
     }
 }

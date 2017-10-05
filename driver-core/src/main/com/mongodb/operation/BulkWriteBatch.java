@@ -28,16 +28,15 @@ import com.mongodb.bulk.InsertRequest;
 import com.mongodb.bulk.UpdateRequest;
 import com.mongodb.bulk.WriteConcernError;
 import com.mongodb.bulk.WriteRequest;
-import com.mongodb.client.model.SplittablePayload;
 import com.mongodb.connection.BulkWriteBatchCombiner;
 import com.mongodb.connection.ConnectionDescription;
+import com.mongodb.connection.SplittablePayload;
 import com.mongodb.internal.connection.IndexMap;
 import com.mongodb.internal.validator.CollectibleDocumentFieldNameValidator;
 import com.mongodb.internal.validator.MappedFieldNameValidator;
 import com.mongodb.internal.validator.NoOpFieldNameValidator;
 import com.mongodb.internal.validator.UpdateFieldNameValidator;
 import org.bson.BsonArray;
-import org.bson.BsonBinaryWriter;
 import org.bson.BsonBoolean;
 import org.bson.BsonDocument;
 import org.bson.BsonDocumentWrapper;
@@ -68,6 +67,7 @@ final class BulkWriteBatch {
     private static final CodecRegistry REGISTRY = fromProviders(new BsonValueCodecProvider());
     private static final Decoder<BsonDocument> DECODER = REGISTRY.get(BsonDocument.class);
     private static final FieldNameValidator NOOP_FIELD_NAME_VALIDATOR = new NoOpFieldNameValidator();
+    private static final WriteRequestEncoder WRITE_REQUEST_ENCODER = new WriteRequestEncoder();
 
     private final MongoNamespace namespace;
     private final ConnectionDescription connectionDescription;
@@ -128,13 +128,12 @@ final class BulkWriteBatch {
             }
 
             indexMap = indexMap.add(payloadItems.size(), writeRequestWithIndex.index);
-            payloadItems.add(new BsonDocumentWrapper<WriteRequest>(writeRequestWithIndex.writeRequest,
-                    new WriteRequestEncoder(connectionDescription.getMaxDocumentSize())));
+            payloadItems.add(new BsonDocumentWrapper<WriteRequest>(writeRequestWithIndex.writeRequest, WRITE_REQUEST_ENCODER));
         }
 
         this.indexMap = indexMap;
         this.unprocessed = unprocessedItems;
-        this.payload = new SplittablePayload(getPayloadName(batchType), payloadItems);
+        this.payload = new SplittablePayload(getPayloadType(batchType), payloadItems);
     }
 
     private BulkWriteBatch(final MongoNamespace namespace, final ConnectionDescription connectionDescription,
@@ -299,13 +298,15 @@ final class BulkWriteBatch {
         }
     }
 
-    private String getPayloadName(final WriteRequest.Type batchType) {
-        if (batchType == INSERT) {
-            return "documents";
-        } else if (batchType == UPDATE || batchType == REPLACE) {
-            return "updates";
+    private SplittablePayload.Type getPayloadType(final WriteRequest.Type batchType) {
+        if (batchType == WriteRequest.Type.INSERT) {
+            return SplittablePayload.Type.INSERT;
+        } else if (batchType == WriteRequest.Type.UPDATE) {
+            return SplittablePayload.Type.UPDATE;
+        } else if (batchType == WriteRequest.Type.REPLACE) {
+            return SplittablePayload.Type.REPLACE;
         } else {
-            return "deletes";
+            return SplittablePayload.Type.DELETE;
         }
     }
 
@@ -315,25 +316,19 @@ final class BulkWriteBatch {
     }
 
     static class WriteRequestEncoder implements Encoder<WriteRequest> {
-        private final int maxDocumentSize;
 
-        WriteRequestEncoder(final int maxDocumentSize) {
-            this.maxDocumentSize = maxDocumentSize;
+        WriteRequestEncoder() {
         }
 
         @Override
         @SuppressWarnings("unchecked")
-        public void encode(final BsonWriter bsonWriter, final WriteRequest writeRequest, final EncoderContext encoderContext) {
-            BsonBinaryWriter writer = (BsonBinaryWriter) bsonWriter;
+        public void encode(final BsonWriter writer, final WriteRequest writeRequest, final EncoderContext encoderContext) {
             if (writeRequest.getType() == INSERT) {
-                writer.pushMaxDocumentSize(maxDocumentSize);
                 BsonDocument document = ((InsertRequest) writeRequest).getDocument();
                 getCodec(document).encode(writer, document, EncoderContext.builder().isEncodingCollectibleDocument(true).build());
-                writer.popMaxDocumentSize();
             } else if (writeRequest.getType() == UPDATE || writeRequest.getType() == REPLACE) {
                 UpdateRequest update = (UpdateRequest) writeRequest;
                 writer.writeStartDocument();
-                writer.pushMaxDocumentSize(maxDocumentSize);
                 writer.writeName("q");
                 getCodec(update.getFilter()).encode(writer, update.getFilter(), EncoderContext.builder().build());
                 writer.writeName("u");
@@ -354,12 +349,10 @@ final class BulkWriteBatch {
                     BsonDocument collation = update.getCollation().asDocument();
                     getCodec(collation).encode(writer, collation, EncoderContext.builder().build());
                 }
-                writer.popMaxDocumentSize();
                 writer.writeEndDocument();
             } else {
                 DeleteRequest deleteRequest = (DeleteRequest) writeRequest;
                 writer.writeStartDocument();
-                writer.pushMaxDocumentSize(maxDocumentSize);
                 writer.writeName("q");
                 getCodec(deleteRequest.getFilter()).encode(writer, deleteRequest.getFilter(), EncoderContext.builder().build());
                 writer.writeInt32("limit", deleteRequest.isMulti() ? 0 : 1);
@@ -368,7 +361,6 @@ final class BulkWriteBatch {
                     BsonDocument collation = deleteRequest.getCollation().asDocument();
                     getCodec(collation).encode(writer, collation, EncoderContext.builder().build());
                 }
-                writer.popMaxDocumentSize();
                 writer.writeEndDocument();
             }
         }

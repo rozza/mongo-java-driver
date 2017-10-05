@@ -26,7 +26,6 @@ import com.mongodb.binding.ReferenceCounted;
 import com.mongodb.bulk.DeleteRequest;
 import com.mongodb.bulk.InsertRequest;
 import com.mongodb.bulk.UpdateRequest;
-import com.mongodb.client.model.SplittablePayload;
 import org.bson.BsonDocument;
 import org.bson.FieldNameValidator;
 import org.bson.codecs.Decoder;
@@ -126,18 +125,23 @@ public interface AsyncConnection extends ReferenceCounted {
     /**
      * Executes the command, consuming as much of the {@code SplittablePayload} as possible.
      *
-     * @param <T>                  the type of the result
-     * @param database             the database to execute the command in
-     * @param command              the command document
-     * @param payload              the splittable payload to incorporate with the command
-     * @param fieldNameValidator   the field name validator for the payload document
-     * @param commandResultDecoder the decoder for the result
-     * @param sessionContext       the session context
-     * @param callback             the callback to be passed the write result
+     * @param <T>                       the type of the result
+     * @param database                  the database to execute the command in
+     * @param command                   the command document
+     * @param payload                   the splittable payload to incorporate with the command
+     * @param readPreference            the read preference that was applied to get this connection
+     * @param commandFieldNameValidator the field name validator for the command document
+     * @param payloadFieldNameValidator the field name validator for the payload documents
+     * @param commandResultDecoder      the decoder for the result
+     * @param responseExpected          true if a response from the server is expected
+     * @param sessionContext            the session context
+     * @param callback                  the callback to be passed the write result
      * @since 3.6
      */
-    <T> void commandAsync(String database, BsonDocument command, SplittablePayload payload, FieldNameValidator fieldNameValidator,
-                          Decoder<T> commandResultDecoder, SessionContext sessionContext, SingleResultCallback<T> callback);
+    <T> void commandAsync(String database, BsonDocument command, SplittablePayload payload, ReadPreference readPreference,
+                          FieldNameValidator commandFieldNameValidator, FieldNameValidator payloadFieldNameValidator,
+                          Decoder<T> commandResultDecoder, boolean responseExpected, SessionContext sessionContext,
+                          SingleResultCallback<T> callback);
 
     /**
      * Execute the query asynchronously.

@@ -16,15 +16,13 @@
 
 package com.mongodb.connection
 
-import org.bson.BsonBinaryWriter
 import org.bson.BsonDocument
 import org.bson.BsonDocumentReader
+import org.bson.BsonDocumentWriter
 import org.bson.BsonElement
 import org.bson.BsonString
-import org.bson.RawBsonDocument
 import org.bson.codecs.BsonDocumentCodec
 import org.bson.codecs.EncoderContext
-import org.bson.io.BasicOutputBuffer
 import spock.lang.Specification
 
 import static org.bson.BsonHelper.documentWithValuesOfEveryType
@@ -34,37 +32,33 @@ class ElementExtendingBsonWriterSpecification extends Specification {
     def 'should write all types'() {
         given:
         def encodedDoc = new BsonDocument()
-        def bsonOutput = createBsonOutput(encodedDoc)
-        def writer = new ElementExtendingBsonWriter(new BsonBinaryWriter(bsonOutput), [])
 
         when:
-        new BsonDocumentCodec().encode(writer, encodedDoc, EncoderContext.builder().build())
+        new BsonDocumentCodec().encode(new ElementExtendingBsonWriter(new BsonDocumentWriter(encodedDoc), []),
+                documentWithValuesOfEveryType(), EncoderContext.builder().build())
 
         then:
-        new RawBsonDocument(bsonOutput.getInternalBuffer().clone()) == encodedDoc
+        encodedDoc == documentWithValuesOfEveryType()
     }
 
     def 'should extend with extra elements'() {
         given:
-        def encodedDoc = BsonDocument.parse("{a: 1}")
-        def bsonOutput = createBsonOutput(encodedDoc)
-
+        def encodedDoc = new BsonDocument();
         def extraElements = [
                 new BsonElement('$db', new BsonString('test')),
                 new BsonElement('$readPreference', new BsonDocument('mode', new BsonString('primary')))
         ]
-        def writer = new ElementExtendingBsonWriter(new BsonBinaryWriter(bsonOutput), extraElements)
-
-        def expectedDocument = BsonDocument.parse("{a: 1}")
+        def expectedDocument = documentWithValuesOfEveryType()
         for (def cur : extraElements) {
             expectedDocument.put(cur.name, cur.value)
         }
+        def writer = new ElementExtendingBsonWriter(new BsonDocumentWriter(encodedDoc), extraElements)
 
         when:
-        new BsonDocumentCodec().encode(writer, encodedDoc, EncoderContext.builder().build())
+        new BsonDocumentCodec().encode(writer, documentWithValuesOfEveryType(), EncoderContext.builder().build())
 
         then:
-        new RawBsonDocument(bsonOutput.getInternalBuffer()) == expectedDocument
+        encodedDoc == expectedDocument
     }
 
     def 'should extend with extra elements when piping a reader at the top level'() {
@@ -74,20 +68,17 @@ class ElementExtendingBsonWriterSpecification extends Specification {
                 new BsonElement('$db', new BsonString('test')),
                 new BsonElement('$readPreference', new BsonDocument('mode', new BsonString('primary')))
         ]
-
-        def bsonOutput = createBsonOutput(encodedDoc)
-        def writer = new ElementExtendingBsonWriter(new BsonBinaryWriter(bsonOutput), extraElements)
-
         def expectedDocument = documentWithValuesOfEveryType()
         for (def cur : extraElements) {
             expectedDocument.put(cur.name, cur.value)
         }
+        def writer = new ElementExtendingBsonWriter(new BsonDocumentWriter(encodedDoc), extraElements)
 
         when:
         writer.pipe(new BsonDocumentReader(documentWithValuesOfEveryType()))
 
         then:
-        new RawBsonDocument(bsonOutput.getInternalBuffer().clone()) == expectedDocument
+        encodedDoc == expectedDocument
     }
 
     def 'should not extend with extra elements when piping a reader at nested level'() {
@@ -101,7 +92,7 @@ class ElementExtendingBsonWriterSpecification extends Specification {
         for (def cur : extraElements) {
             expectedDocument.put(cur.name, cur.value)
         }
-        def writer = new ElementExtendingBsonWriter(createBsonBinaryWriter(encodedDoc), extraElements)
+        def writer = new ElementExtendingBsonWriter(new BsonDocumentWriter(encodedDoc), extraElements)
 
         when:
         writer.writeStartDocument()
@@ -111,11 +102,5 @@ class ElementExtendingBsonWriterSpecification extends Specification {
 
         then:
         encodedDoc == expectedDocument
-    }
-
-    BasicOutputBuffer createBsonOutput(final BsonDocument content) {
-        BasicOutputBuffer bsonOutput = new BasicOutputBuffer()
-        new BsonDocumentCodec().encode(new BsonBinaryWriter(bsonOutput), content, EncoderContext.builder().build())
-        bsonOutput
     }
 }

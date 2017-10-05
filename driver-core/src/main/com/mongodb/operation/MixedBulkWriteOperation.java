@@ -18,6 +18,7 @@ package com.mongodb.operation;
 
 import com.mongodb.MongoBulkWriteException;
 import com.mongodb.MongoNamespace;
+import com.mongodb.ReadPreference;
 import com.mongodb.WriteConcern;
 import com.mongodb.WriteConcernResult;
 import com.mongodb.async.SingleResultCallback;
@@ -31,6 +32,7 @@ import com.mongodb.bulk.WriteRequest;
 import com.mongodb.connection.AsyncConnection;
 import com.mongodb.connection.Connection;
 import com.mongodb.connection.SessionContext;
+import com.mongodb.internal.validator.NoOpFieldNameValidator;
 import org.bson.BsonDocument;
 
 import java.util.List;
@@ -206,7 +208,8 @@ public class MixedBulkWriteOperation implements AsyncWriteOperation<BulkWriteRes
 
         while (batch.shouldProcessBatch()) {
             BsonDocument result = connection.command(namespace.getDatabaseName(), batch.getCommand(), batch.getPayload(),
-                    batch.getFieldNameValidator(), batch.getDecoder(), sessionContext);
+                    ReadPreference.primary(), new NoOpFieldNameValidator(), batch.getFieldNameValidator(), batch.getDecoder(),
+                    writeConcern.isAcknowledged(), sessionContext);
             batch.addResult(result);
             batch = batch.getNextBatch();
         }
@@ -230,8 +233,9 @@ public class MixedBulkWriteOperation implements AsyncWriteOperation<BulkWriteRes
     private void executeBatchesAsync(final AsyncConnection connection, final SessionContext sessionContext,
                                      final BulkWriteBatch batch, final SingleResultCallback<BulkWriteResult> callback) {
         try {
-            connection.commandAsync(namespace.getDatabaseName(), batch.getCommand(), batch.getPayload(), batch.getFieldNameValidator(),
-                    batch.getDecoder(), sessionContext, new SingleResultCallback<BsonDocument>() {
+            connection.commandAsync(namespace.getDatabaseName(), batch.getCommand(), batch.getPayload(), ReadPreference.primary(),
+                    new NoOpFieldNameValidator(), batch.getFieldNameValidator(), batch.getDecoder(), writeConcern.isAcknowledged(),
+                    sessionContext, new SingleResultCallback<BsonDocument>() {
                 @Override
                 public void onResult(final BsonDocument result, final Throwable t) {
                     if (t != null) {

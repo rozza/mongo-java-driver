@@ -24,7 +24,6 @@ import com.mongodb.async.SingleResultCallback;
 import com.mongodb.bulk.DeleteRequest;
 import com.mongodb.bulk.InsertRequest;
 import com.mongodb.bulk.UpdateRequest;
-import com.mongodb.client.model.SplittablePayload;
 import com.mongodb.diagnostics.logging.Logger;
 import com.mongodb.diagnostics.logging.Loggers;
 import com.mongodb.internal.connection.NoOpSessionContext;
@@ -126,16 +125,17 @@ class DefaultServerConnection extends AbstractReferenceCounted implements Connec
 
     @Override
     public <T> T command(final String database, final BsonDocument command, final SplittablePayload payload,
-                         final FieldNameValidator fieldNameValidator, final Decoder<T> commandResultDecoder,
-                         final SessionContext sessionContext) {
-        return executeProtocol(new SplittablePayloadCommandProtocol<T>(database, command, payload, fieldNameValidator,
-                        commandResultDecoder), sessionContext);
+                         final ReadPreference readPreference, final FieldNameValidator commandFieldNameValidator,
+                         final FieldNameValidator payloadFieldNameValidator, final Decoder<T> commandResultDecoder,
+                         final boolean responseExpected, final SessionContext sessionContext) {
+        return executeProtocol(new SplittablePayloadCommandProtocol<T>(database, command, payload, readPreference,
+                commandFieldNameValidator, payloadFieldNameValidator, commandResultDecoder, responseExpected), sessionContext);
     }
 
     @Override
     public <T> void commandAsync(final String database, final BsonDocument command, final boolean slaveOk,
-                                           final FieldNameValidator fieldNameValidator,
-                                           final Decoder<T> commandResultDecoder, final SingleResultCallback<T> callback) {
+                                 final FieldNameValidator fieldNameValidator, final Decoder<T> commandResultDecoder,
+                                 final SingleResultCallback<T> callback) {
         commandAsync(database, command, getReadPreferenceFromSlaveOk(slaveOk), fieldNameValidator, commandResultDecoder,
                 NoOpSessionContext.INSTANCE, callback);
     }
@@ -150,10 +150,12 @@ class DefaultServerConnection extends AbstractReferenceCounted implements Connec
 
     @Override
     public <T> void commandAsync(final String database, final BsonDocument command, final SplittablePayload payload,
-                                 final FieldNameValidator fieldNameValidator, final Decoder<T> commandResultDecoder,
-                                 final SessionContext sessionContext, final SingleResultCallback<T> callback) {
-        executeProtocolAsync(new SplittablePayloadCommandProtocol<T>(database, command, payload, fieldNameValidator, commandResultDecoder),
-                sessionContext, callback);
+                                 final ReadPreference readPreference, final FieldNameValidator commandFieldNameValidator,
+                                 final FieldNameValidator payloadFieldNameValidator, final Decoder<T> commandResultDecoder,
+                                 final boolean responseExpected, final SessionContext sessionContext,
+                                 final SingleResultCallback<T> callback) {
+        executeProtocolAsync(new SplittablePayloadCommandProtocol<T>(database, command, payload, readPreference, commandFieldNameValidator,
+                        payloadFieldNameValidator, commandResultDecoder, responseExpected), sessionContext, callback);
     }
 
     @Override

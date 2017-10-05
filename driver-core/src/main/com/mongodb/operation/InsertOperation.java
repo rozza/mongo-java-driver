@@ -65,7 +65,7 @@ public class InsertOperation extends BaseWriteOperation {
 
     @Override
     protected List<? extends WriteRequest> getWriteRequests() {
-        return (List<? extends WriteRequest>) insertRequests;
+        return getInsertRequests();
     }
 
 }

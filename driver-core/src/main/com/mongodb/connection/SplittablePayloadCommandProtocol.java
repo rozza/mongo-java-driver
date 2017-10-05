@@ -17,8 +17,8 @@
 package com.mongodb.connection;
 
 import com.mongodb.MongoNamespace;
+import com.mongodb.ReadPreference;
 import com.mongodb.async.SingleResultCallback;
-import com.mongodb.client.model.SplittablePayload;
 import com.mongodb.diagnostics.logging.Logger;
 import com.mongodb.diagnostics.logging.Loggers;
 import org.bson.BsonDocument;
@@ -34,18 +34,26 @@ class SplittablePayloadCommandProtocol<T> implements CommandProtocol<T> {
     private final MongoNamespace namespace;
     private final BsonDocument command;
     private final SplittablePayload payload;
-    private final FieldNameValidator fieldNameValidator;
+    private final ReadPreference readPreference;
+    private final FieldNameValidator commandFieldNameValidator;
+    private final FieldNameValidator payloadFieldNameValidator;
     private final Decoder<T> commandResultDecoder;
+    private final boolean responseExpected;
     private SessionContext sessionContext;
 
     SplittablePayloadCommandProtocol(final String database, final BsonDocument command, final SplittablePayload payload,
-                                     final FieldNameValidator fieldNameValidator, final Decoder<T> commandResultDecoder) {
+                                     final ReadPreference readPreference, final FieldNameValidator commandFieldNameValidator,
+                                     final FieldNameValidator payloadFieldNameValidator, final Decoder<T> commandResultDecoder,
+                                     final boolean responseExpected) {
         notNull("database", database);
         this.namespace = new MongoNamespace(notNull("database", database), MongoNamespace.COMMAND_COLLECTION_NAME);
         this.command = notNull("command", command);
         this.payload = notNull("payload", payload);
-        this.fieldNameValidator = notNull("fieldNameValidator", fieldNameValidator);
+        this.readPreference = notNull("readPreference", readPreference);
+        this.commandFieldNameValidator = notNull("commandFieldNameValidator", commandFieldNameValidator);
+        this.payloadFieldNameValidator = notNull("payloadFieldNameValidator", payloadFieldNameValidator);
         this.commandResultDecoder = notNull("commandResultDecoder", commandResultDecoder);
+        this.responseExpected = responseExpected;
     }
 
     @Override
@@ -95,8 +103,8 @@ class SplittablePayloadCommandProtocol<T> implements CommandProtocol<T> {
     }
 
     private SplittablePayloadCommandMessage getSplittablePayloadCommandMessage(final InternalConnection connection) {
-        return new SplittablePayloadCommandMessage(namespace, command, payload, fieldNameValidator,
-                getMessageSettings(connection.getDescription()));
+        return new SplittablePayloadCommandMessage(namespace, command, payload, readPreference, commandFieldNameValidator,
+                payloadFieldNameValidator, getMessageSettings(connection.getDescription()), responseExpected);
     }
 
     private String getCommandName() {

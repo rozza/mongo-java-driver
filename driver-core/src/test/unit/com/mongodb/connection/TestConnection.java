@@ -24,7 +24,6 @@ import com.mongodb.async.SingleResultCallback;
 import com.mongodb.bulk.DeleteRequest;
 import com.mongodb.bulk.InsertRequest;
 import com.mongodb.bulk.UpdateRequest;
-import com.mongodb.client.model.SplittablePayload;
 import org.bson.BsonDocument;
 import org.bson.FieldNameValidator;
 import org.bson.codecs.Decoder;
@@ -99,12 +98,6 @@ class TestConnection implements Connection, AsyncConnection {
         executeEnqueuedLegacyProtocolAsync(callback);
     }
 
-    @Override
-    public <T> T command(final String database, final BsonDocument command, final SplittablePayload payload,
-                         final FieldNameValidator fieldNameValidator, final Decoder<T> commandResultDecoder,
-                         final SessionContext sessionContext) {
-        return executeEnqueuedCommandBasedProtocol(sessionContext);
-    }
 
     @Override
     public <T> T command(final String database, final BsonDocument command, final boolean slaveOk,
@@ -117,6 +110,14 @@ class TestConnection implements Connection, AsyncConnection {
     public <T> T command(final String database, final BsonDocument command,
                          final ReadPreference readPreference, final FieldNameValidator fieldNameValidator,
                          final Decoder<T> commandResultDecoder, final SessionContext sessionContext) {
+        return executeEnqueuedCommandBasedProtocol(sessionContext);
+    }
+
+    @Override
+    public <T> T command(final String database, final BsonDocument command, final SplittablePayload payload,
+                         final ReadPreference readPreference, final FieldNameValidator commandFieldNameValidator,
+                         final FieldNameValidator payloadFieldNameValidator, final Decoder<T> commandResultDecoder,
+                         final boolean responseExpected, final SessionContext sessionContext) {
         return executeEnqueuedCommandBasedProtocol(sessionContext);
     }
 
@@ -136,8 +137,10 @@ class TestConnection implements Connection, AsyncConnection {
 
     @Override
     public <T> void commandAsync(final String database, final BsonDocument command, final SplittablePayload payload,
-                                 final FieldNameValidator fieldNameValidator, final Decoder<T> commandResultDecoder,
-                                 final SessionContext sessionContext, final SingleResultCallback<T> callback) {
+                                 final ReadPreference readPreference, final FieldNameValidator commandFieldNameValidator,
+                                 final FieldNameValidator payloadFieldNameValidator, final Decoder<T> commandResultDecoder,
+                                 final boolean responseExpected, final SessionContext sessionContext,
+                                 final SingleResultCallback<T> callback) {
         executeEnqueuedCommandBasedProtocolAsync(sessionContext, callback);
     }
 

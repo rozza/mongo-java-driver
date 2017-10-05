@@ -17,21 +17,26 @@
 
 package com.mongodb.connection;
 
-import com.mongodb.client.model.SplittablePayload;
-import org.bson.BsonBinaryWriter;
-import org.bson.BsonBinaryWriterSettings;
+import com.mongodb.MongoNamespace;
+import com.mongodb.ReadPreference;
 import org.bson.BsonDocument;
-import org.bson.BsonWriter;
-import org.bson.BsonWriterSettings;
-import org.bson.FieldNameValidator;
-import org.bson.codecs.EncoderContext;
+import org.bson.BsonElement;
+import org.bson.BsonString;
 import org.bson.io.BsonOutput;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import static com.mongodb.ReadPreference.primary;
+
 abstract class CommandMessage extends RequestMessage {
+    abstract ReadPreference getReadPreference();
 
     CommandMessage(final String collectionName, final OpCode opCode, final MessageSettings settings) {
         super(collectionName, opCode, settings);
     }
+
+    abstract boolean containsPayload();
 
     abstract boolean isResponseExpected();
 
@@ -59,14 +64,33 @@ abstract class CommandMessage extends RequestMessage {
         return useOpMsg(getSettings());
     }
 
-    protected void addPayload(final BsonDocument document, final BsonOutput bsonOutput, final FieldNameValidator validator,
-                              final SplittablePayload payload) {
-        BsonWriter writer = new BsonBinaryWriter(new BsonWriterSettings(),
-                new BsonBinaryWriterSettings(getSettings().getMaxDocumentSize() + getDocumentHeadroom()), bsonOutput,
-                validator);
-        if (payload != null) {
-            writer =  new SplittablePayloadBsonWriter((BsonBinaryWriter) writer, getSettings(), payload);
+    protected BsonDocument getCommandToEncode(final BsonDocument command) {
+        BsonDocument commandToEncode = command;
+        if (!useOpMsg() && !isDefaultReadPreference(getReadPreference())) {
+            commandToEncode = new BsonDocument("$query", command).append("$readPreference", getReadPreference().toDocument());
         }
-        getCodec(document).encode(writer, document, EncoderContext.builder().build());
+        return commandToEncode;
+    }
+
+    protected List<BsonElement> getExtraElements(final SessionContext sessionContext) {
+        if (!useOpMsg()) {
+            return null;
+        }
+        List<BsonElement> extraElements = new ArrayList<BsonElement>();
+        extraElements.add(new BsonElement("$db", new BsonString(new MongoNamespace(getCollectionName()).getDatabaseName())));
+        if (sessionContext.hasSession()) {
+            if (sessionContext.getClusterTime() != null) {
+                extraElements.add(new BsonElement("$clusterTime", sessionContext.getClusterTime()));
+            }
+            extraElements.add(new BsonElement("lsid", sessionContext.getSessionId()));
+        }
+        if (!isDefaultReadPreference(getReadPreference())) {
+            extraElements.add(new BsonElement("$readPreference", getReadPreference().toDocument()));
+        }
+        return extraElements;
+    }
+
+    protected boolean isDefaultReadPreference(final ReadPreference readPreference) {
+        return readPreference.equals(primary());
     }
 }

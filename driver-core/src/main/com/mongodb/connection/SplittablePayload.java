@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.mongodb.client.model;
+package com.mongodb.connection;
 
 import org.bson.BsonDocument;
 
@@ -22,6 +22,9 @@ import java.util.List;
 
 import static com.mongodb.assertions.Assertions.isTrue;
 import static com.mongodb.assertions.Assertions.notNull;
+import static com.mongodb.connection.SplittablePayload.Type.INSERT;
+import static com.mongodb.connection.SplittablePayload.Type.REPLACE;
+import static com.mongodb.connection.SplittablePayload.Type.UPDATE;
 
 /**
  * A Splittable payload for write commands.
@@ -36,26 +39,64 @@ import static com.mongodb.assertions.Assertions.notNull;
  * @since 3.6
  */
 public final class SplittablePayload {
-    private final String payloadName;
+    private final Type payloadType;
     private final List<BsonDocument> payload;
     private int position = 0;
 
     /**
+     * The type of the payload.
+     */
+    public enum Type {
+        /**
+         * An insert.
+         */
+        INSERT,
+
+        /**
+         * An update that uses update operators.
+         */
+        UPDATE,
+
+        /**
+         * An update that replaces the existing document.
+         */
+        REPLACE,
+
+        /**
+         * A delete.
+         */
+        DELETE
+    }
+
+    /**
      * Create a new instance
      *
-     * @param payloadName the payload name eg: (documents, updates, deletes)
+     * @param payloadType the payload type
      * @param payload the payload
      */
-    public SplittablePayload(final String payloadName, final List<BsonDocument> payload) {
-        this.payloadName = notNull("payloadName", payloadName);
+    public SplittablePayload(final Type payloadType, final List<BsonDocument> payload) {
+        this.payloadType = notNull("batchType", payloadType);
         this.payload = notNull("payload", payload);
+    }
+
+    /**
+     * @return the payload type
+     */
+    public Type getPayloadType() {
+        return payloadType;
     }
 
     /**
      * @return the payload name
      */
     public String getPayloadName() {
-        return payloadName;
+        if (payloadType == INSERT) {
+            return "documents";
+        } else if (payloadType == UPDATE || payloadType == REPLACE) {
+            return "updates";
+        } else {
+            return "deletes";
+        }
     }
 
     /**
@@ -93,7 +134,7 @@ public final class SplittablePayload {
     public SplittablePayload getNextSplit() {
         isTrue("hasAnotherSplit", hasAnotherSplit());
         List<BsonDocument> nextPayLoad = payload.subList(position, payload.size());
-        return new SplittablePayload(payloadName, nextPayLoad);
+        return new SplittablePayload(payloadType, nextPayLoad);
     }
 
     /**

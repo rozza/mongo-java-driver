@@ -66,7 +66,6 @@ import java.util.concurrent.TimeUnit;
 
 import static com.mongodb.ClusterFixture.isDiscoverableReplicaSet;
 import static com.mongodb.ClusterFixture.isSharded;
-import static com.mongodb.ClusterFixture.serverVersionAtLeast;
 import static com.mongodb.Fixture.getMongoClientURI;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
@@ -175,7 +174,6 @@ public class CommandMonitoringTest {
 
     @Test
     public void shouldPassAllOutcomes() {
-        assumeFalse(serverVersionAtLeast(3, 5)); // TODO - handle payloads and command monitoring
         executeOperation();
 
         List<CommandEvent> expectedEvents = getExpectedEvents(definition.getArray("expectations"));

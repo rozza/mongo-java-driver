@@ -16,98 +16,114 @@
 
 package com.mongodb.connection;
 
-import com.mongodb.client.model.SplittablePayload;
-import org.bson.BsonBinaryWriter;
 import org.bson.BsonDocument;
 import org.bson.BsonElement;
+import org.bson.BsonSerializationException;
 import org.bson.BsonValue;
+import org.bson.BsonWriter;
 import org.bson.codecs.BsonValueCodecProvider;
 import org.bson.codecs.Codec;
 import org.bson.codecs.EncoderContext;
 import org.bson.codecs.configuration.CodecRegistry;
+import org.bson.io.BsonOutput;
 
 import java.util.List;
 
+import static java.lang.String.format;
 import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
 
 final class BsonWriterHelper {
+    private static final int DOCUMENT_HEADROOM = 1024 * 16;
     private static final CodecRegistry REGISTRY = fromProviders(new BsonValueCodecProvider());
     private static final EncoderContext ENCODER_CONTEXT = EncoderContext.builder().build();
 
-    private final BsonBinaryWriter writer;
-    private final int maxBatchLength;
-
-    BsonWriterHelper(final BsonBinaryWriter writer) {
-        this(writer, Integer.MAX_VALUE);
-    }
-
-    BsonWriterHelper(final BsonBinaryWriter writer, final int maxBatchLength) {
-        this.writer = writer;
-        this.maxBatchLength = maxBatchLength;
-    }
-
-    void writePayloadArray(final SplittablePayload payload, final int commandStartPosition) {
-        writer.writeStartArray(payload.getPayloadName());
-        writePayload(payload, commandStartPosition);
-        writer.writeEndArray();
-    }
-
-    void writePayload(final SplittablePayload payload) {
-        for (int i = 0; i < payload.getPayload().size(); i++) {
-            if (writeDocument(payload.getPayload().get(i), writer.getBsonOutput().getPosition(), i + 1)) {
-                payload.setPosition(i + 1);
-            } else {
-                break;
-            }
-        }
-    }
-
-    void writePayload(final SplittablePayload payload, final int startPosition) {
-        for (int i = 0; i < payload.getPayload().size(); i++) {
-            if (writeDocument(payload.getPayload().get(i), startPosition, i + 1)) {
-                payload.setPosition(i + 1);
-            } else {
-                break;
-            }
-        }
-    }
-
-    boolean writeDocument(final BsonDocument document, final int startPosition, final int batchItemCount) {
-        int currentPosition = writer.getBsonOutput().getPosition();
-        getCodec(document).encode(writer, document, ENCODER_CONTEXT);
-        if (exceedsLimits(writer.getBsonOutput().getPosition() - startPosition, batchItemCount)) {
-            writer.getBsonOutput().truncateToPosition(currentPosition);
-            return false;
-        }
-        return true;
-    }
-
-    void writeElements(final List<BsonElement> bsonElements) {
+    static void writeElements(final BsonWriter writer, final List<BsonElement> bsonElements) {
         for (BsonElement bsonElement : bsonElements) {
             writer.writeName(bsonElement.getName());
             getCodec(bsonElement.getValue()).encode(writer, bsonElement.getValue(), ENCODER_CONTEXT);
         }
     }
 
+    static void writePayloadArray(final BsonWriter writer, final BsonOutput bsonOutput, final MessageSettings settings,
+                                  final int commandStartPosition, final SplittablePayload payload) {
+        writer.writeStartArray(payload.getPayloadName());
+        writePayload(writer, bsonOutput, getDocumentMessageSettings(settings), commandStartPosition, payload);
+        writer.writeEndArray();
+    }
+
+    static void writePayload(final BsonWriter writer, final BsonOutput bsonOutput, final MessageSettings settings,
+                             final int commandStartPosition, final SplittablePayload payload) {
+        MessageSettings payloadSettings = getPayloadMessageSettings(payload.getPayloadType(), settings);
+        for (int i = 0; i < payload.getPayload().size(); i++) {
+            if (writeDocument(writer, bsonOutput, payloadSettings, payload.getPayload().get(i), commandStartPosition, i + 1)) {
+                payload.setPosition(i + 1);
+            } else {
+                break;
+            }
+        }
+
+        if (payload.getPosition() == 0) {
+            throw new BsonSerializationException(format("Payload document size of is larger than maximum of %d.",
+                    payloadSettings.getMaxDocumentSize()));
+        }
+    }
+
+    private static boolean writeDocument(final BsonWriter writer, final BsonOutput bsonOutput, final MessageSettings settings,
+                                         final BsonDocument document, final int startPosition, final int batchItemCount) {
+        int currentPosition = bsonOutput.getPosition();
+        getCodec(document).encode(writer, document, ENCODER_CONTEXT);
+        int messageSize = bsonOutput.getPosition() - startPosition;
+        int documentSize = bsonOutput.getPosition() - currentPosition;
+        if (exceedsLimits(settings, messageSize, documentSize, batchItemCount)) {
+            bsonOutput.truncateToPosition(currentPosition);
+            return false;
+        }
+        return true;
+    }
+
     @SuppressWarnings({"unchecked", "rawtypes"})
-    Codec<BsonValue> getCodec(final BsonValue bsonValue) {
+    private static Codec<BsonValue> getCodec(final BsonValue bsonValue) {
         return (Codec<BsonValue>) REGISTRY.get(bsonValue.getClass());
     }
 
-
-    private boolean exceedsLimits(final int batchLength, final int batchItemCount) {
-        return (exceedsBatchLengthLimit(batchLength, batchItemCount) || exceedsBatchItemCountLimit(batchItemCount));
+    private static MessageSettings getPayloadMessageSettings(final SplittablePayload.Type type, final MessageSettings settings) {
+        MessageSettings payloadMessageSettings = settings;
+        if (type != SplittablePayload.Type.INSERT) {
+            payloadMessageSettings = createMessageSettingsBuilder(settings)
+                    .maxDocumentSize(settings.getMaxDocumentSize() + DOCUMENT_HEADROOM)
+                    .build();
+        }
+        return payloadMessageSettings;
     }
 
-    // make a special exception for a command with only a single item added to it.  It's allowed to exceed maximum document size so that
-    // it's possible to, say, send a replacement document that is itself 16MB, which would push the size of the containing command
-    // document to be greater than the maximum document size.
-    private boolean exceedsBatchLengthLimit(final int batchLength, final int batchItemCount) {
-        return batchLength > writer.getBinaryWriterSettings().getMaxDocumentSize() && batchItemCount > 1;
+    private static MessageSettings getDocumentMessageSettings(final MessageSettings settings) {
+        return createMessageSettingsBuilder(settings)
+                    .maxMessageSize(settings.getMaxDocumentSize() + DOCUMENT_HEADROOM)
+                    .build();
     }
 
-    private boolean exceedsBatchItemCountLimit(final int batchItemCount) {
-        return batchItemCount > maxBatchLength;
+    private static MessageSettings.Builder createMessageSettingsBuilder(final MessageSettings settings) {
+        return MessageSettings.builder()
+                .maxBatchCount(settings.getMaxBatchCount())
+                .maxMessageSize(settings.getMaxMessageSize())
+                .maxDocumentSize(settings.getMaxDocumentSize())
+                .serverVersion(settings.getServerVersion());
+    }
+
+    private static boolean exceedsLimits(final MessageSettings settings, final int messageSize, final int documentSize,
+                                          final int batchItemCount) {
+        if (batchItemCount > settings.getMaxBatchCount()) {
+            return true;
+        } else if (messageSize > settings.getMaxMessageSize()) {
+            return true;
+        } else if (documentSize > settings.getMaxDocumentSize()) {
+            return true;
+        }
+        return false;
+    }
+
+
+    private BsonWriterHelper() {
     }
 
 }
