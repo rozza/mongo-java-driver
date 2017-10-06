@@ -100,7 +100,7 @@ public interface AsyncConnection extends ReferenceCounted {
      * @param commandResultDecoder the decoder for the result
      * @param callback             the callback to be passed the command result
      * @param <T>                  the type of the result
-     * @deprecated Prefer {@link #commandAsync(String, BsonDocument, ReadPreference, FieldNameValidator, Decoder, SessionContext,
+     * @deprecated Prefer {@link #commandAsync(String, BsonDocument, FieldNameValidator, ReadPreference, Decoder, SessionContext,
      * SingleResultCallback)}
      */
     @Deprecated
@@ -108,18 +108,19 @@ public interface AsyncConnection extends ReferenceCounted {
                           Decoder<T> commandResultDecoder, SingleResultCallback<T> callback);
 
     /**
-     * Execute the command asynchronously.
+     * Execute the command.
      *
      * @param <T>                  the type of the result
      * @param database             the database to execute the command in
      * @param command              the command document
-     * @param readPreference       the read preference that was applied to get this connection
      * @param fieldNameValidator   the field name validator for the command document
+     * @param readPreference       the read preference that was applied to get this connection
      * @param commandResultDecoder the decoder for the result
      * @param sessionContext       the session context
-     * @param callback             the callback to be passed the command result  @since 3.6
+     * @param callback             the callback to be passed the write result
+     * @since 3.6
      */
-    <T> void commandAsync(String database, BsonDocument command, ReadPreference readPreference, FieldNameValidator fieldNameValidator,
+    <T> void commandAsync(String database, BsonDocument command, FieldNameValidator fieldNameValidator, ReadPreference readPreference,
                           Decoder<T> commandResultDecoder, SessionContext sessionContext, SingleResultCallback<T> callback);
 
     /**
@@ -128,19 +129,19 @@ public interface AsyncConnection extends ReferenceCounted {
      * @param <T>                       the type of the result
      * @param database                  the database to execute the command in
      * @param command                   the command document
-     * @param payload                   the splittable payload to incorporate with the command
-     * @param readPreference            the read preference that was applied to get this connection
      * @param commandFieldNameValidator the field name validator for the command document
-     * @param payloadFieldNameValidator the field name validator for the payload documents
+     * @param readPreference            the read preference that was applied to get this connection
      * @param commandResultDecoder      the decoder for the result
-     * @param responseExpected          true if a response from the server is expected
      * @param sessionContext            the session context
+     * @param responseExpected          true if a response from the server is expected
+     * @param payload                   the splittable payload to incorporate with the command
+     * @param payloadFieldNameValidator the field name validator for the payload documents
      * @param callback                  the callback to be passed the write result
      * @since 3.6
      */
-    <T> void commandAsync(String database, BsonDocument command, SplittablePayload payload, ReadPreference readPreference,
-                          FieldNameValidator commandFieldNameValidator, FieldNameValidator payloadFieldNameValidator,
-                          Decoder<T> commandResultDecoder, boolean responseExpected, SessionContext sessionContext,
+    <T> void commandAsync(String database, BsonDocument command, FieldNameValidator commandFieldNameValidator,
+                          ReadPreference readPreference, Decoder<T> commandResultDecoder, SessionContext sessionContext,
+                          boolean responseExpected, SplittablePayload payload, FieldNameValidator payloadFieldNameValidator,
                           SingleResultCallback<T> callback);
 
     /**

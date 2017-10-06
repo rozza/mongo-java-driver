@@ -107,17 +107,16 @@ class TestConnection implements Connection, AsyncConnection {
     }
 
     @Override
-    public <T> T command(final String database, final BsonDocument command,
-                         final ReadPreference readPreference, final FieldNameValidator fieldNameValidator,
-                         final Decoder<T> commandResultDecoder, final SessionContext sessionContext) {
+    public <T> T command(final String database, final BsonDocument command, final FieldNameValidator fieldNameValidator,
+                         final ReadPreference readPreference, final Decoder<T> commandResultDecoder, final SessionContext sessionContext) {
         return executeEnqueuedCommandBasedProtocol(sessionContext);
     }
 
     @Override
-    public <T> T command(final String database, final BsonDocument command, final SplittablePayload payload,
-                         final ReadPreference readPreference, final FieldNameValidator commandFieldNameValidator,
-                         final FieldNameValidator payloadFieldNameValidator, final Decoder<T> commandResultDecoder,
-                         final boolean responseExpected, final SessionContext sessionContext) {
+    public <T> T command(final String database, final BsonDocument command, final FieldNameValidator commandFieldNameValidator,
+                         final ReadPreference readPreference, final Decoder<T> commandResultDecoder, final SessionContext sessionContext,
+                         final boolean responseExpected, final SplittablePayload payload,
+                         final FieldNameValidator payloadFieldNameValidator) {
         return executeEnqueuedCommandBasedProtocol(sessionContext);
     }
 
@@ -129,18 +128,17 @@ class TestConnection implements Connection, AsyncConnection {
     }
 
     @Override
-    public <T> void commandAsync(final String database, final BsonDocument command, final ReadPreference readPreference,
-                                 final FieldNameValidator fieldNameValidator, final Decoder<T> commandResultDecoder,
+    public <T> void commandAsync(final String database, final BsonDocument command, final FieldNameValidator fieldNameValidator,
+                                 final ReadPreference readPreference, final Decoder<T> commandResultDecoder,
                                  final SessionContext sessionContext, final SingleResultCallback<T> callback) {
         executeEnqueuedCommandBasedProtocolAsync(sessionContext, callback);
     }
 
     @Override
-    public <T> void commandAsync(final String database, final BsonDocument command, final SplittablePayload payload,
-                                 final ReadPreference readPreference, final FieldNameValidator commandFieldNameValidator,
-                                 final FieldNameValidator payloadFieldNameValidator, final Decoder<T> commandResultDecoder,
-                                 final boolean responseExpected, final SessionContext sessionContext,
-                                 final SingleResultCallback<T> callback) {
+    public <T> void commandAsync(final String database, final BsonDocument command, final FieldNameValidator commandFieldNameValidator,
+                                 final ReadPreference readPreference, final Decoder<T> commandResultDecoder,
+                                 final SessionContext sessionContext, final boolean responseExpected, final SplittablePayload payload,
+                                 final FieldNameValidator payloadFieldNameValidator, final SingleResultCallback<T> callback) {
         executeEnqueuedCommandBasedProtocolAsync(sessionContext, callback);
     }
 

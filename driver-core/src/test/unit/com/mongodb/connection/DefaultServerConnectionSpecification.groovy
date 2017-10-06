@@ -114,7 +114,7 @@ class DefaultServerConnectionSpecification extends Specification {
         def codec = new BsonDocumentCodec()
         def executor = Mock(ProtocolExecutor) {
             1 * execute({
-                compare(new SimpleCommandProtocol('test', command, validator, codec).readPreference(expectedReadPreference), it) },
+                compare(new CommandProtocolImpl('test', command, validator, expectedReadPreference, codec), it) },
                     internalConnection, NoOpSessionContext.INSTANCE) >> {
                 new BsonDocument()
             }
@@ -140,7 +140,7 @@ class DefaultServerConnectionSpecification extends Specification {
         def codec = new BsonDocumentCodec()
         def executor = Mock(ProtocolExecutor) {
             1 * execute({
-                compare(new SimpleCommandProtocol('test', command, validator, codec).readPreference(expectedReadPreference), it) },
+                compare(new CommandProtocolImpl('test', command, validator, expectedReadPreference, codec), it) },
                     internalConnection, NoOpSessionContext.INSTANCE) >> {
                 new BsonDocument()
             }
@@ -314,7 +314,7 @@ class DefaultServerConnectionSpecification extends Specification {
 
         then:
         1 * executor.executeAsync({
-            compare(new SimpleCommandProtocol('test', command, validator, codec).readPreference(expectedReadPreference), it)
+            compare(new CommandProtocolImpl('test', command, validator, expectedReadPreference, codec), it)
         }, internalConnection, NoOpSessionContext.INSTANCE, callback)
 
         where:
@@ -337,7 +337,7 @@ class DefaultServerConnectionSpecification extends Specification {
 
         then:
         1 * executor.executeAsync({
-            compare(new SimpleCommandProtocol('test', command, validator, codec).readPreference(expectedReadPreference), it)
+            compare(new CommandProtocolImpl('test', command, validator, expectedReadPreference, codec), it)
         }, internalConnection, NoOpSessionContext.INSTANCE, callback)
 
         where:

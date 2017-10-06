@@ -17,7 +17,9 @@
 
 package com.mongodb.connection
 
+import com.mongodb.MongoNamespace
 import com.mongodb.ReadPreference
+import com.mongodb.internal.validator.NoOpFieldNameValidator
 import org.bson.BsonBinary
 import org.bson.BsonDocument
 import org.bson.BsonString
@@ -29,14 +31,11 @@ import spock.lang.Specification
 
 import java.nio.ByteBuffer
 
-class SimpleCommandMessageSpecification extends Specification {
+class CommandMessageSpecification extends Specification {
     def 'should encode command message with OP_MSG'() {
         given:
-        def message = new SimpleCommandMessage('db.test', new BsonDocument('count', new BsonString('test')),
-                readPreference,
-                MessageSettings.builder()
-                        .serverVersion(new ServerVersion(3, 6))
-                        .build())
+        def message = new CommandMessage(new MongoNamespace('db.test'), new BsonDocument('count', new BsonString('test')),
+                new NoOpFieldNameValidator(), readPreference, MessageSettings.builder().serverVersion(new ServerVersion(3, 6)).build())
         def output = new BasicOutputBuffer()
 
         when:

@@ -34,6 +34,7 @@ import com.mongodb.connection.Connection;
 import com.mongodb.connection.SessionContext;
 import com.mongodb.internal.validator.NoOpFieldNameValidator;
 import org.bson.BsonDocument;
+import org.bson.FieldNameValidator;
 
 import java.util.List;
 
@@ -57,6 +58,7 @@ import static java.util.Collections.singletonList;
  * @since 3.0
  */
 public class MixedBulkWriteOperation implements AsyncWriteOperation<BulkWriteResult>, WriteOperation<BulkWriteResult> {
+    private static final FieldNameValidator NO_OP_FIELD_NAME_VALIDATOR = new NoOpFieldNameValidator();
     private final MongoNamespace namespace;
     private final List<? extends WriteRequest> writeRequests;
     private final boolean ordered;
@@ -207,9 +209,9 @@ public class MixedBulkWriteOperation implements AsyncWriteOperation<BulkWriteRes
                 writeConcern, bypassDocumentValidation, writeRequests);
 
         while (batch.shouldProcessBatch()) {
-            BsonDocument result = connection.command(namespace.getDatabaseName(), batch.getCommand(), batch.getPayload(),
-                    ReadPreference.primary(), new NoOpFieldNameValidator(), batch.getFieldNameValidator(), batch.getDecoder(),
-                    writeConcern.isAcknowledged(), sessionContext);
+            BsonDocument result = connection.command(namespace.getDatabaseName(), batch.getCommand(), NO_OP_FIELD_NAME_VALIDATOR,
+                    ReadPreference.primary(), batch.getDecoder(), sessionContext, writeConcern.isAcknowledged(), batch.getPayload(),
+                    batch.getFieldNameValidator());
             batch.addResult(result);
             batch = batch.getNextBatch();
         }
@@ -233,28 +235,28 @@ public class MixedBulkWriteOperation implements AsyncWriteOperation<BulkWriteRes
     private void executeBatchesAsync(final AsyncConnection connection, final SessionContext sessionContext,
                                      final BulkWriteBatch batch, final SingleResultCallback<BulkWriteResult> callback) {
         try {
-            connection.commandAsync(namespace.getDatabaseName(), batch.getCommand(), batch.getPayload(), ReadPreference.primary(),
-                    new NoOpFieldNameValidator(), batch.getFieldNameValidator(), batch.getDecoder(), writeConcern.isAcknowledged(),
-                    sessionContext, new SingleResultCallback<BsonDocument>() {
-                @Override
-                public void onResult(final BsonDocument result, final Throwable t) {
-                    if (t != null) {
-                        callback.onResult(null, t);
-                    } else {
-                        batch.addResult(result);
-                        BulkWriteBatch nextBatch = batch.getNextBatch();
-                        if (nextBatch.shouldProcessBatch()) {
-                            executeBatchesAsync(connection, sessionContext, nextBatch, callback);
-                        } else {
-                            if (batch.hasErrors()) {
-                                callback.onResult(null, batch.getError());
+            connection.commandAsync(namespace.getDatabaseName(), batch.getCommand(), NO_OP_FIELD_NAME_VALIDATOR,
+                    ReadPreference.primary(), batch.getDecoder(), sessionContext, writeConcern.isAcknowledged(), batch.getPayload(),
+                    batch.getFieldNameValidator(), new SingleResultCallback<BsonDocument>() {
+                        @Override
+                        public void onResult(final BsonDocument result, final Throwable t) {
+                            if (t != null) {
+                                callback.onResult(null, t);
                             } else {
-                                callback.onResult(batch.getResult(), null);
+                                batch.addResult(result);
+                                BulkWriteBatch nextBatch = batch.getNextBatch();
+                                if (nextBatch.shouldProcessBatch()) {
+                                    executeBatchesAsync(connection, sessionContext, nextBatch, callback);
+                                } else {
+                                    if (batch.hasErrors()) {
+                                        callback.onResult(null, batch.getError());
+                                    } else {
+                                        callback.onResult(batch.getResult(), null);
+                                    }
+                                }
                             }
                         }
-                    }
-                }
-            });
+                    });
         } catch (Throwable t) {
             callback.onResult(null, t);
         }

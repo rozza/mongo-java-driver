@@ -19,52 +19,133 @@ package com.mongodb.connection;
 
 import com.mongodb.MongoNamespace;
 import com.mongodb.ReadPreference;
+import com.mongodb.internal.validator.MappedFieldNameValidator;
+import org.bson.BsonBinaryWriter;
 import org.bson.BsonDocument;
 import org.bson.BsonElement;
 import org.bson.BsonString;
+import org.bson.BsonWriter;
+import org.bson.FieldNameValidator;
+import org.bson.codecs.EncoderContext;
 import org.bson.io.BsonOutput;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static com.mongodb.ReadPreference.primary;
+import static com.mongodb.connection.BsonWriterHelper.writePayload;
 
-abstract class CommandMessage extends RequestMessage {
-    abstract ReadPreference getReadPreference();
+/**
+ * A command message that uses OP_MSG or OP_QUERY to send the command.
+ */
+final class CommandMessage extends RequestMessage {
+    private final MongoNamespace namespace;
+    private final BsonDocument command;
+    private final FieldNameValidator commandFieldNameValidator;
+    private final ReadPreference readPreference;
+    private final SplittablePayload payload;
+    private final FieldNameValidator payloadFieldNameValidator;
+    private final boolean responseExpected;
 
-    CommandMessage(final String collectionName, final OpCode opCode, final MessageSettings settings) {
-        super(collectionName, opCode, settings);
+    CommandMessage(final MongoNamespace namespace, final BsonDocument command, final FieldNameValidator commandFieldNameValidator,
+                   final ReadPreference readPreference, final MessageSettings settings) {
+        this(namespace, command, commandFieldNameValidator, readPreference, settings, true, null, null);
     }
 
-    abstract boolean containsPayload();
+    CommandMessage(final MongoNamespace namespace, final BsonDocument command, final FieldNameValidator commandFieldNameValidator,
+                   final ReadPreference readPreference, final MessageSettings settings, final boolean responseExpected,
+                   final SplittablePayload payload, final FieldNameValidator payloadFieldNameValidator) {
+        super(namespace.getFullName(), getOpCode(settings), settings);
+        this.namespace = namespace;
+        this.command = command;
+        this.commandFieldNameValidator = commandFieldNameValidator;
+        this.responseExpected = responseExpected;
+        this.payload = payload;
+        this.payloadFieldNameValidator = payloadFieldNameValidator;
+        this.readPreference = readPreference;
+    }
 
-    abstract boolean isResponseExpected();
+    boolean containsPayload() {
+        return payload != null;
+    }
 
-    abstract EncodingMetadata encodeMessageBodyWithMetadata(BsonOutput bsonOutput, SessionContext sessionContext);
+    boolean isResponseExpected() {
+        return !useOpMsg() || responseExpected;
+    }
+
+    ReadPreference getReadPreference() {
+        return readPreference;
+    }
 
     @Override
     protected EncodingMetadata encodeMessageBodyWithMetadata(final BsonOutput bsonOutput, final int messageStartPosition,
                                                              final SessionContext sessionContext) {
-        return encodeMessageBodyWithMetadata(bsonOutput, sessionContext);
+        int commandStartPosition;
+        if (useOpMsg()) {
+            bsonOutput.writeInt32(getFlagBits());   // flag bits
+            bsonOutput.writeByte(0);          // payload type
+            commandStartPosition = bsonOutput.getPosition();
+
+            addDocument(getCommandToEncode(), bsonOutput, commandFieldNameValidator, getExtraElements(sessionContext));
+
+            if (payload != null) {
+                bsonOutput.writeByte(1);          // payload type
+                int payloadPosition = bsonOutput.getPosition();
+                bsonOutput.writeInt32(0);         // size
+                bsonOutput.writeCString(payload.getPayloadName());
+                writePayload(new BsonBinaryWriter(bsonOutput, payloadFieldNameValidator), bsonOutput, getSettings(),
+                        commandStartPosition, payload);
+
+                int payloadLength = bsonOutput.getPosition() - payloadPosition;
+                bsonOutput.writeInt32(payloadPosition, payloadLength);
+            }
+        } else {
+            bsonOutput.writeInt32(0);
+            bsonOutput.writeCString(namespace.getFullName());
+            bsonOutput.writeInt32(0);
+            bsonOutput.writeInt32(-1);
+
+            commandStartPosition = bsonOutput.getPosition();
+
+            if (payload == null) {
+                addDocument(getCommandToEncode(), bsonOutput, commandFieldNameValidator, null);
+            } else {
+                addPayload(bsonOutput);
+            }
+        }
+        return new EncodingMetadata(null, commandStartPosition);
     }
 
-    protected static OpCode getOpCode(final MessageSettings settings) {
-        return useOpMsg(settings) ? OpCode.OP_MSG : OpCode.OP_QUERY;
+    private FieldNameValidator getPayloadArrayFieldNameValidator() {
+        Map<String, FieldNameValidator> rootMap = new HashMap<String, FieldNameValidator>();
+        rootMap.put(payload.getPayloadName(), payloadFieldNameValidator);
+        return new MappedFieldNameValidator(commandFieldNameValidator, rootMap);
     }
 
-    protected static boolean useOpMsg(final MessageSettings settings) {
-        return isServerVersionAtLeastThreeDotSix(settings);
+    private void addPayload(final BsonOutput bsonOutput) {
+        BsonWriter writer = new BsonBinaryWriter(bsonOutput, getPayloadArrayFieldNameValidator());
+        if (payload != null) {
+            writer =  new SplittablePayloadBsonWriter(writer, bsonOutput, getSettings(), payload);
+        }
+        BsonDocument commandToEncode = getCommandToEncode();
+        getCodec(commandToEncode).encode(writer, commandToEncode, EncoderContext.builder().build());
     }
 
-    private static boolean isServerVersionAtLeastThreeDotSix(final MessageSettings settings) {
-        return settings.getServerVersion().compareTo(new ServerVersion(3, 5)) >= 0;
+    private int getFlagBits() {
+        if (responseExpected) {
+            return 0;
+        } else {
+            return 1 << 1;
+        }
     }
 
-    protected boolean useOpMsg() {
-        return useOpMsg(getSettings());
+    private boolean useOpMsg() {
+        return getOpCode().equals(OpCode.OP_MSG);
     }
 
-    protected BsonDocument getCommandToEncode(final BsonDocument command) {
+    private BsonDocument getCommandToEncode() {
         BsonDocument commandToEncode = command;
         if (!useOpMsg() && !isDefaultReadPreference(getReadPreference())) {
             commandToEncode = new BsonDocument("$query", command).append("$readPreference", getReadPreference().toDocument());
@@ -72,10 +153,7 @@ abstract class CommandMessage extends RequestMessage {
         return commandToEncode;
     }
 
-    protected List<BsonElement> getExtraElements(final SessionContext sessionContext) {
-        if (!useOpMsg()) {
-            return null;
-        }
+    private List<BsonElement> getExtraElements(final SessionContext sessionContext) {
         List<BsonElement> extraElements = new ArrayList<BsonElement>();
         extraElements.add(new BsonElement("$db", new BsonString(new MongoNamespace(getCollectionName()).getDatabaseName())));
         if (sessionContext.hasSession()) {
@@ -90,7 +168,16 @@ abstract class CommandMessage extends RequestMessage {
         return extraElements;
     }
 
-    protected boolean isDefaultReadPreference(final ReadPreference readPreference) {
+    private boolean isDefaultReadPreference(final ReadPreference readPreference) {
         return readPreference.equals(primary());
     }
+
+    private static OpCode getOpCode(final MessageSettings settings) {
+        return isServerVersionAtLeastThreeDotSix(settings) ? OpCode.OP_MSG : OpCode.OP_QUERY;
+    }
+
+    private static boolean isServerVersionAtLeastThreeDotSix(final MessageSettings settings) {
+        return settings.getServerVersion().compareTo(new ServerVersion(3, 5)) >= 0;
+    }
+
 }

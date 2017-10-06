@@ -111,51 +111,48 @@ class DefaultServerConnection extends AbstractReferenceCounted implements Connec
     public <T> T command(final String database, final BsonDocument command, final boolean slaveOk,
                          final FieldNameValidator fieldNameValidator,
                          final Decoder<T> commandResultDecoder) {
-        return command(database, command, getReadPreferenceFromSlaveOk(slaveOk), fieldNameValidator, commandResultDecoder,
+        return command(database, command, fieldNameValidator, getReadPreferenceFromSlaveOk(slaveOk), commandResultDecoder,
                 NoOpSessionContext.INSTANCE);
     }
 
     @Override
-    public <T> T command(final String database, final BsonDocument command, final ReadPreference readPreference,
-                         final FieldNameValidator fieldNameValidator, final Decoder<T> commandResultDecoder,
-                         final SessionContext sessionContext) {
-        return executeProtocol(new SimpleCommandProtocol<T>(database, command, fieldNameValidator, commandResultDecoder)
-                                       .readPreference(readPreference), sessionContext);
+    public <T> T command(final String database, final BsonDocument command, final FieldNameValidator fieldNameValidator,
+                         final ReadPreference readPreference, final Decoder<T> commandResultDecoder, final SessionContext sessionContext) {
+        return command(database, command, fieldNameValidator, readPreference, commandResultDecoder, sessionContext, true, null, null);
     }
 
     @Override
-    public <T> T command(final String database, final BsonDocument command, final SplittablePayload payload,
-                         final ReadPreference readPreference, final FieldNameValidator commandFieldNameValidator,
-                         final FieldNameValidator payloadFieldNameValidator, final Decoder<T> commandResultDecoder,
-                         final boolean responseExpected, final SessionContext sessionContext) {
-        return executeProtocol(new SplittablePayloadCommandProtocol<T>(database, command, payload, readPreference,
-                commandFieldNameValidator, payloadFieldNameValidator, commandResultDecoder, responseExpected), sessionContext);
+    public <T> T command(final String database, final BsonDocument command, final FieldNameValidator commandFieldNameValidator,
+                         final ReadPreference readPreference, final Decoder<T> commandResultDecoder, final SessionContext sessionContext,
+                         final boolean responseExpected, final SplittablePayload payload,
+                         final FieldNameValidator payloadFieldNameValidator) {
+        return executeProtocol(new CommandProtocolImpl<T>(database, command, commandFieldNameValidator, readPreference,
+                commandResultDecoder, responseExpected, payload,  payloadFieldNameValidator), sessionContext);
     }
 
     @Override
     public <T> void commandAsync(final String database, final BsonDocument command, final boolean slaveOk,
                                  final FieldNameValidator fieldNameValidator, final Decoder<T> commandResultDecoder,
                                  final SingleResultCallback<T> callback) {
-        commandAsync(database, command, getReadPreferenceFromSlaveOk(slaveOk), fieldNameValidator, commandResultDecoder,
+        commandAsync(database, command, fieldNameValidator, getReadPreferenceFromSlaveOk(slaveOk), commandResultDecoder,
                 NoOpSessionContext.INSTANCE, callback);
     }
 
     @Override
-    public <T> void commandAsync(final String database, final BsonDocument command, final ReadPreference readPreference,
-                                 final FieldNameValidator fieldNameValidator, final Decoder<T> commandResultDecoder,
+    public <T> void commandAsync(final String database, final BsonDocument command, final FieldNameValidator fieldNameValidator,
+                                 final ReadPreference readPreference, final Decoder<T> commandResultDecoder,
                                  final SessionContext sessionContext, final SingleResultCallback<T> callback) {
-        executeProtocolAsync(new SimpleCommandProtocol<T>(database, command, fieldNameValidator, commandResultDecoder)
-                                     .readPreference(readPreference), sessionContext, callback);
+        commandAsync(database, command, fieldNameValidator, readPreference, commandResultDecoder, sessionContext, true, null, null,
+                callback);
     }
 
     @Override
-    public <T> void commandAsync(final String database, final BsonDocument command, final SplittablePayload payload,
-                                 final ReadPreference readPreference, final FieldNameValidator commandFieldNameValidator,
-                                 final FieldNameValidator payloadFieldNameValidator, final Decoder<T> commandResultDecoder,
-                                 final boolean responseExpected, final SessionContext sessionContext,
-                                 final SingleResultCallback<T> callback) {
-        executeProtocolAsync(new SplittablePayloadCommandProtocol<T>(database, command, payload, readPreference, commandFieldNameValidator,
-                        payloadFieldNameValidator, commandResultDecoder, responseExpected), sessionContext, callback);
+    public <T> void commandAsync(final String database, final BsonDocument command, final FieldNameValidator commandFieldNameValidator,
+                                 final ReadPreference readPreference, final Decoder<T> commandResultDecoder,
+                                 final SessionContext sessionContext, final boolean responseExpected, final SplittablePayload payload,
+                                 final FieldNameValidator payloadFieldNameValidator, final SingleResultCallback<T> callback) {
+        executeProtocolAsync(new CommandProtocolImpl<T>(database, command, commandFieldNameValidator, readPreference,
+                commandResultDecoder, responseExpected, payload,  payloadFieldNameValidator), sessionContext, callback);
     }
 
     @Override

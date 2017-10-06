@@ -99,7 +99,7 @@ public interface Connection extends ReferenceCounted {
      * @param commandResultDecoder the decoder for the result
      * @param <T>                  the type of the result
      * @return the command result
-     * @deprecated Prefer {@link #command(String, BsonDocument, ReadPreference, FieldNameValidator, Decoder, SessionContext)}
+     * @deprecated Prefer {@link #command(String, BsonDocument, FieldNameValidator, ReadPreference, Decoder, SessionContext)}
      */
     @Deprecated
     <T> T command(String database, BsonDocument command, boolean slaveOk, FieldNameValidator fieldNameValidator,
@@ -111,14 +111,14 @@ public interface Connection extends ReferenceCounted {
      * @param <T>                  the type of the result
      * @param database             the database to execute the command in
      * @param command              the command document
-     * @param readPreference       the read preference that was applied to get this connection
      * @param fieldNameValidator   the field name validator for the command document
+     * @param readPreference       the read preference that was applied to get this connection
      * @param commandResultDecoder the decoder for the result
      * @param sessionContext       the session context
      * @return the command result
      * @since 3.6
      */
-    <T> T command(String database, BsonDocument command, ReadPreference readPreference, FieldNameValidator fieldNameValidator,
+    <T> T command(String database, BsonDocument command, FieldNameValidator fieldNameValidator, ReadPreference readPreference,
                   Decoder<T> commandResultDecoder, SessionContext sessionContext);
 
     /**
@@ -127,19 +127,19 @@ public interface Connection extends ReferenceCounted {
      * @param <T>                       the type of the result
      * @param database                  the database to execute the command in
      * @param command                   the command document
-     * @param payload                   the splittable payload to incorporate with the command
-     * @param readPreference            the read preference that was applied to get this connection
      * @param commandFieldNameValidator the field name validator for the command document
-     * @param payloadFieldNameValidator the field name validator for the payload documents
+     * @param readPreference            the read preference that was applied to get this connection
      * @param commandResultDecoder      the decoder for the result
-     * @param responseExpected          true if a response from the server is expected
      * @param sessionContext            the session context
+     * @param responseExpected          true if a response from the server is expected
+     * @param payload                   the splittable payload to incorporate with the command
+     * @param payloadFieldNameValidator the field name validator for the payload documents
      * @return the command result
      * @since 3.6
      */
-    <T> T command(String database, BsonDocument command, SplittablePayload payload, ReadPreference readPreference,
-                  FieldNameValidator commandFieldNameValidator, FieldNameValidator payloadFieldNameValidator,
-                  Decoder<T> commandResultDecoder, boolean responseExpected, SessionContext sessionContext);
+    <T> T command(String database, BsonDocument command, FieldNameValidator commandFieldNameValidator, ReadPreference readPreference,
+                  Decoder<T> commandResultDecoder, SessionContext sessionContext, boolean responseExpected,
+                  SplittablePayload payload, FieldNameValidator payloadFieldNameValidator);
 
     /**
      * Execute the query.

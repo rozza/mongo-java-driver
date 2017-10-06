@@ -66,7 +66,7 @@ import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
 final class BulkWriteBatch {
     private static final CodecRegistry REGISTRY = fromProviders(new BsonValueCodecProvider());
     private static final Decoder<BsonDocument> DECODER = REGISTRY.get(BsonDocument.class);
-    private static final FieldNameValidator NOOP_FIELD_NAME_VALIDATOR = new NoOpFieldNameValidator();
+    private static final FieldNameValidator NO_OP_FIELD_NAME_VALIDATOR = new NoOpFieldNameValidator();
     private static final WriteRequestEncoder WRITE_REQUEST_ENCODER = new WriteRequestEncoder();
 
     private final MongoNamespace namespace;
@@ -219,9 +219,9 @@ final class BulkWriteBatch {
             } else {
                 rootMap.put("u", new UpdateFieldNameValidator());
             }
-            return new MappedFieldNameValidator(NOOP_FIELD_NAME_VALIDATOR, rootMap);
+            return new MappedFieldNameValidator(NO_OP_FIELD_NAME_VALIDATOR, rootMap);
         } else {
-            return NOOP_FIELD_NAME_VALIDATOR;
+            return NO_OP_FIELD_NAME_VALIDATOR;
         }
     }
 

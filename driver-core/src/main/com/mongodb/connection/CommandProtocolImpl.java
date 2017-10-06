@@ -25,11 +25,12 @@ import org.bson.BsonDocument;
 import org.bson.FieldNameValidator;
 import org.bson.codecs.Decoder;
 
+import static com.mongodb.assertions.Assertions.isTrueArgument;
 import static com.mongodb.assertions.Assertions.notNull;
 import static com.mongodb.connection.ProtocolHelper.getMessageSettings;
 import static java.lang.String.format;
 
-class SplittablePayloadCommandProtocol<T> implements CommandProtocol<T> {
+class CommandProtocolImpl<T> implements CommandProtocol<T> {
     public static final Logger LOGGER = Loggers.getLogger("protocol.command");
     private final MongoNamespace namespace;
     private final BsonDocument command;
@@ -41,19 +42,26 @@ class SplittablePayloadCommandProtocol<T> implements CommandProtocol<T> {
     private final boolean responseExpected;
     private SessionContext sessionContext;
 
-    SplittablePayloadCommandProtocol(final String database, final BsonDocument command, final SplittablePayload payload,
-                                     final ReadPreference readPreference, final FieldNameValidator commandFieldNameValidator,
-                                     final FieldNameValidator payloadFieldNameValidator, final Decoder<T> commandResultDecoder,
-                                     final boolean responseExpected) {
+    CommandProtocolImpl(final String database, final BsonDocument command, final FieldNameValidator commandFieldNameValidator,
+                        final ReadPreference readPreference, final Decoder<T> commandResultDecoder) {
+        this(database, command, commandFieldNameValidator, readPreference, commandResultDecoder, true, null, null);
+    }
+
+    CommandProtocolImpl(final String database, final BsonDocument command, final FieldNameValidator commandFieldNameValidator,
+                        final ReadPreference readPreference, final Decoder<T> commandResultDecoder, final boolean responseExpected,
+                        final SplittablePayload payload, final FieldNameValidator payloadFieldNameValidator) {
         notNull("database", database);
         this.namespace = new MongoNamespace(notNull("database", database), MongoNamespace.COMMAND_COLLECTION_NAME);
         this.command = notNull("command", command);
-        this.payload = notNull("payload", payload);
-        this.readPreference = notNull("readPreference", readPreference);
         this.commandFieldNameValidator = notNull("commandFieldNameValidator", commandFieldNameValidator);
-        this.payloadFieldNameValidator = notNull("payloadFieldNameValidator", payloadFieldNameValidator);
+        this.readPreference = notNull("readPreference", readPreference);
         this.commandResultDecoder = notNull("commandResultDecoder", commandResultDecoder);
         this.responseExpected = responseExpected;
+        this.payload = payload;
+        this.payloadFieldNameValidator = payloadFieldNameValidator;
+
+        isTrueArgument("payloadFieldNameValidator cannot be null if there is a payload.",
+                payload == null || payloadFieldNameValidator != null);
     }
 
     @Override
@@ -64,8 +72,7 @@ class SplittablePayloadCommandProtocol<T> implements CommandProtocol<T> {
                                 namespace.getDatabaseName(), connection.getDescription().getConnectionId(),
                                 connection.getDescription().getServerAddress()));
         }
-        SplittablePayloadCommandMessage commandMessage = getSplittablePayloadCommandMessage(connection);
-        T retval = connection.sendAndReceive(commandMessage, commandResultDecoder, sessionContext);
+        T retval = connection.sendAndReceive(getCommandMessage(connection), commandResultDecoder, sessionContext);
         LOGGER.debug("Command execution completed");
         return retval;
     }
@@ -80,31 +87,31 @@ class SplittablePayloadCommandProtocol<T> implements CommandProtocol<T> {
                                     connection.getDescription().getServerAddress()));
             }
 
-            SplittablePayloadCommandMessage commandMessage = getSplittablePayloadCommandMessage(connection);
-            connection.sendAndReceiveAsync(commandMessage, commandResultDecoder, sessionContext, new SingleResultCallback<T>() {
-                @Override
-                public void onResult(final T result, final Throwable t) {
-                    if (t != null) {
-                        callback.onResult(null, t);
-                    } else {
-                        callback.onResult(result, null);
-                    }
-                }
-            });
+            connection.sendAndReceiveAsync(getCommandMessage(connection), commandResultDecoder, sessionContext,
+                    new SingleResultCallback<T>() {
+                        @Override
+                        public void onResult(final T result, final Throwable t) {
+                            if (t != null) {
+                                callback.onResult(null, t);
+                            } else {
+                                callback.onResult(result, null);
+                            }
+                        }
+                    });
         } catch (Throwable t) {
             callback.onResult(null, t);
         }
     }
 
     @Override
-    public SplittablePayloadCommandProtocol<T> sessionContext(final SessionContext sessionContext) {
+    public CommandProtocolImpl<T> sessionContext(final SessionContext sessionContext) {
         this.sessionContext = sessionContext;
         return this;
     }
 
-    private SplittablePayloadCommandMessage getSplittablePayloadCommandMessage(final InternalConnection connection) {
-        return new SplittablePayloadCommandMessage(namespace, command, payload, readPreference, commandFieldNameValidator,
-                payloadFieldNameValidator, getMessageSettings(connection.getDescription()), responseExpected);
+    private CommandMessage getCommandMessage(final InternalConnection connection) {
+        return new CommandMessage(namespace, command, commandFieldNameValidator, readPreference,
+                    getMessageSettings(connection.getDescription()), responseExpected, payload, payloadFieldNameValidator);
     }
 
     private String getCommandName() {
