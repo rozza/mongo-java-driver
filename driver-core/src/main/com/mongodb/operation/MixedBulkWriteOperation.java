@@ -210,8 +210,8 @@ public class MixedBulkWriteOperation implements AsyncWriteOperation<BulkWriteRes
 
         while (batch.shouldProcessBatch()) {
             BsonDocument result = connection.command(namespace.getDatabaseName(), batch.getCommand(), NO_OP_FIELD_NAME_VALIDATOR,
-                    ReadPreference.primary(), batch.getDecoder(), sessionContext, writeConcern.isAcknowledged(), batch.getPayload(),
-                    batch.getFieldNameValidator());
+                    ReadPreference.primary(), batch.getDecoder(), sessionContext, shouldAcknowledge(batch, writeConcern),
+                    batch.getPayload(), batch.getFieldNameValidator());
             batch.addResult(result);
             batch = batch.getNextBatch();
         }
@@ -236,8 +236,8 @@ public class MixedBulkWriteOperation implements AsyncWriteOperation<BulkWriteRes
                                      final BulkWriteBatch batch, final SingleResultCallback<BulkWriteResult> callback) {
         try {
             connection.commandAsync(namespace.getDatabaseName(), batch.getCommand(), NO_OP_FIELD_NAME_VALIDATOR,
-                    ReadPreference.primary(), batch.getDecoder(), sessionContext, writeConcern.isAcknowledged(), batch.getPayload(),
-                    batch.getFieldNameValidator(), new SingleResultCallback<BsonDocument>() {
+                    ReadPreference.primary(), batch.getDecoder(), sessionContext, shouldAcknowledge(batch, writeConcern),
+                    batch.getPayload(), batch.getFieldNameValidator(), new SingleResultCallback<BsonDocument>() {
                         @Override
                         public void onResult(final BsonDocument result, final Throwable t) {
                             if (t != null) {
@@ -296,5 +296,9 @@ public class MixedBulkWriteOperation implements AsyncWriteOperation<BulkWriteRes
         } catch (Throwable t) {
             callback.onResult(null, t);
         }
+    }
+
+    private boolean shouldAcknowledge(final BulkWriteBatch batch, final WriteConcern writeConcern) {
+        return ordered ? batch.hasAnotherBatch() || writeConcern.isAcknowledged() : writeConcern.isAcknowledged();
     }
 }

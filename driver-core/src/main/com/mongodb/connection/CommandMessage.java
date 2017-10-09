@@ -80,10 +80,10 @@ final class CommandMessage extends RequestMessage {
     }
 
     @Override
-    protected EncodingMetadata encodeMessageBodyWithMetadata(final BsonOutput bsonOutput, final int messageStartPosition,
-                                                             final SessionContext sessionContext) {
+    protected EncodingMetadata encodeMessageBodyWithMetadata(final BsonOutput bsonOutput, final SessionContext sessionContext) {
         int commandStartPosition;
         if (useOpMsg()) {
+            int flagPosition = bsonOutput.getPosition();
             bsonOutput.writeInt32(getFlagBits());   // flag bits
             bsonOutput.writeByte(0);          // payload type
             commandStartPosition = bsonOutput.getPosition();
@@ -100,6 +100,11 @@ final class CommandMessage extends RequestMessage {
 
                 int payloadLength = bsonOutput.getPosition() - payloadPosition;
                 bsonOutput.writeInt32(payloadPosition, payloadLength);
+
+                // Ensure we acknowledge if the payload had to be split
+                if (!responseExpected && payload.hasAnotherSplit()) {
+                    bsonOutput.writeInt32(flagPosition, 0);
+                }
             }
         } else {
             bsonOutput.writeInt32(0);

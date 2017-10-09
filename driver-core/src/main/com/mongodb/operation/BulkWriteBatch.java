@@ -192,6 +192,10 @@ final class BulkWriteBatch {
         return !bulkWriteBatchCombiner.shouldStopSendingMoreBatches() && !payload.isEmpty();
     }
 
+    public boolean hasAnotherBatch() {
+        return !unprocessed.isEmpty();
+    }
+
     public BulkWriteBatch getNextBatch() {
         if (payload.hasAnotherSplit()) {
             IndexMap nextIndexMap = IndexMap.create();
