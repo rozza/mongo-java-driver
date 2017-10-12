@@ -35,6 +35,7 @@ import java.util.List;
 import java.util.Map;
 
 import static com.mongodb.ReadPreference.primary;
+import static com.mongodb.assertions.Assertions.isTrue;
 import static com.mongodb.connection.BsonWriterHelper.writePayload;
 
 /**
@@ -48,6 +49,8 @@ final class CommandMessage extends RequestMessage {
     private final SplittablePayload payload;
     private final FieldNameValidator payloadFieldNameValidator;
     private final boolean responseExpected;
+    private boolean messageHasBeenEncoded;
+    private boolean updatedResponseExpected;
 
     CommandMessage(final MongoNamespace namespace, final BsonDocument command, final FieldNameValidator commandFieldNameValidator,
                    final ReadPreference readPreference, final MessageSettings settings) {
@@ -72,7 +75,8 @@ final class CommandMessage extends RequestMessage {
     }
 
     boolean isResponseExpected() {
-        return !useOpMsg() || responseExpected;
+        isTrue("The message must be encoded before determining if a response is expected", messageHasBeenEncoded);
+        return updatedResponseExpected;
     }
 
     ReadPreference getReadPreference() {
@@ -84,8 +88,8 @@ final class CommandMessage extends RequestMessage {
         int commandStartPosition;
         if (useOpMsg()) {
             int flagPosition = bsonOutput.getPosition();
-            bsonOutput.writeInt32(getFlagBits());   // flag bits
-            bsonOutput.writeByte(0);          // payload type
+            bsonOutput.writeInt32(0);   // flag bits
+            bsonOutput.writeByte(0);    // payload type
             commandStartPosition = bsonOutput.getPosition();
 
             addDocument(getCommandToEncode(), bsonOutput, commandFieldNameValidator, getExtraElements(sessionContext));
@@ -100,12 +104,13 @@ final class CommandMessage extends RequestMessage {
 
                 int payloadLength = bsonOutput.getPosition() - payloadPosition;
                 bsonOutput.writeInt32(payloadPosition, payloadLength);
-
-                // Ensure we acknowledge if the payload had to be split
-                if (!responseExpected && payload.hasAnotherSplit()) {
-                    bsonOutput.writeInt32(flagPosition, 0);
-                }
             }
+
+            // Require a response if there is another payload in this batch
+            updatedResponseExpected = payload != null ? payload.hasAnotherSplit() || responseExpected : responseExpected;
+
+            // Write the flag bits
+            bsonOutput.writeInt32(flagPosition, getFlagBits());
         } else {
             bsonOutput.writeInt32(0);
             bsonOutput.writeCString(namespace.getFullName());
@@ -117,9 +122,11 @@ final class CommandMessage extends RequestMessage {
             if (payload == null) {
                 addDocument(getCommandToEncode(), bsonOutput, commandFieldNameValidator, null);
             } else {
-                addPayload(bsonOutput);
+                addDocumentWithPayload(bsonOutput);
             }
+            updatedResponseExpected = responseExpected;
         }
+        messageHasBeenEncoded = true;
         return new EncodingMetadata(null, commandStartPosition);
     }
 
@@ -129,7 +136,7 @@ final class CommandMessage extends RequestMessage {
         return new MappedFieldNameValidator(commandFieldNameValidator, rootMap);
     }
 
-    private void addPayload(final BsonOutput bsonOutput) {
+    private void addDocumentWithPayload(final BsonOutput bsonOutput) {
         BsonWriter writer = new BsonBinaryWriter(bsonOutput, getPayloadArrayFieldNameValidator());
         if (payload != null) {
             writer =  new SplittablePayloadBsonWriter(writer, bsonOutput, getSettings(), payload);
@@ -139,7 +146,7 @@ final class CommandMessage extends RequestMessage {
     }
 
     private int getFlagBits() {
-        if (responseExpected) {
+        if (updatedResponseExpected) {
             return 0;
         } else {
             return 1 << 1;

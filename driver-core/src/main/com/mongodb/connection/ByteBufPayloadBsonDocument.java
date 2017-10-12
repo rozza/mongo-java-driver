@@ -45,45 +45,9 @@ class ByteBufPayloadBsonDocument extends AbstractByteBufBsonDocument implements 
         CompositeByteBuf outputByteBuf = new CompositeByteBuf(duplicateByteBuffers);
         outputByteBuf.position(startPosition);
 
-        int curDocumentStartPosition = startPosition;
-        int documentSizeInBytes = outputByteBuf.getInt();
-        ByteBuf slice = outputByteBuf.duplicate();
-        slice.position(curDocumentStartPosition);
-        slice.limit(curDocumentStartPosition + documentSizeInBytes);
-        ByteBufBsonDocument commandDocument = new ByteBufBsonDocument(slice);
-
-        curDocumentStartPosition += documentSizeInBytes;
-
-        slice = outputByteBuf.duplicate();
-        slice.position(curDocumentStartPosition);
-        if (slice.get() != 1) {
-            throw new IllegalArgumentException("Invalid payload type");
-        }
-        int sliceSize = slice.remaining();
-        int payloadSize = slice.getInt();
-        if (sliceSize != payloadSize) {
-            throw new IllegalArgumentException("Invalid payload size");
-        }
-
-        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        byte nextByte = slice.get();
-        while (nextByte != 0) {
-            outputStream.write(nextByte);
-            nextByte = slice.get();
-        }
-        String payloadName = new String(outputStream.toByteArray(), UTF8_CHARSET);
-
-        List<ByteBufBsonDocument> payload = new ArrayList<ByteBufBsonDocument>();
-        curDocumentStartPosition = slice.position();
-        while (outputByteBuf.hasRemaining()) {
-            documentSizeInBytes = slice.getInt();
-            slice.position(curDocumentStartPosition);
-            slice.limit(curDocumentStartPosition + documentSizeInBytes);
-            ByteBufBsonDocument doc = new ByteBufBsonDocument(slice);
-            payload.add(doc);
-            curDocumentStartPosition += documentSizeInBytes;
-            outputByteBuf.position(curDocumentStartPosition);
-        }
+        ByteBufBsonDocument commandDocument = createByteBufBsonDocument(outputByteBuf);
+        String payloadName = validatePayloadAndGetName(outputByteBuf);
+        List<ByteBufBsonDocument> payload = createPayload(outputByteBuf);
 
         for (ByteBuf byteBuffer : duplicateByteBuffers) {
             byteBuffer.release();
@@ -125,6 +89,43 @@ class ByteBufPayloadBsonDocument extends AbstractByteBufBsonDocument implements 
         this.commandDocument = commandDocument;
         this.payloadName = payloadName;
         this.payload = payload;
+    }
+
+    private static List<ByteBufBsonDocument> createPayload(final CompositeByteBuf outputByteBuf) {
+        List<ByteBufBsonDocument> payload = new ArrayList<ByteBufBsonDocument>();
+        while (outputByteBuf.hasRemaining()) {
+            payload.add(createByteBufBsonDocument(outputByteBuf));
+        }
+        return payload;
+    }
+
+    private static ByteBufBsonDocument createByteBufBsonDocument(final CompositeByteBuf outputByteBuf) {
+        int startPosition = outputByteBuf.position();
+        int documentSizeInBytes = outputByteBuf.getInt();
+        ByteBuf slice = outputByteBuf.duplicate();
+        slice.position(startPosition);
+        slice.limit(startPosition + documentSizeInBytes);
+        outputByteBuf.position(startPosition + documentSizeInBytes);
+        return new ByteBufBsonDocument(slice);
+    }
+
+    private static String validatePayloadAndGetName(final CompositeByteBuf outputByteBuf) {
+        if (outputByteBuf.get() != 1) {
+            throw new IllegalArgumentException("Invalid payload type");
+        }
+        int sliceSize = outputByteBuf.remaining();
+        int payloadSize = outputByteBuf.getInt();
+        if (sliceSize != payloadSize) {
+            throw new IllegalArgumentException("Invalid payload size");
+        }
+
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        byte nextByte = outputByteBuf.get();
+        while (nextByte != 0) {
+            outputStream.write(nextByte);
+            nextByte = outputByteBuf.get();
+        }
+        return new String(outputStream.toByteArray(), UTF8_CHARSET);
     }
 
     // see https://docs.oracle.com/javase/6/docs/platform/serialization/spec/input.html
