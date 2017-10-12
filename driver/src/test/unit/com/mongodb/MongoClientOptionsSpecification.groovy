@@ -651,10 +651,10 @@ class MongoClientOptionsSpecification extends Specification {
                         'connectTimeout', 'connectionPoolListeners', 'cursorFinalizerEnabled', 'dbDecoderFactory', 'dbEncoderFactory',
                         'description', 'heartbeatConnectTimeout', 'heartbeatFrequency', 'heartbeatSocketTimeout', 'localThreshold',
                         'maxConnectionIdleTime', 'maxConnectionLifeTime', 'maxConnectionsPerHost', 'maxWaitTime', 'minConnectionsPerHost',
-                        'minHeartbeatFrequency', 'readConcern', 'readPreference', 'requiredReplicaSetName', 'serverListeners',
-                        'serverMonitorListeners', 'serverSelectionTimeout', 'socketFactory', 'socketKeepAlive', 'socketTimeout',
-                        'sslContext', 'sslEnabled', 'sslInvalidHostNameAllowed', 'threadsAllowedToBlockForConnectionMultiplier',
-                        'writeConcern']
+                        'minHeartbeatFrequency', 'readConcern', 'readPreference', 'requiredReplicaSetName', 'retryWrites',
+                        'serverListeners', 'serverMonitorListeners', 'serverSelectionTimeout', 'socketFactory', 'socketKeepAlive',
+                        'socketTimeout', 'sslContext', 'sslEnabled', 'sslInvalidHostNameAllowed',
+                        'threadsAllowedToBlockForConnectionMultiplier', 'writeConcern']
 
         then:
         actual == expected

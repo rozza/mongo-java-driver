@@ -138,6 +138,28 @@ public interface AsyncConnection extends ReferenceCounted {
                           SingleResultCallback<T> callback);
 
     /**
+     * Executes the command, consuming as much of the {@code SplittablePayload} as possible.
+     *
+     * @param <T>                       the type of the result
+     * @param database                  the database to execute the command in
+     * @param command                   the command document
+     * @param commandFieldNameValidator the field name validator for the command document
+     * @param readPreference            the read preference that was applied to get this connection
+     * @param commandResultDecoder      the decoder for the result
+     * @param sessionContext            the session context
+     * @param responseExpected          true if a response from the server is expected
+     * @param payload                   the splittable payload to incorporate with the command
+     * @param payloadFieldNameValidator the field name validator for the payload documents
+     * @param txnNumber                 the transaction number
+     * @param callback                  the callback to be passed the write result
+     * @since 3.6
+     */
+    <T> void commandAsync(String database, BsonDocument command, FieldNameValidator commandFieldNameValidator,
+                          ReadPreference readPreference, Decoder<T> commandResultDecoder, SessionContext sessionContext,
+                          boolean responseExpected, SplittablePayload payload, FieldNameValidator payloadFieldNameValidator,
+                          Long txnNumber, SingleResultCallback<T> callback);
+
+    /**
      * Execute the query asynchronously.
      *
      * @param namespace       the namespace to query

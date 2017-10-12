@@ -17,6 +17,7 @@
 package com.mongodb.operation;
 
 import com.mongodb.MongoClientException;
+import com.mongodb.MongoException;
 import com.mongodb.MongoNamespace;
 import com.mongodb.ReadConcern;
 import com.mongodb.ServerAddress;
@@ -74,6 +75,14 @@ final class OperationHelper {
         void call(AsyncConnectionSource source, AsyncConnection connection, Throwable t);
     }
 
+    interface CallableWithConnectionAndTransactionNumber<T> {
+        T call(Connection connection, Long txnNumber);
+    }
+
+    interface AsyncCallableWithConnectionAndTransactionNumber<T> {
+        void call(AsyncConnection connection, Long txnNumber, SingleResultCallback<T> callback);
+    }
+
     static void validateReadConcern(final Connection connection, final ReadConcern readConcern) {
         if (!serverIsAtLeastVersionThreeDotTwo(connection.getDescription()) && !readConcern.isServerDefault()) {
             throw new IllegalArgumentException(format("ReadConcern not supported by server version: %s",
@@ -108,6 +117,11 @@ final class OperationHelper {
         }
     }
 
+    static void validateCollationAndRetryWrites(final Connection connection, final Collation collation, final boolean retryWrites) {
+        validateCollation(connection, collation);
+        validateRetryWrites(connection, retryWrites);
+    }
+
     static void validateCollationAndWriteConcern(final Connection connection, final Collation collation,
                                                  final WriteConcern writeConcern) {
         if (!serverIsAtLeastVersionThreeDotFour(connection.getDescription()) && collation != null) {
@@ -126,6 +140,25 @@ final class OperationHelper {
                     connection.getDescription().getServerVersion()));
         }
         callable.call(connection, throwable);
+    }
+
+    static void validateCollationAndRetryWrites(final AsyncConnection connection, final Collation collation, final boolean retryWrites,
+                                                final AsyncCallableWithConnection callable) {
+        validateCollation(connection, collation, new AsyncCallableWithConnection() {
+            @Override
+            public void call(final AsyncConnection connection, final Throwable t) {
+                if (t != null) {
+                    callable.call(null, t);
+                } else {
+                    validateRetryWrites(connection, retryWrites, new AsyncCallableWithConnection() {
+                        @Override
+                        public void call(final AsyncConnection connection, final Throwable t) {
+                            callable.call(connection, t);
+                        }
+                    });
+                }
+            }
+        });
     }
 
     static void validateCollationAndWriteConcern(final AsyncConnection connection, final Collation collation,
@@ -151,7 +184,7 @@ final class OperationHelper {
     }
 
     static void validateWriteRequestCollations(final Connection connection, final List<? extends WriteRequest> requests,
-                                                 final WriteConcern writeConcern) {
+                                               final WriteConcern writeConcern) {
         Collation collation = null;
         for (WriteRequest request : requests) {
             if (request instanceof UpdateRequest) {
@@ -188,24 +221,52 @@ final class OperationHelper {
     }
 
     static void validateWriteRequests(final Connection connection, final Boolean bypassDocumentValidation,
-                                        final List<? extends WriteRequest> requests, final WriteConcern writeConcern) {
+                                      final List<? extends WriteRequest> requests, final WriteConcern writeConcern,
+                                      final Boolean retryWrites) {
         checkBypassDocumentValidationIsSupported(connection, bypassDocumentValidation, writeConcern);
         validateWriteRequestCollations(connection, requests, writeConcern);
+        validateRetryWrites(connection, retryWrites);
     }
 
     static void validateWriteRequests(final AsyncConnection connection, final Boolean bypassDocumentValidation,
-                                        final List<? extends WriteRequest> requests, final WriteConcern writeConcern,
-                                        final AsyncCallableWithConnection callable) {
+                                      final List<? extends WriteRequest> requests, final WriteConcern writeConcern,
+                                        final Boolean retryWrites, final AsyncCallableWithConnection callable) {
         checkBypassDocumentValidationIsSupported(connection, bypassDocumentValidation, writeConcern, new AsyncCallableWithConnection() {
             @Override
             public void call(final AsyncConnection connection, final Throwable t) {
                 if (t != null) {
                     callable.call(connection, t);
                 } else {
-                    validateWriteRequestCollations(connection, requests, writeConcern, callable);
+                    validateWriteRequestCollations(connection, requests, writeConcern, new AsyncCallableWithConnection() {
+                        @Override
+                        public void call(final AsyncConnection connection, final Throwable t) {
+                            if (t != null) {
+                                callable.call(connection, t);
+                            } else {
+                                validateRetryWrites(connection, retryWrites, callable);
+                            }
+                        }
+                    });
                 }
             }
         });
+    }
+
+    static void validateRetryWrites(final Connection connection, final boolean retryWrites) {
+        if (retryWrites && !serverIsAtLeastVersionThreeDotSix(connection.getDescription())) {
+            throw new IllegalArgumentException(format("Retryable writes are not supported by server version: %s",
+                    connection.getDescription().getServerVersion()));
+        }
+    }
+
+    static void validateRetryWrites(final AsyncConnection connection, final Boolean retryWrites,
+                                    final AsyncCallableWithConnection callable) {
+        Throwable throwable = null;
+        if (retryWrites && !serverIsAtLeastVersionThreeDotSix(connection.getDescription())) {
+            throwable = new IllegalArgumentException(format("Retryable writes are not supported by server version: %s",
+                    connection.getDescription().getServerVersion()));
+        }
+        callable.call(connection, throwable);
     }
 
     static void validateIndexRequestCollations(final Connection connection, final List<IndexRequest> requests) {
@@ -218,7 +279,7 @@ final class OperationHelper {
     }
 
     static void validateIndexRequestCollations(final AsyncConnection connection, final List<IndexRequest> requests,
-                                                 final AsyncCallableWithConnection callable) {
+                                               final AsyncCallableWithConnection callable) {
         boolean calledTheCallable = false;
         for (IndexRequest request : requests) {
             if (request.getCollation() != null) {
@@ -259,8 +320,8 @@ final class OperationHelper {
     }
 
     static void validateReadConcernAndCollation(final AsyncConnectionSource source, final AsyncConnection connection,
-                                                  final ReadConcern readConcern, final Collation collation,
-                                                  final AsyncCallableWithConnectionAndSource callable) {
+                                                final ReadConcern readConcern, final Collation collation,
+                                                final AsyncCallableWithConnectionAndSource callable) {
         validateReadConcernAndCollation(connection, readConcern, collation, new AsyncCallableWithConnection(){
             @Override
             public void call(final AsyncConnection connection, final Throwable t) {
@@ -367,6 +428,27 @@ final class OperationHelper {
         }
     }
 
+    static class ConnectionReleasingWrappedCallback<T> implements SingleResultCallback<T> {
+        private final SingleResultCallback<T> wrapped;
+        private final AsyncConnection connection;
+
+        ConnectionReleasingWrappedCallback(final SingleResultCallback<T> wrapped, final AsyncConnection connection) {
+            this.wrapped = wrapped;
+            this.connection = notNull("connection", connection);
+        }
+
+        @Override
+        public void onResult(final T result, final Throwable t) {
+            connection.release();
+            wrapped.onResult(result, t);
+        }
+
+        public SingleResultCallback<T> releaseConnectionAndGetWrapped() {
+            connection.release();
+            return wrapped;
+        }
+    }
+
     static boolean serverIsAtLeastVersionThreeDotZero(final ConnectionDescription description) {
         return serverIsAtLeastVersion(description, new ServerVersion(3, 0));
     }
@@ -442,6 +524,76 @@ final class OperationHelper {
 
     static void withConnection(final AsyncReadBinding binding, final AsyncCallableWithConnectionAndSource callable) {
         binding.getReadConnectionSource(errorHandlingCallback(new AsyncCallableWithConnectionAndSourceCallback(callable), LOGGER));
+    }
+
+    static <T> T retryableWithConnection(final WriteBinding binding, final boolean retryable,
+                                         final CallableWithConnectionAndTransactionNumber<T> callable) {
+        final Long txnNumber = retryable ? binding.getSessionContext().advanceTransactionNumber() : null;
+        return withConnection(binding, new CallableWithConnection<T>() {
+            @Override
+            public T call(final Connection connection) {
+                try {
+                    return callable.call(connection, txnNumber);
+                } catch (MongoException e) {
+                    if (!retryable) {
+                        throw e;
+                    } else {
+                        final MongoException originalException = e;
+                        return withConnection(binding, new CallableWithConnection<T>() {
+                            @Override
+                            public T call(final Connection connection) {
+                                if (!serverIsAtLeastVersionThreeDotSix(connection.getDescription())) {
+                                    throw originalException;
+                                }
+                                return callable.call(connection, txnNumber);
+                            }
+                        });
+                    }
+                }
+            }
+        });
+    }
+
+    static <T> void retryableWithConnection(final AsyncWriteBinding binding, final boolean retryable,
+                                            final SingleResultCallback<T> callback,
+                                            final AsyncCallableWithConnectionAndTransactionNumber<T> callable) {
+        final SingleResultCallback<T> errHandlingCallback = errorHandlingCallback(callback, LOGGER);
+        final Long txnNumber = retryable ? binding.getSessionContext().advanceTransactionNumber() : null;
+        withConnection(binding, new AsyncCallableWithConnection() {
+            @Override
+            public void call(final AsyncConnection connection, final Throwable t) {
+                if (t != null) {
+                    errHandlingCallback.onResult(null, t);
+                } else {
+                    callable.call(connection, txnNumber, new SingleResultCallback<T>() {
+                        @Override
+                        public void onResult(final T result, final Throwable originalError) {
+                            if (originalError != null) {
+                                if (!retryable || !(originalError instanceof MongoException)) {
+                                    releasingCallback(errHandlingCallback, connection).onResult(null, originalError);
+                                } else {
+                                    connection.release();
+                                    withConnection(binding, new AsyncCallableWithConnection() {
+                                        @Override
+                                        public void call(final AsyncConnection newConnection, final Throwable t) {
+                                            if (t != null) {
+                                                errHandlingCallback.onResult(null, originalError);
+                                            } else if (!serverIsAtLeastVersionThreeDotSix(connection.getDescription())) {
+                                                releasingCallback(errHandlingCallback, newConnection).onResult(null, originalError);
+                                            } else {
+                                                callable.call(connection, txnNumber, releasingCallback(errHandlingCallback, newConnection));
+                                            }
+                                        }
+                                    });
+                                }
+                            } else {
+                                releasingCallback(errHandlingCallback, connection).onResult(result, null);
+                            }
+                        }
+                    });
+                }
+            }
+        });
     }
 
     private static class AsyncCallableWithConnectionCallback implements SingleResultCallback<AsyncConnectionSource> {

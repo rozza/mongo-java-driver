@@ -29,7 +29,8 @@ import com.mongodb.internal.validator.CollectibleDocumentFieldNameValidator;
 import com.mongodb.internal.validator.MappedFieldNameValidator;
 import com.mongodb.internal.validator.NoOpFieldNameValidator;
 import com.mongodb.operation.OperationHelper.AsyncCallableWithConnection;
-import com.mongodb.operation.OperationHelper.CallableWithConnection;
+import com.mongodb.operation.OperationHelper.AsyncCallableWithConnectionAndTransactionNumber;
+import com.mongodb.operation.OperationHelper.CallableWithConnectionAndTransactionNumber;
 import org.bson.BsonBoolean;
 import org.bson.BsonDocument;
 import org.bson.BsonString;
@@ -41,17 +42,14 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import static com.mongodb.assertions.Assertions.notNull;
-import static com.mongodb.internal.async.ErrorHandlingResultCallback.errorHandlingCallback;
 import static com.mongodb.operation.CommandOperationHelper.executeWrappedCommandProtocol;
 import static com.mongodb.operation.CommandOperationHelper.executeWrappedCommandProtocolAsync;
 import static com.mongodb.operation.DocumentHelper.putIfNotNull;
 import static com.mongodb.operation.DocumentHelper.putIfNotZero;
 import static com.mongodb.operation.DocumentHelper.putIfTrue;
-import static com.mongodb.operation.OperationHelper.LOGGER;
-import static com.mongodb.operation.OperationHelper.validateCollation;
-import static com.mongodb.operation.OperationHelper.releasingCallback;
+import static com.mongodb.operation.OperationHelper.retryableWithConnection;
 import static com.mongodb.operation.OperationHelper.serverIsAtLeastVersionThreeDotTwo;
-import static com.mongodb.operation.OperationHelper.withConnection;
+import static com.mongodb.operation.OperationHelper.validateCollationAndRetryWrites;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 /**
@@ -66,6 +64,7 @@ public class FindAndReplaceOperation<T> implements AsyncWriteOperation<T>, Write
     private final Decoder<T> decoder;
     private final BsonDocument replacement;
     private final WriteConcern writeConcern;
+    private final boolean retryWrites;
     private BsonDocument filter;
     private BsonDocument projection;
     private BsonDocument sort;
@@ -81,11 +80,11 @@ public class FindAndReplaceOperation<T> implements AsyncWriteOperation<T>, Write
      * @param namespace   the database and collection namespace for the operation.
      * @param decoder     the decoder for the result documents.
      * @param replacement the document that will replace the found document.
-     * @deprecated use {@link #FindAndReplaceOperation(MongoNamespace, WriteConcern, Decoder, BsonDocument)} instead
+     * @deprecated use {@link FindAndReplaceOperation(MongoNamespace, WriteConcern, boolean, Decoder, BsonDocument)} instead
      */
     @Deprecated
     public FindAndReplaceOperation(final MongoNamespace namespace, final Decoder<T> decoder, final BsonDocument replacement) {
-        this(namespace, WriteConcern.ACKNOWLEDGED, decoder, replacement);
+        this(namespace, WriteConcern.ACKNOWLEDGED, false, decoder, replacement);
     }
 
     /**
@@ -96,11 +95,29 @@ public class FindAndReplaceOperation<T> implements AsyncWriteOperation<T>, Write
      * @param decoder     the decoder for the result documents.
      * @param replacement the document that will replace the found document.
      * @since 3.2
+     * @deprecated use {@link FindAndReplaceOperation(MongoNamespace, WriteConcern, boolean, Decoder, BsonDocument)} instead
      */
+    @Deprecated
     public FindAndReplaceOperation(final MongoNamespace namespace, final WriteConcern writeConcern, final Decoder<T> decoder,
                                    final BsonDocument replacement) {
+        this(namespace, writeConcern, false, decoder, replacement);
+    }
+
+    /**
+     * Construct a new instance.
+     *
+     * @param namespace   the database and collection namespace for the operation.
+     * @param writeConcern the writeConcern for the operation
+     * @param retryWrites  if writes should be retried if they fail due to a network error.
+     * @param decoder     the decoder for the result documents.
+     * @param replacement the document that will replace the found document.
+     * @since 3.6
+     */
+    public FindAndReplaceOperation(final MongoNamespace namespace, final WriteConcern writeConcern, final boolean retryWrites,
+                                   final Decoder<T> decoder, final BsonDocument replacement) {
         this.namespace = notNull("namespace", namespace);
         this.writeConcern = notNull("writeConcern", writeConcern);
+        this.retryWrites = retryWrites;
         this.decoder = notNull("decoder", decoder);
         this.replacement = notNull("replacement", replacement);
     }
@@ -328,41 +345,35 @@ public class FindAndReplaceOperation<T> implements AsyncWriteOperation<T>, Write
 
     @Override
     public T execute(final WriteBinding binding) {
-        return withConnection(binding, new CallableWithConnection<T>() {
+        return retryableWithConnection(binding, retryWrites, new CallableWithConnectionAndTransactionNumber<T>() {
             @Override
-            public T call(final Connection connection) {
-                validateCollation(connection, collation);
+            public T call(final Connection connection, final Long txnNumber) {
+                validateCollationAndRetryWrites(connection, collation, retryWrites);
                 return executeWrappedCommandProtocol(binding, namespace.getDatabaseName(), getCommand(connection.getDescription()),
-                        getValidator(), CommandResultDocumentCodec.create(decoder, "value"), connection,
-                        FindAndModifyHelper.<T>transformer());
+                        getFieldNameValidator(), txnNumber, CommandResultDocumentCodec.create(decoder, "value"),
+                        connection, FindAndModifyHelper.<T>transformer());
             }
         });
     }
 
     @Override
-    public void executeAsync(final AsyncWriteBinding binding, final SingleResultCallback<T> callback) {
-        withConnection(binding, new AsyncCallableWithConnection() {
+    public void executeAsync(final AsyncWriteBinding binding, final SingleResultCallback<T> originalCallback) {
+        retryableWithConnection(binding, retryWrites, originalCallback, new AsyncCallableWithConnectionAndTransactionNumber<T>() {
             @Override
-            public void call(final AsyncConnection connection, final Throwable t) {
-                SingleResultCallback<T> errHandlingCallback = errorHandlingCallback(callback, LOGGER);
-                if (t != null) {
-                    errHandlingCallback.onResult(null, t);
-                } else {
-                    final SingleResultCallback<T> wrappedCallback = releasingCallback(errHandlingCallback, connection);
-                    validateCollation(connection, collation, new AsyncCallableWithConnection() {
-                        @Override
-                        public void call(final AsyncConnection connection, final Throwable t) {
-                            if (t != null) {
-                                wrappedCallback.onResult(null, t);
-                            } else {
-                                executeWrappedCommandProtocolAsync(binding, namespace.getDatabaseName(),
-                                        getCommand(connection.getDescription()), getValidator(),
-                                        CommandResultDocumentCodec.create(decoder, "value"), connection,
-                                        FindAndModifyHelper.<T>transformer(), wrappedCallback);
-                            }
+            public void call(final AsyncConnection connection, final Long txnNumber, final SingleResultCallback<T> callback) {
+                validateCollationAndRetryWrites(connection, collation, retryWrites, new AsyncCallableWithConnection() {
+                    @Override
+                    public void call(final AsyncConnection connection, final Throwable t) {
+                        if (t != null) {
+                            callback.onResult(null, t);
+                        } else {
+                            executeWrappedCommandProtocolAsync(binding, namespace.getDatabaseName(),
+                                    getCommand(connection.getDescription()), getFieldNameValidator(), txnNumber,
+                                    CommandResultDocumentCodec.create(decoder, "value"), connection,
+                                    FindAndModifyHelper.<T>transformer(), callback);
                         }
-                    });
-                }
+                    }
+                });
             }
         });
     }
@@ -388,7 +399,7 @@ public class FindAndReplaceOperation<T> implements AsyncWriteOperation<T>, Write
         return commandDocument;
     }
 
-    private FieldNameValidator getValidator() {
+    private FieldNameValidator getFieldNameValidator() {
         Map<String, FieldNameValidator> map = new HashMap<String, FieldNameValidator>();
         map.put("update", new CollectibleDocumentFieldNameValidator());
         return new MappedFieldNameValidator(new NoOpFieldNameValidator(), map);

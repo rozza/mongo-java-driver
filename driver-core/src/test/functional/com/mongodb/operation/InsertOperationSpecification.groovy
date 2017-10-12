@@ -40,7 +40,7 @@ class InsertOperationSpecification extends OperationFunctionalSpecification {
 
     def 'should throw IllegalArgumentException for empty list of requests'() {
         when:
-        new InsertOperation(getNamespace(), true, ACKNOWLEDGED, [])
+        new InsertOperation(getNamespace(), true, ACKNOWLEDGED, true, [])
 
         then:
         thrown(IllegalArgumentException)
@@ -50,7 +50,7 @@ class InsertOperationSpecification extends OperationFunctionalSpecification {
         given:
         def inserts = [new InsertRequest(new BsonDocument('_id', new BsonInt32(1))),
                        new InsertRequest(new BsonDocument('_id', new BsonInt32(2)))]
-        def operation = new InsertOperation(getNamespace(), true, ACKNOWLEDGED, inserts)
+        def operation = new InsertOperation(getNamespace(), true, ACKNOWLEDGED, false, inserts)
 
         when:
         def result = execute(operation, async)
@@ -70,7 +70,7 @@ class InsertOperationSpecification extends OperationFunctionalSpecification {
     def 'should insert a single document'() {
         given:
         def insert = new InsertRequest(new BsonDocument('_id', new BsonInt32(1)))
-        def operation = new InsertOperation(getNamespace(), true, ACKNOWLEDGED, asList(insert))
+        def operation = new InsertOperation(getNamespace(), true, ACKNOWLEDGED, false, asList(insert))
 
         when:
         execute(operation, async)
@@ -88,7 +88,7 @@ class InsertOperationSpecification extends OperationFunctionalSpecification {
         for (i in 1..1001) {
             inserts += new InsertRequest(new BsonDocument('_id', new BsonInt32(i)))
         }
-        def operation = new InsertOperation(getNamespace(), true, ACKNOWLEDGED, inserts.toList())
+        def operation = new InsertOperation(getNamespace(), true, ACKNOWLEDGED, false, inserts.toList())
 
 
         when:
@@ -104,7 +104,7 @@ class InsertOperationSpecification extends OperationFunctionalSpecification {
     def 'should execute unacknowledged write'() {
         given:
         def binding = async ? getAsyncSingleConnectionBinding() : getSingleConnectionBinding()
-        def operation = new InsertOperation(getNamespace(), true, UNACKNOWLEDGED,
+        def operation = new InsertOperation(getNamespace(), true, UNACKNOWLEDGED, false,
                 [new InsertRequest(new BsonDocument('_id', new BsonInt32(1))),
                  new InsertRequest(new BsonDocument('_id', new BsonInt32(2)))])
 
@@ -131,7 +131,7 @@ class InsertOperationSpecification extends OperationFunctionalSpecification {
                 new InsertRequest(new BsonDocument('bytes', new BsonBinary(hugeByteArray))),
                 new InsertRequest(new BsonDocument('bytes', new BsonBinary(smallerByteArray)))
         ]
-        def operation = new InsertOperation(getNamespace(), true, ACKNOWLEDGED, documents.toList())
+        def operation = new InsertOperation(getNamespace(), true, ACKNOWLEDGED, false, documents.toList())
 
         when:
         execute(operation, async)
@@ -150,7 +150,7 @@ class InsertOperationSpecification extends OperationFunctionalSpecification {
                 new InsertRequest(new BsonDocument('_id', new BsonInt32(1))),
                 new InsertRequest(new BsonDocument('_id', new BsonInt32(2))),
         ]
-        def operation = new InsertOperation(getNamespace(), false, ACKNOWLEDGED, documents)
+        def operation = new InsertOperation(getNamespace(), false, ACKNOWLEDGED, false, documents)
 
         when:
         execute(operation, async)
@@ -170,7 +170,7 @@ class InsertOperationSpecification extends OperationFunctionalSpecification {
                 new InsertRequest(new BsonDocument('_id', new BsonInt32(1))),
                 new InsertRequest(new BsonDocument('_id', new BsonInt32(2))),
         ]
-        def operation = new InsertOperation(getNamespace(), true, ACKNOWLEDGED, documents)
+        def operation = new InsertOperation(getNamespace(), true, ACKNOWLEDGED, false, documents)
 
         when:
         execute(operation, async)
@@ -187,7 +187,7 @@ class InsertOperationSpecification extends OperationFunctionalSpecification {
         given:
         byte[] hugeByteArray = new byte[1024 * 1024 * 16]
         def documents = [new InsertRequest(new BsonDocument('_id', new BsonInt32(1)).append('b', new BsonBinary(hugeByteArray)))]
-        def operation = new InsertOperation(getNamespace(), true, ACKNOWLEDGED, documents)
+        def operation = new InsertOperation(getNamespace(), true, ACKNOWLEDGED, false, documents)
 
         when:
         execute(operation, async)
@@ -202,7 +202,7 @@ class InsertOperationSpecification extends OperationFunctionalSpecification {
     def 'should move _id to the beginning'() {
         given:
         def insert = new InsertRequest(new BsonDocument('x', new BsonInt32(1)).append('_id', new BsonInt32(1)))
-        def operation = new InsertOperation(getNamespace(), true, ACKNOWLEDGED, asList(insert))
+        def operation = new InsertOperation(getNamespace(), true, ACKNOWLEDGED, false, asList(insert))
 
         when:
         execute(operation, async)
@@ -217,7 +217,7 @@ class InsertOperationSpecification extends OperationFunctionalSpecification {
     @IgnoreIf({ !serverVersionAtLeast(3, 2) })
     def 'should throw if bypassDocumentValidation is set and write is unacknowledged'() {
         given:
-        def operation = new InsertOperation(getNamespace(), true,  UNACKNOWLEDGED, [new InsertRequest(new BsonDocument())])
+        def operation = new InsertOperation(getNamespace(), true,  UNACKNOWLEDGED, false, [new InsertRequest(new BsonDocument())])
                 .bypassDocumentValidation(bypassDocumentValidation)
 
         when:

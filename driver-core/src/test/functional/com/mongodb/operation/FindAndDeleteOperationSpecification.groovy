@@ -16,6 +16,7 @@
 
 package com.mongodb.operation
 
+import com.mongodb.MongoException
 import com.mongodb.MongoWriteConcernException
 import com.mongodb.OperationFunctionalSpecification
 import com.mongodb.WriteConcern
@@ -36,19 +37,19 @@ import java.util.concurrent.TimeUnit
 
 import static com.mongodb.ClusterFixture.isDiscoverableReplicaSet
 import static com.mongodb.ClusterFixture.serverVersionAtLeast
+import static com.mongodb.WriteConcern.ACKNOWLEDGED
 
 class FindAndDeleteOperationSpecification extends OperationFunctionalSpecification {
     private final DocumentCodec documentCodec = new DocumentCodec()
     private final WorkerCodec workerCodec = new WorkerCodec()
-    def writeConcern = WriteConcern.ACKNOWLEDGED
 
     def 'should have the correct defaults'() {
         when:
-        def operation = new FindAndDeleteOperation<Document>(getNamespace(), writeConcern, documentCodec)
+        def operation = new FindAndDeleteOperation<Document>(getNamespace(), ACKNOWLEDGED, false, documentCodec)
 
         then:
         operation.getNamespace() == getNamespace()
-        operation.getWriteConcern() == writeConcern
+        operation.getWriteConcern() == ACKNOWLEDGED
         operation.getDecoder() == documentCodec
         operation.getFilter() == null
         operation.getSort() == null
@@ -64,7 +65,7 @@ class FindAndDeleteOperationSpecification extends OperationFunctionalSpecificati
         def projection = BsonDocument.parse('{ projection : 1}')
 
         when:
-        def operation = new FindAndDeleteOperation<Document>(getNamespace(), writeConcern, documentCodec)
+        def operation = new FindAndDeleteOperation<Document>(getNamespace(), ACKNOWLEDGED, false, documentCodec)
             .filter(filter)
             .sort(sort)
             .projection(projection)
@@ -88,7 +89,7 @@ class FindAndDeleteOperationSpecification extends OperationFunctionalSpecificati
         getCollectionHelper().insertDocuments(new DocumentCodec(), pete, sam)
 
         when:
-        def operation = new FindAndDeleteOperation<Document>(getNamespace(), writeConcern, documentCodec)
+        def operation = new FindAndDeleteOperation<Document>(getNamespace(), ACKNOWLEDGED, false, documentCodec)
                 .filter(new BsonDocument('name', new BsonString('Pete')))
         Document returnedDocument = execute(operation, async)
 
@@ -109,8 +110,8 @@ class FindAndDeleteOperationSpecification extends OperationFunctionalSpecificati
         getWorkerCollectionHelper().insertDocuments(new WorkerCodec(), pete, sam)
 
         when:
-        FindAndDeleteOperation<Worker> operation = new FindAndDeleteOperation<Document>(getNamespace(), writeConcern, workerCodec)
-                .filter(new BsonDocument('name', new BsonString('Pete')))
+        FindAndDeleteOperation<Worker> operation = new FindAndDeleteOperation<Worker>(getNamespace(), ACKNOWLEDGED, false,
+                workerCodec).filter(new BsonDocument('name', new BsonString('Pete')))
         Worker returnedDocument = execute(operation, async)
 
         then:
@@ -129,8 +130,8 @@ class FindAndDeleteOperationSpecification extends OperationFunctionalSpecificati
         CollectionHelper<Document> helper = new CollectionHelper<Document>(documentCodec, getNamespace())
         Document pete = new Document('name', 'Pete').append('job', 'handyman')
         helper.insertDocuments(new DocumentCodec(), pete)
-        def operation = new FindAndDeleteOperation<Document>(getNamespace(), new WriteConcern(5, 1), documentCodec)
-                .filter(new BsonDocument('name', new BsonString('Pete')))
+        def operation = new FindAndDeleteOperation<Document>(getNamespace(), new WriteConcern(5, 1), false,
+                documentCodec).filter(new BsonDocument('name', new BsonString('Pete')))
 
         when:
         execute(operation, async)
@@ -150,7 +151,7 @@ class FindAndDeleteOperationSpecification extends OperationFunctionalSpecificati
     def 'should create the expected command'() {
         when:
         def cannedResult = new BsonDocument('value', new BsonDocumentWrapper(BsonDocument.parse('{}'), new BsonDocumentCodec()))
-        def operation = new FindAndDeleteOperation<Document>(getNamespace(), writeConcern, documentCodec)
+        def operation = new FindAndDeleteOperation<Document>(getNamespace(), ACKNOWLEDGED, false, documentCodec)
         def expectedCommand = new BsonDocument('findandmodify', new BsonString(getNamespace().getCollectionName()))
                 .append('remove', BsonBoolean.TRUE)
 
@@ -200,9 +201,39 @@ class FindAndDeleteOperationSpecification extends OperationFunctionalSpecificati
         [3, 0, 0]     | WriteConcern.W1              | false               | false            | false
     }
 
+    def 'should retry if the connection initially fails'() {
+        when:
+        def cannedResult = new BsonDocument('value', new BsonDocumentWrapper(BsonDocument.parse('{}'), new BsonDocumentCodec()))
+        def operation = new FindAndDeleteOperation<Document>(getNamespace(), ACKNOWLEDGED, true, documentCodec)
+        def expectedCommand = new BsonDocument('findandmodify', new BsonString(getNamespace().getCollectionName()))
+                .append('remove', BsonBoolean.TRUE)
+
+        then:
+        testOperationRetries(operation, [3, 6, 0], expectedCommand, async, cannedResult)
+
+        where:
+        async << [true, false]
+    }
+
+    def 'should throw original error when retrying and finding server less than 3.6.0'() {
+        given:
+        def operation = new FindAndDeleteOperation<Document>(getNamespace(), ACKNOWLEDGED, true, documentCodec)
+        def exception = new MongoException('Some failure')
+
+        when:
+        testRetryableOperationThrowsOriginalError(operation, [3, 6, 0], exception, async)
+
+        then:
+        Exception commandException = thrown()
+        commandException == exception
+
+        where:
+        async << [true, false]
+    }
+
     def 'should throw an exception when passing an unsupported collation'() {
         given:
-        def operation = new FindAndDeleteOperation<Document>(getNamespace(), writeConcern, documentCodec).collation(defaultCollation)
+        def operation = new FindAndDeleteOperation<Document>(getNamespace(), ACKNOWLEDGED, false, documentCodec).collation(defaultCollation)
 
         when:
         testOperationThrows(operation, [3, 2, 0], async)
@@ -220,7 +251,7 @@ class FindAndDeleteOperationSpecification extends OperationFunctionalSpecificati
         given:
         def document = Document.parse('{_id: 1, str: "foo"}')
         getCollectionHelper().insertDocuments(document)
-        def operation = new FindAndDeleteOperation<Document>(getNamespace(), writeConcern, documentCodec)
+        def operation = new FindAndDeleteOperation<Document>(getNamespace(), ACKNOWLEDGED, false, documentCodec)
                 .filter(BsonDocument.parse('{str: "FOO"}'))
                 .collation(caseInsensitiveCollation)
 

@@ -174,7 +174,7 @@ public final class CollectionHelper<T> {
         for (BsonDocument document : documents) {
             insertRequests.add(new InsertRequest(document));
         }
-        new InsertOperation(namespace, true, writeConcern, insertRequests).execute(binding);
+        new InsertOperation(namespace, true, writeConcern, false, insertRequests).execute(binding);
     }
 
     public void insertDocuments(final Document... documents) {
@@ -224,7 +224,7 @@ public final class CollectionHelper<T> {
                                                                     update.toBsonDocument(Document.class, registry),
                                                                     WriteRequest.Type.UPDATE)
                                                   .upsert(isUpsert)),
-                                    true, WriteConcern.ACKNOWLEDGED)
+                                    true, WriteConcern.ACKNOWLEDGED, false)
         .execute(getBinding());
     }
 

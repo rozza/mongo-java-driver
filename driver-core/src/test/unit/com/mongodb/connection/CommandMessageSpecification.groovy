@@ -96,7 +96,7 @@ class CommandMessageSpecification extends Specification {
                                                                             new BsonDocument('b', new BsonBinary(new byte[450])),
                                                                             new BsonDocument('c', new BsonBinary(new byte[450]))])
         def message = new CommandMessage(namespace, command, fieldNameValidator, ReadPreference.primary(), messageSettings,
-                false, payload, fieldNameValidator)
+                false, payload, fieldNameValidator, null)
         def output = new BasicOutputBuffer()
         def sessionContext = Stub(SessionContext)
 
@@ -116,7 +116,7 @@ class CommandMessageSpecification extends Specification {
         when:
         payload = payload.getNextSplit()
         message = new CommandMessage(namespace, command, fieldNameValidator, ReadPreference.primary(), messageSettings,
-                false, payload, fieldNameValidator)
+                false, payload, fieldNameValidator, null)
         output.truncateToPosition(0)
         message.encode(output, sessionContext)
         byteBuf = new ByteBufNIO(ByteBuffer.wrap(output.toByteArray()))
@@ -141,7 +141,7 @@ class CommandMessageSpecification extends Specification {
         def messageSettings = MessageSettings.builder().maxDocumentSize(900).serverVersion(new ServerVersion(3, 6)).build()
         def payload = new SplittablePayload(SplittablePayload.Type.INSERT, [new BsonDocument('a', new BsonBinary(new byte[900]))])
         def message = new CommandMessage(namespace, command, fieldNameValidator, ReadPreference.primary(), messageSettings,
-                false, payload, fieldNameValidator)
+                false, payload, fieldNameValidator, null)
         def output = new BasicOutputBuffer()
         def sessionContext = Stub(SessionContext)
 

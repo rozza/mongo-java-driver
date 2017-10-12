@@ -30,6 +30,7 @@ import com.mongodb.bulk.WriteConcernError;
 import com.mongodb.bulk.WriteRequest;
 import com.mongodb.connection.BulkWriteBatchCombiner;
 import com.mongodb.connection.ConnectionDescription;
+import com.mongodb.connection.SessionContext;
 import com.mongodb.connection.SplittablePayload;
 import com.mongodb.internal.connection.IndexMap;
 import com.mongodb.internal.validator.CollectibleDocumentFieldNameValidator;
@@ -58,6 +59,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static com.mongodb.bulk.WriteRequest.Type.DELETE;
 import static com.mongodb.bulk.WriteRequest.Type.INSERT;
 import static com.mongodb.bulk.WriteRequest.Type.REPLACE;
 import static com.mongodb.bulk.WriteRequest.Type.UPDATE;
@@ -74,30 +76,36 @@ final class BulkWriteBatch {
     private final boolean ordered;
     private final WriteConcern writeConcern;
     private final Boolean bypassDocumentValidation;
+    private final boolean retryWrites;
     private final BulkWriteBatchCombiner bulkWriteBatchCombiner;
     private final IndexMap indexMap;
     private final WriteRequest.Type batchType;
     private final BsonDocument command;
     private final SplittablePayload payload;
     private final List<WriteRequestWithIndex> unprocessed;
+    private final Long txnNumber;
 
     public static BulkWriteBatch createBulkWriteBatch(final MongoNamespace namespace, final ConnectionDescription connectionDescription,
                                                       final boolean ordered, final WriteConcern writeConcern,
-                                                      final Boolean bypassDocumentValidation,
-                                                      final List<? extends WriteRequest> writeRequests) {
+                                                      final Boolean bypassDocumentValidation, final boolean retryWrites,
+                                                      final List<? extends WriteRequest> writeRequests,
+                                                      final SessionContext sessionContext) {
+        boolean canRetryWrites = retryWrites;
         List<WriteRequestWithIndex> writeRequestsWithIndex = new ArrayList<WriteRequestWithIndex>();
         for (int i = 0; i < writeRequests.size(); i++) {
-            writeRequestsWithIndex.add(new WriteRequestWithIndex(writeRequests.get(i), i));
+            WriteRequest writeRequest = writeRequests.get(i);
+            canRetryWrites = canRetryWrites ? isRetryable(writeRequest) : canRetryWrites;
+            writeRequestsWithIndex.add(new WriteRequestWithIndex(writeRequest, i));
         }
-
-        return new BulkWriteBatch(namespace, connectionDescription, ordered, writeConcern, bypassDocumentValidation,
-                new BulkWriteBatchCombiner(connectionDescription.getServerAddress(), ordered, writeConcern), writeRequestsWithIndex);
+        return new BulkWriteBatch(namespace, connectionDescription, ordered, writeConcern, bypassDocumentValidation, canRetryWrites,
+                new BulkWriteBatchCombiner(connectionDescription.getServerAddress(), ordered, writeConcern), writeRequestsWithIndex,
+                generateTxnNumber(canRetryWrites, sessionContext));
     }
 
     private BulkWriteBatch(final MongoNamespace namespace, final ConnectionDescription connectionDescription,
                            final boolean ordered, final WriteConcern writeConcern, final Boolean bypassDocumentValidation,
-                           final BulkWriteBatchCombiner bulkWriteBatchCombiner,
-                           final List<WriteRequestWithIndex> writeRequestsWithIndices) {
+                           final boolean retryWrites, final BulkWriteBatchCombiner bulkWriteBatchCombiner,
+                           final List<WriteRequestWithIndex> writeRequestsWithIndices, final Long txnNumber) {
         this.namespace = namespace;
         this.connectionDescription = connectionDescription;
         this.ordered = ordered;
@@ -105,6 +113,7 @@ final class BulkWriteBatch {
         this.bypassDocumentValidation = bypassDocumentValidation;
         this.bulkWriteBatchCombiner = bulkWriteBatchCombiner;
         this.batchType = writeRequestsWithIndices.isEmpty() ? INSERT : writeRequestsWithIndices.get(0).writeRequest.getType();
+        this.retryWrites = retryWrites;
         this.command = new BsonDocument();
 
         command.put(getCommandName(batchType), new BsonString(namespace.getCollectionName()));
@@ -139,12 +148,14 @@ final class BulkWriteBatch {
         this.indexMap = indexMap;
         this.unprocessed = unprocessedItems;
         this.payload = new SplittablePayload(getPayloadType(batchType), payloadItems);
+        this.txnNumber = txnNumber;
     }
 
     private BulkWriteBatch(final MongoNamespace namespace, final ConnectionDescription connectionDescription,
                            final boolean ordered, final WriteConcern writeConcern, final Boolean bypassDocumentValidation,
-                           final BulkWriteBatchCombiner bulkWriteBatchCombiner, final IndexMap indexMap, final WriteRequest.Type batchType,
-                           final BsonDocument command, final SplittablePayload payload, final List<WriteRequestWithIndex> unprocessed) {
+                           final boolean retryWrites, final BulkWriteBatchCombiner bulkWriteBatchCombiner, final IndexMap indexMap,
+                           final WriteRequest.Type batchType, final BsonDocument command, final SplittablePayload payload,
+                           final List<WriteRequestWithIndex> unprocessed, final Long txnNumber) {
         this.namespace = namespace;
         this.connectionDescription = connectionDescription;
         this.ordered = ordered;
@@ -156,6 +167,8 @@ final class BulkWriteBatch {
         this.command = command;
         this.payload = payload;
         this.unprocessed = unprocessed;
+        this.retryWrites = retryWrites;
+        this.txnNumber = txnNumber;
     }
 
     public void addResult(final BsonDocument result) {
@@ -175,6 +188,10 @@ final class BulkWriteBatch {
 
     public SplittablePayload getPayload() {
         return payload;
+    }
+
+    public Long getTxnNumber() {
+        return txnNumber;
     }
 
     public Decoder<BsonDocument> getDecoder() {
@@ -201,7 +218,8 @@ final class BulkWriteBatch {
         return !unprocessed.isEmpty();
     }
 
-    public BulkWriteBatch getNextBatch() {
+    public BulkWriteBatch getNextBatch(final SessionContext sessionContext) {
+        Long txnNumber = generateTxnNumber(retryWrites, sessionContext);
         if (payload.hasAnotherSplit()) {
             IndexMap nextIndexMap = IndexMap.create();
             int newIndex = 0;
@@ -210,11 +228,11 @@ final class BulkWriteBatch {
                 newIndex++;
             }
 
-            return new BulkWriteBatch(namespace, connectionDescription, ordered, writeConcern, bypassDocumentValidation,
-                    bulkWriteBatchCombiner, nextIndexMap, batchType, command, payload.getNextSplit(), unprocessed);
+            return new BulkWriteBatch(namespace, connectionDescription, ordered, writeConcern, bypassDocumentValidation, retryWrites,
+                    bulkWriteBatchCombiner, nextIndexMap, batchType, command, payload.getNextSplit(), unprocessed, txnNumber);
         } else {
-            return new BulkWriteBatch(namespace, connectionDescription, ordered, writeConcern, bypassDocumentValidation,
-                    bulkWriteBatchCombiner, unprocessed);
+            return new BulkWriteBatch(namespace, connectionDescription, ordered, writeConcern, bypassDocumentValidation, retryWrites,
+                    bulkWriteBatchCombiner, unprocessed, txnNumber);
         }
     }
 
@@ -322,6 +340,23 @@ final class BulkWriteBatch {
     @SuppressWarnings("unchecked")
     private static Codec<BsonDocument> getCodec(final BsonDocument document) {
         return (Codec<BsonDocument>) REGISTRY.get(document.getClass());
+    }
+
+    private static boolean isRetryable(final WriteRequest writeRequest) {
+        if (writeRequest.getType() == UPDATE || writeRequest.getType() == REPLACE) {
+            return !((UpdateRequest) writeRequest).isMulti();
+        } else if (writeRequest.getType() == DELETE) {
+            return !((DeleteRequest) writeRequest).isMulti();
+        }
+        return true;
+    }
+
+    private static Long generateTxnNumber(final boolean retryWrites, final SessionContext sessionContext) {
+        if (retryWrites) {
+            return sessionContext.advanceTransactionNumber();
+        } else {
+            return null;
+        }
     }
 
     static class WriteRequestEncoder implements Encoder<WriteRequest> {

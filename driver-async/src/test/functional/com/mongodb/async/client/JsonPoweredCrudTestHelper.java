@@ -1,11 +1,11 @@
 /*
- * Copyright 2015 MongoDB, Inc.
+ * Copyright 2017 MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *  http://www.apache.org/licenses/LICENSE-2.0
+ *    http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -14,10 +14,12 @@
  * limitations under the License.
  */
 
-package com.mongodb.client;
+package com.mongodb.async.client;
+
 
 import com.mongodb.MongoException;
 import com.mongodb.WriteConcern;
+import com.mongodb.async.FutureResultCallback;
 import com.mongodb.bulk.BulkWriteResult;
 import com.mongodb.bulk.BulkWriteUpsert;
 import com.mongodb.client.model.BulkWriteOptions;
@@ -40,6 +42,7 @@ import com.mongodb.client.model.UpdateManyModel;
 import com.mongodb.client.model.UpdateOneModel;
 import com.mongodb.client.model.UpdateOptions;
 import com.mongodb.client.model.WriteModel;
+import com.mongodb.client.result.DeleteResult;
 import com.mongodb.client.result.UpdateResult;
 import org.bson.BsonArray;
 import org.bson.BsonBoolean;
@@ -88,12 +91,22 @@ public class JsonPoweredCrudTestHelper {
         }
     }
 
+    <T> T futureResult(final FutureResultCallback<T> callback) {
+        try {
+            return callback.get();
+        } catch (Throwable t) {
+            throw new MongoException("FutureResultCallback failed", t);
+        }
+    }
+
     BsonDocument toResult(final int count) {
         return toResult(new BsonInt32(count));
     }
 
     BsonDocument toResult(final MongoIterable<BsonDocument> results) {
-        return toResult(new BsonArray(results.into(new ArrayList<BsonDocument>())));
+        FutureResultCallback<List<BsonDocument>> futureResultCallback = new FutureResultCallback<List<BsonDocument>>();
+        results.into(new ArrayList<BsonDocument>(), futureResultCallback);
+        return toResult(new BsonArray(futureResult(futureResultCallback)));
     }
 
     BsonDocument toResult(final String key, final BsonValue value) {
@@ -128,7 +141,7 @@ public class JsonPoweredCrudTestHelper {
                 resultDoc.append("modifiedCount", new BsonInt32(bulkWriteResult.getModifiedCount()));
             }
             resultDoc.append("upsertedCount", bulkWriteResult.getUpserts() == null
-                                                      ? new BsonInt32(0) : new BsonInt32(bulkWriteResult.getUpserts().size()));
+                    ? new BsonInt32(0) : new BsonInt32(bulkWriteResult.getUpserts().size()));
             BsonDocument upserts = new BsonDocument();
             for (BulkWriteUpsert bulkWriteUpsert : bulkWriteResult.getUpserts()) {
                 upserts.put(String.valueOf(bulkWriteUpsert.getIndex()), bulkWriteUpsert.getId());
@@ -169,7 +182,10 @@ public class JsonPoweredCrudTestHelper {
         if (arguments.containsKey("collation")) {
             options.collation(getCollation(arguments.getDocument("collation")));
         }
-        return toResult((int) collection.count(arguments.getDocument("filter"), options));
+
+        FutureResultCallback<Long> futureResultCallback = new FutureResultCallback<Long>();
+        collection.count(arguments.getDocument("filter"), options, futureResultCallback);
+        return toResult(futureResult(futureResultCallback).intValue());
     }
 
     BsonDocument getDistinctResult(final BsonDocument arguments) {
@@ -180,7 +196,10 @@ public class JsonPoweredCrudTestHelper {
         if (arguments.containsKey("collation")) {
             iterable.collation(getCollation(arguments.getDocument("collation")));
         }
-        return toResult(iterable.into(new BsonArray()));
+
+        FutureResultCallback<List<BsonValue>> futureResultCallback = new FutureResultCallback<List<BsonValue>>();
+        iterable.into(new BsonArray(), futureResultCallback);
+        return toResult(new BsonArray(futureResult(futureResultCallback)));
     }
 
     @SuppressWarnings("deprecation")
@@ -212,8 +231,10 @@ public class JsonPoweredCrudTestHelper {
         if (arguments.containsKey("collation")) {
             options.collation(getCollation(arguments.getDocument("collation")));
         }
-        return toResult("deletedCount",
-                        new BsonInt32((int) collection.deleteMany(arguments.getDocument("filter"), options).getDeletedCount()));
+
+        FutureResultCallback<DeleteResult> futureResultCallback = new FutureResultCallback<DeleteResult>();
+        collection.deleteMany(arguments.getDocument("filter"), options, futureResultCallback);
+        return toResult("deletedCount", new BsonInt32((int) futureResult(futureResultCallback).getDeletedCount()));
     }
 
     BsonDocument getDeleteOneResult(final BsonDocument arguments) {
@@ -222,8 +243,9 @@ public class JsonPoweredCrudTestHelper {
             options.collation(getCollation(arguments.getDocument("collation")));
         }
 
-        return toResult("deletedCount",
-                        new BsonInt32((int) collection.deleteOne(arguments.getDocument("filter"), options).getDeletedCount()));
+        FutureResultCallback<DeleteResult> futureResultCallback = new FutureResultCallback<DeleteResult>();
+        collection.deleteOne(arguments.getDocument("filter"), options, futureResultCallback);
+        return toResult("deletedCount", new BsonInt32((int) futureResult(futureResultCallback).getDeletedCount()));
     }
 
     BsonDocument getFindOneAndDeleteResult(final BsonDocument arguments) {
@@ -237,7 +259,10 @@ public class JsonPoweredCrudTestHelper {
         if (arguments.containsKey("collation")) {
             options.collation(getCollation(arguments.getDocument("collation")));
         }
-        return toResult(collection.findOneAndDelete(arguments.getDocument("filter"), options));
+
+        FutureResultCallback<BsonDocument> futureResultCallback = new FutureResultCallback<BsonDocument>();
+        collection.findOneAndDelete(arguments.getDocument("filter"), options, futureResultCallback);
+        return toResult(futureResult(futureResultCallback));
     }
 
     BsonDocument getFindOneAndReplaceResult(final BsonDocument arguments) {
@@ -253,13 +278,15 @@ public class JsonPoweredCrudTestHelper {
         }
         if (arguments.containsKey("returnDocument")) {
             options.returnDocument(arguments.getString("returnDocument").getValue().equals("After") ? ReturnDocument.AFTER
-                                                                                                    : ReturnDocument.BEFORE);
+                    : ReturnDocument.BEFORE);
         }
         if (arguments.containsKey("collation")) {
             options.collation(getCollation(arguments.getDocument("collation")));
         }
-        return toResult(collection
-                                .findOneAndReplace(arguments.getDocument("filter"), arguments.getDocument("replacement"), options));
+
+        FutureResultCallback<BsonDocument> futureResultCallback = new FutureResultCallback<BsonDocument>();
+        collection.findOneAndReplace(arguments.getDocument("filter"), arguments.getDocument("replacement"), options, futureResultCallback);
+        return toResult(futureResult(futureResultCallback));
     }
 
     BsonDocument getFindOneAndUpdateResult(final BsonDocument arguments) {
@@ -275,7 +302,7 @@ public class JsonPoweredCrudTestHelper {
         }
         if (arguments.containsKey("returnDocument")) {
             options.returnDocument(arguments.getString("returnDocument").getValue().equals("After") ? ReturnDocument.AFTER
-                                                                                                    : ReturnDocument.BEFORE);
+                    : ReturnDocument.BEFORE);
         }
         if (arguments.containsKey("collation")) {
             options.collation(getCollation(arguments.getDocument("collation")));
@@ -283,13 +310,18 @@ public class JsonPoweredCrudTestHelper {
         if (arguments.containsKey("arrayFilters")) {
             options.arrayFilters((getArrayFilters(arguments.getArray("arrayFilters"))));
         }
-        return toResult(collection
-                                .findOneAndUpdate(arguments.getDocument("filter"), arguments.getDocument("update"), options));
+
+        FutureResultCallback<BsonDocument> futureResultCallback = new FutureResultCallback<BsonDocument>();
+        collection.findOneAndUpdate(arguments.getDocument("filter"), arguments.getDocument("update"), options, futureResultCallback);
+        return toResult(futureResult(futureResultCallback));
     }
 
     BsonDocument getInsertOneResult(final BsonDocument arguments) {
         BsonDocument document = arguments.getDocument("document");
-        collection.insertOne(document);
+
+        FutureResultCallback<Void> futureResultCallback = new FutureResultCallback<Void>();
+        collection.insertOne(document, futureResultCallback);
+        futureResult(futureResultCallback);
         return toResult(new BsonDocument("insertedId", document.get("_id")));
     }
 
@@ -298,8 +330,11 @@ public class JsonPoweredCrudTestHelper {
         for (BsonValue document : arguments.getArray("documents")) {
             documents.add(document.asDocument());
         }
-        collection.insertMany(documents,
-                              new InsertManyOptions().ordered(arguments.getBoolean("ordered", BsonBoolean.TRUE).getValue()));
+        FutureResultCallback<Void> futureResultCallback = new FutureResultCallback<Void>();
+        collection.insertMany(documents, new InsertManyOptions().ordered(arguments.getBoolean("ordered", BsonBoolean.TRUE).getValue()),
+                futureResultCallback);
+        futureResult(futureResultCallback);
+
         BsonArray insertedIds = new BsonArray();
         for (BsonDocument document : documents) {
             insertedIds.add(document.get("_id"));
@@ -315,8 +350,10 @@ public class JsonPoweredCrudTestHelper {
         if (arguments.containsKey("collation")) {
             options.collation(getCollation(arguments.getDocument("collation")));
         }
-        return toResult(collection
-                                .replaceOne(arguments.getDocument("filter"), arguments.getDocument("replacement"), options));
+
+        FutureResultCallback<UpdateResult> futureResultCallback = new FutureResultCallback<UpdateResult>();
+        collection.replaceOne(arguments.getDocument("filter"), arguments.getDocument("replacement"), options, futureResultCallback);
+        return toResult(futureResult(futureResultCallback));
     }
 
     BsonDocument getUpdateManyResult(final BsonDocument arguments) {
@@ -330,7 +367,9 @@ public class JsonPoweredCrudTestHelper {
         if (arguments.containsKey("arrayFilters")) {
             options.arrayFilters((getArrayFilters(arguments.getArray("arrayFilters"))));
         }
-        return toResult(collection.updateMany(arguments.getDocument("filter"), arguments.getDocument("update"), options));
+        FutureResultCallback<UpdateResult> futureResultCallback = new FutureResultCallback<UpdateResult>();
+        collection.updateMany(arguments.getDocument("filter"), arguments.getDocument("update"), options, futureResultCallback);
+        return toResult(futureResult(futureResultCallback));
     }
 
     @SuppressWarnings("unchecked")
@@ -345,7 +384,9 @@ public class JsonPoweredCrudTestHelper {
         if (arguments.containsKey("arrayFilters")) {
             options.arrayFilters((getArrayFilters(arguments.getArray("arrayFilters"))));
         }
-        return toResult(collection.updateOne(arguments.getDocument("filter"), arguments.getDocument("update"), options));
+        FutureResultCallback<UpdateResult> futureResultCallback = new FutureResultCallback<UpdateResult>();
+        collection.updateOne(arguments.getDocument("filter"), arguments.getDocument("update"), options, futureResultCallback);
+        return toResult(futureResult(futureResultCallback));
     }
 
     BsonDocument getBulkWriteResult(final BsonDocument arguments) {
@@ -353,7 +394,7 @@ public class JsonPoweredCrudTestHelper {
         if (arguments.containsKey("writeConcern")) {
             if (arguments.getDocument("writeConcern").size() > 1) {
                 throw new UnsupportedOperationException("Write concern document contains unexpected keys: "
-                                                        + arguments.getDocument("writeConcern").keySet());
+                        + arguments.getDocument("writeConcern").keySet());
             }
             writeConcern = new WriteConcern(arguments.getDocument("writeConcern").getInt32("w").intValue());
         }
@@ -368,12 +409,12 @@ public class JsonPoweredCrudTestHelper {
                     writeModels.add(new InsertOneModel<BsonDocument>(requestArguments.getDocument("document")));
                 } else if (name.equals("updateOne")) {
                     writeModels.add(new UpdateOneModel<BsonDocument>(requestArguments.getDocument("filter"),
-                                                                            requestArguments.getDocument("update"),
-                                                                            getUpdateOptions(requestArguments)));
+                            requestArguments.getDocument("update"),
+                            getUpdateOptions(requestArguments)));
                 } else if (name.equals("updateMany")) {
                     writeModels.add(new UpdateManyModel<BsonDocument>(requestArguments.getDocument("filter"),
-                                                                             requestArguments.getDocument("update"),
-                                                                             getUpdateOptions(requestArguments)));
+                            requestArguments.getDocument("update"),
+                            getUpdateOptions(requestArguments)));
                 } else if (name.equals("deleteOne")) {
                     writeModels.add(new DeleteOneModel<BsonDocument>(requestArguments.getDocument("filter")));
                 } else if (name.equals("replaceOne")) {
@@ -389,22 +430,23 @@ public class JsonPoweredCrudTestHelper {
                 } else if (cur.get("updateOne") != null) {
                     BsonDocument updateOneArguments = cur.getDocument("updateOne");
                     writeModels.add(new UpdateOneModel<BsonDocument>(updateOneArguments.getDocument("filter"),
-                                                                            updateOneArguments.getDocument("update"),
-                                                                            getUpdateOptions(updateOneArguments)));
+                            updateOneArguments.getDocument("update"),
+                            getUpdateOptions(updateOneArguments)));
                 } else if (cur.get("updateMany") != null) {
                     BsonDocument updateManyArguments = cur.getDocument("updateMany");
                     writeModels.add(new UpdateManyModel<BsonDocument>(updateManyArguments.getDocument("filter"),
-                                                                             updateManyArguments.getDocument("update"),
-                                                                             getUpdateOptions(updateManyArguments)));
+                            updateManyArguments.getDocument("update"),
+                            getUpdateOptions(updateManyArguments)));
                 } else {
                     throw new UnsupportedOperationException(format("Unsupported write request type: %s", cur.toJson()));
                 }
             }
         }
 
-        return toResult(collection.withWriteConcern(writeConcern)
-                .bulkWrite(writeModels, new BulkWriteOptions().ordered(arguments.getBoolean("ordered", BsonBoolean.TRUE).getValue()))
-        );
+        FutureResultCallback<BulkWriteResult> futureResultCallback = new FutureResultCallback<BulkWriteResult>();
+        collection.withWriteConcern(writeConcern).bulkWrite(writeModels,
+                new BulkWriteOptions().ordered(arguments.getBoolean("ordered", BsonBoolean.TRUE).getValue()), futureResultCallback);
+        return toResult(futureResult(futureResultCallback));
     }
 
     Collation getCollation(final BsonDocument bsonCollation) {

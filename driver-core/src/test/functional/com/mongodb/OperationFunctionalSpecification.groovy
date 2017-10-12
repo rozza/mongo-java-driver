@@ -19,10 +19,12 @@ package com.mongodb
 import com.mongodb.async.FutureResultCallback
 import com.mongodb.binding.AsyncConnectionSource
 import com.mongodb.binding.AsyncReadBinding
+import com.mongodb.binding.AsyncSessionBinding
 import com.mongodb.binding.AsyncSingleConnectionBinding
 import com.mongodb.binding.AsyncWriteBinding
 import com.mongodb.binding.ConnectionSource
 import com.mongodb.binding.ReadBinding
+import com.mongodb.binding.SessionBinding
 import com.mongodb.binding.SingleConnectionBinding
 import com.mongodb.binding.WriteBinding
 import com.mongodb.bulk.InsertRequest
@@ -56,6 +58,8 @@ import java.util.concurrent.TimeUnit
 
 import static com.mongodb.ClusterFixture.TIMEOUT
 import static com.mongodb.ClusterFixture.executeAsync
+import static com.mongodb.ClusterFixture.getAsyncBinding
+import static com.mongodb.ClusterFixture.getBinding
 import static com.mongodb.ClusterFixture.getPrimary
 import static com.mongodb.ClusterFixture.loopCursor
 import static com.mongodb.WriteConcern.ACKNOWLEDGED
@@ -84,12 +88,12 @@ class OperationFunctionalSpecification extends Specification {
     }
 
     void acknowledgeWrite(final SingleConnectionBinding binding) {
-        new InsertOperation(getNamespace(), true, ACKNOWLEDGED, [new InsertRequest(new BsonDocument())]).execute(binding)
+        new InsertOperation(getNamespace(), true, ACKNOWLEDGED, false, [new InsertRequest(new BsonDocument())]).execute(binding)
         binding.release()
     }
 
     void acknowledgeWrite(final AsyncSingleConnectionBinding binding) {
-        executeAsync(new InsertOperation(getNamespace(), true, ACKNOWLEDGED, [new InsertRequest(new BsonDocument())]), binding)
+        executeAsync(new InsertOperation(getNamespace(), true, ACKNOWLEDGED, false, [new InsertRequest(new BsonDocument())]), binding)
         binding.release()
     }
 
@@ -108,6 +112,12 @@ class OperationFunctionalSpecification extends Specification {
     def execute(operation, boolean async) {
         def executor = async ? ClusterFixture.&executeAsync : ClusterFixture.&executeSync
         executor(operation)
+    }
+
+    def executeWithSession(operation, boolean async) {
+        def executor = async ? ClusterFixture.&executeAsync : ClusterFixture.&executeSync
+        def binding = async ? new AsyncSessionBinding(getAsyncBinding()) : new SessionBinding(getBinding())
+        executor(operation, binding)
     }
 
     def execute(operation, SingleConnectionBinding binding) {
@@ -162,6 +172,16 @@ class OperationFunctionalSpecification extends Specification {
         test(operation, serverVersion, result, true, expectedCommand)
     }
 
+    void testOperationRetries(operation, List<Integer> serverVersion, BsonDocument expectedCommand, boolean async, result = null) {
+        def test = async ? this.&testAsyncOperation : this.&testSyncOperation
+        test(operation, serverVersion, result, true, expectedCommand, false, ReadPreference.primary(), true)
+    }
+
+    void testRetryableOperationThrowsOriginalError(operation, List<Integer> initialServerVersion, Throwable exception, boolean async) {
+        def test = async ? this.&testAyncRetryableOperationThrows : this.&testSyncRetryableOperationThrows
+        test(operation, initialServerVersion, exception)
+    }
+
     void testOperationSlaveOk(operation, List<Integer> serverVersion, ReadPreference readPreference, boolean async, result = null) {
         def test = async ? this.&testAsyncOperation : this.&testSyncOperation
         test(operation, serverVersion, result, false, null, true, readPreference)
@@ -174,8 +194,7 @@ class OperationFunctionalSpecification extends Specification {
 
     def testSyncOperation(operation, List<Integer> serverVersion, result, Boolean checkCommand=true,
                           BsonDocument expectedCommand=null, Boolean checkSlaveOk=false,
-                          ReadPreference readPreference=ReadPreference.primary()) {
-        def connCounter = 0
+                          ReadPreference readPreference=ReadPreference.primary(), Boolean retryable = false) {
         def connection = Mock(Connection) {
             _ * getDescription() >> Stub(ConnectionDescription) {
                 getServerVersion() >> new ServerVersion(serverVersion)
@@ -184,7 +203,6 @@ class OperationFunctionalSpecification extends Specification {
 
         def connectionSource = Stub(ConnectionSource) {
             getConnection() >> {
-                connCounter++
                 connection
             }
         }
@@ -196,18 +214,32 @@ class OperationFunctionalSpecification extends Specification {
             getWriteConnectionSource() >> connectionSource
         }
 
-        if (checkCommand) {
-            1 * connection.command(_, expectedCommand, _, _, _, _) >> { result }
-        } else if (checkSlaveOk) {
-            1 * connection.command(_, _, _, readPreference, _, _) >> { result }
+        if (retryable) {
+            1 * connection.command(*_) >> { throw new MongoException('Some network error') }
         }
 
-        0 * connection.command(_, _, _, _, _) >> {
+        if (checkCommand) {
+            1 * connection.command(*_) >> {
+                it[1] == expectedCommand
+                result
+            }
+        } else if (checkSlaveOk) {
+            1 * connection.command(*_) >> {
+                it[4] == readPreference
+                result
+            }
+        }
+
+        0 * connection.command(_, _, _, _, _, _) >> {
             // Unexpected Command
             result
         }
 
-        1 * connection.release()
+        if (retryable) {
+            2 * connection.release()
+        } else {
+            1 * connection.release()
+        }
 
         if (operation instanceof ReadOperation) {
             operation.execute(readBinding)
@@ -218,7 +250,7 @@ class OperationFunctionalSpecification extends Specification {
 
     def testAsyncOperation(operation, List<Integer> serverVersion, result = null,
                            Boolean checkCommand=true, BsonDocument expectedCommand=null, Boolean checkSlaveOk=false,
-                           ReadPreference readPreference=ReadPreference.primary()) {
+                           ReadPreference readPreference=ReadPreference.primary(), Boolean retryable = false) {
         def connection = Mock(AsyncConnection) {
             _ * getDescription() >> Stub(ConnectionDescription) {
                 getServerVersion() >> new ServerVersion(serverVersion)
@@ -237,18 +269,32 @@ class OperationFunctionalSpecification extends Specification {
         }
         def callback = new FutureResultCallback()
 
-        if (checkCommand) {
-            1 * connection.commandAsync(_, expectedCommand, _, _, _, _, _) >> { it[6].onResult(result, null) }
-        } else if (checkSlaveOk) {
-            1 * connection.commandAsync(_, _, _, readPreference, _, _, _) >> { it[6].onResult(result, null) }
+        if (retryable) {
+            1 * connection.commandAsync(*_) >> { it.last().onResult(null, new MongoException('Some network error')) }
         }
 
-        0 * connection.commandAsync(_, _, _, _, _, _) >> {
+        if (checkCommand) {
+            1 * connection.commandAsync(*_) >> {
+                it[1] == expectedCommand
+                it.last().onResult(result, null)
+            }
+        } else if (checkSlaveOk) {
+            1 * connection.commandAsync(*_) >> {
+                it[4] == readPreference
+                it.last().onResult(result, null)
+            }
+        }
+
+        0 * connection.commandAsync(_, _, _, _, _, _, _) >> {
             // Unexpected Command
             it[5].onResult(result, null)
         }
 
-        1 * connection.release()
+        if (retryable) {
+            2 * connection.release()
+        } else {
+            1 * connection.release()
+        }
 
         if (operation instanceof AsyncReadOperation) {
             operation.executeAsync(readBinding, callback)
@@ -260,6 +306,65 @@ class OperationFunctionalSpecification extends Specification {
          } catch (MongoException e) {
             throw e.cause
         }
+    }
+
+    def testSyncRetryableOperationThrows(operation, List<Integer> serverVersion, Throwable exception) {
+        def counter = 0
+        def connection = Mock(Connection) {
+            _ * getDescription() >> Stub(ConnectionDescription) {
+                getServerVersion() >> {
+                    if (counter < 2) {
+                        counter++
+                        new ServerVersion(serverVersion)
+                    } else {
+                        new ServerVersion([3, 0, 0])
+                    }
+                }
+            }
+        }
+
+        def connectionSource = Stub(ConnectionSource) {
+            getConnection() >> {
+                connection
+            }
+        }
+        def writeBinding = Stub(WriteBinding) {
+            getWriteConnectionSource() >> connectionSource
+        }
+
+        1 * connection.command(*_) >> { throw exception }
+        2 * connection.release()
+        operation.execute(writeBinding)
+    }
+
+    def testAyncRetryableOperationThrows(operation, List<Integer> serverVersion, exception) {
+        def counter = 0
+        def connection = Mock(AsyncConnection) {
+            _ * getDescription() >> Stub(ConnectionDescription) {
+                getServerVersion() >> {
+                    if (counter < 2) {
+                        counter++
+                        new ServerVersion(serverVersion)
+                    } else {
+                        new ServerVersion([3, 0, 0])
+                    }
+                }
+            }
+        }
+
+        def connectionSource = Stub(AsyncConnectionSource) {
+            getConnection(_) >> { it[0].onResult(connection, null) }
+        }
+        def writeBinding = Stub(AsyncWriteBinding) {
+            getWriteConnectionSource(_) >> { it[0].onResult(connectionSource, null) }
+        }
+        def callback = new FutureResultCallback()
+
+        1 * connection.commandAsync(*_) >> { it.last().onResult(null, exception) }
+        2 * connection.release()
+
+        operation.executeAsync(writeBinding, callback)
+        callback.get(1000, TimeUnit.MILLISECONDS)
     }
 
     @Shared

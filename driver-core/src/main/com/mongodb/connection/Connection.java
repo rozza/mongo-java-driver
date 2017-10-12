@@ -136,6 +136,27 @@ public interface Connection extends ReferenceCounted {
                   SplittablePayload payload, FieldNameValidator payloadFieldNameValidator);
 
     /**
+     * Executes the command, consuming as much of the {@code SplittablePayload} as possible.
+     *
+     * @param <T>                       the type of the result
+     * @param database                  the database to execute the command in
+     * @param command                   the command document
+     * @param commandFieldNameValidator the field name validator for the command document
+     * @param readPreference            the read preference that was applied to get this connection
+     * @param commandResultDecoder      the decoder for the result
+     * @param sessionContext            the session context
+     * @param responseExpected          true if a response from the server is expected
+     * @param payload                   the splittable payload to incorporate with the command
+     * @param payloadFieldNameValidator the field name validator for the payload documents
+     * @param txnNumber                 the transaction number
+     * @return the command result
+     * @since 3.6
+     */
+    <T> T command(String database, BsonDocument command, FieldNameValidator commandFieldNameValidator, ReadPreference readPreference,
+                  Decoder<T> commandResultDecoder, SessionContext sessionContext, boolean responseExpected,
+                  SplittablePayload payload, FieldNameValidator payloadFieldNameValidator, Long txnNumber);
+
+    /**
      * Execute the query.
      *
      * @param namespace       the namespace to query

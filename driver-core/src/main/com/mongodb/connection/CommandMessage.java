@@ -23,6 +23,7 @@ import com.mongodb.internal.validator.MappedFieldNameValidator;
 import org.bson.BsonBinaryWriter;
 import org.bson.BsonDocument;
 import org.bson.BsonElement;
+import org.bson.BsonInt64;
 import org.bson.BsonString;
 import org.bson.BsonWriter;
 import org.bson.FieldNameValidator;
@@ -36,6 +37,7 @@ import java.util.Map;
 
 import static com.mongodb.ReadPreference.primary;
 import static com.mongodb.assertions.Assertions.isTrue;
+import static com.mongodb.assertions.Assertions.isTrueArgument;
 import static com.mongodb.connection.BsonWriterHelper.writePayload;
 
 /**
@@ -49,23 +51,28 @@ final class CommandMessage extends RequestMessage {
     private final SplittablePayload payload;
     private final FieldNameValidator payloadFieldNameValidator;
     private final boolean responseExpected;
+    private final Long txnNumber;
 
     CommandMessage(final MongoNamespace namespace, final BsonDocument command, final FieldNameValidator commandFieldNameValidator,
                    final ReadPreference readPreference, final MessageSettings settings) {
-        this(namespace, command, commandFieldNameValidator, readPreference, settings, true, null, null);
+        this(namespace, command, commandFieldNameValidator, readPreference, settings, true, null, null, null);
     }
 
     CommandMessage(final MongoNamespace namespace, final BsonDocument command, final FieldNameValidator commandFieldNameValidator,
                    final ReadPreference readPreference, final MessageSettings settings, final boolean responseExpected,
-                   final SplittablePayload payload, final FieldNameValidator payloadFieldNameValidator) {
+                   final SplittablePayload payload, final FieldNameValidator payloadFieldNameValidator, final Long txnNumber) {
         super(namespace.getFullName(), getOpCode(settings), settings);
         this.namespace = namespace;
         this.command = command;
         this.commandFieldNameValidator = commandFieldNameValidator;
+        this.readPreference = readPreference;
         this.responseExpected = responseExpected;
         this.payload = payload;
         this.payloadFieldNameValidator = payloadFieldNameValidator;
-        this.readPreference = readPreference;
+        this.txnNumber = txnNumber;
+
+        isTrueArgument("txnNumber should be null. txnNumber is not supported on servers older than 3.6",
+                txnNumber == null || isServerVersionAtLeastThreeDotSix(settings));
     }
 
     boolean containsPayload() {
@@ -174,6 +181,9 @@ final class CommandMessage extends RequestMessage {
                 extraElements.add(new BsonElement("$clusterTime", sessionContext.getClusterTime()));
             }
             extraElements.add(new BsonElement("lsid", sessionContext.getSessionId()));
+            if (txnNumber != null) {
+                extraElements.add(new BsonElement("txnNumber", new BsonInt64(txnNumber)));
+            }
         }
         if (!isDefaultReadPreference(getReadPreference())) {
             extraElements.add(new BsonElement("$readPreference", getReadPreference().toDocument()));
