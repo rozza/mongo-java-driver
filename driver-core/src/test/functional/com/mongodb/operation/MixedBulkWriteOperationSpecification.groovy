@@ -540,22 +540,28 @@ class MixedBulkWriteOperationSpecification extends OperationFunctionalSpecificat
         [async, ordered] << [[true, false], [true, false]].combinations()
     }
 
+    @Category(Slow)
     def 'should split the number of writes is larger than the match write batch size'() {
         given:
+        def binding = async ? getAsyncSingleConnectionBinding() : getSingleConnectionBinding()
+        def maxWriteBatchSize = getCollectionHelper().isMaster().getInteger("maxWriteBatchSize").intValue()
+        def numberOfWrites = maxWriteBatchSize + 100
         def writes = []
-        (0..2000).each {
+
+        (1..numberOfWrites).each {
             writes.add(new InsertRequest(new BsonDocument()))
         }
-        def operation = new MixedBulkWriteOperation(getNamespace(), writes, ordered, ACKNOWLEDGED)
+        def operation = new MixedBulkWriteOperation(getNamespace(), writes, ordered, writeConcern)
 
         when:
-        execute(operation, async)
+        execute(operation, binding)
+        acknowledgeWrite(binding)
 
         then:
-        getCollectionHelper().count() == 2001
+        getCollectionHelper().count() == numberOfWrites + 1
 
         where:
-        [async, ordered] << [[true, false], [true, false]].combinations()
+        [async, ordered, writeConcern] << [[true, false], [true, false], [ACKNOWLEDGED, UNACKNOWLEDGED]].combinations()
     }
 
     def 'should be able to merge upserts across batches'() {

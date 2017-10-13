@@ -148,7 +148,7 @@ final class CommandMessage extends RequestMessage {
 
     private boolean calculateIsResponseExpected() {
         // If there is another message in the payload require that the response is acknowledged
-        if (useOpMsg() && payload != null && payload.hasAnotherSplit()) {
+        if (!responseExpected && useOpMsg() && payload != null && payload.hasAnotherSplit()) {
             return true;
         }
         return responseExpected;
