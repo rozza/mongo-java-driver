@@ -544,7 +544,7 @@ class MixedBulkWriteOperationSpecification extends OperationFunctionalSpecificat
     def 'should split the number of writes is larger than the match write batch size'() {
         given:
         def binding = async ? getAsyncSingleConnectionBinding() : getSingleConnectionBinding()
-        def maxWriteBatchSize = getCollectionHelper().isMaster().getInteger("maxWriteBatchSize").intValue()
+        def maxWriteBatchSize = getCollectionHelper().isMaster().getInteger('maxWriteBatchSize').intValue()
         def numberOfWrites = maxWriteBatchSize + 100
         def writes = []
 
