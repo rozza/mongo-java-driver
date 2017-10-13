@@ -123,8 +123,13 @@ final class BulkWriteBatch {
         for (int i = 0; i < writeRequestsWithIndices.size(); i++) {
             WriteRequestWithIndex writeRequestWithIndex = writeRequestsWithIndices.get(i);
             if (writeRequestWithIndex.getType() != batchType) {
-                unprocessedItems.add(writeRequestWithIndex);
-                continue;
+                if (ordered) {
+                    unprocessedItems.addAll(writeRequestsWithIndices.subList(i, writeRequestsWithIndices.size()));
+                    break;
+                } else {
+                    unprocessedItems.add(writeRequestWithIndex);
+                    continue;
+                }
             }
 
             indexMap = indexMap.add(payloadItems.size(), writeRequestWithIndex.index);
