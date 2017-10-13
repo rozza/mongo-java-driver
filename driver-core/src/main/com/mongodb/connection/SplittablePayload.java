@@ -32,10 +32,12 @@ import static com.mongodb.connection.SplittablePayload.Type.UPDATE;
  * <p>The command will consume as much of the payload as possible. The {@link #hasAnotherSplit()} method will return true if there is
  * another split to consume, {@link #getNextSplit} method will return the next SplittablePayload.</p>
  *
- * @see com.mongodb.connection.Connection#command(String, BsonDocument, SplittablePayload, org.bson.FieldNameValidator,
- * org.bson.codecs.Decoder, com.mongodb.connection.SessionContext)
- * @see com.mongodb.connection.AsyncConnection#commandAsync(String, BsonDocument, SplittablePayload, org.bson.FieldNameValidator,
- * org.bson.codecs.Decoder, com.mongodb.connection.SessionContext, com.mongodb.async.SingleResultCallback)
+ * @see com.mongodb.connection.Connection#command(String, org.bson.BsonDocument, org.bson.FieldNameValidator, com.mongodb.ReadPreference,
+ * org.bson.codecs.Decoder, com.mongodb.connection.SessionContext, boolean, com.mongodb.connection.SplittablePayload,
+ * org.bson.FieldNameValidator)
+ * @see com.mongodb.connection.AsyncConnection#commandAsync(String, org.bson.BsonDocument, org.bson.FieldNameValidator,
+ * com.mongodb.ReadPreference, org.bson.codecs.Decoder, com.mongodb.connection.SessionContext, boolean,
+ * com.mongodb.connection.SplittablePayload, org.bson.FieldNameValidator, com.mongodb.async.SingleResultCallback)
  * @since 3.6
  */
 public final class SplittablePayload {

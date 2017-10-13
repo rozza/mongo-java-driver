@@ -49,8 +49,6 @@ final class CommandMessage extends RequestMessage {
     private final SplittablePayload payload;
     private final FieldNameValidator payloadFieldNameValidator;
     private final boolean responseExpected;
-    private boolean messageHasBeenEncoded;
-    private boolean updatedResponseExpected;
 
     CommandMessage(final MongoNamespace namespace, final BsonDocument command, final FieldNameValidator commandFieldNameValidator,
                    final ReadPreference readPreference, final MessageSettings settings) {
@@ -75,8 +73,8 @@ final class CommandMessage extends RequestMessage {
     }
 
     boolean isResponseExpected() {
-        isTrue("The message must be encoded before determining if a response is expected", messageHasBeenEncoded);
-        return updatedResponseExpected;
+        isTrue("The message must be encoded before determining if a response is expected", getEncodingMetadata() != null);
+        return calculateIsResponseExpected();
     }
 
     ReadPreference getReadPreference() {
@@ -106,9 +104,6 @@ final class CommandMessage extends RequestMessage {
                 bsonOutput.writeInt32(payloadPosition, payloadLength);
             }
 
-            // Require a response if there is another payload in this batch
-            updatedResponseExpected = payload != null ? payload.hasAnotherSplit() || responseExpected : responseExpected;
-
             // Write the flag bits
             bsonOutput.writeInt32(flagPosition, getFlagBits());
         } else {
@@ -124,9 +119,7 @@ final class CommandMessage extends RequestMessage {
             } else {
                 addDocumentWithPayload(bsonOutput);
             }
-            updatedResponseExpected = responseExpected;
         }
-        messageHasBeenEncoded = true;
         return new EncodingMetadata(null, commandStartPosition);
     }
 
@@ -146,11 +139,19 @@ final class CommandMessage extends RequestMessage {
     }
 
     private int getFlagBits() {
-        if (updatedResponseExpected) {
+        if (calculateIsResponseExpected()) {
             return 0;
         } else {
             return 1 << 1;
         }
+    }
+
+    private boolean calculateIsResponseExpected() {
+        // If there is another message in the payload require that the response is acknowledged
+        if (useOpMsg() && payload != null && payload.hasAnotherSplit()) {
+            return true;
+        }
+        return responseExpected;
     }
 
     private boolean useOpMsg() {
