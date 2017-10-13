@@ -40,12 +40,16 @@ class ByteBufPayloadBsonDocument extends AbstractByteBufBsonDocument implements 
     private BsonDocument unwrapped;
 
 
-    static ByteBufPayloadBsonDocument create(final ByteBufferBsonOutput bsonOutput, final int startPosition) {
+    static AbstractByteBufBsonDocument create(final ByteBufferBsonOutput bsonOutput, final int startPosition) {
         List<ByteBuf> duplicateByteBuffers = bsonOutput.getByteBuffers();
         CompositeByteBuf outputByteBuf = new CompositeByteBuf(duplicateByteBuffers);
         outputByteBuf.position(startPosition);
 
         ByteBufBsonDocument commandDocument = createByteBufBsonDocument(outputByteBuf);
+        if (!outputByteBuf.hasRemaining()) {
+            return commandDocument;
+        }
+
         String payloadName = validatePayloadAndGetName(outputByteBuf);
         List<ByteBufBsonDocument> payload = createPayload(outputByteBuf);
 
