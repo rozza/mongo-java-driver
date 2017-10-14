@@ -22,6 +22,7 @@ import com.mongodb.ReadPreference
 import com.mongodb.internal.validator.NoOpFieldNameValidator
 import org.bson.BsonBinary
 import org.bson.BsonDocument
+import org.bson.BsonSerializationException
 import org.bson.BsonString
 import org.bson.BsonTimestamp
 import org.bson.ByteBufNIO
@@ -32,10 +33,15 @@ import spock.lang.Specification
 import java.nio.ByteBuffer
 
 class CommandMessageSpecification extends Specification {
+
+    def namespace = new MongoNamespace('db.test')
+    def command = new BsonDocument('insert', new BsonString('coll'))
+    def fieldNameValidator = new NoOpFieldNameValidator()
+
     def 'should encode command message with OP_MSG'() {
         given:
-        def message = new CommandMessage(new MongoNamespace('db.test'), new BsonDocument('count', new BsonString('test')),
-                new NoOpFieldNameValidator(), readPreference, MessageSettings.builder().serverVersion(new ServerVersion(3, 6)).build())
+        def message = new CommandMessage(namespace, command, fieldNameValidator, readPreference,
+                MessageSettings.builder().serverVersion(new ServerVersion(3, 6)).build())
         def output = new BasicOutputBuffer()
 
         when:
@@ -48,8 +54,7 @@ class CommandMessageSpecification extends Specification {
         messageHeader.requestId == RequestMessage.currentGlobalId - 1
         messageHeader.responseTo == 0
 
-        def expectedCommandDocument = new BsonDocument()
-                .append('count', new BsonString('test'))
+        def expectedCommandDocument = command.clone()
                 .append('$db', new BsonString('db'))
 
         if (sessionContext.hasSession()) {
@@ -85,6 +90,67 @@ class CommandMessageSpecification extends Specification {
         ].combinations()
     }
 
+    def 'should respect the message settings limits'() {
+        given:
+        def payload = new SplittablePayload(SplittablePayload.Type.INSERT, [new BsonDocument('a', new BsonBinary(new byte[900])),
+                                                                            new BsonDocument('b', new BsonBinary(new byte[450])),
+                                                                            new BsonDocument('c', new BsonBinary(new byte[450]))])
+        def message = new CommandMessage(namespace, command, fieldNameValidator, ReadPreference.primary(), messageSettings,
+                false, payload, fieldNameValidator)
+        def output = new BasicOutputBuffer()
+        def sessionContext = Stub(SessionContext)
+
+        when:
+        message.encode(output, sessionContext)
+        def byteBuf = new ByteBufNIO(ByteBuffer.wrap(output.toByteArray()))
+        def messageHeader = new MessageHeader(byteBuf, 2048)
+
+        then:
+        messageHeader.opCode == OpCode.OP_MSG.value
+        messageHeader.requestId == RequestMessage.currentGlobalId - 1
+        messageHeader.responseTo == 0
+        byteBuf.getInt() == 0
+        payload.getPosition() == pos1
+        payload.hasAnotherSplit()
+
+        when:
+        payload = payload.getNextSplit()
+        message = new CommandMessage(namespace, command, fieldNameValidator, ReadPreference.primary(), messageSettings,
+                false, payload, fieldNameValidator)
+        output.truncateToPosition(0)
+        message.encode(output, sessionContext)
+        byteBuf = new ByteBufNIO(ByteBuffer.wrap(output.toByteArray()))
+        messageHeader = new MessageHeader(byteBuf, 1024)
+
+        then:
+        messageHeader.opCode == OpCode.OP_MSG.value
+        messageHeader.requestId == RequestMessage.currentGlobalId - 1
+        messageHeader.responseTo == 0
+        byteBuf.getInt() == 1 << 1
+        payload.getPosition() == pos2
+        !payload.hasAnotherSplit()
+
+        where:
+        pos1 | pos2 | messageSettings
+        1    | 2    | MessageSettings.builder().maxMessageSize(1024).serverVersion(new ServerVersion(3, 6)).build()
+        2    | 1    | MessageSettings.builder().maxBatchCount(2).serverVersion(new ServerVersion(3, 6)).build()
+    }
+
+    def 'should throw if payload document bigger than max document size'() {
+        given:
+        def messageSettings = MessageSettings.builder().maxDocumentSize(900).serverVersion(new ServerVersion(3, 6)).build()
+        def payload = new SplittablePayload(SplittablePayload.Type.INSERT, [new BsonDocument('a', new BsonBinary(new byte[900]))])
+        def message = new CommandMessage(namespace, command, fieldNameValidator, ReadPreference.primary(), messageSettings,
+                false, payload, fieldNameValidator)
+        def output = new BasicOutputBuffer()
+        def sessionContext = Stub(SessionContext)
+
+        when:
+        message.encode(output, sessionContext)
+
+        then:
+        thrown(BsonSerializationException)
+    }
 
     private static BsonDocument getCommandDocument(ByteBufNIO byteBuf, MessageHeader messageHeader) {
         new ReplyMessage<BsonDocument>(new ResponseBuffers(new ReplyHeader(byteBuf, messageHeader), byteBuf),
