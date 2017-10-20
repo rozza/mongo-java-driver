@@ -915,12 +915,12 @@ class MongoCollectionSpecification extends Specification {
 
     def 'should use FindOneAndDeleteOperation correctly'() {
         given:
-        def executor = new TestOperationExecutor((1..2).collect {
+        def executor = new TestOperationExecutor((1..4).collect {
             writeConcern.isAcknowledged() ? WriteConcernResult.acknowledged(1, true, null) : unacknowledged()
         })
         def collection = new MongoCollectionImpl(namespace, Document, codecRegistry,  readPreference, ACKNOWLEDGED,
-                true, readConcern, executor)
-        def expectedOperation = new FindAndDeleteOperation(namespace, ACKNOWLEDGED, true,  new DocumentCodec())
+                retryWrites, readConcern, executor)
+        def expectedOperation = new FindAndDeleteOperation(namespace, ACKNOWLEDGED, retryWrites,  new DocumentCodec())
                 .filter(new BsonDocument('a', new BsonInt32(1)))
         def findOneAndDeleteMethod = collection.&findOneAndDelete
 
@@ -942,9 +942,10 @@ class MongoCollectionSpecification extends Specification {
                 .maxTime(100, MILLISECONDS).collation(collation))
 
         where:
-        [writeConcern, session] << [
+        [writeConcern, session, retryWrites] << [
                 [ACKNOWLEDGED, UNACKNOWLEDGED],
-                [null, Stub(ClientSession)]
+                [null, Stub(ClientSession)],
+                [true, false]
         ].combinations()
     }
 
@@ -954,8 +955,8 @@ class MongoCollectionSpecification extends Specification {
             writeConcern.isAcknowledged() ? WriteConcernResult.acknowledged(1, true, null) : WriteConcernResult.unacknowledged()
         })
         def collection = new MongoCollectionImpl(namespace, Document, codecRegistry,  readPreference, writeConcern,
-                true, readConcern, executor)
-        def expectedOperation = new FindAndReplaceOperation(namespace, writeConcern, true, new DocumentCodec(),
+                retryWrites, readConcern, executor)
+        def expectedOperation = new FindAndReplaceOperation(namespace, writeConcern, retryWrites, new DocumentCodec(),
                 new BsonDocument('a', new BsonInt32(10))).filter(new BsonDocument('a', new BsonInt32(1)))
         def findOneAndReplaceMethod = collection.&findOneAndReplace
 
@@ -987,9 +988,10 @@ class MongoCollectionSpecification extends Specification {
                 .maxTime(100, MILLISECONDS).bypassDocumentValidation(true).collation(collation))
 
         where:
-        [writeConcern, session] << [
+        [writeConcern, session, retryWrites] << [
                 [ACKNOWLEDGED, UNACKNOWLEDGED],
-                [null, Stub(ClientSession)]
+                [null, Stub(ClientSession)],
+                [true, false]
         ].combinations()
     }
 
@@ -999,8 +1001,8 @@ class MongoCollectionSpecification extends Specification {
             writeConcern.isAcknowledged() ? WriteConcernResult.acknowledged(1, true, null) : unacknowledged()
         })
         def collection = new MongoCollectionImpl(namespace, Document, codecRegistry,  readPreference, writeConcern,
-                true, readConcern, executor)
-        def expectedOperation = new FindAndUpdateOperation(namespace, writeConcern, true, new DocumentCodec(),
+                retryWrites, readConcern, executor)
+        def expectedOperation = new FindAndUpdateOperation(namespace, writeConcern, retryWrites, new DocumentCodec(),
                 new BsonDocument('a', new BsonInt32(10))).filter(new BsonDocument('a', new BsonInt32(1)))
         def findOneAndUpdateMethod = collection.&findOneAndUpdate
 
@@ -1023,11 +1025,12 @@ class MongoCollectionSpecification extends Specification {
                 .arrayFilters(arrayFilters))
 
         where:
-        [writeConcern, arrayFilters, bypassDocumentValidation, session] << [
+        [writeConcern, arrayFilters, bypassDocumentValidation, session, retryWrites] << [
                 [ACKNOWLEDGED, UNACKNOWLEDGED],
                 [null, [], [new BsonDocument('a.b', new BsonInt32(42))]],
                 [true, false],
-                [null, Stub(ClientSession)]
+                [null, Stub(ClientSession)],
+                [true, false],
         ].combinations()
    }
 

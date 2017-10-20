@@ -40,6 +40,7 @@ import com.mongodb.connection.AsyncConnection
 import com.mongodb.connection.Connection
 import com.mongodb.connection.ConnectionDescription
 import com.mongodb.connection.ServerHelper
+import com.mongodb.connection.ServerType
 import com.mongodb.connection.ServerVersion
 import com.mongodb.internal.validator.NoOpFieldNameValidator
 import com.mongodb.operation.AsyncReadOperation
@@ -198,6 +199,7 @@ class OperationFunctionalSpecification extends Specification {
         def connection = Mock(Connection) {
             _ * getDescription() >> Stub(ConnectionDescription) {
                 getServerVersion() >> new ServerVersion(serverVersion)
+                getServerType() >> { retryable ? ServerType.REPLICA_SET_PRIMARY : ServerType.STANDALONE }
             }
         }
 
@@ -240,7 +242,6 @@ class OperationFunctionalSpecification extends Specification {
         } else {
             1 * connection.release()
         }
-
         if (operation instanceof ReadOperation) {
             operation.execute(readBinding)
         } else if (operation instanceof WriteOperation) {
@@ -254,6 +255,7 @@ class OperationFunctionalSpecification extends Specification {
         def connection = Mock(AsyncConnection) {
             _ * getDescription() >> Stub(ConnectionDescription) {
                 getServerVersion() >> new ServerVersion(serverVersion)
+                getServerType() >> { retryable ? ServerType.REPLICA_SET_PRIMARY : ServerType.STANDALONE }
             }
         }
 
@@ -320,6 +322,7 @@ class OperationFunctionalSpecification extends Specification {
                         new ServerVersion([3, 0, 0])
                     }
                 }
+                getServerType() >> ServerType.REPLICA_SET_PRIMARY
             }
         }
 
@@ -349,6 +352,7 @@ class OperationFunctionalSpecification extends Specification {
                         new ServerVersion([3, 0, 0])
                     }
                 }
+                getServerType() >>  ServerType.REPLICA_SET_PRIMARY
             }
         }
 

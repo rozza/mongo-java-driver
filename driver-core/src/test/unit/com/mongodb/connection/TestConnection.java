@@ -120,14 +120,6 @@ class TestConnection implements Connection, AsyncConnection {
     }
 
     @Override
-    public <T> T command(final String database, final BsonDocument command, final FieldNameValidator commandFieldNameValidator,
-                         final ReadPreference readPreference, final Decoder<T> commandResultDecoder, final SessionContext sessionContext,
-                         final boolean responseExpected, final SplittablePayload payload,
-                         final FieldNameValidator payloadFieldNameValidator, final Long txnNumber) {
-        return executeEnqueuedCommandBasedProtocol(sessionContext);
-    }
-
-    @Override
     public <T> void commandAsync(final String database, final BsonDocument command, final boolean slaveOk,
                                  final FieldNameValidator fieldNameValidator,
                                  final Decoder<T> commandResultDecoder, final SingleResultCallback<T> callback) {
@@ -146,15 +138,6 @@ class TestConnection implements Connection, AsyncConnection {
                                  final ReadPreference readPreference, final Decoder<T> commandResultDecoder,
                                  final SessionContext sessionContext, final boolean responseExpected, final SplittablePayload payload,
                                  final FieldNameValidator payloadFieldNameValidator, final SingleResultCallback<T> callback) {
-        executeEnqueuedCommandBasedProtocolAsync(sessionContext, callback);
-    }
-
-    @Override
-    public <T> void commandAsync(final String database, final BsonDocument command, final FieldNameValidator commandFieldNameValidator,
-                                 final ReadPreference readPreference, final Decoder<T> commandResultDecoder,
-                                 final SessionContext sessionContext, final boolean responseExpected, final SplittablePayload payload,
-                                 final FieldNameValidator payloadFieldNameValidator, final Long txnNumber,
-                                 final SingleResultCallback<T> callback) {
         executeEnqueuedCommandBasedProtocolAsync(sessionContext, callback);
     }
 

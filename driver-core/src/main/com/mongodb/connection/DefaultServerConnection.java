@@ -122,17 +122,8 @@ class DefaultServerConnection extends AbstractReferenceCounted implements Connec
                          final ReadPreference readPreference, final Decoder<T> commandResultDecoder, final SessionContext sessionContext,
                          final boolean responseExpected, final SplittablePayload payload,
                          final FieldNameValidator payloadFieldNameValidator) {
-        return command(database, command, commandFieldNameValidator, readPreference, commandResultDecoder, sessionContext, true,
-                payload, payloadFieldNameValidator, null);
-    }
-
-    @Override
-    public <T> T command(final String database, final BsonDocument command, final FieldNameValidator commandFieldNameValidator,
-                         final ReadPreference readPreference, final Decoder<T> commandResultDecoder, final SessionContext sessionContext,
-                         final boolean responseExpected, final SplittablePayload payload,
-                         final FieldNameValidator payloadFieldNameValidator, final Long txnNumber) {
         return executeProtocol(new CommandProtocolImpl<T>(database, command, commandFieldNameValidator, readPreference,
-                commandResultDecoder, responseExpected, payload, payloadFieldNameValidator, txnNumber), sessionContext);
+                commandResultDecoder, responseExpected, payload, payloadFieldNameValidator), sessionContext);
     }
 
     @Override
@@ -156,18 +147,8 @@ class DefaultServerConnection extends AbstractReferenceCounted implements Connec
                                  final ReadPreference readPreference, final Decoder<T> commandResultDecoder,
                                  final SessionContext sessionContext, final boolean responseExpected, final SplittablePayload payload,
                                  final FieldNameValidator payloadFieldNameValidator, final SingleResultCallback<T> callback) {
-        commandAsync(database, command, commandFieldNameValidator, readPreference, commandResultDecoder, sessionContext,
-                true, null, null, null, callback);
-    }
-
-    @Override
-    public <T> void commandAsync(final String database, final BsonDocument command, final FieldNameValidator commandFieldNameValidator,
-                                 final ReadPreference readPreference, final Decoder<T> commandResultDecoder,
-                                 final SessionContext sessionContext, final boolean responseExpected, final SplittablePayload payload,
-                                 final FieldNameValidator payloadFieldNameValidator,
-                                 final Long txnNumber, final SingleResultCallback<T> callback) {
         executeProtocolAsync(new CommandProtocolImpl<T>(database, command, commandFieldNameValidator, readPreference,
-                commandResultDecoder, responseExpected, payload,  payloadFieldNameValidator, txnNumber), sessionContext, callback);
+                commandResultDecoder, responseExpected, payload,  payloadFieldNameValidator), sessionContext, callback);
     }
 
     @Override

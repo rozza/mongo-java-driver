@@ -94,7 +94,7 @@ public class RetryableWritesTest extends DatabaseTestCase {
     @Before
     @Override
     public void setUp() {
-        assumeTrue(serverVersionAtLeast(3, 6) && !isStandalone());
+        assumeTrue(canRunTests());
         assumeTrue(false); // TODO - enable once sessions plugged in at the client.
 
         ServerVersion serverVersion = ClusterFixture.getServerVersion();
@@ -113,7 +113,7 @@ public class RetryableWritesTest extends DatabaseTestCase {
                 } else if (typeString.equals("replica_set")) {
                     assumeFalse(isDiscoverableReplicaSet());
                 } else if (typeString.equals("standalone")) {
-                    assumeFalse(isSharded());
+                    assumeFalse(isStandalone());
                 }
             }
         }
@@ -135,7 +135,9 @@ public class RetryableWritesTest extends DatabaseTestCase {
 
     @After
     public void cleanUp() {
-        unsetFailPoint();
+        if (canRunTests()) {
+            unsetFailPoint();
+        }
     }
 
     @Test
@@ -176,6 +178,10 @@ public class RetryableWritesTest extends DatabaseTestCase {
             }
         }
         return data;
+    }
+
+    private boolean canRunTests() {
+        return serverVersionAtLeast(3, 6) && isDiscoverableReplicaSet();
     }
 
     private BsonDocument fixResult(final BsonDocument result) {

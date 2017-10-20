@@ -92,7 +92,7 @@ public class RetryableWritesTest {
 
     @Before
     public void setUp() {
-        assumeTrue(serverVersionAtLeast(3, 6) && !isStandalone());
+        assumeTrue(canRunTests());
 
         ServerVersion serverVersion = ClusterFixture.getServerVersion();
         if (definition.containsKey("ignore_if_server_version_less_than")) {
@@ -110,7 +110,7 @@ public class RetryableWritesTest {
                 } else if (typeString.equals("replica_set")) {
                     assumeFalse(isDiscoverableReplicaSet());
                 } else if (typeString.equals("standalone")) {
-                    assumeFalse(isSharded());
+                    assumeFalse(isStandalone());
                 }
             }
         }
@@ -132,7 +132,9 @@ public class RetryableWritesTest {
 
     @After
     public void cleanUp() {
-        unsetFailPoint();
+        if (canRunTests()) {
+            unsetFailPoint();
+        }
     }
 
     @Test
@@ -149,16 +151,15 @@ public class RetryableWritesTest {
             wasException = true;
         }
 
-        BsonDocument fixedResult = fixResult(result.getDocument("result", new BsonDocument()));
-        BsonDocument fixedExpectedResult = fixExpectedResult(outcome.getDocument("result", new BsonDocument()));
-
-        assertEquals(outcome.containsKey("error"), wasException);
-        assertEquals(fixedResult, fixedExpectedResult);
 
         if (outcome.containsKey("collection")) {
             List<BsonDocument> collectionData = collection.withDocumentClass(BsonDocument.class).find().into(new ArrayList<BsonDocument>());
             assertEquals(outcome.getDocument("collection").getArray("data").getValues(), collectionData);
         }
+
+        assertEquals(outcome.containsKey("error"), wasException);
+        BsonDocument fixedExpectedResult = fixExpectedResult(outcome.getDocument("result", new BsonDocument()));
+        assertEquals(result.getDocument("result", new BsonDocument()), fixedExpectedResult);
     }
 
     @Parameterized.Parameters(name = "{1}")
@@ -174,11 +175,8 @@ public class RetryableWritesTest {
         return data;
     }
 
-    private BsonDocument fixResult(final BsonDocument result) {
-        if (result.containsKey("insertedIds") && result.get("insertedIds").isDocument()) {
-            result.remove("insertedIds");
-        }
-        return result;
+    private boolean canRunTests() {
+        return serverVersionAtLeast(3, 6) && isDiscoverableReplicaSet();
     }
 
     private BsonDocument fixExpectedResult(final BsonDocument result) {
@@ -187,8 +185,8 @@ public class RetryableWritesTest {
             result.put("insertedIds", new BsonArray(new ArrayList<BsonValue>(insertedIds.values())));
 
             if (result.containsKey("modifiedCount") && !result.containsKey("insertedCount")) {
-                result.remove("insertedIds");
                 result.put("insertedCount", new BsonInt32(insertedIds.size()));
+                result.put("insertedIds", new BsonDocument());
             }
         }
 
@@ -201,7 +199,7 @@ public class RetryableWritesTest {
             for (Map.Entry<String, BsonValue> args : definition.getDocument("failPoint").entrySet()) {
                 command.put(args.getKey(), args.getValue());
             }
-            Document result = mongoClient.getDatabase("admin").runCommand(command);
+            mongoClient.getDatabase("admin").runCommand(command);
         }
     }
 

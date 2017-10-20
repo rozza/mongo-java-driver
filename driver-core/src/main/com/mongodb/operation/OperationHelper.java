@@ -17,7 +17,6 @@
 package com.mongodb.operation;
 
 import com.mongodb.MongoClientException;
-import com.mongodb.MongoException;
 import com.mongodb.MongoNamespace;
 import com.mongodb.ReadConcern;
 import com.mongodb.ServerAddress;
@@ -51,6 +50,7 @@ import java.util.Collections;
 import java.util.List;
 
 import static com.mongodb.assertions.Assertions.notNull;
+import static com.mongodb.connection.ServerType.STANDALONE;
 import static com.mongodb.internal.async.ErrorHandlingResultCallback.errorHandlingCallback;
 import static java.lang.String.format;
 import static java.util.Arrays.asList;
@@ -75,12 +75,8 @@ final class OperationHelper {
         void call(AsyncConnectionSource source, AsyncConnection connection, Throwable t);
     }
 
-    interface CallableWithConnectionAndTransactionNumber<T> {
-        T call(Connection connection, Long txnNumber);
-    }
-
-    interface AsyncCallableWithConnectionAndTransactionNumber<T> {
-        void call(AsyncConnection connection, Long txnNumber, SingleResultCallback<T> callback);
+    interface AsyncCallableWithConnectionAndCallback {
+        void call(AsyncConnection connection);
     }
 
     static void validateReadConcern(final Connection connection, final ReadConcern readConcern) {
@@ -140,6 +136,29 @@ final class OperationHelper {
                     connection.getDescription().getServerVersion()));
         }
         callable.call(connection, throwable);
+    }
+
+    static <T> void validateCollationAndRetryWrites(final AsyncWriteBinding binding, final Collation collation, final boolean retryWrites,
+                                                    final SingleResultCallback<T> callback, final AsyncCallableWithConnection callable) {
+        withConnection(binding, new AsyncCallableWithConnection() {
+            @Override
+            public void call(final AsyncConnection connection, final Throwable t) {
+                if (t != null) {
+                    callback.onResult(null, t);
+                } else {
+                    validateCollationAndRetryWrites(connection, collation, retryWrites, new AsyncCallableWithConnection() {
+                        @Override
+                        public void call(final AsyncConnection connection, final Throwable t) {
+                            if (t != null) {
+                                releasingCallback(callback, connection).onResult(null, t);
+                            } else {
+                                callable.call(connection, null);
+                            }
+                        }
+                    });
+                }
+            }
+        });
     }
 
     static void validateCollationAndRetryWrites(final AsyncConnection connection, final Collation collation, final boolean retryWrites,
@@ -222,7 +241,7 @@ final class OperationHelper {
 
     static void validateWriteRequests(final Connection connection, final Boolean bypassDocumentValidation,
                                       final List<? extends WriteRequest> requests, final WriteConcern writeConcern,
-                                      final Boolean retryWrites) {
+                                      final boolean retryWrites) {
         checkBypassDocumentValidationIsSupported(connection, bypassDocumentValidation, writeConcern);
         validateWriteRequestCollations(connection, requests, writeConcern);
         validateRetryWrites(connection, retryWrites);
@@ -230,7 +249,7 @@ final class OperationHelper {
 
     static void validateWriteRequests(final AsyncConnection connection, final Boolean bypassDocumentValidation,
                                       final List<? extends WriteRequest> requests, final WriteConcern writeConcern,
-                                        final Boolean retryWrites, final AsyncCallableWithConnection callable) {
+                                        final boolean retryWrites, final AsyncCallableWithConnection callable) {
         checkBypassDocumentValidationIsSupported(connection, bypassDocumentValidation, writeConcern, new AsyncCallableWithConnection() {
             @Override
             public void call(final AsyncConnection connection, final Throwable t) {
@@ -256,15 +275,19 @@ final class OperationHelper {
         if (retryWrites && !serverIsAtLeastVersionThreeDotSix(connection.getDescription())) {
             throw new IllegalArgumentException(format("Retryable writes are not supported by server version: %s",
                     connection.getDescription().getServerVersion()));
+        } else if (retryWrites && connection.getDescription().getServerType() == STANDALONE) {
+            throw new IllegalArgumentException("Retryable writes are not supported on standalone servers");
         }
     }
 
-    static void validateRetryWrites(final AsyncConnection connection, final Boolean retryWrites,
+    static void validateRetryWrites(final AsyncConnection connection, final boolean retryWrites,
                                     final AsyncCallableWithConnection callable) {
         Throwable throwable = null;
         if (retryWrites && !serverIsAtLeastVersionThreeDotSix(connection.getDescription())) {
             throwable = new IllegalArgumentException(format("Retryable writes are not supported by server version: %s",
                     connection.getDescription().getServerVersion()));
+        } else if (retryWrites && connection.getDescription().getServerType() == STANDALONE) {
+            throwable = new IllegalArgumentException("Retryable writes are not supported on standalone servers");
         }
         callable.call(connection, throwable);
     }
@@ -393,6 +416,10 @@ final class OperationHelper {
                                   cursorId, serverAddress);
     }
 
+    static <T> SingleResultCallback<T> releasingCallback(final SingleResultCallback<T> wrapped, final AsyncConnectionSource source) {
+        return new ReferenceCountedReleasingWrappedCallback<T>(wrapped, singletonList(source));
+    }
+
     static <T> SingleResultCallback<T> releasingCallback(final SingleResultCallback<T> wrapped, final AsyncConnection connection) {
         return new ReferenceCountedReleasingWrappedCallback<T>(wrapped, singletonList(connection));
     }
@@ -496,6 +523,15 @@ final class OperationHelper {
         }
     }
 
+    static <T> T withReleasableConnection(final WriteBinding binding, final CallableWithConnection<T> callable) {
+        ConnectionSource source = binding.getWriteConnectionSource();
+        try {
+            return callable.call(source.getConnection());
+        } finally {
+            source.release();
+        }
+    }
+
     static <T> T withConnectionSource(final ConnectionSource source, final CallableWithConnection<T> callable) {
         Connection connection = source.getConnection();
         try {
@@ -524,76 +560,6 @@ final class OperationHelper {
 
     static void withConnection(final AsyncReadBinding binding, final AsyncCallableWithConnectionAndSource callable) {
         binding.getReadConnectionSource(errorHandlingCallback(new AsyncCallableWithConnectionAndSourceCallback(callable), LOGGER));
-    }
-
-    static <T> T retryableWithConnection(final WriteBinding binding, final boolean retryable,
-                                         final CallableWithConnectionAndTransactionNumber<T> callable) {
-        final Long txnNumber = retryable ? binding.getSessionContext().advanceTransactionNumber() : null;
-        return withConnection(binding, new CallableWithConnection<T>() {
-            @Override
-            public T call(final Connection connection) {
-                try {
-                    return callable.call(connection, txnNumber);
-                } catch (MongoException e) {
-                    if (!retryable) {
-                        throw e;
-                    } else {
-                        final MongoException originalException = e;
-                        return withConnection(binding, new CallableWithConnection<T>() {
-                            @Override
-                            public T call(final Connection connection) {
-                                if (!serverIsAtLeastVersionThreeDotSix(connection.getDescription())) {
-                                    throw originalException;
-                                }
-                                return callable.call(connection, txnNumber);
-                            }
-                        });
-                    }
-                }
-            }
-        });
-    }
-
-    static <T> void retryableWithConnection(final AsyncWriteBinding binding, final boolean retryable,
-                                            final SingleResultCallback<T> callback,
-                                            final AsyncCallableWithConnectionAndTransactionNumber<T> callable) {
-        final SingleResultCallback<T> errHandlingCallback = errorHandlingCallback(callback, LOGGER);
-        final Long txnNumber = retryable ? binding.getSessionContext().advanceTransactionNumber() : null;
-        withConnection(binding, new AsyncCallableWithConnection() {
-            @Override
-            public void call(final AsyncConnection connection, final Throwable t) {
-                if (t != null) {
-                    errHandlingCallback.onResult(null, t);
-                } else {
-                    callable.call(connection, txnNumber, new SingleResultCallback<T>() {
-                        @Override
-                        public void onResult(final T result, final Throwable originalError) {
-                            if (originalError != null) {
-                                if (!retryable || !(originalError instanceof MongoException)) {
-                                    releasingCallback(errHandlingCallback, connection).onResult(null, originalError);
-                                } else {
-                                    connection.release();
-                                    withConnection(binding, new AsyncCallableWithConnection() {
-                                        @Override
-                                        public void call(final AsyncConnection newConnection, final Throwable t) {
-                                            if (t != null) {
-                                                errHandlingCallback.onResult(null, originalError);
-                                            } else if (!serverIsAtLeastVersionThreeDotSix(connection.getDescription())) {
-                                                releasingCallback(errHandlingCallback, newConnection).onResult(null, originalError);
-                                            } else {
-                                                callable.call(connection, txnNumber, releasingCallback(errHandlingCallback, newConnection));
-                                            }
-                                        }
-                                    });
-                                }
-                            } else {
-                                releasingCallback(errHandlingCallback, connection).onResult(result, null);
-                            }
-                        }
-                    });
-                }
-            }
-        });
     }
 
     private static class AsyncCallableWithConnectionCallback implements SingleResultCallback<AsyncConnectionSource> {

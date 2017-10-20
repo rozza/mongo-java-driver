@@ -40,17 +40,16 @@ class CommandProtocolImpl<T> implements CommandProtocol<T> {
     private final FieldNameValidator payloadFieldNameValidator;
     private final Decoder<T> commandResultDecoder;
     private final boolean responseExpected;
-    private final Long txnNumber;
     private SessionContext sessionContext;
 
     CommandProtocolImpl(final String database, final BsonDocument command, final FieldNameValidator commandFieldNameValidator,
                         final ReadPreference readPreference, final Decoder<T> commandResultDecoder) {
-        this(database, command, commandFieldNameValidator, readPreference, commandResultDecoder, true, null, null, null);
+        this(database, command, commandFieldNameValidator, readPreference, commandResultDecoder, true, null, null);
     }
 
     CommandProtocolImpl(final String database, final BsonDocument command, final FieldNameValidator commandFieldNameValidator,
                         final ReadPreference readPreference, final Decoder<T> commandResultDecoder, final boolean responseExpected,
-                        final SplittablePayload payload, final FieldNameValidator payloadFieldNameValidator, final Long txnNumber) {
+                        final SplittablePayload payload, final FieldNameValidator payloadFieldNameValidator) {
         notNull("database", database);
         this.namespace = new MongoNamespace(notNull("database", database), MongoNamespace.COMMAND_COLLECTION_NAME);
         this.command = notNull("command", command);
@@ -60,7 +59,6 @@ class CommandProtocolImpl<T> implements CommandProtocol<T> {
         this.responseExpected = responseExpected;
         this.payload = payload;
         this.payloadFieldNameValidator = payloadFieldNameValidator;
-        this.txnNumber = txnNumber;
 
         isTrueArgument("payloadFieldNameValidator cannot be null if there is a payload.",
                 payload == null || payloadFieldNameValidator != null);
@@ -113,7 +111,7 @@ class CommandProtocolImpl<T> implements CommandProtocol<T> {
 
     private CommandMessage getCommandMessage(final InternalConnection connection) {
         return new CommandMessage(namespace, command, commandFieldNameValidator, readPreference,
-                    getMessageSettings(connection.getDescription()), responseExpected, payload, payloadFieldNameValidator, txnNumber);
+                    getMessageSettings(connection.getDescription()), responseExpected, payload, payloadFieldNameValidator);
     }
 
     private String getCommandName() {

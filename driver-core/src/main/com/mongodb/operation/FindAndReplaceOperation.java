@@ -25,14 +25,14 @@ import com.mongodb.client.model.Collation;
 import com.mongodb.connection.AsyncConnection;
 import com.mongodb.connection.Connection;
 import com.mongodb.connection.ConnectionDescription;
+import com.mongodb.connection.SessionContext;
 import com.mongodb.internal.validator.CollectibleDocumentFieldNameValidator;
 import com.mongodb.internal.validator.MappedFieldNameValidator;
 import com.mongodb.internal.validator.NoOpFieldNameValidator;
 import com.mongodb.operation.OperationHelper.AsyncCallableWithConnection;
-import com.mongodb.operation.OperationHelper.AsyncCallableWithConnectionAndTransactionNumber;
-import com.mongodb.operation.OperationHelper.CallableWithConnectionAndTransactionNumber;
 import org.bson.BsonBoolean;
 import org.bson.BsonDocument;
+import org.bson.BsonInt64;
 import org.bson.BsonString;
 import org.bson.FieldNameValidator;
 import org.bson.codecs.Decoder;
@@ -42,12 +42,12 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import static com.mongodb.assertions.Assertions.notNull;
-import static com.mongodb.operation.CommandOperationHelper.executeWrappedCommandProtocol;
-import static com.mongodb.operation.CommandOperationHelper.executeWrappedCommandProtocolAsync;
+import static com.mongodb.operation.CommandOperationHelper.NestedCallable;
+import static com.mongodb.operation.CommandOperationHelper.ConnectionCallable;
+import static com.mongodb.operation.CommandOperationHelper.executeRetryableCommand;
 import static com.mongodb.operation.DocumentHelper.putIfNotNull;
 import static com.mongodb.operation.DocumentHelper.putIfNotZero;
 import static com.mongodb.operation.DocumentHelper.putIfTrue;
-import static com.mongodb.operation.OperationHelper.retryableWithConnection;
 import static com.mongodb.operation.OperationHelper.serverIsAtLeastVersionThreeDotTwo;
 import static com.mongodb.operation.OperationHelper.validateCollationAndRetryWrites;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
@@ -342,43 +342,36 @@ public class FindAndReplaceOperation<T> implements AsyncWriteOperation<T>, Write
         return this;
     }
 
-
     @Override
     public T execute(final WriteBinding binding) {
-        return retryableWithConnection(binding, retryWrites, new CallableWithConnectionAndTransactionNumber<T>() {
-            @Override
-            public T call(final Connection connection, final Long txnNumber) {
-                validateCollationAndRetryWrites(connection, collation, retryWrites);
-                return executeWrappedCommandProtocol(binding, namespace.getDatabaseName(), getCommand(connection.getDescription()),
-                        getFieldNameValidator(), txnNumber, CommandResultDocumentCodec.create(decoder, "value"),
-                        connection, FindAndModifyHelper.<T>transformer());
-            }
-        });
+        return executeRetryableCommand(binding, retryWrites, namespace.getDatabaseName(), getFieldNameValidator(),
+                CommandResultDocumentCodec.create(decoder, "value"), new ConnectionCallable<BsonDocument>() {
+                    @Override
+                    public BsonDocument call(final Connection connection) {
+                        validateCollationAndRetryWrites(connection, collation, retryWrites);
+                        return getCommand(binding.getSessionContext(), connection.getDescription());
+                    }
+                }, FindAndModifyHelper.<T>transformer());
     }
 
     @Override
-    public void executeAsync(final AsyncWriteBinding binding, final SingleResultCallback<T> originalCallback) {
-        retryableWithConnection(binding, retryWrites, originalCallback, new AsyncCallableWithConnectionAndTransactionNumber<T>() {
-            @Override
-            public void call(final AsyncConnection connection, final Long txnNumber, final SingleResultCallback<T> callback) {
-                validateCollationAndRetryWrites(connection, collation, retryWrites, new AsyncCallableWithConnection() {
+    public void executeAsync(final AsyncWriteBinding binding, final SingleResultCallback<T> callback) {
+        executeRetryableCommand(binding, retryWrites, namespace.getDatabaseName(), getFieldNameValidator(),
+                CommandResultDocumentCodec.create(decoder, "value"),
+                new NestedCallable<AsyncConnection, NestedCallable<BsonDocument, Throwable>>() {
                     @Override
-                    public void call(final AsyncConnection connection, final Throwable t) {
-                        if (t != null) {
-                            callback.onResult(null, t);
-                        } else {
-                            executeWrappedCommandProtocolAsync(binding, namespace.getDatabaseName(),
-                                    getCommand(connection.getDescription()), getFieldNameValidator(), txnNumber,
-                                    CommandResultDocumentCodec.create(decoder, "value"), connection,
-                                    FindAndModifyHelper.<T>transformer(), callback);
-                        }
+                    public void call(final AsyncConnection connection, final NestedCallable<BsonDocument, Throwable> commandCallable) {
+                        validateCollationAndRetryWrites(connection, collation, retryWrites, new AsyncCallableWithConnection() {
+                            @Override
+                            public void call(final AsyncConnection connection, final Throwable t) {
+                                commandCallable.call(getCommand(binding.getSessionContext(), connection.getDescription()), t);
+                            }
+                        });
                     }
-                });
-            }
-        });
+                }, FindAndModifyHelper.<T>transformer(), callback);
     }
 
-    private BsonDocument getCommand(final ConnectionDescription description) {
+    private BsonDocument getCommand(final SessionContext sessionContext, final ConnectionDescription description) {
         BsonDocument commandDocument = new BsonDocument("findandmodify", new BsonString(namespace.getCollectionName()));
         putIfNotNull(commandDocument, "query", getFilter());
         putIfNotNull(commandDocument, "fields", getProjection());
@@ -395,6 +388,9 @@ public class FindAndReplaceOperation<T> implements AsyncWriteOperation<T>, Write
         }
         if (collation != null) {
             commandDocument.put("collation", collation.asDocument());
+        }
+        if (retryWrites) {
+            commandDocument.put("txnNumber", new BsonInt64(sessionContext.advanceTransactionNumber()));
         }
         return commandDocument;
     }

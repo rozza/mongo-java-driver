@@ -790,6 +790,9 @@ public class MongoClientOptions {
         if (!writeConcern.equals(that.writeConcern)) {
             return false;
         }
+        if (retryWrites != that.retryWrites) {
+            return false;
+        }
         if (!readConcern.equals(that.readConcern)) {
             return false;
         }
@@ -822,6 +825,7 @@ public class MongoClientOptions {
         result = 31 * result + (applicationName != null ? applicationName.hashCode() : 0);
         result = 31 * result + readPreference.hashCode();
         result = 31 * result + writeConcern.hashCode();
+        result = 31 * result + (retryWrites ? 1 : 0);
         result = 31 * result + (readConcern != null ? readConcern.hashCode() : 0);
         result = 31 * result + codecRegistry.hashCode();
         result = 31 * result + clusterListeners.hashCode();
@@ -862,6 +866,7 @@ public class MongoClientOptions {
                + ", compressors='" + compressorList + '\''
                + ", readPreference=" + readPreference
                + ", writeConcern=" + writeConcern
+               + ", retryWrites=" + retryWrites
                + ", readConcern=" + readConcern
                + ", codecRegistry=" + codecRegistry
                + ", clusterListeners=" + clusterListeners
