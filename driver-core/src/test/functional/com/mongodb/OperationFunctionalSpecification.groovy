@@ -42,6 +42,7 @@ import com.mongodb.connection.ConnectionDescription
 import com.mongodb.connection.ServerHelper
 import com.mongodb.connection.ServerType
 import com.mongodb.connection.ServerVersion
+import com.mongodb.connection.SplittablePayload
 import com.mongodb.internal.validator.NoOpFieldNameValidator
 import com.mongodb.operation.AsyncReadOperation
 import com.mongodb.operation.AsyncWriteOperation
@@ -217,12 +218,16 @@ class OperationFunctionalSpecification extends Specification {
         }
 
         if (retryable) {
-            1 * connection.command(*_) >> { throw new MongoException('Some network error') }
+            1 * connection.command(*_) >> { throw new MongoSocketException('Some socket error', Stub(ServerAddress)) }
         }
 
         if (checkCommand) {
             1 * connection.command(*_) >> {
-                it[1] == expectedCommand
+                assert it[1] == expectedCommand
+                if (it.size() == 9) {
+                    SplittablePayload payload = it[7]
+                    payload.setPosition(payload.getPayload().size())
+                }
                 result
             }
         } else if (checkSlaveOk) {
@@ -272,12 +277,18 @@ class OperationFunctionalSpecification extends Specification {
         def callback = new FutureResultCallback()
 
         if (retryable) {
-            1 * connection.commandAsync(*_) >> { it.last().onResult(null, new MongoException('Some network error')) }
+            1 * connection.commandAsync(*_) >> {
+                it.last().onResult(null, new MongoSocketException('Some socket error', Stub(ServerAddress)))
+            }
         }
 
         if (checkCommand) {
             1 * connection.commandAsync(*_) >> {
-                it[1] == expectedCommand
+                assert it[1] == expectedCommand
+                if (it.size() == 10) {
+                    SplittablePayload payload = it[7]
+                    payload.setPosition(payload.getPayload().size())
+                }
                 it.last().onResult(result, null)
             }
         } else if (checkSlaveOk) {
@@ -336,7 +347,7 @@ class OperationFunctionalSpecification extends Specification {
         }
 
         1 * connection.command(*_) >> { throw exception }
-        2 * connection.release()
+        1 * connection.release()
         operation.execute(writeBinding)
     }
 
@@ -365,7 +376,7 @@ class OperationFunctionalSpecification extends Specification {
         def callback = new FutureResultCallback()
 
         1 * connection.commandAsync(*_) >> { it.last().onResult(null, exception) }
-        2 * connection.release()
+        1 * connection.release()
 
         operation.executeAsync(writeBinding, callback)
         callback.get(1000, TimeUnit.MILLISECONDS)

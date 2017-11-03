@@ -41,6 +41,8 @@ import spock.lang.IgnoreIf
 
 import java.util.concurrent.TimeUnit
 
+import static com.mongodb.ClusterFixture.disableOnPrimaryTransactionalWriteFailPoint
+import static com.mongodb.ClusterFixture.enableOnPrimaryTransactionalWriteFailPoint
 import static com.mongodb.ClusterFixture.isDiscoverableReplicaSet
 import static com.mongodb.ClusterFixture.serverVersionAtLeast
 import static com.mongodb.client.model.Filters.gte
@@ -93,7 +95,6 @@ class FindAndUpdateOperationSpecification extends OperationFunctionalSpecificati
     }
 
     def 'should update single document'() {
-
         given:
         CollectionHelper<Document> helper = new CollectionHelper<Document>(documentCodec, getNamespace())
         Document pete = new Document('name', 'Pete').append('numberOfJobs', 3)
@@ -319,6 +320,53 @@ class FindAndUpdateOperationSpecification extends OperationFunctionalSpecificati
         [3, 0, 0]      | WriteConcern.W1              | false                 | false            | false                   | false
     }
 
+    @IgnoreIf({ !serverVersionAtLeast(3, 6) || !isDiscoverableReplicaSet() })
+    def 'should support retryable writes'() {
+        given:
+        CollectionHelper<Document> helper = new CollectionHelper<Document>(documentCodec, getNamespace())
+        Document pete = new Document('name', 'Pete').append('numberOfJobs', 3)
+        Document sam = new Document('name', 'Sam').append('numberOfJobs', 5)
+
+        helper.insertDocuments(new DocumentCodec(), pete, sam)
+
+        when:
+        def update = new BsonDocument('$inc', new BsonDocument('numberOfJobs', new BsonInt32(1)))
+        def operation = new FindAndUpdateOperation<Document>(getNamespace(), ACKNOWLEDGED, true, documentCodec, update)
+                .filter(new BsonDocument('name', new BsonString('Pete')))
+
+        enableOnPrimaryTransactionalWriteFailPoint(BsonDocument.parse('{times: 1}'))
+
+        Document returnedDocument = executeWithSession(operation, async)
+
+        then:
+        returnedDocument.getInteger('numberOfJobs') == 3
+        helper.find().size() == 2;
+        helper.find().get(0).getInteger('numberOfJobs') == 4
+
+        cleanup:
+        disableOnPrimaryTransactionalWriteFailPoint()
+
+        where:
+        async << [true, false]
+    }
+
+    @IgnoreIf({ serverVersionAtLeast(3, 5) })
+    def 'should throw if using retryWrites on an unsupported server'() {
+        given:
+        def update = new BsonDocument('$inc', new BsonDocument('numberOfJobs', new BsonInt32(1)))
+        def operation = new FindAndUpdateOperation<Document>(getNamespace(), ACKNOWLEDGED, true, documentCodec, update)
+                .filter(new BsonDocument('name', new BsonString('Pete')))
+
+        when:
+        execute(operation, async)
+
+        then:
+        thrown(IllegalArgumentException)
+
+        where:
+        async << [true]
+    }
+
     def 'should retry if the connection initially fails'() {
         when:
         def cannedResult = new BsonDocument('value', new BsonDocumentWrapper(BsonDocument.parse('{}'), new BsonDocumentCodec()))
@@ -326,6 +374,7 @@ class FindAndUpdateOperationSpecification extends OperationFunctionalSpecificati
         def operation = new FindAndUpdateOperation<Document>(getNamespace(), ACKNOWLEDGED, true, documentCodec, update)
         def expectedCommand = new BsonDocument('findandmodify', new BsonString(getNamespace().getCollectionName()))
                 .append('update', update)
+                .append('txnNumber', new BsonInt64(0))
 
         then:
         testOperationRetries(operation, [3, 6, 0], expectedCommand, async, cannedResult)

@@ -32,6 +32,7 @@ import org.bson.types.ObjectId
 import org.junit.experimental.categories.Category
 import spock.lang.IgnoreIf
 
+import static com.mongodb.ClusterFixture.isDiscoverableReplicaSet
 import static com.mongodb.ClusterFixture.serverVersionAtLeast
 import static com.mongodb.WriteConcern.ACKNOWLEDGED
 import static com.mongodb.WriteConcern.UNACKNOWLEDGED
@@ -275,6 +276,27 @@ class UpdateOperationSpecification extends OperationFunctionalSpecification {
 
         then:
         thrown(MongoClientException)
+
+        where:
+        async << [true, false]
+    }
+
+    @IgnoreIf({ !serverVersionAtLeast(3, 6) || !isDiscoverableReplicaSet() })
+    def 'should support retryable writes'() {
+        given:
+        def id = new ObjectId()
+        def operation = new UpdateOperation(getNamespace(), true, ACKNOWLEDGED, true,
+                asList(new UpdateRequest(new BsonDocument('_id', new BsonObjectId(id)),
+                        new BsonDocument('$set', new BsonDocument('x', new BsonInt32(1))), UPDATE).upsert(true)))
+
+        when:
+        WriteConcernResult result = executeWithSession(operation, async)
+
+        then:
+        result.wasAcknowledged()
+        result.count == 1
+        result.upsertedId == new BsonObjectId(id)
+        !result.isUpdateOfExisting()
 
         where:
         async << [true, false]

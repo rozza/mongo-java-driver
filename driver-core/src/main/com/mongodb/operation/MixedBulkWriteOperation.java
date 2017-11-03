@@ -53,6 +53,7 @@ import static com.mongodb.operation.OperationHelper.serverIsAtLeastVersionThreeD
 import static com.mongodb.operation.OperationHelper.validateRetryWrites;
 import static com.mongodb.operation.OperationHelper.validateWriteRequests;
 import static com.mongodb.operation.OperationHelper.withConnection;
+import static com.mongodb.operation.OperationHelper.withReleasableConnection;
 
 /**
  * An operation to execute a series of write operations in bulk.
@@ -183,18 +184,19 @@ public class MixedBulkWriteOperation implements AsyncWriteOperation<BulkWriteRes
      */
     @Override
     public BulkWriteResult execute(final WriteBinding binding) {
-        BulkWriteBatch bulkWriteBatch = withConnection(binding, new CallableWithConnection<BulkWriteBatch>() {
+        return withReleasableConnection(binding, new CallableWithConnection<BulkWriteResult>() {
             @Override
-            public BulkWriteBatch call(final Connection connection) {
-                validateWriteRequests(connection, bypassDocumentValidation, writeRequests, writeConcern, retryWrites);
+            public BulkWriteResult call(final Connection connection) {
+                validateWriteRequestsAndReleaseConnectionIfError(connection);
                 if (getWriteConcern().isAcknowledged() || serverIsAtLeastVersionThreeDotSix(connection.getDescription())) {
-                    return BulkWriteBatch.createBulkWriteBatch(namespace, connection.getDescription(), ordered,
+                    BulkWriteBatch bulkWriteBatch = BulkWriteBatch.createBulkWriteBatch(namespace, connection.getDescription(), ordered,
                             writeConcern, bypassDocumentValidation, retryWrites, writeRequests, binding.getSessionContext());
+                    return executeBulkWriteBatch(binding, connection, bulkWriteBatch);
+                } else {
+                    return executeLegacyBatches(connection);
                 }
-                return null;
             }
         });
-        return (bulkWriteBatch != null) ? executeBulkWriteBatch(binding, bulkWriteBatch) : executeLegacyBatches(binding);
     }
 
     @Override
@@ -236,64 +238,63 @@ public class MixedBulkWriteOperation implements AsyncWriteOperation<BulkWriteRes
         });
     }
 
-    private BulkWriteResult executeBulkWriteBatch(final WriteBinding binding, final BulkWriteBatch originalBatch) {
+    private BulkWriteResult executeBulkWriteBatch(final WriteBinding binding, final Connection connection,
+                                                  final BulkWriteBatch originalBatch) {
         BulkWriteBatch currentBatch = originalBatch;
-        while (currentBatch.shouldProcessBatch()) {
-            final BulkWriteBatch latestBatch = currentBatch;
-            try {
-                BsonDocument result = withConnection(binding, new CallableWithConnection<BsonDocument>() {
-                    @Override
-                    public BsonDocument call(final Connection connection) {
-                        validateRetryWrites(connection, retryWrites);
-                        return executeCommand(connection, latestBatch, binding);
-                    }
-                });
-                currentBatch.addResult(result);
-            } catch (MongoException e) {
-                if (!retryWrites || !isRetryableException(e)) {
-                    throw e;
-                } else {
-                    return retryExecuteBatches(binding, currentBatch, e);
-                }
+        MongoException exception = null;
+
+        try {
+            while (currentBatch.shouldProcessBatch()) {
+                currentBatch.addResult(executeCommand(connection, currentBatch, binding));
+                currentBatch = currentBatch.getNextBatch();
             }
-            currentBatch = currentBatch.getNextBatch();
+        } catch (MongoException e) {
+            exception = e;
+        } finally {
+            connection.release();
         }
-        return currentBatch.getResult();
+
+        if (exception == null) {
+            return currentBatch.getResult();
+        } else if (!currentBatch.shouldProcessBatch() || !retryWrites || !isRetryableException(exception)) {
+            throw exception;
+        } else {
+            return retryExecuteBatches(binding, currentBatch, exception);
+        }
     }
 
     private BulkWriteResult retryExecuteBatches(final WriteBinding binding, final BulkWriteBatch retryBatch,
                                                 final MongoException originalError) {
-        BsonDocument result = withConnection(binding, new CallableWithConnection<BsonDocument>() {
-            @Override
-            public BsonDocument call(final Connection connection) {
-                try {
-                    validateRetryWrites(connection, retryWrites);
-                } catch (IllegalArgumentException e) {
-                    throw originalError;
-                }
-                return executeCommand(connection, retryBatch, binding);
-            }
-        });
-        retryBatch.addResult(result);
-        return executeBulkWriteBatch(binding, retryBatch.getNextBatch());
-    }
-
-    private BulkWriteResult executeLegacyBatches(final WriteBinding binding) {
-        return withConnection(binding, new CallableWithConnection<BulkWriteResult>() {
+        return withReleasableConnection(binding, new CallableWithConnection<BulkWriteResult>() {
             @Override
             public BulkWriteResult call(final Connection connection) {
-                for (WriteRequest writeRequest : getWriteRequests()) {
-                    if (writeRequest.getType() == INSERT) {
-                        connection.insert(getNamespace(), isOrdered(), (InsertRequest) writeRequest);
-                    } else if (writeRequest.getType() == UPDATE || writeRequest.getType() == REPLACE) {
-                        connection.update(getNamespace(), isOrdered(), (UpdateRequest) writeRequest);
-                    } else {
-                        connection.delete(getNamespace(), isOrdered(), (DeleteRequest) writeRequest);
-                    }
+                try {
+                    validateRetryWrites(connection.getDescription(), retryWrites);
+                } catch (Throwable t) {
+                    connection.release();
+                    throw originalError;
                 }
-                return BulkWriteResult.unacknowledged();
+                retryBatch.addResult(executeCommand(connection, retryBatch, binding));
+                return executeBulkWriteBatch(binding, connection, retryBatch.getNextBatch());
             }
         });
+    }
+
+    private BulkWriteResult executeLegacyBatches(final Connection connection) {
+        try {
+            for (WriteRequest writeRequest : getWriteRequests()) {
+                if (writeRequest.getType() == INSERT) {
+                    connection.insert(getNamespace(), isOrdered(), (InsertRequest) writeRequest);
+                } else if (writeRequest.getType() == UPDATE || writeRequest.getType() == REPLACE) {
+                    connection.update(getNamespace(), isOrdered(), (UpdateRequest) writeRequest);
+                } else {
+                    connection.delete(getNamespace(), isOrdered(), (DeleteRequest) writeRequest);
+                }
+            }
+            return BulkWriteResult.unacknowledged();
+        } finally {
+            connection.release();
+        }
     }
 
     private void executeBatchesAsync(final AsyncWriteBinding binding, final AsyncConnection connection, final BulkWriteBatch batch,
@@ -303,7 +304,7 @@ public class MixedBulkWriteOperation implements AsyncWriteOperation<BulkWriteRes
     }
 
     private void retryExecuteBatchesAsync(final AsyncWriteBinding binding, final BulkWriteBatch retryBatch,
-                                          final MongoException originalError, final SingleResultCallback<BulkWriteResult> callback) {
+                                          final Throwable originalError, final SingleResultCallback<BulkWriteResult> callback) {
         withConnection(binding, new AsyncCallableWithConnection() {
             @Override
             public void call(final AsyncConnection connection, final Throwable t) {
@@ -312,18 +313,17 @@ public class MixedBulkWriteOperation implements AsyncWriteOperation<BulkWriteRes
                 } else {
                     final ConnectionReleasingWrappedCallback<BulkWriteResult> releasingCallback =
                             new ConnectionReleasingWrappedCallback<BulkWriteResult>(callback, connection);
-                    validateRetryWrites(connection, retryWrites,
-                            new AsyncCallableWithConnection() {
-                                @Override
-                                public void call(final AsyncConnection connection, final Throwable t1) {
-                                    if (t1 != null) {
-                                        releasingCallback.onResult(null, originalError);
-                                    } else {
-                                        executeCommandAsync(binding, connection, retryBatch, releasingCallback,
-                                                getCommandCallback(binding, connection, retryBatch, true, false, releasingCallback));
-                                    }
-                                }
-                            });
+                    validateRetryWrites(connection, retryWrites, new AsyncCallableWithConnection() {
+                        @Override
+                        public void call(final AsyncConnection connection, final Throwable t1) {
+                            if (t1 != null) {
+                                releasingCallback.onResult(null, originalError);
+                            } else {
+                                executeCommandAsync(binding, connection, retryBatch, releasingCallback,
+                                        getCommandCallback(binding, connection, retryBatch, true, false, releasingCallback));
+                            }
+                        }
+                    });
                 }
             }
         });
@@ -392,8 +392,8 @@ public class MixedBulkWriteOperation implements AsyncWriteOperation<BulkWriteRes
             @Override
             public void onResult(final BsonDocument result, final Throwable t) {
                 if (t != null) {
-                    if (canRetryIfError && retryWrites && t instanceof MongoException) {
-                        retryExecuteBatchesAsync(binding, batch, (MongoException) t, callback.releaseConnectionAndGetWrapped());
+                    if (canRetryIfError && retryWrites && isRetryableException(t)) {
+                        retryExecuteBatchesAsync(binding, batch, t, callback.releaseConnectionAndGetWrapped());
                     } else {
                         callback.onResult(null, t);
                     }
@@ -412,5 +412,20 @@ public class MixedBulkWriteOperation implements AsyncWriteOperation<BulkWriteRes
                 }
             }
         };
+    }
+
+    private void validateWriteRequestsAndReleaseConnectionIfError(final Connection connection) {
+        try {
+            validateWriteRequests(connection.getDescription(), bypassDocumentValidation, writeRequests, writeConcern, retryWrites);
+        } catch (IllegalArgumentException e) {
+            connection.release();
+            throw e;
+        } catch (MongoException e) {
+            connection.release();
+            throw e;
+        } catch (Throwable t) {
+            connection.release();
+            throw MongoException.fromThrowable(t);
+        }
     }
 }

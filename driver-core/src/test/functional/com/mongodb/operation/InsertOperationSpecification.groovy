@@ -31,6 +31,7 @@ import spock.lang.IgnoreIf
 
 import static com.mongodb.ClusterFixture.getAsyncSingleConnectionBinding
 import static com.mongodb.ClusterFixture.getSingleConnectionBinding
+import static com.mongodb.ClusterFixture.isDiscoverableReplicaSet
 import static com.mongodb.ClusterFixture.serverVersionAtLeast
 import static com.mongodb.WriteConcern.ACKNOWLEDGED
 import static com.mongodb.WriteConcern.UNACKNOWLEDGED
@@ -228,5 +229,21 @@ class InsertOperationSpecification extends OperationFunctionalSpecification {
 
         where:
         [async, bypassDocumentValidation] << [[true, false], [true, false]].combinations()
+    }
+
+    @IgnoreIf({ !serverVersionAtLeast(3, 6) || !isDiscoverableReplicaSet() })
+    def 'should support retryable writes'() {
+        given:
+        def insert = new InsertRequest(new BsonDocument('_id', new BsonInt32(1)))
+        def operation = new InsertOperation(getNamespace(), true, ACKNOWLEDGED, true, asList(insert))
+
+        when:
+        executeWithSession(operation, async)
+
+        then:
+        asList(insert.getDocument()) == getCollectionHelper().find(new BsonDocumentCodec())
+
+        where:
+        async << [true, false]
     }
 }

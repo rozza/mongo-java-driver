@@ -41,6 +41,8 @@ import spock.lang.IgnoreIf
 
 import java.util.concurrent.TimeUnit
 
+import static com.mongodb.ClusterFixture.disableOnPrimaryTransactionalWriteFailPoint
+import static com.mongodb.ClusterFixture.enableOnPrimaryTransactionalWriteFailPoint
 import static com.mongodb.ClusterFixture.isDiscoverableReplicaSet
 import static com.mongodb.ClusterFixture.serverVersionAtLeast
 import static com.mongodb.WriteConcern.ACKNOWLEDGED
@@ -96,7 +98,7 @@ class FindAndReplaceOperationSpecification extends OperationFunctionalSpecificat
         CollectionHelper<Document> helper = new CollectionHelper<Document>(documentCodec, getNamespace())
         Document pete = new Document('name', 'Pete').append('job', 'handyman')
         Document sam = new Document('name', 'Sam').append('job', 'plumber')
-        BsonDocument jordan = new BsonDocumentWrapper<Document>([name: 'Jordan', job: 'sparky'] as Document, documentCodec)
+        BsonDocument jordan = BsonDocument.parse('{name: "Jordan", job: "sparky"}')
 
         helper.insertDocuments(new DocumentCodec(), pete, sam)
 
@@ -159,7 +161,7 @@ class FindAndReplaceOperationSpecification extends OperationFunctionalSpecificat
 
     def 'should return null if query fails to match'() {
         when:
-        BsonDocument jordan = new BsonDocumentWrapper<Document>([name: 'Jordan', job: 'sparky'] as Document, documentCodec)
+        BsonDocument jordan = BsonDocument.parse('{name: "Jordan", job: "sparky"}')
         def operation = new FindAndReplaceOperation<Document>(getNamespace(), ACKNOWLEDGED, false, documentCodec, jordan)
                 .filter(new BsonDocument('name', new BsonString('Pete')))
         Document returnedDocument = execute(operation, async)
@@ -232,7 +234,7 @@ class FindAndReplaceOperationSpecification extends OperationFunctionalSpecificat
         Document pete = new Document('name', 'Pete').append('job', 'handyman')
         helper.insertDocuments(new DocumentCodec(), pete)
 
-        BsonDocument jordan = new BsonDocumentWrapper<Document>([name: 'Jordan', job: 'sparky'] as Document, documentCodec)
+        BsonDocument jordan = BsonDocument.parse('{name: "Jordan", job: "sparky"}')
 
         when:
         def operation = new FindAndReplaceOperation<Document>(getNamespace(), new WriteConcern(5, 1),
@@ -269,7 +271,7 @@ class FindAndReplaceOperationSpecification extends OperationFunctionalSpecificat
         when:
         def cannedResult = new BsonDocument('value', new BsonDocumentWrapper(BsonDocument.parse('{}'), new BsonDocumentCodec()))
         def replacement = BsonDocument.parse('{ replacement: 1}')
-        def operation = new FindAndReplaceOperation<Document>(getNamespace(), ACKNOWLEDGED, false, documentCodec, replacement)
+        def operation = new FindAndReplaceOperation<Document>(getNamespace(), writeConcern, false, documentCodec, replacement)
         def expectedCommand = new BsonDocument('findandmodify', new BsonString(getNamespace().getCollectionName()))
                 .append('update', replacement)
         if (includeWriteConcern) {
@@ -309,10 +311,10 @@ class FindAndReplaceOperationSpecification extends OperationFunctionalSpecificat
         where:
         serverVersion  | writeConcern                 | includeWriteConcern | includeCollation | includeBypassValidation | async
         [3, 4, 0]      | WriteConcern.W1              | true                | true             | true                    | true
-        [3, 4, 0]      | WriteConcern.ACKNOWLEDGED    | false               | true             | true                    | true
+        [3, 4, 0]      | WriteConcern.ACKNOWLEDGED    | false                | true             | true                    | true
         [3, 4, 0]      | WriteConcern.UNACKNOWLEDGED  | false               | true             | true                    | true
         [3, 4, 0]      | WriteConcern.W1              | true                | true             | true                    | false
-        [3, 4, 0]      | WriteConcern.ACKNOWLEDGED    | false               | true             | true                    | false
+        [3, 4, 0]      | WriteConcern.ACKNOWLEDGED    | false                | true             | true                    | false
         [3, 4, 0]      | WriteConcern.UNACKNOWLEDGED  | false               | true             | true                    | false
         [3, 0, 0]      | WriteConcern.ACKNOWLEDGED    | false               | false            | false                   | true
         [3, 0, 0]      | WriteConcern.UNACKNOWLEDGED  | false               | false            | false                   | true
@@ -322,6 +324,51 @@ class FindAndReplaceOperationSpecification extends OperationFunctionalSpecificat
         [3, 0, 0]      | WriteConcern.W1              | false               | false            | false                   | false
     }
 
+    @IgnoreIf({ !serverVersionAtLeast(3, 6) || !isDiscoverableReplicaSet() })
+    def 'should support retryable writes'() {
+        given:
+        CollectionHelper<Document> helper = new CollectionHelper<Document>(documentCodec, getNamespace())
+        Document pete = new Document('name', 'Pete').append('job', 'handyman')
+        Document sam = new Document('name', 'Sam').append('job', 'plumber')
+        BsonDocument jordan = BsonDocument.parse('{name: "Jordan", job: "sparky"}')
+
+        helper.insertDocuments(new DocumentCodec(), pete, sam)
+
+        when:
+        def operation = new FindAndReplaceOperation<Document>(getNamespace(), ACKNOWLEDGED, true, documentCodec, jordan)
+                .filter(new BsonDocument('name', new BsonString('Pete')))
+
+        enableOnPrimaryTransactionalWriteFailPoint(BsonDocument.parse('{times: 1}'))
+        Document returnedDocument = executeWithSession(operation, async)
+
+        then:
+        returnedDocument.getString('name') == 'Pete'
+        helper.find().size() == 2
+        helper.find().get(0).getString('name') == 'Jordan'
+
+        cleanup:
+        disableOnPrimaryTransactionalWriteFailPoint()
+
+        where:
+        async << [true, false]
+    }
+
+    @IgnoreIf({ serverVersionAtLeast(3, 5) })
+    def 'should throw if using retryWrites on an unsupported server'() {
+        given:
+        def operation = new FindAndReplaceOperation<Document>(getNamespace(), ACKNOWLEDGED, true, documentCodec,
+                BsonDocument.parse('{name: "Jordan", job: "sparky"}')).filter(new BsonDocument('name', new BsonString('Pete')))
+
+        when:
+        execute(operation, async)
+
+        then:
+        thrown(IllegalArgumentException)
+
+        where:
+        async << [true, false]
+    }
+
     def 'should retry if the connection initially fails'() {
         when:
         def cannedResult = new BsonDocument('value', new BsonDocumentWrapper(BsonDocument.parse('{}'), new BsonDocumentCodec()))
@@ -329,6 +376,7 @@ class FindAndReplaceOperationSpecification extends OperationFunctionalSpecificat
         def operation = new FindAndReplaceOperation<Document>(getNamespace(), ACKNOWLEDGED, true, documentCodec, replacement)
         def expectedCommand = new BsonDocument('findandmodify', new BsonString(getNamespace().getCollectionName()))
                 .append('update', replacement)
+                .append('txnNumber', new BsonInt64(0))
 
         then:
         testOperationRetries(operation, [3, 6, 0], expectedCommand, async, cannedResult)

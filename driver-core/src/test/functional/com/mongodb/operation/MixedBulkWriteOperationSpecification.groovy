@@ -20,6 +20,7 @@ import category.Slow
 import com.mongodb.ClusterFixture
 import com.mongodb.MongoBulkWriteException
 import com.mongodb.MongoClientException
+import com.mongodb.MongoException
 import com.mongodb.MongoNamespace
 import com.mongodb.OperationFunctionalSpecification
 import com.mongodb.WriteConcern
@@ -35,7 +36,9 @@ import org.bson.BsonBinary
 import org.bson.BsonBoolean
 import org.bson.BsonDocument
 import org.bson.BsonInt32
+import org.bson.BsonInt64
 import org.bson.BsonObjectId
+import org.bson.BsonString
 import org.bson.Document
 import org.bson.codecs.BsonDocumentCodec
 import org.bson.codecs.DocumentCodec
@@ -43,11 +46,11 @@ import org.bson.types.ObjectId
 import org.junit.experimental.categories.Category
 import spock.lang.IgnoreIf
 
-import static ClusterFixture.getSingleConnectionBinding
 import static ClusterFixture.serverVersionAtLeast
 import static com.mongodb.ClusterFixture.disableOnPrimaryTransactionalWriteFailPoint
 import static com.mongodb.ClusterFixture.enableOnPrimaryTransactionalWriteFailPoint
 import static com.mongodb.ClusterFixture.getAsyncSingleConnectionBinding
+import static com.mongodb.ClusterFixture.getSingleConnectionBinding
 import static com.mongodb.ClusterFixture.isDiscoverableReplicaSet
 import static com.mongodb.WriteConcern.ACKNOWLEDGED
 import static com.mongodb.WriteConcern.UNACKNOWLEDGED
@@ -752,7 +755,7 @@ class MixedBulkWriteOperationSpecification extends OperationFunctionalSpecificat
         thrown(MongoClientException)
 
         where:
-        [async, bypassDocumentValidation] << [[true, false], [true, false]].combinations()
+        [async, bypassDocumentValidation] << [[false, false], [true, false]].combinations()
     }
 
     @IgnoreIf({ !serverVersionAtLeast(3, 4) })
@@ -881,7 +884,7 @@ class MixedBulkWriteOperationSpecification extends OperationFunctionalSpecificat
         result.getModifiedCount() == 1
 
         where:
-        async << [false] // TODO add async support once
+        async << [true, false]
     }
 
     @IgnoreIf({ !serverVersionAtLeast(3, 6) || !isDiscoverableReplicaSet() })
@@ -918,6 +921,39 @@ class MixedBulkWriteOperationSpecification extends OperationFunctionalSpecificat
 
         where:
         async << [true, false]
+    }
+
+    def 'should retry if the connection initially fails'() {
+        when:
+        def cannedResult = BsonDocument.parse('{ok: 1.0, n: 1}')
+        def operation = new MixedBulkWriteOperation(getNamespace(),
+                [new InsertRequest(BsonDocument.parse('{ level: 9 }'))], true, ACKNOWLEDGED, true)
+        def expectedCommand = new BsonDocument('insert', new BsonString(getNamespace().getCollectionName()))
+                .append('ordered', BsonBoolean.TRUE)
+                .append('txnNumber', new BsonInt64(0))
+
+        then:
+        testOperationRetries(operation, [3, 6, 0], expectedCommand, async, cannedResult)
+
+        where:
+        async << [true, false]
+    }
+
+    def 'should throw original error when retrying and finding server less than 3.6.0'() {
+        given:
+        def operation = new MixedBulkWriteOperation(getNamespace(),
+                [new InsertRequest(BsonDocument.parse('{ level: 9 }'))], true, ACKNOWLEDGED, true)
+        def exception = new MongoException('Some failure')
+
+        when:
+        testRetryableOperationThrowsOriginalError(operation, [3, 6, 0], exception, async)
+
+        then:
+        Exception commandException = thrown()
+        commandException == exception
+
+        where:
+        async << [true]
     }
 
     @IgnoreIf({ !serverVersionAtLeast(3, 5) })

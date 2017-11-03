@@ -75,10 +75,6 @@ final class OperationHelper {
         void call(AsyncConnectionSource source, AsyncConnection connection, Throwable t);
     }
 
-    interface AsyncCallableWithConnectionAndCallback {
-        void call(AsyncConnection connection);
-    }
-
     static void validateReadConcern(final Connection connection, final ReadConcern readConcern) {
         if (!serverIsAtLeastVersionThreeDotTwo(connection.getDescription()) && !readConcern.isServerDefault()) {
             throw new IllegalArgumentException(format("ReadConcern not supported by server version: %s",
@@ -107,15 +103,20 @@ final class OperationHelper {
     }
 
     static void validateCollation(final Connection connection, final Collation collation) {
-        if (!serverIsAtLeastVersionThreeDotFour(connection.getDescription()) && collation != null) {
+        validateCollation(connection.getDescription(), collation);
+    }
+
+    static void validateCollation(final ConnectionDescription connectionDescription, final Collation collation) {
+        if (!serverIsAtLeastVersionThreeDotFour(connectionDescription) && collation != null) {
             throw new IllegalArgumentException(format("Collation not supported by server version: %s",
-                    connection.getDescription().getServerVersion()));
+                    connectionDescription.getServerVersion()));
         }
     }
 
-    static void validateCollationAndRetryWrites(final Connection connection, final Collation collation, final boolean retryWrites) {
-        validateCollation(connection, collation);
-        validateRetryWrites(connection, retryWrites);
+    static void validateCollationAndRetryWrites(final ConnectionDescription connectionDescription, final Collation collation,
+                                                final boolean retryWrites) {
+        validateCollation(connectionDescription, collation);
+        validateRetryWrites(connectionDescription, retryWrites);
     }
 
     static void validateCollationAndWriteConcern(final Connection connection, final Collation collation,
@@ -123,6 +124,16 @@ final class OperationHelper {
         if (!serverIsAtLeastVersionThreeDotFour(connection.getDescription()) && collation != null) {
             throw new IllegalArgumentException(format("Collation not supported by server version: %s",
                     connection.getDescription().getServerVersion()));
+        } else if (collation != null && !writeConcern.isAcknowledged()) {
+            throw new MongoClientException("Specifying collation with an unacknowledged WriteConcern is not supported");
+        }
+    }
+
+    static void validateCollationAndWriteConcern(final ConnectionDescription connectionDescription, final Collation collation,
+                                                 final WriteConcern writeConcern) {
+        if (!serverIsAtLeastVersionThreeDotFour(connectionDescription) && collation != null) {
+            throw new IllegalArgumentException(format("Collation not supported by server version: %s",
+                    connectionDescription.getServerVersion()));
         } else if (collation != null && !writeConcern.isAcknowledged()) {
             throw new MongoClientException("Specifying collation with an unacknowledged WriteConcern is not supported");
         }
@@ -136,48 +147,6 @@ final class OperationHelper {
                     connection.getDescription().getServerVersion()));
         }
         callable.call(connection, throwable);
-    }
-
-    static <T> void validateCollationAndRetryWrites(final AsyncWriteBinding binding, final Collation collation, final boolean retryWrites,
-                                                    final SingleResultCallback<T> callback, final AsyncCallableWithConnection callable) {
-        withConnection(binding, new AsyncCallableWithConnection() {
-            @Override
-            public void call(final AsyncConnection connection, final Throwable t) {
-                if (t != null) {
-                    callback.onResult(null, t);
-                } else {
-                    validateCollationAndRetryWrites(connection, collation, retryWrites, new AsyncCallableWithConnection() {
-                        @Override
-                        public void call(final AsyncConnection connection, final Throwable t) {
-                            if (t != null) {
-                                releasingCallback(callback, connection).onResult(null, t);
-                            } else {
-                                callable.call(connection, null);
-                            }
-                        }
-                    });
-                }
-            }
-        });
-    }
-
-    static void validateCollationAndRetryWrites(final AsyncConnection connection, final Collation collation, final boolean retryWrites,
-                                                final AsyncCallableWithConnection callable) {
-        validateCollation(connection, collation, new AsyncCallableWithConnection() {
-            @Override
-            public void call(final AsyncConnection connection, final Throwable t) {
-                if (t != null) {
-                    callable.call(null, t);
-                } else {
-                    validateRetryWrites(connection, retryWrites, new AsyncCallableWithConnection() {
-                        @Override
-                        public void call(final AsyncConnection connection, final Throwable t) {
-                            callable.call(connection, t);
-                        }
-                    });
-                }
-            }
-        });
     }
 
     static void validateCollationAndWriteConcern(final AsyncConnection connection, final Collation collation,
@@ -218,8 +187,24 @@ final class OperationHelper {
         validateCollationAndWriteConcern(connection, collation, writeConcern);
     }
 
+    static void validateWriteRequestCollations(final ConnectionDescription connectionDescription,
+                                               final List<? extends WriteRequest> requests, final WriteConcern writeConcern) {
+        Collation collation = null;
+        for (WriteRequest request : requests) {
+            if (request instanceof UpdateRequest) {
+                collation = ((UpdateRequest) request).getCollation();
+            } else if (request instanceof DeleteRequest) {
+                collation = ((DeleteRequest) request).getCollation();
+            }
+            if (collation != null) {
+                break;
+            }
+        }
+        validateCollationAndWriteConcern(connectionDescription, collation, writeConcern);
+    }
+
     static void validateWriteRequestCollations(final AsyncConnection connection, final List<? extends WriteRequest> requests,
-                                                 final WriteConcern writeConcern, final AsyncCallableWithConnection callable) {
+                                               final WriteConcern writeConcern, final AsyncCallableWithConnection callable) {
         Collation collation = null;
         for (WriteRequest request : requests) {
             if (request instanceof UpdateRequest) {
@@ -239,57 +224,44 @@ final class OperationHelper {
         });
     }
 
-    static void validateWriteRequests(final Connection connection, final Boolean bypassDocumentValidation,
+    static void validateWriteRequests(final ConnectionDescription connectionDescription, final Boolean bypassDocumentValidation,
                                       final List<? extends WriteRequest> requests, final WriteConcern writeConcern,
                                       final boolean retryWrites) {
-        checkBypassDocumentValidationIsSupported(connection, bypassDocumentValidation, writeConcern);
-        validateWriteRequestCollations(connection, requests, writeConcern);
-        validateRetryWrites(connection, retryWrites);
+        checkBypassDocumentValidationIsSupported(connectionDescription, bypassDocumentValidation, writeConcern);
+        validateWriteRequestCollations(connectionDescription, requests, writeConcern);
+        validateRetryWrites(connectionDescription, retryWrites);
     }
 
     static void validateWriteRequests(final AsyncConnection connection, final Boolean bypassDocumentValidation,
                                       final List<? extends WriteRequest> requests, final WriteConcern writeConcern,
-                                        final boolean retryWrites, final AsyncCallableWithConnection callable) {
-        checkBypassDocumentValidationIsSupported(connection, bypassDocumentValidation, writeConcern, new AsyncCallableWithConnection() {
-            @Override
-            public void call(final AsyncConnection connection, final Throwable t) {
-                if (t != null) {
-                    callable.call(connection, t);
-                } else {
-                    validateWriteRequestCollations(connection, requests, writeConcern, new AsyncCallableWithConnection() {
-                        @Override
-                        public void call(final AsyncConnection connection, final Throwable t) {
-                            if (t != null) {
-                                callable.call(connection, t);
-                            } else {
-                                validateRetryWrites(connection, retryWrites, callable);
-                            }
-                        }
-                    });
-                }
-            }
-        });
+                                      final boolean retryWrites, final AsyncCallableWithConnection callable) {
+        try {
+            checkBypassDocumentValidationIsSupported(connection.getDescription(), bypassDocumentValidation, writeConcern);
+            validateWriteRequestCollations(connection.getDescription(), requests, writeConcern);
+            validateRetryWrites(connection.getDescription(), retryWrites);
+            callable.call(connection, null);
+        } catch (Throwable t) {
+            callable.call(connection, t);
+        }
     }
 
-    static void validateRetryWrites(final Connection connection, final boolean retryWrites) {
-        if (retryWrites && !serverIsAtLeastVersionThreeDotSix(connection.getDescription())) {
+    static void validateRetryWrites(final ConnectionDescription connectionDescription, final boolean retryWrites) {
+        if (retryWrites && !serverIsAtLeastVersionThreeDotSix(connectionDescription)) {
             throw new IllegalArgumentException(format("Retryable writes are not supported by server version: %s",
-                    connection.getDescription().getServerVersion()));
-        } else if (retryWrites && connection.getDescription().getServerType() == STANDALONE) {
+                    connectionDescription.getServerVersion()));
+        } else if (retryWrites && connectionDescription.getServerType() == STANDALONE) {
             throw new IllegalArgumentException("Retryable writes are not supported on standalone servers");
         }
     }
 
-    static void validateRetryWrites(final AsyncConnection connection, final boolean retryWrites,
-                                    final AsyncCallableWithConnection callable) {
-        Throwable throwable = null;
-        if (retryWrites && !serverIsAtLeastVersionThreeDotSix(connection.getDescription())) {
-            throwable = new IllegalArgumentException(format("Retryable writes are not supported by server version: %s",
-                    connection.getDescription().getServerVersion()));
-        } else if (retryWrites && connection.getDescription().getServerType() == STANDALONE) {
-            throwable = new IllegalArgumentException("Retryable writes are not supported on standalone servers");
+    static void validateRetryWrites(final AsyncConnection asyncConnection, final boolean retryWrites,
+                                    final AsyncCallableWithConnection callableWithConnection) {
+        try {
+            validateRetryWrites(asyncConnection.getDescription(), retryWrites);
+            callableWithConnection.call(asyncConnection, null);
+        } catch (IllegalArgumentException e) {
+            callableWithConnection.call(asyncConnection, e);
         }
-        callable.call(connection, throwable);
     }
 
     static void validateIndexRequestCollations(final Connection connection, final List<IndexRequest> requests) {
@@ -353,25 +325,13 @@ final class OperationHelper {
         });
     }
 
-    static void checkBypassDocumentValidationIsSupported(final Connection connection, final Boolean bypassDocumentValidation,
-                                             final WriteConcern writeConcern) {
-        if (bypassDocumentValidation != null && serverIsAtLeastVersionThreeDotTwo(connection.getDescription())
+    static void checkBypassDocumentValidationIsSupported(final ConnectionDescription connectionDescription,
+                                                         final Boolean bypassDocumentValidation, final WriteConcern writeConcern) {
+        if (bypassDocumentValidation != null && serverIsAtLeastVersionThreeDotTwo(connectionDescription)
                 && !writeConcern.isAcknowledged()) {
             throw new MongoClientException("Specifying bypassDocumentValidation with an unacknowledged WriteConcern is not supported");
         }
     }
-
-    static void checkBypassDocumentValidationIsSupported(final AsyncConnection connection, final Boolean bypassDocumentValidation,
-                                                         final WriteConcern writeConcern, final AsyncCallableWithConnection callable) {
-        Throwable throwable = null;
-        if (bypassDocumentValidation != null && serverIsAtLeastVersionThreeDotTwo(connection.getDescription())
-                && !writeConcern.isAcknowledged()) {
-            throwable = new MongoClientException("Specifying bypassDocumentValidation with an unacknowledged WriteConcern is "
-                    + "not supported");
-        }
-        callable.call(connection, throwable);
-    }
-
 
     static <T> QueryBatchCursor<T> createEmptyBatchCursor(final MongoNamespace namespace, final Decoder<T> decoder,
                                                           final ServerAddress serverAddress, final int batchSize) {

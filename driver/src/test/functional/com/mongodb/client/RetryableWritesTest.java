@@ -151,7 +151,6 @@ public class RetryableWritesTest {
             wasException = true;
         }
 
-
         if (outcome.containsKey("collection")) {
             List<BsonDocument> collectionData = collection.withDocumentClass(BsonDocument.class).find().into(new ArrayList<BsonDocument>());
             assertEquals(outcome.getDocument("collection").getArray("data").getValues(), collectionData);

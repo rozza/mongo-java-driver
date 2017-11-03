@@ -30,6 +30,7 @@ import org.bson.codecs.DocumentCodec
 import org.junit.experimental.categories.Category
 import spock.lang.IgnoreIf
 
+import static com.mongodb.ClusterFixture.isDiscoverableReplicaSet
 import static com.mongodb.ClusterFixture.serverVersionAtLeast
 import static com.mongodb.WriteConcern.ACKNOWLEDGED
 import static com.mongodb.WriteConcern.UNACKNOWLEDGED
@@ -47,7 +48,7 @@ class DeleteOperationSpecification extends OperationFunctionalSpecification {
     def 'should remove a document'() {
         given:
         getCollectionHelper().insertDocuments(new DocumentCodec(), new Document('_id', 1))
-        def operation = new DeleteOperation(getNamespace(), true, ACKNOWLEDGED, true,
+        def operation = new DeleteOperation(getNamespace(), true, ACKNOWLEDGED, false,
                 [new DeleteRequest(new BsonDocument('_id', new BsonInt32(1)))])
 
         when:
@@ -68,7 +69,7 @@ class DeleteOperationSpecification extends OperationFunctionalSpecification {
         def smallerDoc = new BsonDocument('bytes', new BsonBinary(new byte[1024 * 16 + 1980]))
         def simpleDoc = new BsonDocument('_id', new BsonInt32(1))
         getCollectionHelper().insertDocuments(new BsonDocumentCodec(), simpleDoc)
-        def operation = new DeleteOperation(getNamespace(), true, ACKNOWLEDGED, true,
+        def operation = new DeleteOperation(getNamespace(), true, ACKNOWLEDGED, false,
                 [new DeleteRequest(bigDoc), new DeleteRequest(smallerDoc), new DeleteRequest(simpleDoc)])
 
         when:
@@ -84,7 +85,7 @@ class DeleteOperationSpecification extends OperationFunctionalSpecification {
     @IgnoreIf({ serverVersionAtLeast(3, 4) })
     def 'should throw an exception when using an unsupported Collation'() {
         given:
-        def operation = new DeleteOperation(getNamespace(), false, ACKNOWLEDGED, true, requests)
+        def operation = new DeleteOperation(getNamespace(), false, ACKNOWLEDGED, false, requests)
 
         when:
         execute(operation, async)
@@ -108,7 +109,7 @@ class DeleteOperationSpecification extends OperationFunctionalSpecification {
         given:
         getCollectionHelper().insertDocuments(Document.parse('{str: "foo"}'))
         def requests = [new DeleteRequest(BsonDocument.parse('{str: "FOO"}}')).collation(caseInsensitiveCollation)]
-        def operation = new DeleteOperation(getNamespace(), false, ACKNOWLEDGED, true, requests)
+        def operation = new DeleteOperation(getNamespace(), false, ACKNOWLEDGED, false, requests)
 
         when:
         WriteConcernResult result = execute(operation, async)
@@ -131,6 +132,23 @@ class DeleteOperationSpecification extends OperationFunctionalSpecification {
 
         then:
         thrown(MongoClientException)
+
+        where:
+        async << [true, false]
+    }
+
+    @IgnoreIf({ !serverVersionAtLeast(3, 6) || !isDiscoverableReplicaSet() })
+    def 'should support retryable writes'() {
+        given:
+        getCollectionHelper().insertDocuments(Document.parse('{str: "foo"}'))
+        def requests = [new DeleteRequest(BsonDocument.parse('{str: "foo"}}'))]
+        def operation = new DeleteOperation(getNamespace(), false, ACKNOWLEDGED, true, requests)
+
+        when:
+        WriteConcernResult result = executeWithSession(operation, async)
+
+        then:
+        result.getCount() == 1
 
         where:
         async << [true, false]

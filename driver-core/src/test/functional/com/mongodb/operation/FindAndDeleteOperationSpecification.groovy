@@ -35,6 +35,8 @@ import spock.lang.IgnoreIf
 
 import java.util.concurrent.TimeUnit
 
+import static com.mongodb.ClusterFixture.disableOnPrimaryTransactionalWriteFailPoint
+import static com.mongodb.ClusterFixture.enableOnPrimaryTransactionalWriteFailPoint
 import static com.mongodb.ClusterFixture.isDiscoverableReplicaSet
 import static com.mongodb.ClusterFixture.serverVersionAtLeast
 import static com.mongodb.WriteConcern.ACKNOWLEDGED
@@ -81,7 +83,6 @@ class FindAndDeleteOperationSpecification extends OperationFunctionalSpecificati
     }
 
     def 'should remove single document'() {
-
         given:
         Document pete = new Document('name', 'Pete').append('job', 'handyman')
         Document sam = new Document('name', 'Sam').append('job', 'plumber')
@@ -151,7 +152,7 @@ class FindAndDeleteOperationSpecification extends OperationFunctionalSpecificati
     def 'should create the expected command'() {
         when:
         def cannedResult = new BsonDocument('value', new BsonDocumentWrapper(BsonDocument.parse('{}'), new BsonDocumentCodec()))
-        def operation = new FindAndDeleteOperation<Document>(getNamespace(), ACKNOWLEDGED, false, documentCodec)
+        def operation = new FindAndDeleteOperation<Document>(getNamespace(), writeConcern, false, documentCodec)
         def expectedCommand = new BsonDocument('findandmodify', new BsonString(getNamespace().getCollectionName()))
                 .append('remove', BsonBoolean.TRUE)
 
@@ -186,19 +187,62 @@ class FindAndDeleteOperationSpecification extends OperationFunctionalSpecificati
         testOperation(operation, serverVersion, expectedCommand, async, cannedResult)
 
         where:
-        serverVersion | writeConcern                 | includeWriteConcern | includeCollation | async
-        [3, 4, 0]     | WriteConcern.W1              | true                | true             | true
-        [3, 4, 0]     | WriteConcern.ACKNOWLEDGED    | false               | true             | true
-        [3, 4, 0]     | WriteConcern.UNACKNOWLEDGED  | false               | true             | true
-        [3, 4, 0]     | WriteConcern.W1              | true                | true             | false
-        [3, 4, 0]     | WriteConcern.ACKNOWLEDGED    | false               | true             | false
-        [3, 4, 0]     | WriteConcern.UNACKNOWLEDGED  | false               | true             | false
-        [3, 0, 0]     | WriteConcern.ACKNOWLEDGED    | false               | false            | true
-        [3, 0, 0]     | WriteConcern.UNACKNOWLEDGED  | false               | false            | true
-        [3, 0, 0]     | WriteConcern.W1              | false               | false            | true
-        [3, 0, 0]     | WriteConcern.ACKNOWLEDGED    | false               | false            | false
-        [3, 0, 0]     | WriteConcern.UNACKNOWLEDGED  | false               | false            | false
-        [3, 0, 0]     | WriteConcern.W1              | false               | false            | false
+        serverVersion | writeConcern                | includeWriteConcern | includeCollation | async
+        [3, 4, 0]     | WriteConcern.W1             | true                | true             | true
+        [3, 4, 0]     | WriteConcern.ACKNOWLEDGED   | false               | true             | true
+        [3, 4, 0]     | WriteConcern.UNACKNOWLEDGED | false               | true             | true
+        [3, 4, 0]     | WriteConcern.W1             | true                | true             | false
+        [3, 4, 0]     | WriteConcern.ACKNOWLEDGED   | false               | true             | false
+        [3, 4, 0]     | WriteConcern.UNACKNOWLEDGED | false               | true             | false
+        [3, 0, 0]     | WriteConcern.ACKNOWLEDGED   | false               | false            | true
+        [3, 0, 0]     | WriteConcern.UNACKNOWLEDGED | false               | false            | true
+        [3, 0, 0]     | WriteConcern.W1             | false               | false            | true
+        [3, 0, 0]     | WriteConcern.ACKNOWLEDGED   | false               | false            | false
+        [3, 0, 0]     | WriteConcern.UNACKNOWLEDGED | false               | false            | false
+        [3, 0, 0]     | WriteConcern.W1             | false               | false            | false
+    }
+
+    @IgnoreIf({ !serverVersionAtLeast(3, 6) || !isDiscoverableReplicaSet() })
+    def 'should support retryable writes'() {
+        given:
+        Document pete = new Document('name', 'Pete').append('job', 'handyman')
+        Document sam = new Document('name', 'Sam').append('job', 'plumber')
+
+        getCollectionHelper().insertDocuments(new DocumentCodec(), pete, sam)
+
+        when:
+        def operation = new FindAndDeleteOperation<Document>(getNamespace(), ACKNOWLEDGED, true, documentCodec)
+                .filter(new BsonDocument('name', new BsonString('Pete')))
+        enableOnPrimaryTransactionalWriteFailPoint(BsonDocument.parse('{times: 1}'))
+
+        Document returnedDocument = executeWithSession(operation, async)
+
+        then:
+        getCollectionHelper().find().size() == 1
+        getCollectionHelper().find().first().getString('name') == 'Sam'
+        returnedDocument.getString('name') == 'Pete'
+
+        cleanup:
+        disableOnPrimaryTransactionalWriteFailPoint()
+
+        where:
+        async << [true, false]
+    }
+
+    @IgnoreIf({ serverVersionAtLeast(3, 5) })
+    def 'should throw if using retryWrites on an unsupported server'() {
+        given:
+        def operation = new FindAndDeleteOperation<Document>(getNamespace(), ACKNOWLEDGED, true, documentCodec)
+                .filter(new BsonDocument('name', new BsonString('Pete')))
+
+        when:
+        execute(operation, async)
+
+        then:
+        thrown(IllegalArgumentException)
+
+        where:
+        async << [true, false]
     }
 
     def 'should retry if the connection initially fails'() {
@@ -207,6 +251,7 @@ class FindAndDeleteOperationSpecification extends OperationFunctionalSpecificati
         def operation = new FindAndDeleteOperation<Document>(getNamespace(), ACKNOWLEDGED, true, documentCodec)
         def expectedCommand = new BsonDocument('findandmodify', new BsonString(getNamespace().getCollectionName()))
                 .append('remove', BsonBoolean.TRUE)
+                .append('txnNumber', new BsonInt64(0))
 
         then:
         testOperationRetries(operation, [3, 6, 0], expectedCommand, async, cannedResult)

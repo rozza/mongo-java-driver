@@ -22,14 +22,11 @@ import com.mongodb.async.SingleResultCallback;
 import com.mongodb.binding.AsyncWriteBinding;
 import com.mongodb.binding.WriteBinding;
 import com.mongodb.client.model.Collation;
-import com.mongodb.connection.AsyncConnection;
-import com.mongodb.connection.Connection;
 import com.mongodb.connection.ConnectionDescription;
 import com.mongodb.connection.SessionContext;
 import com.mongodb.internal.validator.MappedFieldNameValidator;
 import com.mongodb.internal.validator.NoOpFieldNameValidator;
 import com.mongodb.internal.validator.UpdateFieldNameValidator;
-import com.mongodb.operation.OperationHelper.AsyncCallableWithConnection;
 import org.bson.BsonArray;
 import org.bson.BsonBoolean;
 import org.bson.BsonDocument;
@@ -44,8 +41,7 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import static com.mongodb.assertions.Assertions.notNull;
-import static com.mongodb.operation.CommandOperationHelper.NestedCallable;
-import static com.mongodb.operation.CommandOperationHelper.ConnectionCallable;
+import static com.mongodb.operation.CommandOperationHelper.CommandCreator;
 import static com.mongodb.operation.CommandOperationHelper.executeRetryableCommand;
 import static com.mongodb.operation.DocumentHelper.putIfNotNull;
 import static com.mongodb.operation.DocumentHelper.putIfNotZero;
@@ -373,57 +369,49 @@ public class FindAndUpdateOperation<T> implements AsyncWriteOperation<T>, WriteO
     @Override
     public T execute(final WriteBinding binding) {
         return executeRetryableCommand(binding, retryWrites, namespace.getDatabaseName(), getFieldNameValidator(),
-                CommandResultDocumentCodec.create(decoder, "value"), new ConnectionCallable<BsonDocument>() {
-                    @Override
-                    public BsonDocument call(final Connection connection) {
-                        validateCollationAndRetryWrites(connection, collation, retryWrites);
-                        return getCommand(binding.getSessionContext(), connection.getDescription());
-                    }
-                }, FindAndModifyHelper.<T>transformer());
+                CommandResultDocumentCodec.create(decoder, "value"), getCommandCreator(binding.getSessionContext()),
+                FindAndModifyHelper.<T>transformer());
     }
 
     @Override
     public void executeAsync(final AsyncWriteBinding binding, final SingleResultCallback<T> callback) {
         executeRetryableCommand(binding, retryWrites, namespace.getDatabaseName(), getFieldNameValidator(),
-                CommandResultDocumentCodec.create(decoder, "value"),
-                new NestedCallable<AsyncConnection, NestedCallable<BsonDocument, Throwable>>() {
-                    @Override
-                    public void call(final AsyncConnection connection, final NestedCallable<BsonDocument, Throwable> commandCallable) {
-                        validateCollationAndRetryWrites(connection, collation, retryWrites, new AsyncCallableWithConnection() {
-                            @Override
-                            public void call(final AsyncConnection connection, final Throwable t) {
-                                commandCallable.call(getCommand(binding.getSessionContext(), connection.getDescription()), t);
-                            }
-                        });
-                    }
-                }, FindAndModifyHelper.<T>transformer(), callback);
+                CommandResultDocumentCodec.create(decoder, "value"), getCommandCreator(binding.getSessionContext()),
+                FindAndModifyHelper.<T>transformer(), callback);
     }
 
-    private BsonDocument getCommand(final SessionContext sessionContext, final ConnectionDescription description) {
-        BsonDocument commandDocument = new BsonDocument("findandmodify", new BsonString(namespace.getCollectionName()));
-        putIfNotNull(commandDocument, "query", getFilter());
-        putIfNotNull(commandDocument, "fields", getProjection());
-        putIfNotNull(commandDocument, "sort", getSort());
-        putIfTrue(commandDocument, "new", !isReturnOriginal());
-        putIfTrue(commandDocument, "upsert", isUpsert());
-        putIfNotZero(commandDocument, "maxTimeMS", getMaxTime(MILLISECONDS));
-        commandDocument.put("update", getUpdate());
-        if (bypassDocumentValidation != null && serverIsAtLeastVersionThreeDotTwo(description)) {
-            commandDocument.put("bypassDocumentValidation", BsonBoolean.valueOf(bypassDocumentValidation));
-        }
-        if (serverIsAtLeastVersionThreeDotTwo(description) && writeConcern.isAcknowledged() && !writeConcern.isServerDefault()) {
-            commandDocument.put("writeConcern", writeConcern.asDocument());
-        }
-        if (collation != null) {
-            commandDocument.put("collation", collation.asDocument());
-        }
-        if (arrayFilters != null) {
-            commandDocument.put("arrayFilters", new BsonArray(arrayFilters));
-        }
-        if (retryWrites) {
-            commandDocument.put("txnNumber", new BsonInt64(sessionContext.advanceTransactionNumber()));
-        }
-        return commandDocument;
+    private CommandCreator getCommandCreator(final SessionContext sessionContext) {
+        return new CommandCreator() {
+            @Override
+            public BsonDocument create(final ConnectionDescription connectionDescription) {
+                validateCollationAndRetryWrites(connectionDescription, collation, retryWrites);
+                BsonDocument commandDocument = new BsonDocument("findandmodify", new BsonString(namespace.getCollectionName()));
+                putIfNotNull(commandDocument, "query", getFilter());
+                putIfNotNull(commandDocument, "fields", getProjection());
+                putIfNotNull(commandDocument, "sort", getSort());
+                putIfTrue(commandDocument, "new", !isReturnOriginal());
+                putIfTrue(commandDocument, "upsert", isUpsert());
+                putIfNotZero(commandDocument, "maxTimeMS", getMaxTime(MILLISECONDS));
+                commandDocument.put("update", getUpdate());
+                if (bypassDocumentValidation != null && serverIsAtLeastVersionThreeDotTwo(connectionDescription)) {
+                    commandDocument.put("bypassDocumentValidation", BsonBoolean.valueOf(bypassDocumentValidation));
+                }
+                if (serverIsAtLeastVersionThreeDotTwo(connectionDescription) && writeConcern.isAcknowledged()
+                        && !writeConcern.isServerDefault()) {
+                    commandDocument.put("writeConcern", writeConcern.asDocument());
+                }
+                if (collation != null) {
+                    commandDocument.put("collation", collation.asDocument());
+                }
+                if (arrayFilters != null) {
+                    commandDocument.put("arrayFilters", new BsonArray(arrayFilters));
+                }
+                if (retryWrites && writeConcern.isAcknowledged()) {
+                    commandDocument.put("txnNumber", new BsonInt64(sessionContext.advanceTransactionNumber()));
+                }
+                return commandDocument;
+            }
+        };
     }
 
     private FieldNameValidator getFieldNameValidator() {
