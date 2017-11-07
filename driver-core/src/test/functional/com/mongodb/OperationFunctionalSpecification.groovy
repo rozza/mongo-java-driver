@@ -19,11 +19,13 @@ package com.mongodb
 import com.mongodb.async.FutureResultCallback
 import com.mongodb.binding.AsyncConnectionSource
 import com.mongodb.binding.AsyncReadBinding
+import com.mongodb.binding.AsyncReadWriteBinding
 import com.mongodb.binding.AsyncSessionBinding
 import com.mongodb.binding.AsyncSingleConnectionBinding
 import com.mongodb.binding.AsyncWriteBinding
 import com.mongodb.binding.ConnectionSource
 import com.mongodb.binding.ReadBinding
+import com.mongodb.binding.ReadWriteBinding
 import com.mongodb.binding.SessionBinding
 import com.mongodb.binding.SingleConnectionBinding
 import com.mongodb.binding.WriteBinding
@@ -39,6 +41,8 @@ import com.mongodb.client.test.WorkerCodec
 import com.mongodb.connection.AsyncConnection
 import com.mongodb.connection.Connection
 import com.mongodb.connection.ConnectionDescription
+import com.mongodb.connection.ServerConnectionState
+import com.mongodb.connection.ServerDescription
 import com.mongodb.connection.ServerHelper
 import com.mongodb.connection.ServerType
 import com.mongodb.connection.ServerVersion
@@ -122,11 +126,11 @@ class OperationFunctionalSpecification extends Specification {
         executor(operation, binding)
     }
 
-    def execute(operation, SingleConnectionBinding binding) {
+    def execute(operation, ReadWriteBinding binding) {
         ClusterFixture.executeSync(operation, binding)
     }
 
-    def execute(operation, AsyncSingleConnectionBinding binding) {
+    def execute(operation, AsyncReadWriteBinding binding) {
         ClusterFixture.executeAsync(operation, binding)
     }
 
@@ -169,14 +173,28 @@ class OperationFunctionalSpecification extends Specification {
         next
     }
 
-    void testOperation(operation, List<Integer> serverVersion, BsonDocument expectedCommand, boolean async, result = null) {
+    void testOperation(Map params) {
+        params.async = params.async ?: false
+        params.result = params.result ?: null
+        params.checkCommand = params.checkCommand ?: true
+        params.checkSlaveOk = params.checkSlaveOk ?: false
+        params.readPreference = params.readPreference ?: ReadPreference.primary()
+        params.retryable = params.retryable ?: false
+        params.serverType = params.serverType ?: ServerType.STANDALONE
+        testOperation(params.operation, params.serverVersion, params.expectedCommand, params.async, params.result, params.checkCommand,
+                params.checkSlaveOk, params.readPreference, params.retryable, params.serverType)
+    }
+
+    void testOperation(operation, List<Integer> serverVersion, BsonDocument expectedCommand, boolean async, result = null,
+                       boolean checkCommand = true, boolean checkSlaveOk = false, ReadPreference readPreference = ReadPreference.primary(),
+                       boolean retryable = false, ServerType serverType = ServerType.STANDALONE) {
         def test = async ? this.&testAsyncOperation : this.&testSyncOperation
-        test(operation, serverVersion, result, true, expectedCommand)
+        test(operation, serverVersion, result, checkCommand, expectedCommand, checkSlaveOk, readPreference, retryable, serverType)
     }
 
     void testOperationRetries(operation, List<Integer> serverVersion, BsonDocument expectedCommand, boolean async, result = null) {
-        def test = async ? this.&testAsyncOperation : this.&testSyncOperation
-        test(operation, serverVersion, result, true, expectedCommand, false, ReadPreference.primary(), true)
+        testOperation(operation, serverVersion, expectedCommand, async, result, true, false, ReadPreference.primary(), true,
+             ServerType.REPLICA_SET_PRIMARY)
     }
 
     void testRetryableOperationThrowsOriginalError(operation, List<Integer> initialServerVersion, Throwable exception, boolean async) {
@@ -196,17 +214,25 @@ class OperationFunctionalSpecification extends Specification {
 
     def testSyncOperation(operation, List<Integer> serverVersion, result, Boolean checkCommand=true,
                           BsonDocument expectedCommand=null, Boolean checkSlaveOk=false,
-                          ReadPreference readPreference=ReadPreference.primary(), Boolean retryable = false) {
+                          ReadPreference readPreference=ReadPreference.primary(), Boolean retryable = false,
+                          ServerType serverType = ServerType.STANDALONE) {
         def connection = Mock(Connection) {
             _ * getDescription() >> Stub(ConnectionDescription) {
                 getServerVersion() >> new ServerVersion(serverVersion)
-                getServerType() >> { retryable ? ServerType.REPLICA_SET_PRIMARY : ServerType.STANDALONE }
+                getServerType() >> serverType
             }
         }
 
         def connectionSource = Stub(ConnectionSource) {
             getConnection() >> {
                 connection
+            }
+            getServerDescription() >> {
+                def builder = ServerDescription.builder().address(Stub(ServerAddress)).state(ServerConnectionState.CONNECTED)
+                if (new ServerVersion(serverVersion).compareTo(new ServerVersion(3, 6)) >= 0) {
+                    builder.logicalSessionTimeoutMinutes(42)
+                }
+                builder.build()
             }
         }
         def readBinding = Stub(ReadBinding) {
@@ -254,18 +280,26 @@ class OperationFunctionalSpecification extends Specification {
         }
     }
 
-    def testAsyncOperation(operation, List<Integer> serverVersion, result = null,
-                           Boolean checkCommand=true, BsonDocument expectedCommand=null, Boolean checkSlaveOk=false,
-                           ReadPreference readPreference=ReadPreference.primary(), Boolean retryable = false) {
+    def testAsyncOperation(operation = operation, List<Integer> serverVersion = serverVersion, result = null,
+                           Boolean checkCommand = true, BsonDocument expectedCommand = null, Boolean checkSlaveOk = false,
+                           ReadPreference readPreference = ReadPreference.primary(), Boolean retryable = false,
+                           ServerType serverType = ServerType.STANDALONE) {
         def connection = Mock(AsyncConnection) {
             _ * getDescription() >> Stub(ConnectionDescription) {
                 getServerVersion() >> new ServerVersion(serverVersion)
-                getServerType() >> { retryable ? ServerType.REPLICA_SET_PRIMARY : ServerType.STANDALONE }
+                getServerType() >> serverType
             }
         }
 
         def connectionSource = Stub(AsyncConnectionSource) {
             getConnection(_) >> { it[0].onResult(connection, null) }
+            getServerDescription() >> {
+                def builder = ServerDescription.builder().address(Stub(ServerAddress)).state(ServerConnectionState.CONNECTED)
+                if (new ServerVersion(serverVersion).compareTo(new ServerVersion(3, 6)) >= 0) {
+                    builder.logicalSessionTimeoutMinutes(42)
+                }
+                builder.build()
+            }
         }
         def readBinding = Stub(AsyncReadBinding) {
             getReadConnectionSource(_) >> { it[0].onResult(connectionSource, null) }
@@ -402,4 +436,8 @@ class OperationFunctionalSpecification extends Specification {
             .build()
 
     static final FieldNameValidator NO_OP_FIELD_NAME_VALIDATOR = new NoOpFieldNameValidator()
+
+    static boolean serverVersionIsGreaterThan(List<Integer> actualVersion, List<Integer> minVersion) {
+        new ServerVersion(actualVersion).compareTo(new ServerVersion(minVersion)) >= 0
+    }
 }

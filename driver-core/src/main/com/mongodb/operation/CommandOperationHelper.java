@@ -33,6 +33,7 @@ import com.mongodb.binding.WriteBinding;
 import com.mongodb.connection.AsyncConnection;
 import com.mongodb.connection.Connection;
 import com.mongodb.connection.ConnectionDescription;
+import com.mongodb.connection.ServerDescription;
 import com.mongodb.connection.SessionContext;
 import com.mongodb.internal.validator.NoOpFieldNameValidator;
 import org.bson.BsonDocument;
@@ -40,15 +41,16 @@ import org.bson.FieldNameValidator;
 import org.bson.codecs.BsonDocumentCodec;
 import org.bson.codecs.Decoder;
 
-import static com.mongodb.ReadPreference.primary;
 import static com.mongodb.assertions.Assertions.notNull;
 import static com.mongodb.connection.ServerType.STANDALONE;
 import static com.mongodb.internal.async.ErrorHandlingResultCallback.errorHandlingCallback;
+import static com.mongodb.operation.OperationHelper.CallableWithConnectionAndSource;
 import static com.mongodb.operation.OperationHelper.LOGGER;
 import static com.mongodb.operation.OperationHelper.releasingCallback;
 import static com.mongodb.operation.OperationHelper.serverIsAtLeastVersionThreeDotSix;
 import static com.mongodb.operation.OperationHelper.withConnection;
 import static com.mongodb.operation.OperationHelper.withReleasableConnection;
+import static com.mongodb.ReadPreference.primary;
 
 final class CommandOperationHelper {
 
@@ -71,7 +73,7 @@ final class CommandOperationHelper {
     }
 
     interface CommandCreator {
-        BsonDocument create(ConnectionDescription connectionDescription);
+        BsonDocument create(ServerDescription serverDescription, ConnectionDescription connectionDescription);
     }
 
     /* Read Binding Helpers */
@@ -420,22 +422,22 @@ final class CommandOperationHelper {
     }
 
     /* Retryable write helpers */
-    static <T, R> R executeRetryableCommand(final WriteBinding binding, final boolean retryWrite, final String database,
+    static <T, R> R executeRetryableCommand(final WriteBinding binding, final String database,
                                             final FieldNameValidator fieldNameValidator, final Decoder<T> commandResultDecoder,
                                             final CommandCreator commandCreator,
                                             final CommandTransformer<T, R> transformer) {
-        return withReleasableConnection(binding, new OperationHelper.CallableWithConnection<R>() {
+        return withReleasableConnection(binding, new CallableWithConnectionAndSource<R>() {
             @Override
-            public R call(final Connection connection) {
+            public R call(final ConnectionSource source, final Connection connection) {
                 BsonDocument command = null;
                 MongoException exception = null;
                 try {
-                    command = commandCreator.create(connection.getDescription());
+                    command = commandCreator.create(source.getServerDescription(), connection.getDescription());
                     return transformer.apply(connection.command(database, command, fieldNameValidator, ReadPreference.primary(),
                             commandResultDecoder, binding.getSessionContext()), connection.getDescription().getServerAddress());
                 } catch (MongoException e) {
                     exception = e;
-                    if (!retryWrite || !isRetryableException(exception)) {
+                    if (command == null || !command.containsKey("txnNumber") || !isRetryableException(exception)) {
                         throw exception;
                     }
                 } finally {
@@ -460,7 +462,7 @@ final class CommandOperationHelper {
         });
     }
 
-    static <T, R> void executeRetryableCommand(final AsyncWriteBinding binding, final boolean retryWrite, final String database,
+    static <T, R> void executeRetryableCommand(final AsyncWriteBinding binding, final String database,
                                                final FieldNameValidator fieldNameValidator, final Decoder<T> commandResultDecoder,
                                                final CommandCreator commandCreator, final CommandTransformer<T, R> transformer,
                                                final SingleResultCallback<R> originalCallback) {
@@ -478,10 +480,11 @@ final class CommandOperationHelper {
                                 releasingCallback(errorHandlingCallback, source).onResult(null, t);
                             } else {
                                 try {
-                                    BsonDocument command = commandCreator.create(connection.getDescription());
+                                    BsonDocument command = commandCreator.create(source.getServerDescription(),
+                                            connection.getDescription());
                                     connection.commandAsync(database, command, fieldNameValidator, ReadPreference.primary(),
                                             commandResultDecoder, binding.getSessionContext(),
-                                            createCommandCallback(binding, source, connection, retryWrite, database, command,
+                                            createCommandCallback(binding, source, connection, database, command,
                                                     fieldNameValidator, commandResultDecoder, transformer, errorHandlingCallback));
                                 } catch (Throwable t1) {
                                     releasingCallback(errorHandlingCallback, source, connection).onResult(null, t1);
@@ -497,7 +500,7 @@ final class CommandOperationHelper {
     private static <T, R> SingleResultCallback<T> createCommandCallback(final AsyncWriteBinding binding,
                                                                         final AsyncConnectionSource oldSource,
                                                                         final AsyncConnection oldConnection,
-                                                                        final boolean retryWrite, final String database,
+                                                                        final String database,
                                                                         final BsonDocument command,
                                                                         final FieldNameValidator fieldNameValidator,
                                                                         final Decoder<T> commandResultDecoder,
@@ -509,7 +512,7 @@ final class CommandOperationHelper {
                 if (originalError != null) {
                     oldConnection.release();
                     oldSource.release();
-                    if (!retryWrite || !isRetryableException(originalError)) {
+                    if (!command.containsKey("txnNumber") || !isRetryableException(originalError)) {
                         callback.onResult(null, originalError);
                     } else {
                         withConnection(binding, new OperationHelper.AsyncCallableWithConnection() {

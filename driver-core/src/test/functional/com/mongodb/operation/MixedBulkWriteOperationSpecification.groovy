@@ -22,6 +22,7 @@ import com.mongodb.MongoBulkWriteException
 import com.mongodb.MongoClientException
 import com.mongodb.MongoException
 import com.mongodb.MongoNamespace
+import com.mongodb.MongoSocketReadException
 import com.mongodb.OperationFunctionalSpecification
 import com.mongodb.WriteConcern
 import com.mongodb.bulk.BulkWriteResult
@@ -887,40 +888,76 @@ class MixedBulkWriteOperationSpecification extends OperationFunctionalSpecificat
         async << [true, false]
     }
 
-    @IgnoreIf({ !serverVersionAtLeast(3, 6) || !isDiscoverableReplicaSet() })
-    def 'should support retryable writes'() {
+    def 'should support retryWrites=true'() {
         given:
-        def operation = new MixedBulkWriteOperation(getNamespace(),
-                [new InsertRequest(BsonDocument.parse('{ level: 9 }'))], true, ACKNOWLEDGED, true)
-        enableOnPrimaryTransactionalWriteFailPoint(BsonDocument.parse('{times: 1}'))
+        def testWrites = getTestWrites()
+        Collections.shuffle(testWrites)
+        getCollectionHelper().insertDocuments(getTestInserts())
+        def operation = new MixedBulkWriteOperation(getNamespace(), testWrites, true, ACKNOWLEDGED, true)
 
         when:
+        if (serverVersionAtLeast(3, 6) && isDiscoverableReplicaSet()) {
+            enableOnPrimaryTransactionalWriteFailPoint(BsonDocument.parse(failPoint))
+        }
         BulkWriteResult result = executeWithSession(operation, async)
 
         then:
-        result.getInsertedCount() == 1
+        result.wasAcknowledged()
+        result.getInsertedCount() == 2
+        result.getDeletedCount() == 2
+        result.getMatchedCount() == 4
+        if (result.isModifiedCountAvailable()) {
+            result.getModifiedCount() == 4
+        }
+        result.getUpserts().isEmpty()
+
+        then:
+        getCollectionHelper().find(new Document('_id', 1)).first() == new Document('_id', 1).append('x', 2)
+        getCollectionHelper().find(new Document('_id', 2)).first() == new Document('_id', 2).append('x', 3)
+        getCollectionHelper().find(new Document('_id', 3)).isEmpty()
+        getCollectionHelper().find(new Document('_id', 4)).isEmpty()
+        getCollectionHelper().find(new Document('_id', 5)).first() == new Document('_id', 5).append('x', 4)
+        getCollectionHelper().find(new Document('_id', 6)).first() == new Document('_id', 6).append('x', 5)
+        getCollectionHelper().find(new Document('_id', 7)).first() == new Document('_id', 7)
+        getCollectionHelper().find(new Document('_id', 8)).first() == new Document('_id', 8)
 
         cleanup:
         disableOnPrimaryTransactionalWriteFailPoint()
 
         where:
-        async << [true, false]
+        [async, ordered, failPoint] << [
+            [false], // TODO async support
+            [true, false],
+            ['{mode: {times: 5}}', // SDAM will retry multiple times to find a server
+             '{mode: {times: 1}, data: {failBeforeCommitExceptionCode : 1}}']
+        ].combinations()
     }
 
-    @IgnoreIf({ serverVersionAtLeast(3, 5) })
-    def 'should throw if using retryWrites on an unsupported server'() {
+    @IgnoreIf({ !serverVersionAtLeast(3, 6) || !isDiscoverableReplicaSet() })
+    def 'should fail as expected with retryWrites and failPoints'() {
         given:
-        def operation = new MixedBulkWriteOperation(getNamespace(),
-                [new InsertRequest(BsonDocument.parse('{ level: 9 }'))], true, ACKNOWLEDGED, true)
+        def testWrites = getTestWrites()
+        Collections.shuffle(testWrites)
+        getCollectionHelper().insertDocuments(getTestInserts())
+        def operation = new MixedBulkWriteOperation(getNamespace(), testWrites, true, ACKNOWLEDGED, true)
 
         when:
-        execute(operation, async)
+        enableOnPrimaryTransactionalWriteFailPoint(BsonDocument.parse(failPoint))
+        executeWithSession(operation, async)
 
         then:
-        thrown(IllegalArgumentException)
+        thrown(MongoSocketReadException)
+
+        cleanup:
+        disableOnPrimaryTransactionalWriteFailPoint()
 
         where:
-        async << [true, false]
+        [async, ordered, failPoint] << [
+                [false], // TODO async support
+                [true, false],
+                ['{mode: {times: 2}, data: {failBeforeCommitExceptionCode : 1}}',
+                 '{mode: {skip: 2}, data: {failBeforeCommitExceptionCode : 1}}']
+        ].combinations()
     }
 
     def 'should retry if the connection initially fails'() {
@@ -987,18 +1024,18 @@ class MixedBulkWriteOperationSpecification extends OperationFunctionalSpecificat
     private static List<WriteRequest> getTestWrites() {
         [new UpdateRequest(new BsonDocument('_id', new BsonInt32(1)),
                            new BsonDocument('$set', new BsonDocument('x', new BsonInt32(2))),
-                           UPDATE),
+                           UPDATE).multi(false),
          new UpdateRequest(new BsonDocument('_id', new BsonInt32(2)),
                            new BsonDocument('$set', new BsonDocument('x', new BsonInt32(3))),
-                           UPDATE),
-         new DeleteRequest(new BsonDocument('_id', new BsonInt32(3))),
-         new DeleteRequest(new BsonDocument('_id', new BsonInt32(4))),
+                           UPDATE).multi(false),
+         new DeleteRequest(new BsonDocument('_id', new BsonInt32(3))).multi(false),
+         new DeleteRequest(new BsonDocument('_id', new BsonInt32(4))).multi(false),
          new UpdateRequest(new BsonDocument('_id', new BsonInt32(5)),
                            new BsonDocument('_id', new BsonInt32(5)).append('x', new BsonInt32(4)),
-                           REPLACE),
+                           REPLACE).multi(false),
          new UpdateRequest(new BsonDocument('_id', new BsonInt32(6)),
                            new BsonDocument('_id', new BsonInt32(6)).append('x', new BsonInt32(5)),
-                           REPLACE),
+                           REPLACE).multi(false),
          new InsertRequest(new BsonDocument('_id', new BsonInt32(7))),
          new InsertRequest(new BsonDocument('_id', new BsonInt32(8)))
         ]

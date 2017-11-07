@@ -124,4 +124,8 @@ public final class AsyncSessionBinding implements AsyncReadWriteBinding {
             wrapped.release();
         }
     }
+
+    public AsyncReadWriteBinding getWrapped() {
+        return wrapped;
+    }
 }

@@ -23,6 +23,7 @@ import com.mongodb.MongoNamespace;
 import com.mongodb.client.test.CollectionHelper;
 import com.mongodb.connection.ServerVersion;
 import org.bson.BsonArray;
+import org.bson.BsonBoolean;
 import org.bson.BsonDocument;
 import org.bson.BsonInt32;
 import org.bson.BsonString;
@@ -156,9 +157,12 @@ public class RetryableWritesTest {
             assertEquals(outcome.getDocument("collection").getArray("data").getValues(), collectionData);
         }
 
-        assertEquals(outcome.containsKey("error"), wasException);
-        BsonDocument fixedExpectedResult = fixExpectedResult(outcome.getDocument("result", new BsonDocument()));
-        assertEquals(result.getDocument("result", new BsonDocument()), fixedExpectedResult);
+        if (outcome.getBoolean("error", BsonBoolean.FALSE).getValue()) {
+            assertEquals(outcome.containsKey("error"), wasException);
+        } else {
+            BsonDocument fixedExpectedResult = fixExpectedResult(outcome.getDocument("result", new BsonDocument()));
+            assertEquals(result.getDocument("result", new BsonDocument()), fixedExpectedResult);
+        }
     }
 
     @Parameterized.Parameters(name = "{1}")

@@ -18,11 +18,9 @@ package com.mongodb.operation;
 
 import com.mongodb.MongoNamespace;
 import com.mongodb.WriteConcern;
-import com.mongodb.async.SingleResultCallback;
-import com.mongodb.binding.AsyncWriteBinding;
-import com.mongodb.binding.WriteBinding;
 import com.mongodb.client.model.Collation;
 import com.mongodb.connection.ConnectionDescription;
+import com.mongodb.connection.ServerDescription;
 import com.mongodb.connection.SessionContext;
 import com.mongodb.internal.validator.MappedFieldNameValidator;
 import com.mongodb.internal.validator.NoOpFieldNameValidator;
@@ -42,12 +40,12 @@ import java.util.concurrent.TimeUnit;
 
 import static com.mongodb.assertions.Assertions.notNull;
 import static com.mongodb.operation.CommandOperationHelper.CommandCreator;
-import static com.mongodb.operation.CommandOperationHelper.executeRetryableCommand;
 import static com.mongodb.operation.DocumentHelper.putIfNotNull;
 import static com.mongodb.operation.DocumentHelper.putIfNotZero;
 import static com.mongodb.operation.DocumentHelper.putIfTrue;
+import static com.mongodb.operation.OperationHelper.isRetryableWrite;
 import static com.mongodb.operation.OperationHelper.serverIsAtLeastVersionThreeDotTwo;
-import static com.mongodb.operation.OperationHelper.validateCollationAndRetryWrites;
+import static com.mongodb.operation.OperationHelper.validateCollation;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 /**
@@ -57,7 +55,7 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
  * @since 3.0
  * @mongodb.driver.manual reference/command/findAndModify/ findAndModify
  */
-public class FindAndUpdateOperation<T> implements AsyncWriteOperation<T>, WriteOperation<T> {
+public class FindAndUpdateOperation<T> extends BaseFindAndModifyOperation<T> {
     private final MongoNamespace namespace;
     private final Decoder<T> decoder;
     private final BsonDocument update;
@@ -367,24 +365,23 @@ public class FindAndUpdateOperation<T> implements AsyncWriteOperation<T>, WriteO
     }
 
     @Override
-    public T execute(final WriteBinding binding) {
-        return executeRetryableCommand(binding, retryWrites, namespace.getDatabaseName(), getFieldNameValidator(),
-                CommandResultDocumentCodec.create(decoder, "value"), getCommandCreator(binding.getSessionContext()),
-                FindAndModifyHelper.<T>transformer());
+    protected String getDatabaseName() {
+        return namespace.getDatabaseName();
     }
 
     @Override
-    public void executeAsync(final AsyncWriteBinding binding, final SingleResultCallback<T> callback) {
-        executeRetryableCommand(binding, retryWrites, namespace.getDatabaseName(), getFieldNameValidator(),
-                CommandResultDocumentCodec.create(decoder, "value"), getCommandCreator(binding.getSessionContext()),
-                FindAndModifyHelper.<T>transformer(), callback);
+    protected FieldNameValidator getFieldNameValidator() {
+        Map<String, FieldNameValidator> map = new HashMap<String, FieldNameValidator>();
+        map.put("update", new UpdateFieldNameValidator());
+        return new MappedFieldNameValidator(new NoOpFieldNameValidator(), map);
     }
 
-    private CommandCreator getCommandCreator(final SessionContext sessionContext) {
+    @Override
+    protected CommandCreator getCommandCreator(final SessionContext sessionContext) {
         return new CommandCreator() {
             @Override
-            public BsonDocument create(final ConnectionDescription connectionDescription) {
-                validateCollationAndRetryWrites(connectionDescription, collation, retryWrites);
+            public BsonDocument create(final ServerDescription serverDescription, final ConnectionDescription connectionDescription) {
+                validateCollation(connectionDescription, collation);
                 BsonDocument commandDocument = new BsonDocument("findandmodify", new BsonString(namespace.getCollectionName()));
                 putIfNotNull(commandDocument, "query", getFilter());
                 putIfNotNull(commandDocument, "fields", getProjection());
@@ -406,18 +403,11 @@ public class FindAndUpdateOperation<T> implements AsyncWriteOperation<T>, WriteO
                 if (arrayFilters != null) {
                     commandDocument.put("arrayFilters", new BsonArray(arrayFilters));
                 }
-                if (retryWrites && writeConcern.isAcknowledged()) {
+                if (isRetryableWrite(retryWrites, writeConcern, serverDescription, connectionDescription)) {
                     commandDocument.put("txnNumber", new BsonInt64(sessionContext.advanceTransactionNumber()));
                 }
                 return commandDocument;
             }
         };
-    }
-
-    private FieldNameValidator getFieldNameValidator() {
-        Map<String, FieldNameValidator> map = new HashMap<String, FieldNameValidator>();
-        map.put("update", new UpdateFieldNameValidator());
-
-        return new MappedFieldNameValidator(new NoOpFieldNameValidator(), map);
     }
 }

@@ -30,6 +30,7 @@ import com.mongodb.bulk.WriteConcernError;
 import com.mongodb.bulk.WriteRequest;
 import com.mongodb.connection.BulkWriteBatchCombiner;
 import com.mongodb.connection.ConnectionDescription;
+import com.mongodb.connection.ServerDescription;
 import com.mongodb.connection.SessionContext;
 import com.mongodb.connection.SplittablePayload;
 import com.mongodb.internal.connection.IndexMap;
@@ -64,6 +65,8 @@ import static com.mongodb.bulk.WriteRequest.Type.DELETE;
 import static com.mongodb.bulk.WriteRequest.Type.INSERT;
 import static com.mongodb.bulk.WriteRequest.Type.REPLACE;
 import static com.mongodb.bulk.WriteRequest.Type.UPDATE;
+import static com.mongodb.operation.OperationHelper.LOGGER;
+import static com.mongodb.operation.OperationHelper.isRetryableWrite;
 import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
 
 final class BulkWriteBatch {
@@ -86,21 +89,28 @@ final class BulkWriteBatch {
     private final List<WriteRequestWithIndex> unprocessed;
     private final SessionContext sessionContext;
 
-    public static BulkWriteBatch createBulkWriteBatch(final MongoNamespace namespace, final ConnectionDescription connectionDescription,
+    public static BulkWriteBatch createBulkWriteBatch(final MongoNamespace namespace,
+                                                      final ServerDescription serverDescription,
+                                                      final ConnectionDescription connectionDescription,
                                                       final boolean ordered, final WriteConcern writeConcern,
                                                       final Boolean bypassDocumentValidation, final boolean retryWrites,
                                                       final List<? extends WriteRequest> writeRequests,
                                                       final SessionContext sessionContext) {
-        boolean canRetryWrites = retryWrites;
+        boolean canRetryWrites = isRetryableWrite(retryWrites, writeConcern, serverDescription, connectionDescription);
         List<WriteRequestWithIndex> writeRequestsWithIndex = new ArrayList<WriteRequestWithIndex>();
+        boolean writeRequestsAreRetryable = true;
         for (int i = 0; i < writeRequests.size(); i++) {
             WriteRequest writeRequest = writeRequests.get(i);
-            canRetryWrites = canRetryWrites && isRetryable(writeRequest);
+            writeRequestsAreRetryable = isRetryable(writeRequest);
             writeRequestsWithIndex.add(new WriteRequestWithIndex(writeRequest, i));
         }
-        return new BulkWriteBatch(namespace, connectionDescription, ordered, writeConcern, bypassDocumentValidation, canRetryWrites,
-                new BulkWriteBatchCombiner(connectionDescription.getServerAddress(), ordered, writeConcern), writeRequestsWithIndex,
-                sessionContext);
+        if (canRetryWrites && !writeRequestsAreRetryable) {
+            canRetryWrites = false;
+            LOGGER.debug("retryWrites set but one or more writeRequests do not support retryable writes");
+        }
+        return new BulkWriteBatch(namespace, connectionDescription, ordered, writeConcern, bypassDocumentValidation,
+                canRetryWrites, new BulkWriteBatchCombiner(connectionDescription.getServerAddress(), ordered, writeConcern),
+                writeRequestsWithIndex, sessionContext);
     }
 
     private BulkWriteBatch(final MongoNamespace namespace, final ConnectionDescription connectionDescription,
@@ -187,6 +197,10 @@ final class BulkWriteBatch {
                 bulkWriteBatchCombiner.addResult(getBulkWriteResult(result), indexMap);
             }
         }
+    }
+
+    public boolean getRetryWrites() {
+        return retryWrites;
     }
 
     public BsonDocument getCommand() {

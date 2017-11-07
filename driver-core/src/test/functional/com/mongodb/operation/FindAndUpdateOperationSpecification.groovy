@@ -45,8 +45,12 @@ import static com.mongodb.ClusterFixture.disableOnPrimaryTransactionalWriteFailP
 import static com.mongodb.ClusterFixture.enableOnPrimaryTransactionalWriteFailPoint
 import static com.mongodb.ClusterFixture.isDiscoverableReplicaSet
 import static com.mongodb.ClusterFixture.serverVersionAtLeast
+import static com.mongodb.WriteConcern.UNACKNOWLEDGED
+import static com.mongodb.WriteConcern.W1
 import static com.mongodb.client.model.Filters.gte
 import static com.mongodb.WriteConcern.ACKNOWLEDGED
+import static com.mongodb.connection.ServerType.REPLICA_SET_PRIMARY
+import static com.mongodb.connection.ServerType.STANDALONE
 
 class FindAndUpdateOperationSpecification extends OperationFunctionalSpecification {
     private final DocumentCodec documentCodec = new DocumentCodec()
@@ -265,17 +269,27 @@ class FindAndUpdateOperationSpecification extends OperationFunctionalSpecificati
 
     def 'should create the expected command'() {
         when:
+        def includeBypassValidation = serverVersionIsGreaterThan(serverVersion, [3, 4, 0])
+        def includeCollation = serverVersionIsGreaterThan(serverVersion, [3, 4, 0])
+        def includeTxnNumber = (serverVersionIsGreaterThan(serverVersion, [3, 6, 0]) && retryWrites
+                && writeConcern.isAcknowledged() && serverType != STANDALONE)
+        def includeWriteConcern = (writeConcern.isAcknowledged() && !writeConcern.isServerDefault()
+                && serverVersionIsGreaterThan(serverVersion, [3, 4, 0]))
         def cannedResult = new BsonDocument('value', new BsonDocumentWrapper(BsonDocument.parse('{}'), new BsonDocumentCodec()))
         def update = BsonDocument.parse('{ update: 1}')
-        def operation = new FindAndUpdateOperation<Document>(getNamespace(), writeConcern, false, documentCodec, update)
+        def operation = new FindAndUpdateOperation<Document>(getNamespace(), writeConcern, retryWrites, documentCodec, update)
         def expectedCommand = new BsonDocument('findandmodify', new BsonString(getNamespace().getCollectionName()))
                 .append('update', update)
         if (includeWriteConcern) {
             expectedCommand.put('writeConcern', writeConcern.asDocument())
         }
+        if (includeTxnNumber) {
+            expectedCommand.put('txnNumber', new BsonInt64(0))
+        }
 
         then:
-        testOperation(operation, serverVersion, expectedCommand, async, cannedResult)
+        testOperation([operation: operation, serverVersion: serverVersion, expectedCommand: expectedCommand, async: async,
+                       result: cannedResult, serverType: serverType])
 
         when:
         def filter = BsonDocument.parse('{ filter : 1}')
@@ -302,22 +316,17 @@ class FindAndUpdateOperationSpecification extends OperationFunctionalSpecificati
         }
 
         then:
-        testOperation(operation, serverVersion, expectedCommand, async, cannedResult)
+        testOperation([operation: operation, serverVersion: serverVersion, expectedCommand: expectedCommand, async: async,
+                       result: cannedResult, serverType: serverType])
 
         where:
-        serverVersion  | writeConcern                 | includeWriteConcern   | includeCollation | includeBypassValidation | async
-        [3, 4, 0]      | WriteConcern.W1              | true                  | true             | true                    | false
-        [3, 4, 0]      | WriteConcern.ACKNOWLEDGED    | false                 | true             | true                    | true
-        [3, 4, 0]      | WriteConcern.UNACKNOWLEDGED  | false                 | true             | true                    | true
-        [3, 4, 0]      | WriteConcern.W1              | true                  | true             | true                    | false
-        [3, 4, 0]      | WriteConcern.ACKNOWLEDGED    | false                 | true             | true                    | false
-        [3, 4, 0]      | WriteConcern.UNACKNOWLEDGED  | false                 | true             | true                    | false
-        [3, 0, 0]      | WriteConcern.ACKNOWLEDGED    | false                 | false            | false                   | true
-        [3, 0, 0]      | WriteConcern.UNACKNOWLEDGED  | false                 | false            | false                   | true
-        [3, 0, 0]      | WriteConcern.W1              | false                 | false            | false                   | true
-        [3, 0, 0]      | WriteConcern.ACKNOWLEDGED    | false                 | false            | false                   | false
-        [3, 0, 0]      | WriteConcern.UNACKNOWLEDGED  | false                 | false            | false                   | false
-        [3, 0, 0]      | WriteConcern.W1              | false                 | false            | false                   | false
+        [serverVersion, serverType, writeConcern, async, retryWrites] << [
+                [[3, 6, 0], [3, 4, 0], [3, 0, 0]],
+                [REPLICA_SET_PRIMARY, STANDALONE],
+                [ACKNOWLEDGED, W1, UNACKNOWLEDGED],
+                [true, false],
+                [true, false]
+        ].combinations()
     }
 
     @IgnoreIf({ !serverVersionAtLeast(3, 6) || !isDiscoverableReplicaSet() })
@@ -348,23 +357,6 @@ class FindAndUpdateOperationSpecification extends OperationFunctionalSpecificati
 
         where:
         async << [true, false]
-    }
-
-    @IgnoreIf({ serverVersionAtLeast(3, 5) })
-    def 'should throw if using retryWrites on an unsupported server'() {
-        given:
-        def update = new BsonDocument('$inc', new BsonDocument('numberOfJobs', new BsonInt32(1)))
-        def operation = new FindAndUpdateOperation<Document>(getNamespace(), ACKNOWLEDGED, true, documentCodec, update)
-                .filter(new BsonDocument('name', new BsonString('Pete')))
-
-        when:
-        execute(operation, async)
-
-        then:
-        thrown(IllegalArgumentException)
-
-        where:
-        async << [true]
     }
 
     def 'should retry if the connection initially fails'() {

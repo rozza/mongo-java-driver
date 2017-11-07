@@ -107,4 +107,7 @@ class SessionBinding implements ReadWriteBinding {
         }
     }
 
+    public ReadWriteBinding getWrapped() {
+        return wrapped;
+    }
 }

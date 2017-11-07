@@ -28,6 +28,7 @@ import com.mongodb.bulk.WriteRequest
 import com.mongodb.client.model.Collation
 import com.mongodb.connection.ClusterId
 import com.mongodb.connection.ConnectionDescription
+import com.mongodb.connection.ServerDescription
 import com.mongodb.connection.ServerId
 import com.mongodb.internal.connection.NoOpSessionContext
 import org.bson.BsonDocument
@@ -36,16 +37,18 @@ import spock.lang.Specification
 
 import static com.mongodb.bulk.WriteRequest.Type.REPLACE
 import static com.mongodb.bulk.WriteRequest.Type.UPDATE
+import static com.mongodb.connection.ServerConnectionState.CONNECTED
 
 class BulkWriteBatchSpecification extends Specification {
     def namespace = new MongoNamespace('db.coll')
-    def connectionDescription = new ConnectionDescription(new ServerId(new ClusterId(), new ServerAddress()))
+    def serverDescription = ServerDescription.builder().address(new ServerAddress()).state(CONNECTED).build()
+    def connectionDescription = new ConnectionDescription(new ServerId(new ClusterId(), serverDescription.getAddress()))
     def sessionContext = new NoOpSessionContext()
 
     def 'should split payloads by type when ordered'() {
         when:
-        def bulkWriteBatch = BulkWriteBatch.createBulkWriteBatch(namespace, connectionDescription, true, WriteConcern.ACKNOWLEDGED,
-                null, false, getWriteRequests(), sessionContext)
+        def bulkWriteBatch = BulkWriteBatch.createBulkWriteBatch(namespace, serverDescription, connectionDescription, true,
+                WriteConcern.ACKNOWLEDGED, null, false, getWriteRequests(), sessionContext)
         def payload = bulkWriteBatch.getPayload()
         payload.setPosition(payload.getPayload().size())
 
@@ -124,8 +127,8 @@ class BulkWriteBatchSpecification extends Specification {
 
     def 'should group payloads by type when unordered'() {
         when:
-        def bulkWriteBatch = BulkWriteBatch.createBulkWriteBatch(namespace, connectionDescription, false, WriteConcern.MAJORITY,
-                true, false, getWriteRequests(), sessionContext)
+        def bulkWriteBatch = BulkWriteBatch.createBulkWriteBatch(namespace, serverDescription, connectionDescription, false,
+                WriteConcern.MAJORITY, true, false, getWriteRequests(), sessionContext)
         def payload = bulkWriteBatch.getPayload()
         payload.setPosition(payload.getPayload().size())
 
@@ -177,8 +180,8 @@ class BulkWriteBatchSpecification extends Specification {
 
     def 'should split payloads if only payload partially processed'() {
         when:
-        def bulkWriteBatch = BulkWriteBatch.createBulkWriteBatch(namespace, connectionDescription, false, WriteConcern.ACKNOWLEDGED,
-                null, false, getWriteRequests()[0..3], sessionContext)
+        def bulkWriteBatch = BulkWriteBatch.createBulkWriteBatch(namespace, serverDescription, connectionDescription, false,
+                WriteConcern.ACKNOWLEDGED, null, false, getWriteRequests()[0..3], sessionContext)
         def payload = bulkWriteBatch.getPayload()
         payload.setPosition(1)
 
@@ -220,8 +223,8 @@ class BulkWriteBatchSpecification extends Specification {
 
     def 'should handle operation responses'() {
         given:
-        def bulkWriteBatch = BulkWriteBatch.createBulkWriteBatch(namespace, connectionDescription, true, WriteConcern.ACKNOWLEDGED,
-                null, false, getWriteRequests()[1..1], sessionContext)
+        def bulkWriteBatch = BulkWriteBatch.createBulkWriteBatch(namespace, serverDescription, connectionDescription, true,
+                WriteConcern.ACKNOWLEDGED, null, false, getWriteRequests()[1..1], sessionContext)
         def writeConcernError = toBsonDocument('{ok: 1, n: 1, upserted: [{_id: 2, index: 0}]}')
 
         when:
@@ -235,8 +238,8 @@ class BulkWriteBatchSpecification extends Specification {
 
     def 'should handle writeConcernError error responses'() {
         given:
-        def bulkWriteBatch = BulkWriteBatch.createBulkWriteBatch(namespace, connectionDescription, true, WriteConcern.ACKNOWLEDGED,
-                null, false, getWriteRequests()[0..0], sessionContext)
+        def bulkWriteBatch = BulkWriteBatch.createBulkWriteBatch(namespace, serverDescription, connectionDescription, true,
+                WriteConcern.ACKNOWLEDGED, null, false, getWriteRequests()[0..0], sessionContext)
         def writeConcernError = toBsonDocument('{n: 1, writeConcernError: {code: 75, errmsg: "wtimeout", errInfo: {wtimeout: "0"}}}')
 
         when:
@@ -251,8 +254,8 @@ class BulkWriteBatchSpecification extends Specification {
 
     def 'should handle writeErrors error responses'() {
         given:
-        def bulkWriteBatch = BulkWriteBatch.createBulkWriteBatch(namespace, connectionDescription, true, WriteConcern.ACKNOWLEDGED,
-                null, false, getWriteRequests()[0..0], sessionContext)
+        def bulkWriteBatch = BulkWriteBatch.createBulkWriteBatch(namespace, serverDescription, connectionDescription, true,
+                WriteConcern.ACKNOWLEDGED, null, false, getWriteRequests()[0..0], sessionContext)
         def writeError = toBsonDocument('''{"ok": 0, "n": 1, "code": 65, "errmsg": "bulk op errors",
             "writeErrors": [{ "index" : 0, "code" : 100, "errmsg": "some error"}] }''')
 

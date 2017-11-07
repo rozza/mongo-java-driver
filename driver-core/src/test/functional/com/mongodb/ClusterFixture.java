@@ -63,6 +63,7 @@ import org.bson.codecs.DocumentCodec;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 import static com.mongodb.connection.ClusterConnectionMode.MULTIPLE;
 import static com.mongodb.connection.ClusterType.REPLICA_SET;
@@ -356,15 +357,19 @@ public final class ClusterFixture {
         }
     }
 
-    public static void enableOnPrimaryTransactionalWriteFailPoint(final BsonValue mode) {
-        assumeThat(isSharded(), is(false));
+    public static void enableOnPrimaryTransactionalWriteFailPoint(final BsonValue failPointData) {
+        BsonDocument command = BsonDocument.parse("{ configureFailPoint: 'onPrimaryTransactionalWrite'}");
+
+        if (failPointData.isDocument() && failPointData.asDocument().containsKey("mode")) {
+            for (Map.Entry<String, BsonValue> keyValue : failPointData.asDocument().entrySet()) {
+                command.append(keyValue.getKey(), keyValue.getValue());
+            }
+        } else {
+            command.append("mode", failPointData);
+        }
         boolean failsPointsSupported = true;
         try {
-            new CommandWriteOperation<BsonDocument>("admin",
-                    new BsonDocument("configureFailPoint", new BsonString("onPrimaryTransactionalWrite"))
-                            .append("mode", mode),
-                    new BsonDocumentCodec())
-                    .execute(getBinding());
+            new CommandWriteOperation<BsonDocument>("admin", command, new BsonDocumentCodec()).execute(getBinding());
         } catch (MongoCommandException e) {
             if (e.getErrorCode() == COMMAND_NOT_FOUND_ERROR_CODE) {
                 failsPointsSupported = false;

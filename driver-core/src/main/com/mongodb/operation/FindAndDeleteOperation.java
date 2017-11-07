@@ -18,28 +18,27 @@ package com.mongodb.operation;
 
 import com.mongodb.MongoNamespace;
 import com.mongodb.WriteConcern;
-import com.mongodb.async.SingleResultCallback;
-import com.mongodb.binding.AsyncWriteBinding;
-import com.mongodb.binding.WriteBinding;
 import com.mongodb.client.model.Collation;
 import com.mongodb.connection.ConnectionDescription;
+import com.mongodb.connection.ServerDescription;
 import com.mongodb.connection.SessionContext;
 import com.mongodb.internal.validator.NoOpFieldNameValidator;
 import org.bson.BsonBoolean;
 import org.bson.BsonDocument;
 import org.bson.BsonInt64;
 import org.bson.BsonString;
+import org.bson.FieldNameValidator;
 import org.bson.codecs.Decoder;
 
 import java.util.concurrent.TimeUnit;
 
 import static com.mongodb.assertions.Assertions.notNull;
 import static com.mongodb.operation.CommandOperationHelper.CommandCreator;
-import static com.mongodb.operation.CommandOperationHelper.executeRetryableCommand;
 import static com.mongodb.operation.DocumentHelper.putIfNotNull;
 import static com.mongodb.operation.DocumentHelper.putIfNotZero;
+import static com.mongodb.operation.OperationHelper.isRetryableWrite;
 import static com.mongodb.operation.OperationHelper.serverIsAtLeastVersionThreeDotTwo;
-import static com.mongodb.operation.OperationHelper.validateCollationAndRetryWrites;
+import static com.mongodb.operation.OperationHelper.validateCollation;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 /**
@@ -49,7 +48,7 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
  * @mongodb.driver.manual reference/command/findAndModify/ findAndModify
  * @since 3.0
  */
-public class FindAndDeleteOperation<T> implements AsyncWriteOperation<T>, WriteOperation<T> {
+public class FindAndDeleteOperation<T> extends BaseFindAndModifyOperation<T> {
     private final MongoNamespace namespace;
     private final WriteConcern writeConcern;
     private final boolean retryWrites;
@@ -250,24 +249,16 @@ public class FindAndDeleteOperation<T> implements AsyncWriteOperation<T>, WriteO
     }
 
     @Override
-    public T execute(final WriteBinding binding) {
-        return executeRetryableCommand(binding, retryWrites, namespace.getDatabaseName(), new NoOpFieldNameValidator(),
-                CommandResultDocumentCodec.create(decoder, "value"), getCommandCreator(binding.getSessionContext()),
-                FindAndModifyHelper.<T>transformer());
+    protected String getDatabaseName() {
+        return namespace.getDatabaseName();
     }
 
     @Override
-    public void executeAsync(final AsyncWriteBinding binding, final SingleResultCallback<T> callback) {
-        executeRetryableCommand(binding, retryWrites, namespace.getDatabaseName(), new NoOpFieldNameValidator(),
-                CommandResultDocumentCodec.create(decoder, "value"), getCommandCreator(binding.getSessionContext()),
-                FindAndModifyHelper.<T>transformer(), callback);
-    }
-
-    private CommandCreator getCommandCreator(final SessionContext sessionContext) {
+    protected CommandCreator getCommandCreator(final SessionContext sessionContext) {
         return new CommandCreator() {
             @Override
-            public BsonDocument create(final ConnectionDescription connectionDescription) {
-                validateCollationAndRetryWrites(connectionDescription, collation, retryWrites);
+            public BsonDocument create(final ServerDescription serverDescription, final ConnectionDescription connectionDescription) {
+                validateCollation(connectionDescription, collation);
                 BsonDocument commandDocument = new BsonDocument("findandmodify", new BsonString(namespace.getCollectionName()));
                 putIfNotNull(commandDocument, "query", getFilter());
                 putIfNotNull(commandDocument, "fields", getProjection());
@@ -281,11 +272,17 @@ public class FindAndDeleteOperation<T> implements AsyncWriteOperation<T>, WriteO
                 if (collation != null) {
                     commandDocument.put("collation", collation.asDocument());
                 }
-                if (retryWrites && writeConcern.isAcknowledged()) {
+                if (isRetryableWrite(retryWrites, writeConcern, serverDescription, connectionDescription)) {
                     commandDocument.put("txnNumber", new BsonInt64(sessionContext.advanceTransactionNumber()));
                 }
                 return commandDocument;
             }
         };
     }
+
+    @Override
+    protected FieldNameValidator getFieldNameValidator() {
+        return new NoOpFieldNameValidator();
+    }
+
 }
