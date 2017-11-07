@@ -41,7 +41,7 @@ public class DeleteOperation extends BaseWriteOperation {
      * @param ordered        whether the writes are ordered.
      * @param writeConcern   the write concern for the operation.
      * @param deleteRequests the remove requests.
-     * @deprecated           use {@link DeleteOperation(MongoNamespace, boolean, WriteConcern, boolean, List)} instead
+     * @deprecated           use {@link #DeleteOperation(MongoNamespace, boolean, WriteConcern, boolean, List)} instead
      */
     @Deprecated
     public DeleteOperation(final MongoNamespace namespace, final boolean ordered, final WriteConcern writeConcern,

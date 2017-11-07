@@ -119,9 +119,9 @@ import static java.util.Collections.singletonList;
  * {@code "majority"}</li>
  * </ul>
  * </li>
- * <li>{@code wtimeoutMS=ms}
  * <li>{@code retryWrites=true|false}. If true the driver will retry supported write operations if they fail due to a network error.
  *  Defaults to false.</li>
+ * <li>{@code wtimeoutMS=ms}
  * <ul>
  * <li>The driver adds { wtimeout : ms } to all write commands. Implies {@code safe=true}.</li>
  * <li>Used in combination with {@code w}</li>

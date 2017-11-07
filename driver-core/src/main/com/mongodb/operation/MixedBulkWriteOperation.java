@@ -79,7 +79,7 @@ public class MixedBulkWriteOperation implements AsyncWriteOperation<BulkWriteRes
      * @param writeRequests the list of writeRequests to execute.
      * @param ordered       whether the writeRequests must be executed in order.
      * @param writeConcern  the write concern for the operation.
-     * @deprecated          use {@link MixedBulkWriteOperation(MongoNamespace, List, boolean, WriteConcern, boolean)} instead
+     * @deprecated          use {@link #MixedBulkWriteOperation(MongoNamespace, List, boolean, WriteConcern, boolean)} instead
      */
     @Deprecated
     public MixedBulkWriteOperation(final MongoNamespace namespace, final List<? extends WriteRequest> writeRequests,

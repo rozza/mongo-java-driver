@@ -41,7 +41,7 @@ public class UpdateOperation extends BaseWriteOperation {
      * @param ordered       whether the updates are ordered.
      * @param writeConcern  the write concern for the operation.
      * @param updates       the update requests.
-     * @deprecated          use {@link UpdateOperation(MongoNamespace, boolean, WriteConcern, boolean, List)} instead
+     * @deprecated          use {@link #UpdateOperation(MongoNamespace, boolean, WriteConcern, boolean, List)} instead
      */
     @Deprecated
     public UpdateOperation(final MongoNamespace namespace, final boolean ordered, final WriteConcern writeConcern,
