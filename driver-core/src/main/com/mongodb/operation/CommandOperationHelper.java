@@ -44,6 +44,7 @@ import org.bson.codecs.Decoder;
 import static com.mongodb.assertions.Assertions.notNull;
 import static com.mongodb.connection.ServerType.STANDALONE;
 import static com.mongodb.internal.async.ErrorHandlingResultCallback.errorHandlingCallback;
+import static com.mongodb.operation.OperationHelper.CallableWithConnection;
 import static com.mongodb.operation.OperationHelper.CallableWithConnectionAndSource;
 import static com.mongodb.operation.OperationHelper.LOGGER;
 import static com.mongodb.operation.OperationHelper.releasingCallback;
@@ -446,18 +447,22 @@ final class CommandOperationHelper {
 
                 final BsonDocument originalCommand = command;
                 final MongoException originalException = exception;
-                return withConnection(binding, new OperationHelper.CallableWithConnection<R>() {
-                    @Override
-                    public R call(final Connection connection) {
-                        if (!serverIsAtLeastVersionThreeDotSix(connection.getDescription())
-                                || connection.getDescription().getServerType() == STANDALONE) {
-                            throw originalException;
+                try {
+                    return withConnection(binding, new CallableWithConnection<R>() {
+                        @Override
+                        public R call(final Connection connection) {
+                            if (!serverIsAtLeastVersionThreeDotSix(connection.getDescription())
+                                    || connection.getDescription().getServerType() == STANDALONE) {
+                                throw originalException;
+                            }
+                            return transformer.apply(connection.command(database, originalCommand, fieldNameValidator,
+                                    ReadPreference.primary(), commandResultDecoder, binding.getSessionContext()),
+                                    connection.getDescription().getServerAddress());
                         }
-                        return transformer.apply(connection.command(database, originalCommand, fieldNameValidator,
-                                ReadPreference.primary(), commandResultDecoder, binding.getSessionContext()),
-                                connection.getDescription().getServerAddress());
-                    }
-                });
+                    });
+                } catch (Throwable t) {
+                    throw originalException;
+                }
             }
         });
     }

@@ -17,13 +17,13 @@
 package com.mongodb.operation
 
 import category.Slow
-import com.mongodb.ClusterFixture
 import com.mongodb.MongoBulkWriteException
 import com.mongodb.MongoClientException
-import com.mongodb.MongoException
 import com.mongodb.MongoNamespace
+import com.mongodb.MongoSocketException
 import com.mongodb.MongoSocketReadException
 import com.mongodb.OperationFunctionalSpecification
+import com.mongodb.ServerAddress
 import com.mongodb.WriteConcern
 import com.mongodb.bulk.BulkWriteResult
 import com.mongodb.bulk.BulkWriteUpsert
@@ -47,12 +47,12 @@ import org.bson.types.ObjectId
 import org.junit.experimental.categories.Category
 import spock.lang.IgnoreIf
 
-import static ClusterFixture.serverVersionAtLeast
 import static com.mongodb.ClusterFixture.disableOnPrimaryTransactionalWriteFailPoint
 import static com.mongodb.ClusterFixture.enableOnPrimaryTransactionalWriteFailPoint
 import static com.mongodb.ClusterFixture.getAsyncSingleConnectionBinding
 import static com.mongodb.ClusterFixture.getSingleConnectionBinding
 import static com.mongodb.ClusterFixture.isDiscoverableReplicaSet
+import static com.mongodb.ClusterFixture.serverVersionAtLeast
 import static com.mongodb.WriteConcern.ACKNOWLEDGED
 import static com.mongodb.WriteConcern.UNACKNOWLEDGED
 import static com.mongodb.bulk.WriteRequest.Type.DELETE
@@ -165,12 +165,11 @@ class MixedBulkWriteOperationSpecification extends OperationFunctionalSpecificat
 
     def 'when multiple document match the query, update of one should update only one of them'() {
         given:
-        getCollectionHelper().insertDocuments(new DocumentCodec(), new Document('x', true), new Document('x', true));
+        getCollectionHelper().insertDocuments(new DocumentCodec(), new Document('x', true), new Document('x', true))
         def operation = new MixedBulkWriteOperation(getNamespace(),
                                              [new UpdateRequest(new BsonDocument('x', BsonBoolean.TRUE),
                                                                 new BsonDocument('$set', new BsonDocument('y', new BsonInt32(1))),
-                                                                UPDATE)
-                                                      .multi(false)],
+                                                                UPDATE).multi(false)],
                                              ordered, ACKNOWLEDGED, false)
 
         when:
@@ -186,13 +185,11 @@ class MixedBulkWriteOperationSpecification extends OperationFunctionalSpecificat
 
     def 'when documents match the query, update multi should update all of them'() {
         given:
-        getCollectionHelper().insertDocuments(new DocumentCodec(), new Document('x', true), new Document('x', true));
+        getCollectionHelper().insertDocuments(new DocumentCodec(), new Document('x', true), new Document('x', true))
         def operation = new MixedBulkWriteOperation(getNamespace(),
-                                             [new UpdateRequest(new BsonDocument('x', BsonBoolean.TRUE),
-                                                                new BsonDocument('$set', new BsonDocument('y', new BsonInt32(1))),
-                                                                UPDATE)
-                                                      .multi(true)],
-                                             ordered, ACKNOWLEDGED, false)
+                [new UpdateRequest(new BsonDocument('x', BsonBoolean.TRUE),
+                        new BsonDocument('$set', new BsonDocument('y', new BsonInt32(1))),
+                        UPDATE).multi(true)], ordered, ACKNOWLEDGED, false)
 
         when:
         BulkWriteResult result = execute(operation, async)
@@ -206,14 +203,12 @@ class MixedBulkWriteOperationSpecification extends OperationFunctionalSpecificat
     }
 
     def 'when no document matches the query, an update of one with upsert should insert a document'() {
+        given:
         def id = new ObjectId()
         def query = new BsonDocument('_id', new BsonObjectId(id))
-        given:
         def operation = new MixedBulkWriteOperation(getNamespace(),
-                                             [new UpdateRequest(query, new BsonDocument('$set', new BsonDocument('x', new BsonInt32(2))),
-                                                                UPDATE)
-                                                      .upsert(true)],
-                                             ordered, ACKNOWLEDGED, false)
+                [new UpdateRequest(query, new BsonDocument('$set', new BsonDocument('x', new BsonInt32(2))),
+                        UPDATE).upsert(true)], ordered, ACKNOWLEDGED, false)
 
         when:
         BulkWriteResult result = execute(operation, async)
@@ -232,8 +227,7 @@ class MixedBulkWriteOperationSpecification extends OperationFunctionalSpecificat
         given:
         def operation = new MixedBulkWriteOperation(getNamespace(),
                                              [new UpdateRequest(query, new BsonDocument('$set', new BsonDocument('x', new BsonInt32(2))),
-                                                                UPDATE)
-                                                      .upsert(true).multi(true)],
+                                                                UPDATE).upsert(true).multi(true)],
                                              ordered, ACKNOWLEDGED, false)
 
         when:
@@ -249,13 +243,11 @@ class MixedBulkWriteOperationSpecification extends OperationFunctionalSpecificat
 
     def 'when documents matches the query, update one with upsert should update only one of them'() {
         given:
-        getCollectionHelper().insertDocuments(new DocumentCodec(), new Document('x', true), new Document('x', true));
+        getCollectionHelper().insertDocuments(new DocumentCodec(), new Document('x', true), new Document('x', true))
         def operation = new MixedBulkWriteOperation(getNamespace(),
                                              [new UpdateRequest(new BsonDocument('x', BsonBoolean.TRUE),
                                                                 new BsonDocument('$set', new BsonDocument('y', new BsonInt32(1))),
-                                                                UPDATE)
-                                                      .multi(false)
-                                                      .upsert(true)],
+                                                                UPDATE).multi(false).upsert(true)],
                                              ordered, ACKNOWLEDGED, false)
 
         when:
@@ -271,12 +263,11 @@ class MixedBulkWriteOperationSpecification extends OperationFunctionalSpecificat
 
     def 'when documents match the query, update multi with upsert should update all of them'() {
         given:
-        getCollectionHelper().insertDocuments(new DocumentCodec(), new Document('x', true), new Document('x', true));
+        getCollectionHelper().insertDocuments(new DocumentCodec(), new Document('x', true), new Document('x', true))
         def operation = new MixedBulkWriteOperation(getNamespace(),
                                              [new UpdateRequest(new BsonDocument('x', BsonBoolean.TRUE),
                                                                 new BsonDocument('$set', new BsonDocument('y', new BsonInt32(1))),
-                                                                UPDATE)
-                                                      .upsert(true).multi(true)],
+                                                                UPDATE).upsert(true).multi(true)],
                                              ordered, ACKNOWLEDGED, false)
 
         when:
@@ -435,8 +426,7 @@ class MixedBulkWriteOperationSpecification extends OperationFunctionalSpecificat
         def operation = new MixedBulkWriteOperation(getNamespace(),
                                              [new UpdateRequest(new BsonDocument('x', BsonBoolean.TRUE),
                                                                 new BsonDocument('y', new BsonInt32(1)).append('x', BsonBoolean.FALSE),
-                                                                REPLACE)
-                                                      .upsert(true)],
+                                                                REPLACE).upsert(true)],
                                              ordered, ACKNOWLEDGED, false)
 
         when:
@@ -455,12 +445,10 @@ class MixedBulkWriteOperationSpecification extends OperationFunctionalSpecificat
         given:
         getCollectionHelper().insertDocuments(new DocumentCodec(), new Document('_id', 1))
         def operation = new MixedBulkWriteOperation(getNamespace(),
-                                             [new UpdateRequest(new BsonDocument('_id', new BsonInt32(1)),
-                                                                new BsonDocument('_id', new BsonInt32(1))
-                                                                        .append('x', new BsonBinary(new byte[1024 * 1024 * 16 - 30])),
-                                                                REPLACE)
-                                                      .upsert(true)],
-                                             true, ACKNOWLEDGED, false)
+                [new UpdateRequest(new BsonDocument('_id', new BsonInt32(1)),
+                        new BsonDocument('_id', new BsonInt32(1))
+                                .append('x', new BsonBinary(new byte[1024 * 1024 * 16 - 30])),
+                        REPLACE).upsert(true)], true, ACKNOWLEDGED, false)
 
         when:
         BulkWriteResult result = execute(operation, async)
@@ -689,7 +677,7 @@ class MixedBulkWriteOperationSpecification extends OperationFunctionalSpecificat
     }
 
     // using w = 5 to force a timeout
-    @IgnoreIf({ !ClusterFixture.isDiscoverableReplicaSet() })
+    @IgnoreIf({ !isDiscoverableReplicaSet() })
     def 'should throw bulk write exception with a write concern error when wtimeout is exceeded'() {
         given:
         def operation = new MixedBulkWriteOperation(getNamespace(),
@@ -707,7 +695,7 @@ class MixedBulkWriteOperationSpecification extends OperationFunctionalSpecificat
         async << [true, false]
     }
 
-    @IgnoreIf({ !ClusterFixture.isDiscoverableReplicaSet() })
+    @IgnoreIf({ !isDiscoverableReplicaSet() })
     def 'when there is a duplicate key error and a write concern error, both should be reported'() {
         given:
         getCollectionHelper().insertDocuments(getTestInserts())
@@ -980,17 +968,34 @@ class MixedBulkWriteOperationSpecification extends OperationFunctionalSpecificat
         given:
         def operation = new MixedBulkWriteOperation(getNamespace(),
                 [new InsertRequest(BsonDocument.parse('{ level: 9 }'))], true, ACKNOWLEDGED, true)
-        def exception = new MongoException('Some failure')
+        def exception = new MongoSocketException('Some failure', new ServerAddress())
 
         when:
-        testRetryableOperationThrowsOriginalError(operation, [3, 6, 0], exception, async)
+        testRetryableOperationThrowsOriginalError(operation, [3, 4, 0], 1, exception, async)
 
         then:
         Exception commandException = thrown()
         commandException == exception
 
         where:
-        async << [true]
+        async << [true, false]
+    }
+
+    def 'should throw original error when retrying and cannot connect on retry'() {
+        given:
+        def operation = new MixedBulkWriteOperation(getNamespace(),
+                [new InsertRequest(BsonDocument.parse('{ level: 9 }'))], true, ACKNOWLEDGED, true)
+        def exception = new MongoSocketException('Some failure', new ServerAddress())
+
+        when:
+        testRetryableOperationThrowsOriginalError(operation, [3, 6, 0], 1, exception, async)
+
+        then:
+        Exception commandException = thrown()
+        commandException == exception
+
+        where:
+        async << [true, false]
     }
 
     @IgnoreIf({ !serverVersionAtLeast(3, 5) })

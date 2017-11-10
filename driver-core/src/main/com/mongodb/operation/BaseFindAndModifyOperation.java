@@ -31,14 +31,16 @@ abstract class BaseFindAndModifyOperation<T> implements AsyncWriteOperation<T>, 
     @Override
     public T execute(final WriteBinding binding) {
         return executeRetryableCommand(binding, getDatabaseName(), getFieldNameValidator(),
-                CommandResultDocumentCodec.create(getDecoder(), "value"), getCommandCreator(binding.getSessionContext()),
+                CommandResultDocumentCodec.create(getDecoder(), "value"),
+                getCommandCreator(binding.getSessionContext()),
                 FindAndModifyHelper.<T>transformer());
     }
 
     @Override
     public void executeAsync(final AsyncWriteBinding binding, final SingleResultCallback<T> callback) {
         executeRetryableCommand(binding, getDatabaseName(), getFieldNameValidator(),
-                CommandResultDocumentCodec.create(getDecoder(), "value"), getCommandCreator(binding.getSessionContext()),
+                CommandResultDocumentCodec.create(getDecoder(), "value"),
+                getCommandCreator(binding.getSessionContext()),
                 FindAndModifyHelper.<T>transformer(), callback);
     }
 

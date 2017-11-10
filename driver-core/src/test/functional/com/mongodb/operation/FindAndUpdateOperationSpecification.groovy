@@ -17,10 +17,11 @@
 package com.mongodb.operation
 
 import com.mongodb.MongoCommandException
-import com.mongodb.MongoException
 import com.mongodb.MongoNamespace
+import com.mongodb.MongoSocketException
 import com.mongodb.MongoWriteConcernException
 import com.mongodb.OperationFunctionalSpecification
+import com.mongodb.ServerAddress
 import com.mongodb.WriteConcern
 import com.mongodb.client.model.CreateCollectionOptions
 import com.mongodb.client.model.ValidationOptions
@@ -379,10 +380,27 @@ class FindAndUpdateOperationSpecification extends OperationFunctionalSpecificati
         given:
         def update = BsonDocument.parse('{ update: 1}')
         def operation = new FindAndUpdateOperation<Document>(getNamespace(), ACKNOWLEDGED, true, documentCodec, update)
-        def exception = new MongoException('Some failure')
+        def exception = new MongoSocketException('Some failure', new ServerAddress())
 
         when:
-        testRetryableOperationThrowsOriginalError(operation, [3, 6, 0], exception, async)
+        testRetryableOperationThrowsOriginalError(operation, [3, 4, 0], 2, exception, async)
+
+        then:
+        Exception commandException = thrown()
+        commandException == exception
+
+        where:
+        async << [true, false]
+    }
+
+    def 'should throw original error when retrying and cannot connect on retry'() {
+        given:
+        def update = BsonDocument.parse('{ update: 1}')
+        def operation = new FindAndUpdateOperation<Document>(getNamespace(), ACKNOWLEDGED, true, documentCodec, update)
+        def exception = new MongoSocketException('Some failure', new ServerAddress())
+
+        when:
+        testRetryableOperationThrowsOriginalError(operation, [3, 6, 0], 2, exception, async)
 
         then:
         Exception commandException = thrown()

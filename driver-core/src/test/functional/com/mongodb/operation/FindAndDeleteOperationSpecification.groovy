@@ -16,9 +16,10 @@
 
 package com.mongodb.operation
 
-import com.mongodb.MongoException
+import com.mongodb.MongoSocketException
 import com.mongodb.MongoWriteConcernException
 import com.mongodb.OperationFunctionalSpecification
+import com.mongodb.ServerAddress
 import com.mongodb.WriteConcern
 import com.mongodb.client.test.CollectionHelper
 import com.mongodb.client.test.Worker
@@ -255,10 +256,26 @@ class FindAndDeleteOperationSpecification extends OperationFunctionalSpecificati
     def 'should throw original error when retrying and finding server less than 3.6.0'() {
         given:
         def operation = new FindAndDeleteOperation<Document>(getNamespace(), ACKNOWLEDGED, true, documentCodec)
-        def exception = new MongoException('Some failure')
+        def exception = new MongoSocketException('Some failure', new ServerAddress())
 
         when:
-        testRetryableOperationThrowsOriginalError(operation, [3, 6, 0], exception, async)
+        testRetryableOperationThrowsOriginalError(operation, [3, 4, 0], 2, exception, async)
+
+        then:
+        Exception commandException = thrown()
+        commandException == exception
+
+        where:
+        async << [true, false]
+    }
+
+    def 'should throw original error when retrying and cannot connect on retry'() {
+        given:
+        def operation = new FindAndDeleteOperation<Document>(getNamespace(), ACKNOWLEDGED, true, documentCodec)
+        def exception = new MongoSocketException('Some failure', new ServerAddress())
+
+        when:
+        testRetryableOperationThrowsOriginalError(operation, [3, 6, 0], 2, exception, async)
 
         then:
         Exception commandException = thrown()

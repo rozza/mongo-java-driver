@@ -197,9 +197,10 @@ class OperationFunctionalSpecification extends Specification {
              ServerType.REPLICA_SET_PRIMARY)
     }
 
-    void testRetryableOperationThrowsOriginalError(operation, List<Integer> initialServerVersion, Throwable exception, boolean async) {
+    void testRetryableOperationThrowsOriginalError(operation, List<Integer> postErrorServerVersion, int serverCounter,
+                                                   Throwable exception, boolean async) {
         def test = async ? this.&testAyncRetryableOperationThrows : this.&testSyncRetryableOperationThrows
-        test(operation, initialServerVersion, exception)
+        test(operation, postErrorServerVersion, serverCounter, exception)
     }
 
     void testOperationSlaveOk(operation, List<Integer> serverVersion, ReadPreference readPreference, boolean async, result = null) {
@@ -355,16 +356,19 @@ class OperationFunctionalSpecification extends Specification {
         }
     }
 
-    def testSyncRetryableOperationThrows(operation, List<Integer> serverVersion, Throwable exception) {
+    def testSyncRetryableOperationThrows(operation, List<Integer> serverVersion, int serverCounter,
+                                         Throwable exception) {
+        def retryableWriteServerVersion = [3, 6, 0]
+        def sameServerVersion =  new ServerVersion(retryableWriteServerVersion) == new ServerVersion(serverVersion)
         def counter = 0
         def connection = Mock(Connection) {
             _ * getDescription() >> Stub(ConnectionDescription) {
                 getServerVersion() >> {
-                    if (counter < 2) {
+                    if (counter <= serverCounter) {
                         counter++
-                        new ServerVersion(serverVersion)
+                        new ServerVersion(retryableWriteServerVersion)
                     } else {
-                        new ServerVersion([3, 0, 0])
+                        new ServerVersion(serverVersion)
                     }
                 }
                 getServerType() >> ServerType.REPLICA_SET_PRIMARY
@@ -373,7 +377,11 @@ class OperationFunctionalSpecification extends Specification {
 
         def connectionSource = Stub(ConnectionSource) {
             getConnection() >> {
-                connection
+                if (!sameServerVersion || counter <= serverCounter) {
+                    connection
+                } else {
+                    throw new MongoSocketOpenException('No Server', new ServerAddress(), new Exception('no server'))
+                }
             }
         }
         def writeBinding = Stub(WriteBinding) {
@@ -381,36 +389,54 @@ class OperationFunctionalSpecification extends Specification {
         }
 
         1 * connection.command(*_) >> { throw exception }
-        1 * connection.release()
+        if (sameServerVersion) {
+            1 * connection.release()
+        } else {
+            2 * connection.release()
+        }
         operation.execute(writeBinding)
     }
 
-    def testAyncRetryableOperationThrows(operation, List<Integer> serverVersion, exception) {
+    def testAyncRetryableOperationThrows(operation, List<Integer> serverVersion, int serverCounter, exception) {
+        def retryableWriteServerVersion = [3, 6, 0]
+        def sameServerVersion =  new ServerVersion(retryableWriteServerVersion) == new ServerVersion(serverVersion)
         def counter = 0
         def connection = Mock(AsyncConnection) {
             _ * getDescription() >> Stub(ConnectionDescription) {
                 getServerVersion() >> {
-                    if (counter < 2) {
+                    if (counter <= serverCounter) {
                         counter++
-                        new ServerVersion(serverVersion)
+                        new ServerVersion(retryableWriteServerVersion)
                     } else {
-                        new ServerVersion([3, 0, 0])
+                        new ServerVersion(serverVersion)
                     }
                 }
-                getServerType() >>  ServerType.REPLICA_SET_PRIMARY
+                getServerType() >> ServerType.REPLICA_SET_PRIMARY
             }
         }
 
         def connectionSource = Stub(AsyncConnectionSource) {
-            getConnection(_) >> { it[0].onResult(connection, null) }
+            getConnection(_) >> {
+                if (!sameServerVersion || counter <= serverCounter) {
+                    it[0].onResult(connection, null)
+                } else {
+                    it[0].onResult(null,
+                            new MongoSocketOpenException('No Server', new ServerAddress(), new Exception('no server')))
+                }
+            }
         }
+
         def writeBinding = Stub(AsyncWriteBinding) {
             getWriteConnectionSource(_) >> { it[0].onResult(connectionSource, null) }
         }
         def callback = new FutureResultCallback()
 
         1 * connection.commandAsync(*_) >> { it.last().onResult(null, exception) }
-        1 * connection.release()
+        if (sameServerVersion) {
+            1 * connection.release()
+        } else {
+            2 * connection.release()
+        }
 
         operation.executeAsync(writeBinding, callback)
         callback.get(1000, TimeUnit.MILLISECONDS)
