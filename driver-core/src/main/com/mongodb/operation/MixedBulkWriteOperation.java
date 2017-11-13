@@ -273,27 +273,23 @@ public class MixedBulkWriteOperation implements AsyncWriteOperation<BulkWriteRes
 
     private BulkWriteResult retryExecuteBatches(final WriteBinding binding, final BulkWriteBatch retryBatch,
                                                 final MongoException originalError) {
-        try {
-            return withReleasableConnection(binding, new CallableWithConnectionAndSource<BulkWriteResult>() {
-                @Override
-                public BulkWriteResult call(final ConnectionSource source, final Connection connection) {
-                    if (!isRetryableWrite(retryWrites, writeConcern, source.getServerDescription(), connection.getDescription())) {
+        return withReleasableConnection(binding, originalError, new CallableWithConnectionAndSource<BulkWriteResult>() {
+            @Override
+            public BulkWriteResult call(final ConnectionSource source, final Connection connection) {
+                if (!isRetryableWrite(retryWrites, writeConcern, source.getServerDescription(), connection.getDescription())) {
+                    connection.release();
+                    throw originalError;
+                } else {
+                    try {
+                        retryBatch.addResult(executeCommand(connection, retryBatch, binding));
+                    } catch (Throwable t) {
                         connection.release();
-                        throw originalError;
-                    } else {
-                        try {
-                            retryBatch.addResult(executeCommand(connection, retryBatch, binding));
-                        } catch (Throwable t) {
-                            connection.release();
-                            throw MongoException.fromThrowable(t);
-                        }
-                        return executeBulkWriteBatch(binding, connection, retryBatch.getNextBatch());
+                        throw MongoException.fromThrowable(t);
                     }
+                    return executeBulkWriteBatch(binding, connection, retryBatch.getNextBatch());
                 }
-            });
-        } catch (Throwable t) {
-            throw originalError;
-        }
+            }
+        });
     }
 
     private BulkWriteResult executeLegacyBatches(final Connection connection) {

@@ -17,6 +17,7 @@
 package com.mongodb.operation;
 
 import com.mongodb.MongoClientException;
+import com.mongodb.MongoException;
 import com.mongodb.MongoNamespace;
 import com.mongodb.ReadConcern;
 import com.mongodb.ServerAddress;
@@ -423,6 +424,26 @@ final class OperationHelper {
         ConnectionSource source = binding.getWriteConnectionSource();
         try {
             return callable.call(source, source.getConnection());
+        } finally {
+            source.release();
+        }
+    }
+
+    static <T> T withReleasableConnection(final WriteBinding binding, final Throwable connectionException,
+                                          final CallableWithConnectionAndSource<T> callable) {
+        ConnectionSource source = null;
+        Connection connection = null;
+        try {
+            source = binding.getWriteConnectionSource();
+            connection = source.getConnection();
+        } catch (Throwable t){
+            if (source != null) {
+                source.release();
+            }
+            throw MongoException.fromThrowable(connectionException);
+        }
+        try {
+            return callable.call(source, connection);
         } finally {
             source.release();
         }

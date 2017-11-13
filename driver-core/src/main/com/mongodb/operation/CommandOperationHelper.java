@@ -41,17 +41,16 @@ import org.bson.FieldNameValidator;
 import org.bson.codecs.BsonDocumentCodec;
 import org.bson.codecs.Decoder;
 
+import static com.mongodb.ReadPreference.primary;
 import static com.mongodb.assertions.Assertions.notNull;
 import static com.mongodb.connection.ServerType.STANDALONE;
 import static com.mongodb.internal.async.ErrorHandlingResultCallback.errorHandlingCallback;
-import static com.mongodb.operation.OperationHelper.CallableWithConnection;
 import static com.mongodb.operation.OperationHelper.CallableWithConnectionAndSource;
 import static com.mongodb.operation.OperationHelper.LOGGER;
 import static com.mongodb.operation.OperationHelper.releasingCallback;
 import static com.mongodb.operation.OperationHelper.serverIsAtLeastVersionThreeDotSix;
 import static com.mongodb.operation.OperationHelper.withConnection;
 import static com.mongodb.operation.OperationHelper.withReleasableConnection;
-import static com.mongodb.ReadPreference.primary;
 
 final class CommandOperationHelper {
 
@@ -447,10 +446,10 @@ final class CommandOperationHelper {
 
                 final BsonDocument originalCommand = command;
                 final MongoException originalException = exception;
-                try {
-                    return withConnection(binding, new CallableWithConnection<R>() {
-                        @Override
-                        public R call(final Connection connection) {
+                return withReleasableConnection(binding, originalException, new CallableWithConnectionAndSource<R>() {
+                    @Override
+                    public R call(final ConnectionSource source, final Connection connection) {
+                        try {
                             if (!serverIsAtLeastVersionThreeDotSix(connection.getDescription())
                                     || connection.getDescription().getServerType() == STANDALONE) {
                                 throw originalException;
@@ -458,11 +457,11 @@ final class CommandOperationHelper {
                             return transformer.apply(connection.command(database, originalCommand, fieldNameValidator,
                                     ReadPreference.primary(), commandResultDecoder, binding.getSessionContext()),
                                     connection.getDescription().getServerAddress());
+                        } finally {
+                            connection.release();
                         }
-                    });
-                } catch (Throwable t) {
-                    throw originalException;
-                }
+                    }
+                });
             }
         });
     }

@@ -940,9 +940,8 @@ class MixedBulkWriteOperationSpecification extends OperationFunctionalSpecificat
         disableOnPrimaryTransactionalWriteFailPoint()
 
         where:
-        [async, ordered, failPoint] << [
+        [async, failPoint] << [
                 [false], // TODO async support
-                [true, false],
                 ['{mode: {times: 2}, data: {failBeforeCommitExceptionCode : 1}}',
                  '{mode: {skip: 2}, data: {failBeforeCommitExceptionCode : 1}}']
         ].combinations()
