@@ -43,12 +43,12 @@ import org.bson.codecs.Decoder;
 
 import static com.mongodb.ReadPreference.primary;
 import static com.mongodb.assertions.Assertions.notNull;
-import static com.mongodb.connection.ServerType.STANDALONE;
 import static com.mongodb.internal.async.ErrorHandlingResultCallback.errorHandlingCallback;
+import static com.mongodb.operation.OperationHelper.AsyncCallableWithConnectionAndSource;
 import static com.mongodb.operation.OperationHelper.CallableWithConnectionAndSource;
 import static com.mongodb.operation.OperationHelper.LOGGER;
+import static com.mongodb.operation.OperationHelper.canRetryWrite;
 import static com.mongodb.operation.OperationHelper.releasingCallback;
-import static com.mongodb.operation.OperationHelper.serverIsAtLeastVersionThreeDotSix;
 import static com.mongodb.operation.OperationHelper.withConnection;
 import static com.mongodb.operation.OperationHelper.withReleasableConnection;
 
@@ -450,8 +450,7 @@ final class CommandOperationHelper {
                     @Override
                     public R call(final ConnectionSource source, final Connection connection) {
                         try {
-                            if (!serverIsAtLeastVersionThreeDotSix(connection.getDescription())
-                                    || connection.getDescription().getServerType() == STANDALONE) {
+                            if (!canRetryWrite(source.getServerDescription(), connection.getDescription())) {
                                 throw originalException;
                             }
                             return transformer.apply(connection.command(database, originalCommand, fieldNameValidator,
@@ -519,20 +518,19 @@ final class CommandOperationHelper {
                     if (!command.containsKey("txnNumber") || !isRetryableException(originalError)) {
                         callback.onResult(null, originalError);
                     } else {
-                        withConnection(binding, new OperationHelper.AsyncCallableWithConnection() {
+                        withConnection(binding, new AsyncCallableWithConnectionAndSource() {
                             @Override
-                            public void call(final AsyncConnection newConnection, final Throwable t) {
+                            public void call(final AsyncConnectionSource source, final AsyncConnection connection, final Throwable t) {
                                 if (t != null) {
                                     callback.onResult(null, originalError);
-                                } else if (!serverIsAtLeastVersionThreeDotSix(newConnection.getDescription())
-                                        || newConnection.getDescription().getServerType() == STANDALONE) {
-                                    releasingCallback(callback, newConnection).onResult(null, originalError);
+                                } else if (!canRetryWrite(source.getServerDescription(), connection.getDescription())) {
+                                    releasingCallback(callback, source, connection).onResult(null, originalError);
                                 } else {
-                                    newConnection.commandAsync(database, command, fieldNameValidator, ReadPreference.primary(),
+                                    connection.commandAsync(database, command, fieldNameValidator, ReadPreference.primary(),
                                             commandResultDecoder, binding.getSessionContext(),
                                             new TransformingResultCallback<T, R>(transformer,
-                                                    newConnection.getDescription().getServerAddress(),
-                                                    releasingCallback(callback, newConnection)));
+                                                    connection.getDescription().getServerAddress(),
+                                                    releasingCallback(callback, source, connection)));
                                 }
                             }
                         });

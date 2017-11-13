@@ -109,7 +109,7 @@ final class OperationHelper {
     }
 
     static void validateCollation(final ConnectionDescription connectionDescription, final Collation collation) {
-        if (!serverIsAtLeastVersionThreeDotFour(connectionDescription) && collation != null) {
+        if (collation != null && !serverIsAtLeastVersionThreeDotFour(connectionDescription)) {
             throw new IllegalArgumentException(format("Collation not supported by server version: %s",
                     connectionDescription.getServerVersion()));
         }
@@ -117,7 +117,7 @@ final class OperationHelper {
 
     static void validateCollationAndWriteConcern(final ConnectionDescription connectionDescription, final Collation collation,
                                                  final WriteConcern writeConcern) {
-        if (!serverIsAtLeastVersionThreeDotFour(connectionDescription) && collation != null) {
+        if (collation != null && !serverIsAtLeastVersionThreeDotFour(connectionDescription)) {
             throw new IllegalArgumentException(format("Collation not supported by server version: %s",
                     connectionDescription.getServerVersion()));
         } else if (collation != null && !writeConcern.isAcknowledged()) {
@@ -253,7 +253,13 @@ final class OperationHelper {
         } else if (!writeConcern.isAcknowledged()) {
             LOGGER.debug("retryWrites set to true but the writeConcern is unacknowledged.");
             return false;
-        } else if (connectionDescription.getServerVersion().compareTo(new ServerVersion(3, 6)) < 0) {
+        } else {
+            return canRetryWrite(serverDescription, connectionDescription);
+        }
+    }
+
+    static boolean canRetryWrite(final ServerDescription serverDescription, final ConnectionDescription connectionDescription) {
+        if (connectionDescription.getServerVersion().compareTo(new ServerVersion(3, 6)) < 0) {
             LOGGER.debug("retryWrites set to true but the server does not support retryable writes.");
             return false;
         } else if (serverDescription.getLogicalSessionTimeoutMinutes() == null) {
@@ -429,10 +435,10 @@ final class OperationHelper {
         }
     }
 
-    static <T> T withReleasableConnection(final WriteBinding binding, final Throwable connectionException,
+    static <T> T withReleasableConnection(final WriteBinding binding, final MongoException connectionException,
                                           final CallableWithConnectionAndSource<T> callable) {
         ConnectionSource source = null;
-        Connection connection = null;
+        Connection connection;
         try {
             source = binding.getWriteConnectionSource();
             connection = source.getConnection();
@@ -440,7 +446,7 @@ final class OperationHelper {
             if (source != null) {
                 source.release();
             }
-            throw MongoException.fromThrowable(connectionException);
+            throw connectionException;
         }
         try {
             return callable.call(source, connection);

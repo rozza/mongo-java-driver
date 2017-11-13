@@ -265,8 +265,8 @@ public class FindAndDeleteOperation<T> extends BaseFindAndModifyOperation<T> {
                 putIfNotNull(commandDocument, "sort", getSort());
                 putIfNotZero(commandDocument, "maxTimeMS", getMaxTime(MILLISECONDS));
                 commandDocument.put("remove", BsonBoolean.TRUE);
-                if (serverIsAtLeastVersionThreeDotTwo(connectionDescription) && writeConcern.isAcknowledged()
-                        && !writeConcern.isServerDefault()) {
+                if (writeConcern.isAcknowledged() && !writeConcern.isServerDefault()
+                        && serverIsAtLeastVersionThreeDotTwo(connectionDescription)) {
                     commandDocument.put("writeConcern", writeConcern.asDocument());
                 }
                 if (collation != null) {

@@ -393,8 +393,8 @@ public class FindAndUpdateOperation<T> extends BaseFindAndModifyOperation<T> {
                 if (bypassDocumentValidation != null && serverIsAtLeastVersionThreeDotTwo(connectionDescription)) {
                     commandDocument.put("bypassDocumentValidation", BsonBoolean.valueOf(bypassDocumentValidation));
                 }
-                if (serverIsAtLeastVersionThreeDotTwo(connectionDescription) && writeConcern.isAcknowledged()
-                        && !writeConcern.isServerDefault()) {
+                if (writeConcern.isAcknowledged() && !writeConcern.isServerDefault()
+                        && serverIsAtLeastVersionThreeDotTwo(connectionDescription)) {
                     commandDocument.put("writeConcern", writeConcern.asDocument());
                 }
                 if (collation != null) {

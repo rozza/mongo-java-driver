@@ -61,6 +61,8 @@ import static com.mongodb.bulk.WriteRequest.Type.REPLACE
 import static com.mongodb.bulk.WriteRequest.Type.UPDATE
 import static com.mongodb.client.model.Filters.eq
 import static com.mongodb.client.model.Filters.gte
+import static com.mongodb.connection.ServerType.REPLICA_SET_PRIMARY
+import static com.mongodb.connection.ServerType.STANDALONE
 
 class MixedBulkWriteOperationSpecification extends OperationFunctionalSpecification {
 
@@ -963,35 +965,35 @@ class MixedBulkWriteOperationSpecification extends OperationFunctionalSpecificat
         async << [true, false]
     }
 
-    def 'should throw original error when retrying and finding server less than 3.6.0'() {
+    def 'should throw original error when retrying and failing'() {
         given:
         def operation = new MixedBulkWriteOperation(getNamespace(),
                 [new InsertRequest(BsonDocument.parse('{ level: 9 }'))], true, ACKNOWLEDGED, true)
-        def exception = new MongoSocketException('Some failure', new ServerAddress())
+        def originalException = new MongoSocketException('Some failure', new ServerAddress())
 
         when:
-        testRetryableOperationThrowsOriginalError(operation, [3, 4, 0], 1, exception, async)
+        testRetryableOperationThrowsOriginalError(operation, [[3, 6, 0], [3, 4, 0]],
+                [REPLICA_SET_PRIMARY, REPLICA_SET_PRIMARY], originalException, async)
 
         then:
         Exception commandException = thrown()
-        commandException == exception
-
-        where:
-        async << [true, false]
-    }
-
-    def 'should throw original error when retrying and cannot connect on retry'() {
-        given:
-        def operation = new MixedBulkWriteOperation(getNamespace(),
-                [new InsertRequest(BsonDocument.parse('{ level: 9 }'))], true, ACKNOWLEDGED, true)
-        def exception = new MongoSocketException('Some failure', new ServerAddress())
+        commandException == originalException
 
         when:
-        testRetryableOperationThrowsOriginalError(operation, [3, 6, 0], 1, exception, async)
+        testRetryableOperationThrowsOriginalError(operation, [[3, 6, 0], [3, 6, 0]],
+                [REPLICA_SET_PRIMARY, STANDALONE], originalException, async)
 
         then:
-        Exception commandException = thrown()
-        commandException == exception
+        commandException = thrown()
+        commandException == originalException
+
+        when:
+        testRetryableOperationThrowsOriginalError(operation, [[3, 6, 0]],
+                [REPLICA_SET_PRIMARY], originalException, async)
+
+        then:
+        commandException = thrown()
+        commandException == originalException
 
         where:
         async << [true, false]

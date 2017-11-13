@@ -376,35 +376,35 @@ class FindAndUpdateOperationSpecification extends OperationFunctionalSpecificati
         async << [true, false]
     }
 
-    def 'should throw original error when retrying and finding server less than 3.6.0'() {
+    def 'should throw original error when retrying and failing'() {
         given:
         def update = BsonDocument.parse('{ update: 1}')
         def operation = new FindAndUpdateOperation<Document>(getNamespace(), ACKNOWLEDGED, true, documentCodec, update)
-        def exception = new MongoSocketException('Some failure', new ServerAddress())
+        def originalException = new MongoSocketException('Some failure', new ServerAddress())
 
         when:
-        testRetryableOperationThrowsOriginalError(operation, [3, 4, 0], 2, exception, async)
+        testRetryableOperationThrowsOriginalError(operation, [[3, 6, 0], [3, 4, 0]],
+                [REPLICA_SET_PRIMARY, REPLICA_SET_PRIMARY], originalException, async)
 
         then:
         Exception commandException = thrown()
-        commandException == exception
-
-        where:
-        async << [true, false]
-    }
-
-    def 'should throw original error when retrying and cannot connect on retry'() {
-        given:
-        def update = BsonDocument.parse('{ update: 1}')
-        def operation = new FindAndUpdateOperation<Document>(getNamespace(), ACKNOWLEDGED, true, documentCodec, update)
-        def exception = new MongoSocketException('Some failure', new ServerAddress())
+        commandException == originalException
 
         when:
-        testRetryableOperationThrowsOriginalError(operation, [3, 6, 0], 2, exception, async)
+        testRetryableOperationThrowsOriginalError(operation, [[3, 6, 0], [3, 6, 0]],
+                [REPLICA_SET_PRIMARY, STANDALONE], originalException, async)
 
         then:
-        Exception commandException = thrown()
-        commandException == exception
+        commandException = thrown()
+        commandException == originalException
+
+        when:
+        testRetryableOperationThrowsOriginalError(operation, [[3, 6, 0]],
+                [REPLICA_SET_PRIMARY], originalException, async)
+
+        then:
+        commandException = thrown()
+        commandException == originalException
 
         where:
         async << [true, false]
