@@ -18,6 +18,7 @@
 package com.mongodb.connection;
 
 import com.mongodb.async.SingleResultCallback;
+import com.mongodb.session.SessionContext;
 
 interface CommandProtocol<T> {
 
