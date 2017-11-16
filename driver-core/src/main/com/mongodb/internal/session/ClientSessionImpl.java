@@ -29,17 +29,17 @@ public class ClientSessionImpl implements ClientSession {
 
     private final ServerSessionPool serverSessionPool;
     private final ServerSession serverSession;
-    private final int mongoClientIdentityHashCode;
+    private final Object originator;
     private final ClientSessionOptions options;
     private BsonDocument clusterTime;
     private BsonTimestamp operationTime;
     private volatile boolean closed;
 
     public ClientSessionImpl(final ServerSessionPool serverSessionPool, final ServerSession serverSession,
-                             final int mongoClientIdentityHashCode, final ClientSessionOptions options) {
+                             final Object originator, final ClientSessionOptions options) {
         this.serverSessionPool = serverSessionPool;
         this.serverSession = serverSession;
-        this.mongoClientIdentityHashCode = mongoClientIdentityHashCode;
+        this.originator = originator;
         this.options = options;
         closed = false;
     }
@@ -55,8 +55,8 @@ public class ClientSessionImpl implements ClientSession {
     }
 
     @Override
-    public int getMongoClientIdentityHashCode() {
-        return mongoClientIdentityHashCode;
+    public Object getOriginator() {
+        return originator;
     }
 
     @Override

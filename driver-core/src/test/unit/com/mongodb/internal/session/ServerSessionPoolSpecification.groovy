@@ -16,16 +16,8 @@
 
 package com.mongodb.internal.session
 
-import com.mongodb.MongoException
 import com.mongodb.ServerAddress
-import com.mongodb.session.ServerSession
-import com.mongodb.connection.Cluster
-import com.mongodb.connection.ClusterDescription
-import com.mongodb.connection.ClusterSettings
-import com.mongodb.connection.Connection
-import com.mongodb.connection.Server
-import com.mongodb.connection.ServerDescription
-import com.mongodb.connection.ServerSettings
+import com.mongodb.connection.*
 import com.mongodb.internal.connection.NoOpSessionContext
 import com.mongodb.internal.validator.NoOpFieldNameValidator
 import com.mongodb.selector.ReadPreferenceServerSelector
@@ -34,8 +26,6 @@ import org.bson.BsonBinarySubType
 import org.bson.BsonDocument
 import org.bson.codecs.BsonDocumentCodec
 import spock.lang.Specification
-
-import java.util.concurrent.CountDownLatch
 
 import static com.mongodb.ReadPreference.primaryPreferred
 import static com.mongodb.connection.ClusterConnectionMode.MULTIPLE
@@ -76,13 +66,10 @@ class ServerSessionPoolSpecification extends Specification {
         def pool = new ServerSessionPool(cluster)
 
         when:
-        def session = getSession(async, pool)
+        def session = pool.get()
 
         then:
         session != null
-
-        where:
-        async << [true, false]
     }
 
     def 'should throw IllegalStateException if pool is closed'() {
@@ -94,13 +81,11 @@ class ServerSessionPoolSpecification extends Specification {
         pool.close()
 
         when:
-        getSession(async, pool)
+        pool.get()
 
         then:
         thrown(IllegalStateException)
 
-        where:
-        async << [true, false]
     }
 
     def 'should pool session'() {
@@ -109,17 +94,14 @@ class ServerSessionPoolSpecification extends Specification {
             getDescription() >> connectedDescription
         }
         def pool = new ServerSessionPool(cluster)
-        def session = getSession(async, pool)
+        def session = pool.get()
 
         when:
         pool.release(session)
-        def pooledSession = getSession(async, pool)
+        def pooledSession = pool.get()
 
         then:
         session == pooledSession
-
-        where:
-        async << [true, false]
     }
 
     def 'should prune sessions on release'() {
@@ -139,9 +121,9 @@ class ServerSessionPoolSpecification extends Specification {
             ]
         }
         def pool = new ServerSessionPool(cluster, clock)
-        def sessionOne = getSession(async, pool)
-        def sessionTwo = getSession(async, pool)
-        def sessionThree = getSession(async, pool)
+        def sessionOne = pool.get()
+        def sessionTwo = pool.get()
+        def sessionThree = pool.get()
 
         when:
         pool.release(sessionOne)
@@ -164,9 +146,6 @@ class ServerSessionPoolSpecification extends Specification {
         sessionTwo.closed
         !sessionThree.closed
         0 * cluster.selectServer(_)
-
-        where:
-        async << [true, false]
     }
 
     def 'should prune sessions when getting'() {
@@ -181,7 +160,7 @@ class ServerSessionPoolSpecification extends Specification {
             ]
         }
         def pool = new ServerSessionPool(cluster, clock)
-        def sessionOne = getSession(async, pool)
+        def sessionOne = pool.get()
 
         when:
         pool.release(sessionOne)
@@ -190,15 +169,12 @@ class ServerSessionPoolSpecification extends Specification {
         !sessionOne.closed
 
         when:
-        def sessionTwo = getSession(async, pool)
+        def sessionTwo = pool.get()
 
         then:
         sessionTwo != sessionOne
         sessionOne.closed
         0 * cluster.selectServer(_)
-
-        where:
-        async << [true, false]
     }
 
     def 'should not prune session when timeout is null'() {
@@ -211,17 +187,15 @@ class ServerSessionPoolSpecification extends Specification {
                           MINUTES.toMillis(29) + 1]
         }
         def pool = new ServerSessionPool(cluster, clock)
-        def session = getSession(async, pool)
+        def session = pool.get()
 
         when:
         pool.release(session)
-        def newSession = getSession(async, pool)
+        def newSession = pool.get()
 
         then:
         session == newSession
 
-        where:
-        async << [true, false]
     }
 
     def 'should initialize session'() {
@@ -235,7 +209,7 @@ class ServerSessionPoolSpecification extends Specification {
         def pool = new ServerSessionPool(cluster, clock)
 
         when:
-        def session = getSession(async, pool) as ServerSessionPool.ServerSessionImpl
+        def session = pool.get() as ServerSessionPool.ServerSessionImpl
 
         then:
         session.lastUsedAtMillis == 42
@@ -246,9 +220,6 @@ class ServerSessionPoolSpecification extends Specification {
         uuid.data.length == 16
         session.advanceTransactionNumber() == 0
         session.advanceTransactionNumber() == 1
-
-        where:
-        async << [true, false]
     }
 
     def 'should end pooled sessions when pool is closed'() {
@@ -263,9 +234,9 @@ class ServerSessionPoolSpecification extends Specification {
         def pool = new ServerSessionPool(cluster)
         // check out sessions up the the endSessions batch size
         def sessions = []
-        10000.times { sessions.add(getSession(async, pool)) }
+        10000.times { sessions.add(pool.get()) }
         // and then check out one more
-        def oneOverBatchSizeSession = getSession(async, pool)
+        def oneOverBatchSizeSession = pool.get()
 
         // now release them all before closing the pool
         for (def cur : sessions) {
@@ -291,40 +262,5 @@ class ServerSessionPoolSpecification extends Specification {
                 { it instanceof NoOpFieldNameValidator }, primaryPreferred(),
                 { it instanceof BsonDocumentCodec }, NoOpSessionContext.INSTANCE) >> new BsonDocument()
         1 * connection.release()
-
-        where:
-        async << [true, false]
-    }
-
-    def getSession(boolean async, ServerSessionPool pool) {
-        if (async) {
-            getServerSessionAsync(pool)
-        } else {
-            pool.get()
-        }
-    }
-
-    def getServerSessionAsync(ServerSessionPool pool) {
-        def serverLatch = new ServerSessionLatch()
-        pool.getAsync { ServerSession result, MongoException e ->
-            serverLatch.serverSession = result
-            serverLatch.throwable = e
-            serverLatch.latch.countDown()
-        }
-        serverLatch.get()
-    }
-
-    class ServerSessionLatch {
-        CountDownLatch latch = new CountDownLatch(1)
-        ServerSession serverSession
-        Throwable throwable
-
-        def get() {
-            latch.await()
-            if (throwable != null) {
-                throw throwable
-            }
-            serverSession
-        }
     }
 }

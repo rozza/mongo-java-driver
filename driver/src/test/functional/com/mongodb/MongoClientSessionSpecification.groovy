@@ -56,7 +56,7 @@ class MongoClientSessionSpecification extends FunctionalSpecification {
 
         then:
         clientSession != null
-        clientSession.getMongoClientIdentityHashCode() == System.identityHashCode(Fixture.getMongoClient())
+        clientSession.getOriginator() == Fixture.getMongoClient()
         clientSession.isCausallyConsistent()
         clientSession.getOptions() == options
         clientSession.getClusterTime() == null

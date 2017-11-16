@@ -47,15 +47,15 @@ public interface ClientSession extends Closeable {
     boolean isCausallyConsistent();
 
     /**
-     * Gets the identityHashCode for the MongoClient on which this is a session.
+     * Gets the originator for the session.
      *
      * <p>
-     * Important so that the MongoClient can check that the session is from the same MongoClient instance to which it's passed
+     * Important because sessions must only be used by their own originator.
      * </p>
      *
-     * @return the identity HashCode for the MongoClient on which this is a session
+     * @return the sessions originator
      */
-    int getMongoClientIdentityHashCode();
+    Object getOriginator();
 
     /**
      *

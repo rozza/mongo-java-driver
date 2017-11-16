@@ -125,7 +125,7 @@ class AsyncOperationExecutorImpl implements AsyncOperationExecutor {
                                   final SingleResultCallback<ClientSession> callback) {
         if (clientSessionFromOperation != null) {
             isTrue("ClientSession from same MongoClient",
-                    clientSessionFromOperation.getMongoClientIdentityHashCode() == System.identityHashCode(mongoClient));
+                    clientSessionFromOperation.getOriginator() == mongoClient);
             callback.onResult(clientSessionFromOperation, null);
         } else {
             createClientSession(ClientSessionOptions.builder().causallyConsistent(false).build(), callback);
@@ -150,7 +150,7 @@ class AsyncOperationExecutorImpl implements AsyncOperationExecutor {
             ClusterDescription clusterDescription = mongoClient.getCluster().getDescription();
             if (!getServerDescriptionListToConsiderForSessionSupport(clusterDescription).isEmpty()
                     && clusterDescription.getLogicalSessionTimeoutMinutes() != null) {
-                    mongoClient.getServerSessionPool().getAsync(getServerSessionCallback(options, callback));
+                getServerSessionCallback(options, callback).onResult(mongoClient.getServerSessionPool().get(), null);
             } else {
                 mongoClient.getCluster().selectServerAsync(new ServerSelector() {
                     @Override
@@ -165,7 +165,7 @@ class AsyncOperationExecutorImpl implements AsyncOperationExecutor {
                         } else if (server.getDescription().getLogicalSessionTimeoutMinutes() == null) {
                             callback.onResult(null, null);
                         } else {
-                            mongoClient.getServerSessionPool().getAsync(getServerSessionCallback(options, callback));
+                            getServerSessionCallback(options, callback).onResult(mongoClient.getServerSessionPool().get(), null);
                         }
                     }
                 });

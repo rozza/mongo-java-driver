@@ -18,18 +18,14 @@ package com.mongodb.internal.session;
 
 import com.mongodb.MongoException;
 import com.mongodb.ReadPreference;
-import com.mongodb.session.ServerSession;
-import com.mongodb.async.SingleResultCallback;
 import com.mongodb.connection.Cluster;
 import com.mongodb.connection.Connection;
-import com.mongodb.diagnostics.logging.Logger;
-import com.mongodb.diagnostics.logging.Loggers;
 import com.mongodb.internal.connection.ConcurrentPool;
 import com.mongodb.internal.connection.ConcurrentPool.Prune;
 import com.mongodb.internal.connection.NoOpSessionContext;
-import com.mongodb.internal.thread.DaemonThreadFactory;
 import com.mongodb.internal.validator.NoOpFieldNameValidator;
 import com.mongodb.selector.ReadPreferenceServerSelector;
+import com.mongodb.session.ServerSession;
 import org.bson.BsonArray;
 import org.bson.BsonBinary;
 import org.bson.BsonDocument;
@@ -42,16 +38,11 @@ import org.bson.codecs.UuidCodec;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 import static com.mongodb.assertions.Assertions.isTrue;
-import static com.mongodb.internal.async.ErrorHandlingResultCallback.errorHandlingCallback;
 import static java.util.concurrent.TimeUnit.MINUTES;
 
 public class ServerSessionPool {
-
-    private static final Logger LOGGER = Loggers.getLogger("session");
     private static final int END_SESSIONS_BATCH_SIZE = 10000;
 
     private final ConcurrentPool<ServerSessionImpl> serverSessionPool =
@@ -60,7 +51,6 @@ public class ServerSessionPool {
     private final ServerSessionPool.Clock clock;
     private volatile boolean closing;
     private volatile boolean closed;
-    private ExecutorService asyncGetter;
     private final List<BsonDocument> closedSessionIdentifiers = new ArrayList<BsonDocument>();
 
     interface Clock {
@@ -91,11 +81,6 @@ public class ServerSessionPool {
         return serverSession;
     }
 
-    public void getAsync(final SingleResultCallback<ServerSession> callback) {
-        isTrue("server session pool is open", !closed);
-        getAsyncAndPrune(new ServerSessionGetAndPruneCallback(errorHandlingCallback(callback, LOGGER)));
-    }
-
     public void release(final ServerSession serverSession) {
         serverSessionPool.release((ServerSessionImpl) serverSession);
         serverSessionPool.prune();
@@ -106,24 +91,9 @@ public class ServerSessionPool {
             closing = true;
             serverSessionPool.close();
             endClosedSessions();
-            shutdownAsyncGetter();
         } finally {
             closed = true;
         }
-    }
-
-    private void getAsyncAndPrune(final ServerSessionGetAndPruneCallback callback) {
-        getAsyncGetter().submit(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    ServerSessionImpl serverSession = serverSessionPool.get();
-                    callback.onResult(serverSession, null);
-                } catch (Throwable t) {
-                    callback.onResult(null, t);
-                }
-            }
-        });
     }
 
     private void closeSession(final ServerSessionImpl serverSession) {
@@ -168,18 +138,6 @@ public class ServerSessionPool {
         return timeSinceLastUse > oneMinuteFromTimeout;
     }
 
-    private synchronized ExecutorService getAsyncGetter() {
-        if (asyncGetter == null) {
-            asyncGetter = Executors.newSingleThreadExecutor(new DaemonThreadFactory("SessionAsyncGetter"));
-        }
-        return asyncGetter;
-    }
-
-    private synchronized void shutdownAsyncGetter() {
-        if (asyncGetter != null) {
-            asyncGetter.shutdownNow();
-        }
-    }
 
     final class ServerSessionImpl implements ServerSession {
         private final BsonDocument identifier;
@@ -245,26 +203,6 @@ public class ServerSessionPool {
             uuidCodec.encode(bsonDocumentWriter, UUID.randomUUID(), EncoderContext.builder().build());
             bsonDocumentWriter.writeEndDocument();
             return holder.getBinary("id");
-        }
-    }
-
-    private final class ServerSessionGetAndPruneCallback implements SingleResultCallback<ServerSessionImpl> {
-        private SingleResultCallback<ServerSession> callback;
-
-        ServerSessionGetAndPruneCallback(final SingleResultCallback<ServerSession> callback) {
-            this.callback = callback;
-        }
-
-        @Override
-        public void onResult(final ServerSessionImpl serverSession, final Throwable t) {
-            if (t != null) {
-                callback.onResult(null, t);
-            } else if (shouldPrune(serverSession)) {
-                serverSessionPool.release(serverSession, true);
-                getAsyncAndPrune(new ServerSessionGetAndPruneCallback(callback));
-            } else {
-                callback.onResult(serverSession, null);
-            }
         }
     }
 }

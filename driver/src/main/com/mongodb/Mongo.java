@@ -844,8 +844,7 @@ public class Mongo {
             ClientSession getClientSession(final ClientSession clientSessionFromOperation) {
                 ClientSession session;
                 if (clientSessionFromOperation != null) {
-                    isTrue("ClientSession from same MongoClient",
-                            clientSessionFromOperation.getMongoClientIdentityHashCode() == System.identityHashCode(Mongo.this));
+                    isTrue("ClientSession from same MongoClient", clientSessionFromOperation.getOriginator() == Mongo.this);
                     session = clientSessionFromOperation;
                 } else {
                     session = createClientSession(ClientSessionOptions.builder().causallyConsistent(false).build());
@@ -860,7 +859,7 @@ public class Mongo {
             return null;
         }
         if (getConnectedClusterDescription().getLogicalSessionTimeoutMinutes() != null) {
-            return new ClientSessionImpl(serverSessionPool, serverSessionPool.get(), System.identityHashCode(this), options);
+            return new ClientSessionImpl(serverSessionPool, serverSessionPool.get(), this, options);
         } else {
             return null;
         }
