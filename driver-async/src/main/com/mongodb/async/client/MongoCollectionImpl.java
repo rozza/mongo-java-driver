@@ -180,23 +180,23 @@ class MongoCollectionImpl<TDocument> implements MongoCollection<TDocument> {
     }
 
     @Override
-    public void count(final ClientSession clientSession, final SingleResultCallback<Long> callback) {
-        count(clientSession, new BsonDocument(), callback);
-    }
-
-    @Override
     public void count(final Bson filter, final SingleResultCallback<Long> callback) {
         count(filter, new CountOptions(), callback);
     }
 
     @Override
-    public void count(final ClientSession clientSession, final Bson filter, final SingleResultCallback<Long> callback) {
-        count(clientSession, filter, new CountOptions(), callback);
+    public void count(final Bson filter, final CountOptions options, final SingleResultCallback<Long> callback) {
+        executeCount(null, filter, options, callback);
     }
 
     @Override
-    public void count(final Bson filter, final CountOptions options, final SingleResultCallback<Long> callback) {
-        executeCount(null, filter, options, callback);
+    public void count(final ClientSession clientSession, final SingleResultCallback<Long> callback) {
+        count(clientSession, new BsonDocument(), callback);
+    }
+
+    @Override
+    public void count(final ClientSession clientSession, final Bson filter, final SingleResultCallback<Long> callback) {
+        count(clientSession, filter, new CountOptions(), callback);
     }
 
     @Override
@@ -229,14 +229,14 @@ class MongoCollectionImpl<TDocument> implements MongoCollection<TDocument> {
     }
 
     @Override
-    public <TResult> DistinctIterable<TResult> distinct(final ClientSession clientSession, final String fieldName,
-                                                        final Class<TResult> resultClass) {
-        return distinct(clientSession, fieldName, new BsonDocument(), resultClass);
+    public <TResult> DistinctIterable<TResult> distinct(final String fieldName, final Bson filter, final Class<TResult> resultClass) {
+        return createDistinctIterable(null, fieldName, filter, resultClass);
     }
 
     @Override
-    public <TResult> DistinctIterable<TResult> distinct(final String fieldName, final Bson filter, final Class<TResult> resultClass) {
-        return createDistinctIterable(null, fieldName, filter, resultClass);
+    public <TResult> DistinctIterable<TResult> distinct(final ClientSession clientSession, final String fieldName,
+                                                        final Class<TResult> resultClass) {
+        return distinct(clientSession, fieldName, new BsonDocument(), resultClass);
     }
 
     @Override
@@ -258,18 +258,8 @@ class MongoCollectionImpl<TDocument> implements MongoCollection<TDocument> {
     }
 
     @Override
-    public FindIterable<TDocument> find(final ClientSession clientSession) {
-        return find(clientSession, new BsonDocument(), documentClass);
-    }
-
-    @Override
     public <TResult> FindIterable<TResult> find(final Class<TResult> resultClass) {
         return find(new BsonDocument(), resultClass);
-    }
-
-    @Override
-    public <TResult> FindIterable<TResult> find(final ClientSession clientSession, final Class<TResult> resultClass) {
-        return find(clientSession, new BsonDocument(), resultClass);
     }
 
     @Override
@@ -278,13 +268,23 @@ class MongoCollectionImpl<TDocument> implements MongoCollection<TDocument> {
     }
 
     @Override
-    public FindIterable<TDocument> find(final ClientSession clientSession, final Bson filter) {
-        return find(clientSession, filter, documentClass);
+    public <TResult> FindIterable<TResult> find(final Bson filter, final Class<TResult> resultClass) {
+        return createFindIterable(null, filter, resultClass);
     }
 
     @Override
-    public <TResult> FindIterable<TResult> find(final Bson filter, final Class<TResult> resultClass) {
-        return createFindIterable(null, filter, resultClass);
+    public FindIterable<TDocument> find(final ClientSession clientSession) {
+        return find(clientSession, new BsonDocument(), documentClass);
+    }
+
+    @Override
+    public <TResult> FindIterable<TResult> find(final ClientSession clientSession, final Class<TResult> resultClass) {
+        return find(clientSession, new BsonDocument(), resultClass);
+    }
+
+    @Override
+    public FindIterable<TDocument> find(final ClientSession clientSession, final Bson filter) {
+        return find(clientSession, filter, documentClass);
     }
 
     @Override
@@ -305,13 +305,13 @@ class MongoCollectionImpl<TDocument> implements MongoCollection<TDocument> {
     }
 
     @Override
-    public AggregateIterable<TDocument> aggregate(final ClientSession clientSession, final List<? extends Bson> pipeline) {
-        return aggregate(clientSession, pipeline, documentClass);
+    public <TResult> AggregateIterable<TResult> aggregate(final List<? extends Bson> pipeline, final Class<TResult> resultClass) {
+        return createAggregateIterable(null, pipeline, resultClass);
     }
 
     @Override
-    public <TResult> AggregateIterable<TResult> aggregate(final List<? extends Bson> pipeline, final Class<TResult> resultClass) {
-        return createAggregateIterable(null, pipeline, resultClass);
+    public AggregateIterable<TDocument> aggregate(final ClientSession clientSession, final List<? extends Bson> pipeline) {
+        return aggregate(clientSession, pipeline, documentClass);
     }
 
     @Override
@@ -334,18 +334,8 @@ class MongoCollectionImpl<TDocument> implements MongoCollection<TDocument> {
     }
 
     @Override
-    public ChangeStreamIterable<TDocument> watch(final ClientSession clientSession) {
-        return watch(clientSession, Collections.<Bson>emptyList());
-    }
-
-    @Override
     public <TResult> ChangeStreamIterable<TResult> watch(final Class<TResult> resultClass) {
         return watch(Collections.<Bson>emptyList(), resultClass);
-    }
-
-    @Override
-    public <TResult> ChangeStreamIterable<TResult> watch(final ClientSession clientSession, final Class<TResult> resultClass) {
-        return watch(clientSession, Collections.<Bson>emptyList(), resultClass);
     }
 
     @Override
@@ -354,13 +344,23 @@ class MongoCollectionImpl<TDocument> implements MongoCollection<TDocument> {
     }
 
     @Override
-    public ChangeStreamIterable<TDocument> watch(final ClientSession clientSession, final List<? extends Bson> pipeline) {
-        return watch(clientSession, pipeline, documentClass);
+    public <TResult> ChangeStreamIterable<TResult> watch(final List<? extends Bson> pipeline, final Class<TResult> resultClass) {
+        return createChangeStreamIterable(null, pipeline, resultClass);
     }
 
     @Override
-    public <TResult> ChangeStreamIterable<TResult> watch(final List<? extends Bson> pipeline, final Class<TResult> resultClass) {
-        return createChangeStreamIterable(null, pipeline, resultClass);
+    public ChangeStreamIterable<TDocument> watch(final ClientSession clientSession) {
+        return watch(clientSession, Collections.<Bson>emptyList());
+    }
+
+    @Override
+    public <TResult> ChangeStreamIterable<TResult> watch(final ClientSession clientSession, final Class<TResult> resultClass) {
+        return watch(clientSession, Collections.<Bson>emptyList(), resultClass);
+    }
+
+    @Override
+    public ChangeStreamIterable<TDocument> watch(final ClientSession clientSession, final List<? extends Bson> pipeline) {
+        return watch(clientSession, pipeline, documentClass);
     }
 
     @Override
@@ -377,22 +377,21 @@ class MongoCollectionImpl<TDocument> implements MongoCollection<TDocument> {
                 pipeline, resultClass);
     }
 
-
     @Override
     public MapReduceIterable<TDocument> mapReduce(final String mapFunction, final String reduceFunction) {
         return mapReduce(mapFunction, reduceFunction, documentClass);
     }
 
     @Override
-    public MapReduceIterable<TDocument> mapReduce(final ClientSession clientSession, final String mapFunction,
-                                                  final String reduceFunction) {
-        return mapReduce(clientSession, mapFunction, reduceFunction, documentClass);
-    }
-
-    @Override
     public <TResult> MapReduceIterable<TResult> mapReduce(final String mapFunction, final String reduceFunction,
                                                           final Class<TResult> resultClass) {
         return createMapReduceIterable(null, mapFunction, reduceFunction, resultClass);
+    }
+
+    @Override
+    public MapReduceIterable<TDocument> mapReduce(final ClientSession clientSession, final String mapFunction,
+                                                  final String reduceFunction) {
+        return mapReduce(clientSession, mapFunction, reduceFunction, documentClass);
     }
 
     @Override
@@ -415,15 +414,15 @@ class MongoCollectionImpl<TDocument> implements MongoCollection<TDocument> {
     }
 
     @Override
-    public void bulkWrite(final ClientSession clientSession, final List<? extends WriteModel<? extends TDocument>> requests,
-                          final SingleResultCallback<BulkWriteResult> callback) {
-        bulkWrite(clientSession, requests, new BulkWriteOptions(), callback);
-    }
-
-    @Override
     public void bulkWrite(final List<? extends WriteModel<? extends TDocument>> requests, final BulkWriteOptions options,
                           final SingleResultCallback<BulkWriteResult> callback) {
         executeBulkWrite(null, requests, options, callback);
+    }
+
+    @Override
+    public void bulkWrite(final ClientSession clientSession, final List<? extends WriteModel<? extends TDocument>> requests,
+                          final SingleResultCallback<BulkWriteResult> callback) {
+        bulkWrite(clientSession, requests, new BulkWriteOptions(), callback);
     }
 
     @Override
@@ -432,7 +431,7 @@ class MongoCollectionImpl<TDocument> implements MongoCollection<TDocument> {
         notNull("clientSession", clientSession);
         executeBulkWrite(clientSession, requests, options, callback);
     }
-    
+
     @SuppressWarnings("unchecked")
     private void executeBulkWrite(final ClientSession clientSession, final List<? extends WriteModel<? extends TDocument>> requests,
                                   final BulkWriteOptions options, final SingleResultCallback<BulkWriteResult> callback) {
@@ -496,13 +495,13 @@ class MongoCollectionImpl<TDocument> implements MongoCollection<TDocument> {
     }
 
     @Override
-    public void insertOne(final ClientSession clientSession, final TDocument document, final SingleResultCallback<Void> callback) {
-        insertOne(clientSession, document, new InsertOneOptions(), callback);
+    public void insertOne(final TDocument document, final InsertOneOptions options, final SingleResultCallback<Void> callback) {
+        executeInsertOne(null, document, options, callback);
     }
 
     @Override
-    public void insertOne(final TDocument document, final InsertOneOptions options, final SingleResultCallback<Void> callback) {
-        executeInsertOne(null, document, options, callback);
+    public void insertOne(final ClientSession clientSession, final TDocument document, final SingleResultCallback<Void> callback) {
+        insertOne(clientSession, document, new InsertOneOptions(), callback);
     }
 
     @Override
@@ -534,15 +533,15 @@ class MongoCollectionImpl<TDocument> implements MongoCollection<TDocument> {
     }
 
     @Override
-    public void insertMany(final ClientSession clientSession, final List<? extends TDocument> documents,
-                           final SingleResultCallback<Void> callback) {
-        insertMany(clientSession, documents, new InsertManyOptions(), callback);
-    }
-
-    @Override
     public void insertMany(final List<? extends TDocument> documents, final InsertManyOptions options,
                            final SingleResultCallback<Void> callback) {
         executeInsertMany(null, documents, options, callback);
+    }
+
+    @Override
+    public void insertMany(final ClientSession clientSession, final List<? extends TDocument> documents,
+                           final SingleResultCallback<Void> callback) {
+        insertMany(clientSession, documents, new InsertManyOptions(), callback);
     }
 
     @Override
@@ -581,13 +580,13 @@ class MongoCollectionImpl<TDocument> implements MongoCollection<TDocument> {
     }
 
     @Override
-    public void deleteOne(final ClientSession clientSession, final Bson filter, final SingleResultCallback<DeleteResult> callback) {
-        deleteOne(clientSession, filter, new DeleteOptions(), callback);
+    public void deleteOne(final Bson filter, final DeleteOptions options, final SingleResultCallback<DeleteResult> callback) {
+        executeDelete(null, filter, options, false, callback);
     }
 
     @Override
-    public void deleteOne(final Bson filter, final DeleteOptions options, final SingleResultCallback<DeleteResult> callback) {
-        executeDelete(null, filter, options, false, callback);
+    public void deleteOne(final ClientSession clientSession, final Bson filter, final SingleResultCallback<DeleteResult> callback) {
+        deleteOne(clientSession, filter, new DeleteOptions(), callback);
     }
 
     @Override
@@ -603,13 +602,13 @@ class MongoCollectionImpl<TDocument> implements MongoCollection<TDocument> {
     }
 
     @Override
-    public void deleteMany(final ClientSession clientSession, final Bson filter, final SingleResultCallback<DeleteResult> callback) {
-        deleteMany(clientSession, filter, new DeleteOptions(), callback);
+    public void deleteMany(final Bson filter, final DeleteOptions options, final SingleResultCallback<DeleteResult> callback) {
+        executeDelete(null, filter, options, true, callback);
     }
 
     @Override
-    public void deleteMany(final Bson filter, final DeleteOptions options, final SingleResultCallback<DeleteResult> callback) {
-        executeDelete(null, filter, options, true, callback);
+    public void deleteMany(final ClientSession clientSession, final Bson filter, final SingleResultCallback<DeleteResult> callback) {
+        deleteMany(clientSession, filter, new DeleteOptions(), callback);
     }
 
     @Override
@@ -646,15 +645,15 @@ class MongoCollectionImpl<TDocument> implements MongoCollection<TDocument> {
     }
 
     @Override
-    public void replaceOne(final ClientSession clientSession, final Bson filter, final TDocument replacement,
-                           final SingleResultCallback<UpdateResult> callback) {
-        replaceOne(clientSession, filter, replacement, new UpdateOptions(), callback);
-    }
-
-    @Override
     public void replaceOne(final Bson filter, final TDocument replacement, final UpdateOptions options,
                            final SingleResultCallback<UpdateResult> callback) {
         executeReplaceOne(null, filter, replacement, options, callback);
+    }
+
+    @Override
+    public void replaceOne(final ClientSession clientSession, final Bson filter, final TDocument replacement,
+                           final SingleResultCallback<UpdateResult> callback) {
+        replaceOne(clientSession, filter, replacement, new UpdateOptions(), callback);
     }
 
     @Override
@@ -686,15 +685,15 @@ class MongoCollectionImpl<TDocument> implements MongoCollection<TDocument> {
     }
 
     @Override
-    public void updateOne(final ClientSession clientSession, final Bson filter, final Bson update,
-                          final SingleResultCallback<UpdateResult> callback) {
-        updateOne(clientSession, filter, update, new UpdateOptions(), callback);
-    }
-
-    @Override
     public void updateOne(final Bson filter, final Bson update, final UpdateOptions options,
                           final SingleResultCallback<UpdateResult> callback) {
         executeUpdate(null, filter, update, options, false, callback);
+    }
+
+    @Override
+    public void updateOne(final ClientSession clientSession, final Bson filter, final Bson update,
+                          final SingleResultCallback<UpdateResult> callback) {
+        updateOne(clientSession, filter, update, new UpdateOptions(), callback);
     }
 
     @Override
@@ -710,15 +709,15 @@ class MongoCollectionImpl<TDocument> implements MongoCollection<TDocument> {
     }
 
     @Override
-    public void updateMany(final ClientSession clientSession, final Bson filter, final Bson update,
-                           final SingleResultCallback<UpdateResult> callback) {
-        updateMany(clientSession, filter, update, new UpdateOptions(), callback);
-    }
-
-    @Override
     public void updateMany(final Bson filter, final Bson update, final UpdateOptions options,
                            final SingleResultCallback<UpdateResult> callback) {
         executeUpdate(null, filter, update, options, true, callback);
+    }
+
+    @Override
+    public void updateMany(final ClientSession clientSession, final Bson filter, final Bson update,
+                           final SingleResultCallback<UpdateResult> callback) {
+        updateMany(clientSession, filter, update, new UpdateOptions(), callback);
     }
 
     @Override
@@ -751,13 +750,13 @@ class MongoCollectionImpl<TDocument> implements MongoCollection<TDocument> {
     }
 
     @Override
-    public void findOneAndDelete(final ClientSession clientSession, final Bson filter, final SingleResultCallback<TDocument> callback) {
-        findOneAndDelete(clientSession, filter, new FindOneAndDeleteOptions(), callback);
+    public void findOneAndDelete(final Bson filter, final FindOneAndDeleteOptions options, final SingleResultCallback<TDocument> callback) {
+        executeFindOneAndDelete(null, filter, options, callback);
     }
 
     @Override
-    public void findOneAndDelete(final Bson filter, final FindOneAndDeleteOptions options, final SingleResultCallback<TDocument> callback) {
-        executeFindOneAndDelete(null, filter, options, callback);
+    public void findOneAndDelete(final ClientSession clientSession, final Bson filter, final SingleResultCallback<TDocument> callback) {
+        findOneAndDelete(clientSession, filter, new FindOneAndDeleteOptions(), callback);
     }
 
     @Override
@@ -783,15 +782,15 @@ class MongoCollectionImpl<TDocument> implements MongoCollection<TDocument> {
     }
 
     @Override
-    public void findOneAndReplace(final ClientSession clientSession, final Bson filter, final TDocument replacement,
-                                  final SingleResultCallback<TDocument> callback) {
-        findOneAndReplace(clientSession, filter, replacement, new FindOneAndReplaceOptions(), callback);
-    }
-
-    @Override
     public void findOneAndReplace(final Bson filter, final TDocument replacement, final FindOneAndReplaceOptions options,
                                   final SingleResultCallback<TDocument> callback) {
         executeFindOneAndReplace(null, filter, replacement, options, callback);
+    }
+
+    @Override
+    public void findOneAndReplace(final ClientSession clientSession, final Bson filter, final TDocument replacement,
+                                  final SingleResultCallback<TDocument> callback) {
+        findOneAndReplace(clientSession, filter, replacement, new FindOneAndReplaceOptions(), callback);
     }
 
     @Override
@@ -821,15 +820,15 @@ class MongoCollectionImpl<TDocument> implements MongoCollection<TDocument> {
     }
 
     @Override
-    public void findOneAndUpdate(final ClientSession clientSession, final Bson filter, final Bson update,
-                                 final SingleResultCallback<TDocument> callback) {
-        findOneAndUpdate(clientSession, filter, update, new FindOneAndUpdateOptions(), callback);
-    }
-
-    @Override
     public void findOneAndUpdate(final Bson filter, final Bson update, final FindOneAndUpdateOptions options,
                                  final SingleResultCallback<TDocument> callback) {
         executeFindOneAndUpdate(null, filter, update, options, callback);
+    }
+
+    @Override
+    public void findOneAndUpdate(final ClientSession clientSession, final Bson filter, final Bson update,
+                                 final SingleResultCallback<TDocument> callback) {
+        findOneAndUpdate(clientSession, filter, update, new FindOneAndUpdateOptions(), callback);
     }
 
     @Override
@@ -874,11 +873,6 @@ class MongoCollectionImpl<TDocument> implements MongoCollection<TDocument> {
     }
 
     @Override
-    public void createIndex(final ClientSession clientSession, final Bson key, final SingleResultCallback<String> callback) {
-        createIndex(clientSession, key, new IndexOptions(), callback);
-    }
-
-    @Override
     public void createIndex(final Bson key, final IndexOptions indexOptions, final SingleResultCallback<String> callback) {
         createIndexes(singletonList(new IndexModel(key, indexOptions)), new SingleResultCallback<List<String>>() {
             @Override
@@ -890,6 +884,11 @@ class MongoCollectionImpl<TDocument> implements MongoCollection<TDocument> {
                 }
             }
         });
+    }
+
+    @Override
+    public void createIndex(final ClientSession clientSession, final Bson key, final SingleResultCallback<String> callback) {
+        createIndex(clientSession, key, new IndexOptions(), callback);
     }
 
     @Override
@@ -967,13 +966,13 @@ class MongoCollectionImpl<TDocument> implements MongoCollection<TDocument> {
     }
 
     @Override
-    public ListIndexesIterable<Document> listIndexes(final ClientSession clientSession) {
-        return listIndexes(clientSession, Document.class);
+    public <TResult> ListIndexesIterable<TResult> listIndexes(final Class<TResult> resultClass) {
+        return createListIndexesIterable(null, resultClass);
     }
 
     @Override
-    public <TResult> ListIndexesIterable<TResult> listIndexes(final Class<TResult> resultClass) {
-        return createListIndexesIterable(null, resultClass);
+    public ListIndexesIterable<Document> listIndexes(final ClientSession clientSession) {
+        return listIndexes(clientSession, Document.class);
     }
 
     @Override
@@ -993,14 +992,14 @@ class MongoCollectionImpl<TDocument> implements MongoCollection<TDocument> {
     }
 
     @Override
-    public void dropIndex(final ClientSession clientSession, final String indexName, final SingleResultCallback<Void> callback) {
-        notNull("clientSession", clientSession);
-        executeDropIndex(clientSession, indexName, callback);
+    public void dropIndex(final Bson keys, final SingleResultCallback<Void> callback) {
+        executeDropIndex(null, keys, callback);
     }
 
     @Override
-    public void dropIndex(final Bson keys, final SingleResultCallback<Void> callback) {
-        executeDropIndex(null, keys, callback);
+    public void dropIndex(final ClientSession clientSession, final String indexName, final SingleResultCallback<Void> callback) {
+        notNull("clientSession", clientSession);
+        executeDropIndex(clientSession, indexName, callback);
     }
 
     @Override
@@ -1034,15 +1033,15 @@ class MongoCollectionImpl<TDocument> implements MongoCollection<TDocument> {
     }
 
     @Override
-    public void renameCollection(final ClientSession clientSession, final MongoNamespace newCollectionNamespace,
-                                 final SingleResultCallback<Void> callback) {
-        renameCollection(clientSession, newCollectionNamespace, new RenameCollectionOptions(), callback);
-    }
-
-    @Override
     public void renameCollection(final MongoNamespace newCollectionNamespace, final RenameCollectionOptions options,
                                  final SingleResultCallback<Void> callback) {
         executeRenameCollection(null, newCollectionNamespace, new RenameCollectionOptions(), callback);
+    }
+
+    @Override
+    public void renameCollection(final ClientSession clientSession, final MongoNamespace newCollectionNamespace,
+                                 final SingleResultCallback<Void> callback) {
+        renameCollection(clientSession, newCollectionNamespace, new RenameCollectionOptions(), callback);
     }
 
     @Override

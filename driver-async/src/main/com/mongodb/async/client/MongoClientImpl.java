@@ -161,8 +161,4 @@ class MongoClientImpl implements MongoClient {
         return cluster;
     }
 
-    ServerSessionPool getServerSessionPool() {
-        return serverSessionPool;
-    }
-
 }

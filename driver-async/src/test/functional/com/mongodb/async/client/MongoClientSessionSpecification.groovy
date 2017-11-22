@@ -299,7 +299,7 @@ class MongoClientSessionSpecification extends FunctionalSpecification {
         where:
         readConcern << [ReadConcern.DEFAULT, ReadConcern.LOCAL, ReadConcern.MAJORITY]
     }
-    
+
     static ClientSession startSession(... args) {
         FutureResultCallback futureResultCallback = new FutureResultCallback()
         List opArgs = (args != null) ? args : []

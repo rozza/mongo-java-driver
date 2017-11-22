@@ -112,17 +112,17 @@ class MongoDatabaseImpl implements MongoDatabase {
 
     @Override
     public MongoIterable<String> listCollectionNames() {
-        return executeListCollectionNames(null);
+        return createListCollectionNamesIterable(null);
     }
 
     @Override
     public MongoIterable<String> listCollectionNames(final ClientSession clientSession) {
         notNull("clientSession", clientSession);
-        return executeListCollectionNames(clientSession);
+        return createListCollectionNamesIterable(clientSession);
     }
 
-    private MongoIterable<String> executeListCollectionNames(final ClientSession clientSession) {
-        return executeListCollections(clientSession, BsonDocument.class)
+    private MongoIterable<String> createListCollectionNamesIterable(final ClientSession clientSession) {
+        return createListCollectionsIterable(clientSession, BsonDocument.class)
                 .map(new Function<BsonDocument, String>() {
                     @Override
                     public String apply(final BsonDocument result) {
@@ -137,23 +137,23 @@ class MongoDatabaseImpl implements MongoDatabase {
     }
 
     @Override
+    public <TResult> ListCollectionsIterable<TResult> listCollections(final Class<TResult> resultClass) {
+        return createListCollectionsIterable(null, resultClass);
+    }
+
+    @Override
     public ListCollectionsIterable<Document> listCollections(final ClientSession clientSession) {
         return listCollections(clientSession, Document.class);
     }
 
     @Override
-    public <TResult> ListCollectionsIterable<TResult> listCollections(final Class<TResult> resultClass) {
-        return executeListCollections(null, resultClass);
-    }
-
-    @Override
     public <TResult> ListCollectionsIterable<TResult> listCollections(final ClientSession clientSession, final Class<TResult> resultClass) {
         notNull("clientSession", clientSession);
-        return executeListCollections(clientSession, resultClass);
+        return createListCollectionsIterable(clientSession, resultClass);
     }
 
-    private <TResult> ListCollectionsIterable<TResult> executeListCollections(final ClientSession clientSession,
-                                                                              final Class<TResult> resultClass) {
+    private <TResult> ListCollectionsIterable<TResult> createListCollectionsIterable(final ClientSession clientSession,
+                                                                                     final Class<TResult> resultClass) {
         return new ListCollectionsIterableImpl<TResult>(clientSession, name, resultClass, codecRegistry, ReadPreference.primary(),
                 executor);
     }
@@ -175,19 +175,8 @@ class MongoDatabaseImpl implements MongoDatabase {
     }
 
     @Override
-    public void runCommand(final ClientSession clientSession, final Bson command, final SingleResultCallback<Document> callback) {
-        runCommand(clientSession, command, Document.class, callback);
-    }
-
-    @Override
     public void runCommand(final Bson command, final ReadPreference readPreference, final SingleResultCallback<Document> callback) {
         runCommand(command, readPreference, Document.class, callback);
-    }
-
-    @Override
-    public void runCommand(final ClientSession clientSession, final Bson command, final ReadPreference readPreference,
-                           final SingleResultCallback<Document> callback) {
-        runCommand(clientSession, command, readPreference, Document.class, callback);
     }
 
     @Override
@@ -197,15 +186,26 @@ class MongoDatabaseImpl implements MongoDatabase {
     }
 
     @Override
-    public <TResult> void runCommand(final ClientSession clientSession, final Bson command, final Class<TResult> resultClass,
-                                     final SingleResultCallback<TResult> callback) {
-        runCommand(clientSession, command, ReadPreference.primary(), resultClass, callback);
-    }
-
-    @Override
     public <TResult> void runCommand(final Bson command, final ReadPreference readPreference, final Class<TResult> resultClass,
                                      final SingleResultCallback<TResult> callback) {
         executeCommand(null, command, readPreference, resultClass, callback);
+    }
+
+    @Override
+    public void runCommand(final ClientSession clientSession, final Bson command, final SingleResultCallback<Document> callback) {
+        runCommand(clientSession, command, Document.class, callback);
+    }
+
+    @Override
+    public void runCommand(final ClientSession clientSession, final Bson command, final ReadPreference readPreference,
+                           final SingleResultCallback<Document> callback) {
+        runCommand(clientSession, command, readPreference, Document.class, callback);
+    }
+
+    @Override
+    public <TResult> void runCommand(final ClientSession clientSession, final Bson command, final Class<TResult> resultClass,
+                                     final SingleResultCallback<TResult> callback) {
+        runCommand(clientSession, command, ReadPreference.primary(), resultClass, callback);
     }
 
     @Override
@@ -244,15 +244,15 @@ class MongoDatabaseImpl implements MongoDatabase {
     }
 
     @Override
-    public void createCollection(final ClientSession clientSession, final String collectionName,
-                                 final SingleResultCallback<Void> callback) {
-        createCollection(clientSession, collectionName, new CreateCollectionOptions(), callback);
-    }
-
-    @Override
     public void createCollection(final String collectionName, final CreateCollectionOptions createCollectionOptions,
                                  final SingleResultCallback<Void> callback) {
         executeCreateCollection(null, collectionName, createCollectionOptions, callback);
+    }
+
+    @Override
+    public void createCollection(final ClientSession clientSession, final String collectionName,
+                                 final SingleResultCallback<Void> callback) {
+        createCollection(clientSession, collectionName, new CreateCollectionOptions(), callback);
     }
 
     @Override
@@ -298,15 +298,15 @@ class MongoDatabaseImpl implements MongoDatabase {
     }
 
     @Override
-    public void createView(final ClientSession clientSession, final String viewName, final String viewOn,
-                           final List<? extends Bson> pipeline, final SingleResultCallback<Void> callback) {
-        createView(clientSession, viewName, viewOn, pipeline, new CreateViewOptions(), callback);
-    }
-
-    @Override
     public void createView(final String viewName, final String viewOn, final List<? extends Bson> pipeline,
                            final CreateViewOptions createViewOptions, final SingleResultCallback<Void> callback) {
         executeCreateView(null, viewName, viewOn, pipeline, createViewOptions, callback);
+    }
+
+    @Override
+    public void createView(final ClientSession clientSession, final String viewName, final String viewOn,
+                           final List<? extends Bson> pipeline, final SingleResultCallback<Void> callback) {
+        createView(clientSession, viewName, viewOn, pipeline, new CreateViewOptions(), callback);
     }
 
     @Override

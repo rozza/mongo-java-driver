@@ -142,6 +142,37 @@ public interface MongoDatabase {
     void runCommand(Bson command, SingleResultCallback<Document> callback);
 
     /**
+     * Executes the given command in the context of the current database with the given read preference.
+     *
+     * @param command        the command to be run
+     * @param readPreference the {@link com.mongodb.ReadPreference} to be used when executing the command
+     * @param callback       the callback that is passed the command result
+     */
+    void runCommand(Bson command, ReadPreference readPreference, SingleResultCallback<Document> callback);
+
+    /**
+     * Executes the given command in the context of the current database with a read preference of {@link ReadPreference#primary()}.
+     *
+     * @param command     the command to be run
+     * @param resultClass the default class to cast any documents returned from the database into.
+     * @param <TResult>   the type of the class to use instead of {@code Document}.
+     * @param callback    the callback that is passed the command result
+     */
+    <TResult> void runCommand(Bson command, Class<TResult> resultClass, SingleResultCallback<TResult> callback);
+
+    /**
+     * Executes the given command in the context of the current database with the given read preference.
+     *
+     * @param command        the command to be run
+     * @param readPreference the {@link com.mongodb.ReadPreference} to be used when executing the command
+     * @param resultClass    the default class to cast any documents returned from the database into.
+     * @param <TResult>      the type of the class to use instead of {@code Document}.
+     * @param callback       the callback that is passed the command result
+     */
+    <TResult> void runCommand(Bson command, ReadPreference readPreference, Class<TResult> resultClass,
+                              SingleResultCallback<TResult> callback);
+
+    /**
      * Executes the given command in the context of the current database with a read preference of {@link ReadPreference#primary()}.
      *
      * @param clientSession the client session with which to associate this operation
@@ -155,15 +186,6 @@ public interface MongoDatabase {
     /**
      * Executes the given command in the context of the current database with the given read preference.
      *
-     * @param command        the command to be run
-     * @param readPreference the {@link com.mongodb.ReadPreference} to be used when executing the command
-     * @param callback       the callback that is passed the command result
-     */
-    void runCommand(Bson command, ReadPreference readPreference, SingleResultCallback<Document> callback);
-
-    /**
-     * Executes the given command in the context of the current database with the given read preference.
-     *
      * @param clientSession  the client session with which to associate this operation
      * @param command        the command to be run
      * @param readPreference the {@link ReadPreference} to be used when executing the command
@@ -172,17 +194,6 @@ public interface MongoDatabase {
      * @mongodb.server.release 3.6
      */
     void runCommand(ClientSession clientSession, Bson command, ReadPreference readPreference, SingleResultCallback<Document> callback);
-
-    /**
-     * Executes the given command in the context of the current database with a read preference of {@link ReadPreference#primary()}.
-     *
-     * @param command     the command to be run
-     * @param resultClass the default class to cast any documents returned from the database into.
-     * @param <TResult>   the type of the class to use instead of {@code Document}.
-     * @param callback    the callback that is passed the command result
-     */
-    <TResult> void runCommand(Bson command, Class<TResult> resultClass, SingleResultCallback<TResult> callback);
-
     /**
      * Executes the given command in the context of the current database with a read preference of {@link ReadPreference#primary()}.
      *
@@ -195,18 +206,6 @@ public interface MongoDatabase {
      * @mongodb.server.release 3.6
      */
     <TResult> void runCommand(ClientSession clientSession, Bson command, Class<TResult> resultClass,
-                              SingleResultCallback<TResult> callback);
-
-    /**
-     * Executes the given command in the context of the current database with the given read preference.
-     *
-     * @param command        the command to be run
-     * @param readPreference the {@link com.mongodb.ReadPreference} to be used when executing the command
-     * @param resultClass    the default class to cast any documents returned from the database into.
-     * @param <TResult>      the type of the class to use instead of {@code Document}.
-     * @param callback       the callback that is passed the command result
-     */
-    <TResult> void runCommand(Bson command, ReadPreference readPreference, Class<TResult> resultClass,
                               SingleResultCallback<TResult> callback);
 
     /**
@@ -271,6 +270,16 @@ public interface MongoDatabase {
     /**
      * Finds all the collections in this database.
      *
+     * @param resultClass the class to decode each document into
+     * @param <TResult>   the target document type of the iterable.
+     * @return the list collections iterable interface
+     * @mongodb.driver.manual reference/command/listCollections listCollections
+     */
+    <TResult> ListCollectionsIterable<TResult> listCollections(Class<TResult> resultClass);
+
+    /**
+     * Finds all the collections in this database.
+     *
      * @param clientSession the client session with which to associate this operation
      * @return the list collections iterable interface
      * @mongodb.driver.manual reference/command/listCollections listCollections
@@ -278,16 +287,6 @@ public interface MongoDatabase {
      * @mongodb.server.release 3.6
      */
     ListCollectionsIterable<Document> listCollections(ClientSession clientSession);
-
-    /**
-     * Finds all the collections in this database.
-     *
-     * @param resultClass the class to decode each document into
-     * @param <TResult>   the target document type of the iterable.
-     * @return the list collections iterable interface
-     * @mongodb.driver.manual reference/command/listCollections listCollections
-     */
-    <TResult> ListCollectionsIterable<TResult> listCollections(Class<TResult> resultClass);
 
     /**
      * Finds all the collections in this database.
@@ -312,6 +311,16 @@ public interface MongoDatabase {
     void createCollection(String collectionName, SingleResultCallback<Void> callback);
 
     /**
+     * Create a new collection with the selected options
+     *
+     * @param collectionName the name for the new collection to create
+     * @param options        various options for creating the collection
+     * @param callback       the callback that is completed once the collection has been created
+     * @mongodb.driver.manual reference/command/create Create Command
+     */
+    void createCollection(String collectionName, CreateCollectionOptions options, SingleResultCallback<Void> callback);
+
+    /**
      * Create a new collection with the given name.
      *
      * @param clientSession the client session with which to associate this operation
@@ -322,16 +331,6 @@ public interface MongoDatabase {
      * @mongodb.server.release 3.6
      */
     void createCollection(ClientSession clientSession, String collectionName, SingleResultCallback<Void> callback);
-
-    /**
-     * Create a new collection with the selected options
-     *
-     * @param collectionName the name for the new collection to create
-     * @param options        various options for creating the collection
-     * @param callback       the callback that is completed once the collection has been created
-     * @mongodb.driver.manual reference/command/create Create Command
-     */
-    void createCollection(String collectionName, CreateCollectionOptions options, SingleResultCallback<Void> callback);
 
     /**
      * Create a new collection with the selected options
@@ -360,6 +359,20 @@ public interface MongoDatabase {
      */
     void createView(String viewName, String viewOn, List<? extends Bson> pipeline, SingleResultCallback<Void> callback);
 
+    /**
+     * Creates a view with the given name, backing collection/view name, aggregation pipeline, and options that defines the view.
+     *
+     * @param viewName the name of the view to create
+     * @param viewOn   the backing collection/view for the view
+     * @param pipeline the pipeline that defines the view
+     * @param createViewOptions various options for creating the view
+     * @param callback the callback that is completed once the collection has been created
+     * @mongodb.driver.manual reference/command/create Create Command
+     * @since 3.4
+     * @mongodb.server.release 3.4
+     */
+    void createView(String viewName, String viewOn, List<? extends Bson> pipeline, CreateViewOptions createViewOptions,
+                    SingleResultCallback<Void> callback);
 
     /**
      * Creates a view with the given name, backing collection/view name, and aggregation pipeline that defines the view.
@@ -374,21 +387,6 @@ public interface MongoDatabase {
      * @mongodb.server.release 3.6
      */
     void createView(ClientSession clientSession, String viewName, String viewOn, List<? extends Bson> pipeline,
-                    SingleResultCallback<Void> callback);
-
-    /**
-     * Creates a view with the given name, backing collection/view name, aggregation pipeline, and options that defines the view.
-     *
-     * @param viewName the name of the view to create
-     * @param viewOn   the backing collection/view for the view
-     * @param pipeline the pipeline that defines the view
-     * @param createViewOptions various options for creating the view
-     * @param callback the callback that is completed once the collection has been created
-     * @mongodb.driver.manual reference/command/create Create Command
-     * @since 3.4
-     * @mongodb.server.release 3.4
-     */
-    void createView(String viewName, String viewOn, List<? extends Bson> pipeline, CreateViewOptions createViewOptions,
                     SingleResultCallback<Void> callback);
 
     /**

@@ -39,13 +39,15 @@ public interface MongoClient extends Closeable {
     /**
      * Creates a client session.
      *
+     * <p>Note: ClientSessions cannot be used concurrently, only one can be used at a time.</p>
+     *
      * @param options  the options for the client session
      * @param callback the callback that is passed the clientSession or a {@code MongoClientException} if the MongoDB cluster to which
      *                 this client is connected does not support sessions
      * @mongodb.server.release 3.6
      * @since 3.6
      */
-    void startSession(final ClientSessionOptions options, final SingleResultCallback<ClientSession> callback);
+    void startSession(ClientSessionOptions options, SingleResultCallback<ClientSession> callback);
 
     /**
      * Gets the database with the given name.

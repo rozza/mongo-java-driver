@@ -26,14 +26,12 @@ import com.mongodb.internal.session.ClientSessionImpl;
 import com.mongodb.internal.session.ServerSessionPool;
 import com.mongodb.selector.ServerSelector;
 import com.mongodb.session.ClientSession;
-import com.mongodb.session.ServerSession;
 
 import java.util.List;
 
 import static com.mongodb.assertions.Assertions.isTrue;
 
 class ClientSessionHelper {
-    
     private final MongoClientImpl mongoClient;
     private final ServerSessionPool serverSessionPool;
 
@@ -51,16 +49,15 @@ class ClientSessionHelper {
         }
     }
 
-
     @SuppressWarnings("deprecation")
     void createClientSession(final ClientSessionOptions options, final SingleResultCallback<ClientSession> callback) {
         if (mongoClient.getSettings().getCredentialList().size() > 1) {
             callback.onResult(null, null);
         } else {
-            ClusterDescription clusterDescription = mongoClient.getCluster().getDescription();
-            if (!getServerDescriptionListToConsiderForSessionSupport(clusterDescription).isEmpty()
+            ClusterDescription clusterDescription = mongoClient.getCluster().getCurrentDescription();
+            if (clusterDescription != null && !getServerDescriptionListToConsiderForSessionSupport(clusterDescription).isEmpty()
                     && clusterDescription.getLogicalSessionTimeoutMinutes() != null) {
-                getServerSessionCallback(options, callback).onResult(serverSessionPool.get(), null);
+                callback.onResult(createClientSession(options), null);
             } else {
                 mongoClient.getCluster().selectServerAsync(new ServerSelector() {
                     @Override
@@ -75,12 +72,16 @@ class ClientSessionHelper {
                         } else if (server.getDescription().getLogicalSessionTimeoutMinutes() == null) {
                             callback.onResult(null, null);
                         } else {
-                            getServerSessionCallback(options, callback).onResult(serverSessionPool.get(), null);
+                            callback.onResult(createClientSession(options), null);
                         }
                     }
                 });
             }
         }
+    }
+
+    private ClientSessionImpl createClientSession(final ClientSessionOptions options) {
+        return new ClientSessionImpl(serverSessionPool, mongoClient, options);
     }
 
     @SuppressWarnings("deprecation")
@@ -90,19 +91,5 @@ class ClientSessionHelper {
         } else {
             return clusterDescription.getAnyPrimaryOrSecondary();
         }
-    }
-
-    private SingleResultCallback<ServerSession> getServerSessionCallback(final ClientSessionOptions options,
-                                                                         final SingleResultCallback<ClientSession> callback) {
-        return new SingleResultCallback<ServerSession>() {
-            @Override
-            public void onResult(final ServerSession serverSession, final Throwable t) {
-                if (t != null) {
-                    callback.onResult(null, t);
-                } else {
-                    callback.onResult(new ClientSessionImpl(serverSessionPool, serverSession, mongoClient, options), null);
-                }
-            }
-        };
     }
 }
