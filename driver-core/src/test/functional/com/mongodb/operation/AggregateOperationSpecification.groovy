@@ -212,12 +212,6 @@ class AggregateOperationSpecification extends OperationFunctionalSpecification {
         }
         next == expected
 
-        cleanup:
-        if (cursor != null) {
-            cursor.close()
-            sleep(1000) // Allow time for a potential kill cursors to be called.
-        }
-
         where:
         async << [true, false]
     }

@@ -390,12 +390,6 @@ class ChangeStreamOperationSpecification extends OperationFunctionalSpecificatio
 
         then:
         cursor.hasNext()
-
-        cleanup:
-        if (cursor != null) {
-            cursor.close()
-            sleep(1000) // Allow time for kill cursors to be called.
-        }
     }
 
     private final static CODEC = new BsonDocumentCodec()
