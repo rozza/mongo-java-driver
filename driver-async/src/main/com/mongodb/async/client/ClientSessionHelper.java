@@ -55,7 +55,7 @@ class ClientSessionHelper {
             callback.onResult(null, null);
         } else {
             ClusterDescription clusterDescription = mongoClient.getCluster().getCurrentDescription();
-            if (clusterDescription != null && !getServerDescriptionListToConsiderForSessionSupport(clusterDescription).isEmpty()
+            if (!getServerDescriptionListToConsiderForSessionSupport(clusterDescription).isEmpty()
                     && clusterDescription.getLogicalSessionTimeoutMinutes() != null) {
                 callback.onResult(createClientSession(options), null);
             } else {

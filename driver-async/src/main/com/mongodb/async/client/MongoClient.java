@@ -39,7 +39,7 @@ public interface MongoClient extends Closeable {
     /**
      * Creates a client session.
      *
-     * <p>Note: ClientSessions cannot be used concurrently, only one can be used at a time.</p>
+     * <p>Note: A ClientSession instance can not be used concurrently in multiple asynchronous operations.</p>
      *
      * @param options  the options for the client session
      * @param callback the callback that is passed the clientSession or a {@code MongoClientException} if the MongoDB cluster to which

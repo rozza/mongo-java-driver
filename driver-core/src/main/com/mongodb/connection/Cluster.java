@@ -48,7 +48,7 @@ public interface Cluster extends Closeable {
     /**
      * Get the current description of this cluster.
      *
-     * @return the current ClusterDescription representing the current state of the cluster or null
+     * @return the current ClusterDescription representing the current state of the cluster.
      */
     ClusterDescription getCurrentDescription();
 
