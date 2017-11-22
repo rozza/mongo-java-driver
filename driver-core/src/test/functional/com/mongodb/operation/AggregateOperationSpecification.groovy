@@ -212,9 +212,6 @@ class AggregateOperationSpecification extends OperationFunctionalSpecification {
         }
         next == expected
 
-        cleanup:
-        cursor?.close()
-
         where:
         async << [true, false]
     }

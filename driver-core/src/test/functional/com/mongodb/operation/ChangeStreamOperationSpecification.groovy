@@ -133,7 +133,7 @@ class ChangeStreamOperationSpecification extends OperationFunctionalSpecificatio
         }
 
         cleanup:
-        //cursor?.close()
+        cursor?.close()
 
         where:
         async << [true, false]
@@ -390,9 +390,6 @@ class ChangeStreamOperationSpecification extends OperationFunctionalSpecificatio
 
         then:
         cursor.hasNext()
-
-        cleanup:
-        cursor?.close()
     }
 
     private final static CODEC = new BsonDocumentCodec()
