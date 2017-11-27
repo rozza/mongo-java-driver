@@ -21,6 +21,9 @@ import com.mongodb.client.MongoIterable;
 import com.mongodb.operation.BatchCursor;
 import com.mongodb.operation.ReadOperation;
 import com.mongodb.session.ClientSession;
+import org.bson.BsonDocument;
+import org.bson.codecs.configuration.CodecRegistry;
+import org.bson.conversions.Bson;
 
 import java.util.Collection;
 
@@ -113,6 +116,10 @@ abstract class MongoIterableImpl<TResult> implements MongoIterable<TResult> {
             }
         });
         return target;
+    }
+
+    BsonDocument toBsonDocument(final Bson document, final CodecRegistry codecRegistry) {
+        return document == null ? null : document.toBsonDocument(BsonDocument.class, codecRegistry);
     }
 
     private BatchCursor<TResult> execute() {
