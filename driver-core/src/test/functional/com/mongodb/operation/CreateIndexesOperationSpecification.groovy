@@ -72,6 +72,20 @@ class CreateIndexesOperationSpecification extends OperationFunctionalSpecificati
         async << [true, false]
     }
 
+    def 'should support maxTime'() {
+        given:
+        def keys = new BsonDocument('field', new BsonInt32(1))
+        def operation = new CreateIndexesOperation(getNamespace(), [new IndexRequest(keys)]).maxTime(30, SECONDS)
+
+        when:
+        execute(operation, async)
+
+        then:
+        getUserCreatedIndexes('key') == [field1Index]
+
+        where:
+        async << [true, false]
+    }
 
     def 'should be able to create a single index with a BsonInt64'() {
         given:
@@ -464,7 +478,7 @@ class CreateIndexesOperationSpecification extends OperationFunctionalSpecificati
         }
     }
 
-    def List<Document> getIndexes() {
+    List<Document> getIndexes() {
         def indexes = []
         def cursor = new ListIndexesOperation(getNamespace(), new DocumentCodec()).execute(getBinding())
         while (cursor.hasNext()) {
