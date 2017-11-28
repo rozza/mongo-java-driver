@@ -164,8 +164,12 @@ abstract class MongoIterableImpl<TResult> implements MongoIterable<TResult> {
         executor.execute(asAsyncReadOperation(), readPreference, clientSession, callback);
     }
 
-    BsonDocument toBsonDocument(final Bson document, final CodecRegistry codecRegistry) {
-        return document == null ? null : document.toBsonDocument(BsonDocument.class, codecRegistry);
+    BsonDocument toBsonDocumentOrNull(final Bson document, final CodecRegistry codecRegistry) {
+        return toBsonDocumentOrNull(document, BsonDocument.class, codecRegistry);
+    }
+
+    <T> BsonDocument toBsonDocumentOrNull(final Bson document, final Class<T> documentClass, final CodecRegistry codecRegistry) {
+        return document == null ? null : document.toBsonDocument(documentClass, codecRegistry);
     }
 
     private void loopCursor(final AsyncBatchCursor<TResult> batchCursor, final Block<? super TResult> block,

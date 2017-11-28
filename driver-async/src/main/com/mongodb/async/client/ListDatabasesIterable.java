@@ -52,7 +52,7 @@ public interface ListDatabasesIterable<T> extends MongoIterable<T> {
      * @param filter the filter, which may be null.
      * @return this
      * @since 3.6
-     * @mongodb.server.release 3.6
+     * @mongodb.server.release 3.4.2
      */
     ListDatabasesIterable<T> filter(Bson filter);
 
@@ -63,7 +63,7 @@ public interface ListDatabasesIterable<T> extends MongoIterable<T> {
      * @param nameOnly the nameOnly flag, which may be null
      * @return this
      * @since 3.6
-     * @mongodb.server.release 3.6
+     * @mongodb.server.release 3.4.3
      */
     ListDatabasesIterable<T> nameOnly(Boolean nameOnly);
 }

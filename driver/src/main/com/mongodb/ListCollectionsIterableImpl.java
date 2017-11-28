@@ -68,7 +68,7 @@ final class ListCollectionsIterableImpl<TResult> extends MongoIterableImpl<TResu
     @Override
     ReadOperation<BatchCursor<TResult>> asReadOperation() {
         return new ListCollectionsOperation<TResult>(databaseName, codecRegistry.get(resultClass))
-                       .filter(toBsonDocument(filter, codecRegistry))
+                       .filter(toBsonDocumentOrNull(filter, codecRegistry))
                        .batchSize(getBatchSize() == null ? 0 : getBatchSize())
                        .maxTime(maxTimeMS, MILLISECONDS);
     }

@@ -213,12 +213,12 @@ class MapReduceIterableImpl<TDocument, TResult>  extends MongoIterableImpl<TResu
     private WrappedMapReduceReadOperation<TResult> createMapReduceInlineOperation() {
         final MapReduceWithInlineResultsOperation<TResult> operation = new MapReduceWithInlineResultsOperation<TResult>(namespace,
                 new BsonJavaScript(mapFunction), new BsonJavaScript(reduceFunction), codecRegistry.get(resultClass))
-                .filter(toBsonDocument(filter, codecRegistry))
+                .filter(toBsonDocumentOrNull(filter, documentClass, codecRegistry))
                 .limit(limit)
                 .maxTime(maxTimeMS, MILLISECONDS)
                 .jsMode(jsMode)
-                .scope(toBsonDocument(scope, codecRegistry))
-                .sort(toBsonDocument(sort, codecRegistry))
+                .scope(toBsonDocumentOrNull(scope, documentClass, codecRegistry))
+                .sort(toBsonDocumentOrNull(sort, documentClass, codecRegistry))
                 .verbose(verbose)
                 .readConcern(getReadConcern())
                 .collation(collation);
@@ -231,12 +231,12 @@ class MapReduceIterableImpl<TDocument, TResult>  extends MongoIterableImpl<TResu
     private WrappedMapReduceWriteOperation createMapReduceToCollectionOperation() {
         MapReduceToCollectionOperation operation = new MapReduceToCollectionOperation(namespace, new BsonJavaScript(mapFunction),
                 new BsonJavaScript(reduceFunction), collectionName, writeConcern)
-                .filter(toBsonDocument(filter, codecRegistry))
+                .filter(toBsonDocumentOrNull(filter, documentClass, codecRegistry))
                 .limit(limit)
                 .maxTime(maxTimeMS, MILLISECONDS)
                 .jsMode(jsMode)
-                .scope(toBsonDocument(scope, codecRegistry))
-                .sort(toBsonDocument(sort, codecRegistry))
+                .scope(toBsonDocumentOrNull(scope, documentClass, codecRegistry))
+                .sort(toBsonDocumentOrNull(sort, documentClass, codecRegistry))
                 .verbose(verbose)
                 .action(action.getValue())
                 .nonAtomic(nonAtomic)
