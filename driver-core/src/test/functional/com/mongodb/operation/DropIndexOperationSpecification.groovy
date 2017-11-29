@@ -17,6 +17,7 @@
 package com.mongodb.operation
 
 import com.mongodb.MongoException
+import com.mongodb.MongoExecutionTimeoutException
 import com.mongodb.MongoWriteConcernException
 import com.mongodb.OperationFunctionalSpecification
 import com.mongodb.WriteConcern
@@ -27,9 +28,13 @@ import org.bson.Document
 import org.bson.codecs.DocumentCodec
 import spock.lang.IgnoreIf
 
+import static com.mongodb.ClusterFixture.disableMaxTimeFailPoint
+import static com.mongodb.ClusterFixture.enableMaxTimeFailPoint
 import static com.mongodb.ClusterFixture.getBinding
 import static com.mongodb.ClusterFixture.isDiscoverableReplicaSet
+import static com.mongodb.ClusterFixture.isSharded
 import static com.mongodb.ClusterFixture.serverVersionAtLeast
+import static java.util.concurrent.TimeUnit.MILLISECONDS
 import static java.util.concurrent.TimeUnit.SECONDS
 
 class DropIndexOperationSpecification extends OperationFunctionalSpecification {
@@ -92,18 +97,23 @@ class DropIndexOperationSpecification extends OperationFunctionalSpecification {
         async << [true, false]
     }
 
-    def 'should support maxTime'() {
+    @IgnoreIf({ isSharded() })
+    def 'should throw execution timeout exception from execute'() {
         given:
         def keys = new BsonDocument('theField', new BsonInt32(1))
         collectionHelper.createIndex(keys)
+        def operation = new DropIndexOperation(getNamespace(), keys).maxTime(30, SECONDS)
+
+        enableMaxTimeFailPoint()
 
         when:
-        execute(new DropIndexOperation(getNamespace(), keys).maxTime(30, SECONDS), async)
-        List<Document> indexes = getIndexes()
+        execute(operation, async)
 
         then:
-        indexes.size() == 1
-        indexes[0].name == '_id_'
+        thrown(MongoExecutionTimeoutException)
+
+        cleanup:
+        disableMaxTimeFailPoint()
 
         where:
         async << [true, false]

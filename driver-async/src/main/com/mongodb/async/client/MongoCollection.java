@@ -1212,7 +1212,7 @@ public interface MongoCollection<TDocument> {
     void createIndex(ClientSession clientSession, Bson key, IndexOptions options, SingleResultCallback<String> callback);
 
     /**
-     * Create multiple indexes. If successful, the callback will be executed with a list of the namess of the created index as the result.
+     * Create multiple indexes. If successful, the callback will be executed with a list of the names of the created indexes as the result.
      *
      * @param indexes the list of indexes
      * @param callback the callback that is completed once the indexes has been created
@@ -1222,7 +1222,7 @@ public interface MongoCollection<TDocument> {
     void createIndexes(List<IndexModel> indexes, SingleResultCallback<List<String>> callback);
 
     /**
-     * Create multiple indexes. If successful, the callback will be executed with a list of the namess of the created index as the result.
+     * Create multiple indexes. If successful, the callback will be executed with a list of the names of the created indexes as the result.
      *
      * @param indexes the list of indexes
      * @param createIndexOptions options to use when creating indexes
@@ -1233,7 +1233,7 @@ public interface MongoCollection<TDocument> {
     void createIndexes(List<IndexModel> indexes, CreateIndexOptions createIndexOptions, SingleResultCallback<List<String>> callback);
 
     /**
-     * Create multiple indexes. If successful, the callback will be executed with a list of the namess of the created index as the result.
+     * Create multiple indexes. If successful, the callback will be executed with a list of the names of the created indexes as the result.
      *
      * @param clientSession  the client session with which to associate this operation
      * @param indexes the list of indexes
@@ -1245,7 +1245,7 @@ public interface MongoCollection<TDocument> {
     void createIndexes(ClientSession clientSession, List<IndexModel> indexes, SingleResultCallback<List<String>> callback);
 
     /**
-     * Create multiple indexes. If successful, the callback will be executed with a list of the namess of the created index as the result.
+     * Create multiple indexes. If successful, the callback will be executed with a list of the names of the created indexes as the result.
      *
      * @param clientSession  the client session with which to associate this operation
      * @param indexes the list of indexes
