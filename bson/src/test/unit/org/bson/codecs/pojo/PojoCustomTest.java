@@ -29,6 +29,7 @@ import org.bson.codecs.pojo.entities.ConverterModel;
 import org.bson.codecs.pojo.entities.CustomPropertyCodecOptionalModel;
 import org.bson.codecs.pojo.entities.GenericTreeModel;
 import org.bson.codecs.pojo.entities.InvalidCollectionModel;
+import org.bson.codecs.pojo.entities.ImmutableFinalMapAndCollectionsModel;
 import org.bson.codecs.pojo.entities.InvalidGetterAndSetterModel;
 import org.bson.codecs.pojo.entities.InvalidMapModel;
 import org.bson.codecs.pojo.entities.InvalidMapPropertyCodecProvider;
@@ -59,6 +60,7 @@ import static org.bson.codecs.configuration.CodecRegistries.fromCodecs;
 import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
 import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
 import static org.bson.codecs.pojo.Conventions.NO_CONVENTIONS;
+import static org.junit.Assert.assertTrue;
 
 public final class PojoCustomTest extends PojoTestCase {
 
@@ -386,5 +388,17 @@ public final class PojoCustomTest extends PojoTestCase {
     @Test(expected = CodecConfigurationException.class)
     public void testInvalidGetterAndSetterModelDecoding() {
         decodingShouldFail(getCodec(InvalidGetterAndSetterModel.class), "{'integerField': 42, 'stringField': 'myString'}");
+    }
+
+    @Test(expected = CodecConfigurationException.class)
+    public void testImmutableFinalMapAndCollectionsModel() {
+        PojoCodecProvider.Builder builder = getPojoCodecProviderBuilder(ImmutableFinalMapAndCollectionsModel.class);
+        ImmutableFinalMapAndCollectionsModel initialModel = getImmutableFinalMapAndCollectionsModel();
+        ImmutableFinalMapAndCollectionsModel decodedModel = new ImmutableFinalMapAndCollectionsModel();
+        encodesTo(builder, initialModel, "{ listField: [1, 2, 3], mapField: {a: 1, b: 2}}");
+        decodesTo(builder, "{ listField: [1, 2, 3], mapField: {a: 1, b: 2}}", decodedModel);
+
+        assertTrue(decodedModel.getListField().isEmpty());
+        assertTrue(decodedModel.getMapField().isEmpty());
     }
 }
