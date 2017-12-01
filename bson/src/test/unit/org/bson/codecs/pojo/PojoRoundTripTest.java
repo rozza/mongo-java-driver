@@ -35,6 +35,7 @@ import org.bson.codecs.pojo.entities.InterfaceModelImpl;
 import org.bson.codecs.pojo.entities.InterfaceUpperBoundsModelAbstractImpl;
 import org.bson.codecs.pojo.entities.MultipleBoundsModel;
 import org.bson.codecs.pojo.entities.MultipleLevelGenericModel;
+import org.bson.codecs.pojo.entities.MutableFinalMapAndCollectionsModel;
 import org.bson.codecs.pojo.entities.NestedFieldReusingClassTypeParameter;
 import org.bson.codecs.pojo.entities.NestedGenericHolderFieldWithMultipleTypeParamsModel;
 import org.bson.codecs.pojo.entities.NestedGenericHolderMapModel;
@@ -350,6 +351,10 @@ public final class PojoRoundTripTest extends PojoTestCase {
                 new FieldAndPropertyTypeMismatchModel("foo"),
                 getPojoCodecProviderBuilder(FieldAndPropertyTypeMismatchModel.class),
                 "{'stringField': 'foo'}"));
+
+        data.add(new TestData("Mutable final map and collections model can roundtrip",
+                getMutableFinalMapAndCollectionsModel(), getPojoCodecProviderBuilder(MutableFinalMapAndCollectionsModel.class),
+                "{listField: [1, 2, 3], mapField: {a: 1, b: 2} }"));
 
         return data;
     }

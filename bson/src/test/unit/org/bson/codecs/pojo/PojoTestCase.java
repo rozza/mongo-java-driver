@@ -34,8 +34,10 @@ import org.bson.codecs.pojo.entities.ConcreteCollectionsModel;
 import org.bson.codecs.pojo.entities.ConventionModel;
 import org.bson.codecs.pojo.entities.GenericHolderModel;
 import org.bson.codecs.pojo.entities.GenericTreeModel;
+import org.bson.codecs.pojo.entities.ImmutableFinalMapAndCollectionsModel;
 import org.bson.codecs.pojo.entities.InvalidMapModel;
 import org.bson.codecs.pojo.entities.MultipleBoundsModel;
+import org.bson.codecs.pojo.entities.MutableFinalMapAndCollectionsModel;
 import org.bson.codecs.pojo.entities.NestedGenericHolderFieldWithMultipleTypeParamsModel;
 import org.bson.codecs.pojo.entities.NestedGenericHolderMapModel;
 import org.bson.codecs.pojo.entities.NestedGenericHolderModel;
@@ -345,6 +347,20 @@ abstract class PojoTestCase {
         map.put(1, 1);
         map.put(2, 2);
         return new InvalidMapModel(map);
+    }
+
+    static MutableFinalMapAndCollectionsModel getMutableFinalMapAndCollectionsModel() {
+        Map<String, Integer> map = new HashMap<String, Integer>();
+        map.put("a", 1);
+        map.put("b", 2);
+        return new MutableFinalMapAndCollectionsModel(asList(1, 2, 3), map);
+    }
+
+    static ImmutableFinalMapAndCollectionsModel getImmutableFinalMapAndCollectionsModel() {
+        Map<String, Integer> map = new HashMap<String, Integer>();
+        map.put("a", 1);
+        map.put("b", 2);
+        return new ImmutableFinalMapAndCollectionsModel(asList(1, 2, 3), map);
     }
 
     static final String SIMPLE_MODEL_JSON = "{'integerField': 42, 'stringField': 'myString'}";
