@@ -14,26 +14,21 @@
  * limitations under the License.
  */
 
-package org.bson.codecs.pojo.entities;
+package org.bson.codecs.pojo.entities.conventions;
 
-import java.util.Map;
+import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 
-public final class InvalidMapModel {
-    private Map<Integer, Integer> invalidMap;
+@BsonDiscriminator
+public class Subclass2Model extends SuperClassModel {
+    private int integer;
 
-    public InvalidMapModel() {
+    public int getInteger() {
+        return integer;
     }
 
-    public InvalidMapModel(final Map<Integer, Integer> invalidMap) {
-        this.invalidMap = invalidMap;
-    }
-
-    public Map<Integer, Integer> getInvalidMap() {
-        return invalidMap;
-    }
-
-    public void setInvalidMap(final Map<Integer, Integer> invalidMap) {
-        this.invalidMap = invalidMap;
+    public Subclass2Model setInteger(final int integer) {
+        this.integer = integer;
+        return this;
     }
 
     @Override
@@ -44,14 +39,26 @@ public final class InvalidMapModel {
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
+        if (!super.equals(o)) {
+            return false;
+        }
 
-        InvalidMapModel that = (InvalidMapModel) o;
+        Subclass2Model that = (Subclass2Model) o;
 
-        return invalidMap != null ? invalidMap.equals(that.invalidMap) : that.invalidMap == null;
+        return getInteger() == that.getInteger();
     }
 
     @Override
     public int hashCode() {
-        return invalidMap != null ? invalidMap.hashCode() : 0;
+        int result = super.hashCode();
+        result = 31 * result + getInteger();
+        return result;
+    }
+
+    @Override
+    public String toString() {
+        return "Subclass2Model{"
+                + "integer=" + integer
+                + "} " + super.toString();
     }
 }

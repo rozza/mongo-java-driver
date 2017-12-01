@@ -16,24 +16,24 @@
 
 package org.bson.codecs.pojo.entities;
 
-import java.util.Map;
+import java.util.List;
 
-public final class InvalidMapModel {
-    private Map<Integer, Integer> invalidMap;
+public class CollectionSpecificReturnTypeModel {
+    private ImmutableList<String> properties;
 
-    public InvalidMapModel() {
+    public CollectionSpecificReturnTypeModel() {
     }
 
-    public InvalidMapModel(final Map<Integer, Integer> invalidMap) {
-        this.invalidMap = invalidMap;
+    public CollectionSpecificReturnTypeModel(final List<String> properties) {
+        this.properties = ImmutableList.copyOf(properties);
     }
 
-    public Map<Integer, Integer> getInvalidMap() {
-        return invalidMap;
+    public ImmutableList<String> getProperties() {
+        return properties;
     }
 
-    public void setInvalidMap(final Map<Integer, Integer> invalidMap) {
-        this.invalidMap = invalidMap;
+    public void setProperties(final List<String> properties) {
+        this.properties = ImmutableList.copyOf(properties);
     }
 
     @Override
@@ -45,13 +45,13 @@ public final class InvalidMapModel {
             return false;
         }
 
-        InvalidMapModel that = (InvalidMapModel) o;
+        CollectionSpecificReturnTypeModel that = (CollectionSpecificReturnTypeModel) o;
 
-        return invalidMap != null ? invalidMap.equals(that.invalidMap) : that.invalidMap == null;
+        return properties != null ? properties.equals(that.properties) : that.properties == null;
     }
 
     @Override
     public int hashCode() {
-        return invalidMap != null ? invalidMap.hashCode() : 0;
+        return properties != null ? properties.hashCode() : 0;
     }
 }

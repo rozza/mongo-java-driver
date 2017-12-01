@@ -14,26 +14,21 @@
  * limitations under the License.
  */
 
-package org.bson.codecs.pojo.entities;
+package org.bson.codecs.pojo.entities.conventions;
 
-import java.util.Map;
+import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 
-public final class InvalidMapModel {
-    private Map<Integer, Integer> invalidMap;
+@BsonDiscriminator
+public abstract class SuperClassModel {
+    private boolean value;
 
-    public InvalidMapModel() {
+    public boolean isValue() {
+        return value;
     }
 
-    public InvalidMapModel(final Map<Integer, Integer> invalidMap) {
-        this.invalidMap = invalidMap;
-    }
-
-    public Map<Integer, Integer> getInvalidMap() {
-        return invalidMap;
-    }
-
-    public void setInvalidMap(final Map<Integer, Integer> invalidMap) {
-        this.invalidMap = invalidMap;
+    public SuperClassModel setValue(final boolean value) {
+        this.value = value;
+        return this;
     }
 
     @Override
@@ -45,13 +40,20 @@ public final class InvalidMapModel {
             return false;
         }
 
-        InvalidMapModel that = (InvalidMapModel) o;
+        SuperClassModel that = (SuperClassModel) o;
 
-        return invalidMap != null ? invalidMap.equals(that.invalidMap) : that.invalidMap == null;
+        return isValue() == that.isValue();
     }
 
     @Override
     public int hashCode() {
-        return invalidMap != null ? invalidMap.hashCode() : 0;
+        return (isValue() ? 1 : 0);
+    }
+
+    @Override
+    public String toString() {
+        return "SuperClassModel{"
+                + "value=" + value
+                + '}';
     }
 }

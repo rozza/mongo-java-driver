@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,24 +16,25 @@
 
 package org.bson.codecs.pojo.entities;
 
-import java.util.Map;
+import java.util.List;
 
-public final class InvalidMapModel {
-    private Map<Integer, Integer> invalidMap;
+public class InvalidCollectionModel {
 
-    public InvalidMapModel() {
+    private InvalidCollection collectionField;
+
+    public InvalidCollectionModel() {
     }
 
-    public InvalidMapModel(final Map<Integer, Integer> invalidMap) {
-        this.invalidMap = invalidMap;
+    public InvalidCollectionModel(final List<Integer> list) {
+        this.collectionField = new InvalidCollection(list);
     }
 
-    public Map<Integer, Integer> getInvalidMap() {
-        return invalidMap;
+    public InvalidCollection getCollectionField() {
+        return collectionField;
     }
 
-    public void setInvalidMap(final Map<Integer, Integer> invalidMap) {
-        this.invalidMap = invalidMap;
+    public void setCollectionField(final InvalidCollection collectionField) {
+        this.collectionField = collectionField;
     }
 
     @Override
@@ -44,14 +45,12 @@ public final class InvalidMapModel {
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
-
-        InvalidMapModel that = (InvalidMapModel) o;
-
-        return invalidMap != null ? invalidMap.equals(that.invalidMap) : that.invalidMap == null;
+        InvalidCollectionModel that = (InvalidCollectionModel) o;
+        return collectionField.equals(that.collectionField);
     }
 
     @Override
     public int hashCode() {
-        return invalidMap != null ? invalidMap.hashCode() : 0;
+        return collectionField.hashCode();
     }
 }

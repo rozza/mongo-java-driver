@@ -44,23 +44,36 @@ final class PojoCodecImpl<T> extends PojoCodec<T> {
     private static final Logger LOGGER = Loggers.getLogger("PojoCodec");
     private final ClassModel<T> classModel;
     private final CodecRegistry registry;
+    private final PropertyCodecRegistry propertyCodecRegistry;
     private final DiscriminatorLookup discriminatorLookup;
     private final ConcurrentMap<ClassModel<?>, Codec<?>> codecCache;
     private final boolean specialized;
 
-
-    PojoCodecImpl(final ClassModel<T> classModel, final CodecRegistry registry, final DiscriminatorLookup discriminatorLookup) {
-        this(classModel, registry, discriminatorLookup, new ConcurrentHashMap<ClassModel<?>, Codec<?>>(), shouldSpecialize(classModel));
+    PojoCodecImpl(final ClassModel<T> classModel, final CodecRegistry codecRegistry,
+                  final List<PropertyCodecProvider> propertyCodecProviders, final DiscriminatorLookup discriminatorLookup) {
+        this.classModel = classModel;
+        this.registry = fromRegistries(fromCodecs(this), codecRegistry);
+        this.discriminatorLookup = discriminatorLookup;
+        this.codecCache = new ConcurrentHashMap<ClassModel<?>, Codec<?>>();
+        this.propertyCodecRegistry = new PropertyCodecRegistryImpl(this, registry, propertyCodecProviders);
+        this.specialized = shouldSpecialize(classModel);
+        specialize();
     }
 
-    PojoCodecImpl(final ClassModel<T> classModel, final CodecRegistry registry, final DiscriminatorLookup discriminatorLookup,
-                  final ConcurrentMap<ClassModel<?>, Codec<?>> codecCache, final boolean specialized) {
+    PojoCodecImpl(final ClassModel<T> classModel, final CodecRegistry registry, final PropertyCodecRegistry propertyCodecRegistry,
+                  final DiscriminatorLookup discriminatorLookup, final ConcurrentMap<ClassModel<?>, Codec<?>> codecCache,
+                  final boolean specialized) {
         this.classModel = classModel;
         this.registry = fromRegistries(fromCodecs(this), registry);
         this.discriminatorLookup = discriminatorLookup;
         this.codecCache = codecCache;
+        this.propertyCodecRegistry = propertyCodecRegistry;
         this.specialized = specialized;
 
+        specialize();
+    }
+
+    private void specialize() {
         if (specialized) {
             codecCache.put(classModel, this);
             for (PropertyModel<?> propertyModel : classModel.getPropertyModels()) {
@@ -69,29 +82,34 @@ final class PojoCodecImpl<T> extends PojoCodec<T> {
         }
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public void encode(final BsonWriter writer, final T value, final EncoderContext encoderContext) {
         if (!specialized) {
             throw new CodecConfigurationException(format("%s contains generic types that have not been specialised.%n"
                             + "Top level classes with generic types are not supported by the PojoCodec.", classModel.getName()));
         }
-        writer.writeStartDocument();
-        PropertyModel<?> idPropertyModel = classModel.getIdPropertyModel();
-        if (idPropertyModel != null) {
-            encodeProperty(writer, value, encoderContext, idPropertyModel);
-        }
-
-        if (classModel.useDiscriminator()) {
-            writer.writeString(classModel.getDiscriminatorKey(), classModel.getDiscriminator());
-        }
-
-        for (PropertyModel<?> propertyModel : classModel.getPropertyModels()) {
-            if (propertyModel.equals(classModel.getIdPropertyModel())) {
-                continue;
+        if (areEquivalentTypes(value.getClass(), classModel.getType())) {
+            writer.writeStartDocument();
+            PropertyModel<?> idPropertyModel = classModel.getIdPropertyModel();
+            if (idPropertyModel != null) {
+                encodeProperty(writer, value, encoderContext, idPropertyModel);
             }
-            encodeProperty(writer, value, encoderContext, propertyModel);
+
+            if (classModel.useDiscriminator()) {
+                writer.writeString(classModel.getDiscriminatorKey(), classModel.getDiscriminator());
+            }
+
+            for (PropertyModel<?> propertyModel : classModel.getPropertyModels()) {
+                if (propertyModel.equals(classModel.getIdPropertyModel())) {
+                    continue;
+                }
+                encodeProperty(writer, value, encoderContext, propertyModel);
+            }
+            writer.writeEndDocument();
+        } else {
+            ((Codec<T>) registry.get(value.getClass())).encode(writer, value, encoderContext);
         }
-        writer.writeEndDocument();
     }
 
     @Override
@@ -134,7 +152,7 @@ final class PojoCodecImpl<T> extends PojoCodec<T> {
                 if (propertyValue == null) {
                     writer.writeNull();
                 } else {
-                    getInstanceCodec(propertyModel, propertyValue.getClass()).encode(writer, propertyValue, encoderContext);
+                    propertyModel.getCachedCodec().encode(writer, propertyValue, encoderContext);
                 }
             }
         }
@@ -184,39 +202,8 @@ final class PojoCodecImpl<T> extends PojoCodec<T> {
 
     private <S> void addToCache(final PropertyModel<S> propertyModel) {
         Codec<S> codec = propertyModel.getCodec() != null ? propertyModel.getCodec()
-                : specializePojoCodec(propertyModel, getCodecFromTypeData(propertyModel.getTypeData()));
+                : specializePojoCodec(propertyModel, propertyCodecRegistry.get(propertyModel.getTypeData()));
         propertyModel.cachedCodec(codec);
-    }
-
-    @SuppressWarnings({"rawtypes", "unchecked"})
-    private  <S> Codec<S> getCodecFromTypeData(final TypeData<S> typeData) {
-        Codec<S> codec = null;
-        Class<S> head = typeData.getType();
-
-        if (Collection.class.isAssignableFrom(head) && typeData.getTypeParameters().size() == 1) {
-            codec = new CollectionCodec(head, getCodecFromTypeData(typeData.getTypeParameters().get(0)));
-        } else if (Map.class.isAssignableFrom(head) && typeData.getTypeParameters().size() == 2) {
-            codec = new MapCodec(head, getCodecFromTypeData(typeData.getTypeParameters().get(1)));
-        } else if (Enum.class.isAssignableFrom(head)) {
-            try {
-                codec = registry.get(head);
-            } catch (CodecConfigurationException e) {
-                codec = new EnumCodec((Class<Enum<?>>) head);
-            }
-        } else {
-            codec = getCodecFromClass(head);
-        }
-
-        return codec;
-    }
-
-    @SuppressWarnings("unchecked")
-    private <S, V> Codec<S> getInstanceCodec(final PropertyModel<S> propertyModel, final Class<V> instanceType) {
-        Codec<S> codec = propertyModel.getCachedCodec();
-        if (!areEquivalentTypes(codec.getEncoderClass(), instanceType)) {
-            codec = (Codec<S>) registry.get(instanceType);
-        }
-        return codec;
     }
 
     private <S, V> boolean areEquivalentTypes(final Class<S> t1, final Class<V> t2) {
@@ -231,18 +218,6 @@ final class PojoCodecImpl<T> extends PojoCodec<T> {
     }
 
     @SuppressWarnings("unchecked")
-    private <S> Codec<S> getCodecFromClass(final Class<S> clazz) {
-        Codec<S> codec = null;
-        if (classModel.getType().equals(clazz)) {
-            codec = (Codec<S>) this;
-        }
-        if (codec == null) {
-            codec = registry.get(clazz);
-        }
-        return codec;
-    }
-
-    @SuppressWarnings("unchecked")
     private <S> Codec<S> specializePojoCodec(final PropertyModel<S> propertyModel, final Codec<S> defaultCodec) {
         Codec<S> codec = defaultCodec;
         if (codec != null && codec instanceof PojoCodec) {
@@ -251,7 +226,7 @@ final class PojoCodecImpl<T> extends PojoCodec<T> {
             if (codecCache.containsKey(specialized)) {
                 codec = (Codec<S>) codecCache.get(specialized);
             } else {
-                codec = new LazyPojoCodec<S>(specialized, registry, discriminatorLookup, codecCache);
+                codec = new LazyPojoCodec<S>(specialized, registry, propertyCodecRegistry, discriminatorLookup, codecCache);
             }
         }
         return codec;
@@ -294,7 +269,7 @@ final class PojoCodecImpl<T> extends PojoCodec<T> {
     @SuppressWarnings("unchecked")
     private <V> PropertyModel<V> getSpecializedPropertyModel(final PropertyModel<V> propertyModel, final TypeParameterMap typeParameterMap,
                                                              final List<TypeData<?>> propertyTypeParameters) {
-        TypeData<V> specializedPropertyType = propertyModel.getTypeData();
+        TypeData<V> specializedPropertyType;
         Map<Integer, Integer> propertyToClassParamIndexMap = typeParameterMap.getPropertyToClassParamIndexMap();
         Integer classTypeParamRepresentsWholeProperty = propertyToClassParamIndexMap.get(-1);
         if (classTypeParamRepresentsWholeProperty != null) {
@@ -366,5 +341,4 @@ final class PojoCodecImpl<T> extends PojoCodec<T> {
         }
         return true;
     }
-
 }

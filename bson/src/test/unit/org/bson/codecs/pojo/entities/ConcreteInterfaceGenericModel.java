@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,24 +16,24 @@
 
 package org.bson.codecs.pojo.entities;
 
-import java.util.Map;
+public class ConcreteInterfaceGenericModel implements InterfaceGenericModel<String> {
+    private String property;
 
-public final class InvalidMapModel {
-    private Map<Integer, Integer> invalidMap;
-
-    public InvalidMapModel() {
+    public ConcreteInterfaceGenericModel() {
     }
 
-    public InvalidMapModel(final Map<Integer, Integer> invalidMap) {
-        this.invalidMap = invalidMap;
+    public ConcreteInterfaceGenericModel(final String property) {
+        this.property = property;
     }
 
-    public Map<Integer, Integer> getInvalidMap() {
-        return invalidMap;
+    @Override
+    public String getPropertyA() {
+        return property;
     }
 
-    public void setInvalidMap(final Map<Integer, Integer> invalidMap) {
-        this.invalidMap = invalidMap;
+    @Override
+    public void setPropertyA(final String property) {
+        this.property = property;
     }
 
     @Override
@@ -45,13 +45,13 @@ public final class InvalidMapModel {
             return false;
         }
 
-        InvalidMapModel that = (InvalidMapModel) o;
+        ConcreteInterfaceGenericModel that = (ConcreteInterfaceGenericModel) o;
 
-        return invalidMap != null ? invalidMap.equals(that.invalidMap) : that.invalidMap == null;
+        return property != null ? property.equals(that.property) : that.property == null;
     }
 
     @Override
     public int hashCode() {
-        return invalidMap != null ? invalidMap.hashCode() : 0;
+        return property != null ? property.hashCode() : 0;
     }
 }

@@ -16,24 +16,21 @@
 
 package org.bson.codecs.pojo.entities;
 
-import java.util.Map;
+import org.bson.codecs.pojo.annotations.BsonCreator;
+import org.bson.codecs.pojo.annotations.BsonProperty;
 
-public final class InvalidMapModel {
-    private Map<Integer, Integer> invalidMap;
+import java.util.List;
 
-    public InvalidMapModel() {
+public class CollectionSpecificReturnTypeCreatorModel extends AbstractCollectionSpecificReturnTypeCreatorModel {
+    private final ImmutableList<String> properties;
+
+    @BsonCreator
+    public CollectionSpecificReturnTypeCreatorModel(@BsonProperty("properties") final List<String> properties) {
+        this.properties = ImmutableList.copyOf(properties);
     }
 
-    public InvalidMapModel(final Map<Integer, Integer> invalidMap) {
-        this.invalidMap = invalidMap;
-    }
-
-    public Map<Integer, Integer> getInvalidMap() {
-        return invalidMap;
-    }
-
-    public void setInvalidMap(final Map<Integer, Integer> invalidMap) {
-        this.invalidMap = invalidMap;
+    public ImmutableList<String> getProperties() {
+        return properties;
     }
 
     @Override
@@ -45,13 +42,13 @@ public final class InvalidMapModel {
             return false;
         }
 
-        InvalidMapModel that = (InvalidMapModel) o;
+        CollectionSpecificReturnTypeCreatorModel that = (CollectionSpecificReturnTypeCreatorModel) o;
 
-        return invalidMap != null ? invalidMap.equals(that.invalidMap) : that.invalidMap == null;
+        return properties != null ? properties.equals(that.properties) : that.properties == null;
     }
 
     @Override
     public int hashCode() {
-        return invalidMap != null ? invalidMap.hashCode() : 0;
+        return properties != null ? properties.hashCode() : 0;
     }
 }

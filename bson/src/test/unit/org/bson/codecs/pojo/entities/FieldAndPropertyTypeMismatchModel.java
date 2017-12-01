@@ -16,24 +16,24 @@
 
 package org.bson.codecs.pojo.entities;
 
-import java.util.Map;
+import java.util.Arrays;
 
-public final class InvalidMapModel {
-    private Map<Integer, Integer> invalidMap;
+public class FieldAndPropertyTypeMismatchModel {
+    private byte[] stringField;
 
-    public InvalidMapModel() {
+    public FieldAndPropertyTypeMismatchModel() {
     }
 
-    public InvalidMapModel(final Map<Integer, Integer> invalidMap) {
-        this.invalidMap = invalidMap;
+    public FieldAndPropertyTypeMismatchModel(final String stringField) {
+        this.stringField = stringField.getBytes();
     }
 
-    public Map<Integer, Integer> getInvalidMap() {
-        return invalidMap;
+    public String getStringField() {
+        return new String(stringField);
     }
 
-    public void setInvalidMap(final Map<Integer, Integer> invalidMap) {
-        this.invalidMap = invalidMap;
+    public void setStringField(final String stringField) {
+        this.stringField = stringField.getBytes();
     }
 
     @Override
@@ -45,13 +45,20 @@ public final class InvalidMapModel {
             return false;
         }
 
-        InvalidMapModel that = (InvalidMapModel) o;
+        FieldAndPropertyTypeMismatchModel that = (FieldAndPropertyTypeMismatchModel) o;
 
-        return invalidMap != null ? invalidMap.equals(that.invalidMap) : that.invalidMap == null;
+        return Arrays.equals(stringField, that.stringField);
     }
 
     @Override
     public int hashCode() {
-        return invalidMap != null ? invalidMap.hashCode() : 0;
+        return Arrays.hashCode(stringField);
+    }
+
+    @Override
+    public String toString() {
+        return "FieldAndPropertyTypeMismatchModel{"
+                + "stringField=" + new String(stringField)
+                + '}';
     }
 }

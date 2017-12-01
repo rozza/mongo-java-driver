@@ -16,22 +16,23 @@
 
 package org.bson.codecs.pojo;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.lang.reflect.TypeVariable;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import static java.lang.String.format;
 import static org.bson.assertions.Assertions.notNull;
+import static org.bson.codecs.pojo.PropertyReflectionUtils.isGetter;
 
 
-final class TypeData<T> {
+final class TypeData<T> implements TypeWithTypeParameters<T> {
     private final Class<T> type;
     private final List<TypeData<?>> typeParameters;
 
@@ -46,9 +47,49 @@ final class TypeData<T> {
         return new Builder<T>(notNull("type", type));
     }
 
+    public static TypeData<?> newInstance(final Method method) {
+        if (isGetter(method)) {
+            return newInstance(method.getGenericReturnType(), method.getReturnType());
+        } else {
+            return newInstance(method.getGenericParameterTypes()[0], method.getParameterTypes()[0]);
+        }
+    }
+
+    public static TypeData<?> newInstance(final Field field) {
+        return newInstance(field.getGenericType(), field.getType());
+    }
+
+    public static <T> TypeData<T> newInstance(final Type genericType, final Class<T> clazz) {
+        TypeData.Builder<T> builder = TypeData.builder(clazz);
+        if (genericType instanceof ParameterizedType) {
+            ParameterizedType pType = (ParameterizedType) genericType;
+            for (Type argType : pType.getActualTypeArguments()) {
+                getNestedTypeData(builder, argType);
+            }
+        }
+        return builder.build();
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private static <T> void getNestedTypeData(final TypeData.Builder<T> builder, final Type type) {
+        if (type instanceof ParameterizedType) {
+            ParameterizedType pType = (ParameterizedType) type;
+            TypeData.Builder paramBuilder = TypeData.builder((Class) pType.getRawType());
+            for (Type argType : pType.getActualTypeArguments()) {
+                getNestedTypeData(paramBuilder, argType);
+            }
+            builder.addTypeParameter(paramBuilder.build());
+        } else if (type instanceof TypeVariable) {
+            builder.addTypeParameter(TypeData.builder(Object.class).build());
+        } else if (type instanceof Class) {
+            builder.addTypeParameter(TypeData.builder((Class) type).build());
+        }
+    }
+
     /**
      * @return the class this {@code ClassTypeData} represents
      */
+    @Override
     public Class<T> getType() {
         return type;
     }
@@ -56,6 +97,7 @@ final class TypeData<T> {
     /**
      * @return the type parameters for the class
      */
+    @Override
     public List<TypeData<?>> getTypeParameters() {
         return typeParameters;
     }
@@ -103,53 +145,9 @@ final class TypeData<T> {
          * @return the class type data
          */
         public TypeData<T> build() {
-            validate();
             return new TypeData<T>(type, Collections.unmodifiableList(typeParameters));
         }
-
-        private void validate() {
-            if (Collection.class.isAssignableFrom(type)) {
-                if (typeParameters.size() == 0) {
-                    for (Type interfaceType : type.getGenericInterfaces()) {
-                        if (interfaceType instanceof ParameterizedType) {
-                            ParameterizedType pType = (ParameterizedType) interfaceType;
-                            if (Collection.class.equals((Class<?>) pType.getRawType())) {
-                                Type rawListType = pType.getActualTypeArguments()[0];
-                                if (!(rawListType instanceof Class<?>)) {
-                                    throw new IllegalStateException("Invalid Collection type. Collections must have a defined type.");
-                                }
-                            }
-                        }
-                    }
-                } else if (typeParameters.size() > 1) {
-                    throw new IllegalStateException("Invalid Collection type. Collections must have a single type parameter defined.");
-                }
-            } else if (Map.class.isAssignableFrom(type)) {
-                Class<?> keyType = Object.class;
-                if (typeParameters.size() != 2) {
-                    for (Type interfaceType : type.getGenericInterfaces()) {
-                        if (interfaceType instanceof ParameterizedType) {
-                            ParameterizedType pType = (ParameterizedType) interfaceType;
-                            if (Map.class.equals((Class<?>) pType.getRawType())) {
-                                Type rawKeyType = pType.getActualTypeArguments()[0];
-                                if (!(rawKeyType instanceof Class<?>)) {
-                                    throw new IllegalStateException("Invalid Map type. Maps MUST have string keys");
-                                } else {
-                                    keyType = (Class<?>) rawKeyType;
-                                }
-                            }
-                        }
-                    }
-                } else {
-                    keyType = typeParameters.get(0).getType();
-                }
-                if (!keyType.equals(String.class)) {
-                    throw new IllegalStateException(format("Invalid Map type. Maps MUST have string keys, found %s instead.", keyType));
-                }
-            }
-        }
     }
-
 
     @Override
     public String toString() {
@@ -207,25 +205,12 @@ final class TypeData<T> {
     }
 
     private TypeData(final Class<T> type, final List<TypeData<?>> typeParameters) {
-        this.type = getTypeClass(type);
+        this.type = boxType(type);
         this.typeParameters = typeParameters;
     }
 
     boolean isAssignableFrom(final Class<?> cls) {
-        return type.isAssignableFrom(getTypeClass(cls));
-    }
-
-    @SuppressWarnings("unchecked")
-    private <S> Class<S> getTypeClass(final Class<S> type) {
-        Class<S> instanceType = boxType(type);
-        if (type.equals(Map.class)) {
-            instanceType = (Class<S>) HashMap.class;
-        } else if (type.equals(List.class) || type.equals(Collection.class)) {
-            instanceType = (Class<S>) ArrayList.class;
-        } else if (type.equals(Set.class)) {
-            instanceType = (Class<S>) HashSet.class;
-        }
-        return instanceType;
+        return type.isAssignableFrom(boxType(cls));
     }
 
     @SuppressWarnings("unchecked")

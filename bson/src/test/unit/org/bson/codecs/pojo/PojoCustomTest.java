@@ -26,9 +26,15 @@ import org.bson.codecs.pojo.entities.ConcreteCollectionsModel;
 import org.bson.codecs.pojo.entities.ConstructorNotPublicModel;
 import org.bson.codecs.pojo.entities.ConventionModel;
 import org.bson.codecs.pojo.entities.ConverterModel;
+import org.bson.codecs.pojo.entities.CustomPropertyCodecOptionalModel;
 import org.bson.codecs.pojo.entities.GenericTreeModel;
+import org.bson.codecs.pojo.entities.InvalidCollectionModel;
 import org.bson.codecs.pojo.entities.InvalidGetterAndSetterModel;
+import org.bson.codecs.pojo.entities.InvalidMapModel;
+import org.bson.codecs.pojo.entities.InvalidMapPropertyCodecProvider;
 import org.bson.codecs.pojo.entities.InvalidSetterArgsModel;
+import org.bson.codecs.pojo.entities.Optional;
+import org.bson.codecs.pojo.entities.OptionalPropertyCodecProvider;
 import org.bson.codecs.pojo.entities.PrimitivesModel;
 import org.bson.codecs.pojo.entities.SimpleEnum;
 import org.bson.codecs.pojo.entities.SimpleEnumModel;
@@ -48,6 +54,7 @@ import java.util.List;
 import java.util.Map;
 
 import static java.lang.String.format;
+import static java.util.Arrays.asList;
 import static org.bson.codecs.configuration.CodecRegistries.fromCodecs;
 import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
 import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
@@ -260,6 +267,47 @@ public final class PojoCustomTest extends PojoTestCase {
 
         roundTrip(getPojoCodecProviderBuilder(classModelBuilder), model,
                 "{'myGenericField': {'$numberLong': '5'}}");
+    }
+
+    @Test
+    public void testCustomRegisteredPropertyCodecWithValue() {
+        CustomPropertyCodecOptionalModel model = new CustomPropertyCodecOptionalModel(Optional.of("foo"));
+        roundTrip(getPojoCodecProviderBuilder(CustomPropertyCodecOptionalModel.class).register(new OptionalPropertyCodecProvider()),
+                model, "{'optionalField': 'foo'}");
+    }
+
+    @Test
+    public void testCustomRegisteredPropertyCodecOmittedValue() {
+        CustomPropertyCodecOptionalModel model = new CustomPropertyCodecOptionalModel(Optional.<String>empty());
+        roundTrip(getPojoCodecProviderBuilder(CustomPropertyCodecOptionalModel.class).register(new OptionalPropertyCodecProvider()),
+                model, "{'optionalField': null}");
+    }
+
+    @Test(expected = CodecConfigurationException.class)
+    public void testEncodingInvalidMapModel() {
+        encodesTo(getPojoCodecProviderBuilder(InvalidMapModel.class), getInvalidMapModel(), "{'invalidMap': {'1': 1, '2': 2}}");
+    }
+
+    @Test(expected = CodecConfigurationException.class)
+    public void testDecodingInvalidMapModel() {
+        decodingShouldFail(getCodec(InvalidMapModel.class), "{'invalidMap': {'1': 1, '2': 2}}");
+    }
+
+    @Test(expected = CodecConfigurationException.class)
+    public void testEncodingInvalidCollectionModel() {
+        encodesTo(getPojoCodecProviderBuilder(InvalidCollectionModel.class), new InvalidCollectionModel(asList(1, 2, 3)),
+                "{collectionField: [1, 2, 3]}");
+    }
+
+    @Test(expected = CodecConfigurationException.class)
+    public void testDecodingInvalidCollectionModel() {
+        decodingShouldFail(getCodec(InvalidCollectionModel.class), "{collectionField: [1, 2, 3]}");
+    }
+
+    @Test
+    public void testInvalidMapModelWithCustomPropertyCodecProvider() {
+        encodesTo(getPojoCodecProviderBuilder(InvalidMapModel.class).register(new InvalidMapPropertyCodecProvider()), getInvalidMapModel(),
+                "{'invalidMap': {'1': 1, '2': 2}}");
     }
 
     @Test(expected = CodecConfigurationException.class)
