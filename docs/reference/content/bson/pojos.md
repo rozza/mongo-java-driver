@@ -197,9 +197,9 @@ On their own, instances of `GenericTree` or `GenericClass` are not serializable 
 information is erased by the JVM, and the type parameters cannot be specialized accurately.
 
 The 3.6 release of the driver further improves generic support with the addition of PropertyCodecProviders. The `PropertyCodecProvider` API 
-allows type safe support of container types, by providing concrete type parameters for the generic types as declared in the POJO.
+allows type-safe support of container types by providing concrete type parameters for the generic types as declared in the POJO.
 
-A great use of the `PropertyCodecProvider` API could be to add support for the Java 8 `Optional` class. The following example creates a 
+A great use of the `PropertyCodecProvider` API could be to add support for Guava's `Optional` class. The following example creates a 
 `OptionalPropertyCodecProvider`:
 
 ```java
