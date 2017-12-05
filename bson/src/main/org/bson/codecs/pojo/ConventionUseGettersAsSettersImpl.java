@@ -72,7 +72,7 @@ final class ConventionUseGettersAsSettersImpl implements Convention {
             } else if (value instanceof Map) {
                 mutateMap(instance, (Map) value);
             } else {
-                setError(format("Unexpected type: '%s'", value.getClass()), null);
+                throwCodecConfigurationException(format("Unexpected type: '%s'", value.getClass()), null);
             }
         }
 
@@ -80,14 +80,14 @@ final class ConventionUseGettersAsSettersImpl implements Convention {
             T originalCollection = get(instance);
             Collection<?> collection = ((Collection<?>) originalCollection);
             if (collection == null) {
-                setError("The getter returned null.", null);
-            } if (!collection.isEmpty()) {
-                setError("The getter returned a non empty collection.", null);
+                throwCodecConfigurationException("The getter returned null.", null);
+            } else if (!collection.isEmpty()) {
+                throwCodecConfigurationException("The getter returned a non empty collection.", null);
             } else {
                 try {
                     collection.addAll(value);
                 } catch (Exception e) {
-                    setError("collection#addAll failed.", e);
+                    throwCodecConfigurationException("collection#addAll failed.", e);
                 }
             }
         }
@@ -96,18 +96,18 @@ final class ConventionUseGettersAsSettersImpl implements Convention {
             T originalMap = get(instance);
             Map<?, ?> map = ((Map<?, ?>) originalMap);
             if (map == null) {
-                setError("The getter returned null.", null);
-            } if (!map.isEmpty()) {
-                setError("The getter returned a non empty map.", null);
+                throwCodecConfigurationException("The getter returned null.", null);
+            } else if (!map.isEmpty()) {
+                throwCodecConfigurationException("The getter returned a non empty map.", null);
             } else {
                 try {
                     map.putAll(value);
                 } catch (Exception e) {
-                    setError("map#putAll failed.", e);
+                    throwCodecConfigurationException("map#putAll failed.", e);
                 }
             }
         }
-        private void setError(final String reason, final Exception cause) {
+        private void throwCodecConfigurationException(final String reason, final Exception cause) {
             throw new CodecConfigurationException(format("Cannot use getter in '%s' to set '%s'. %s",
                     wrapped.getPropertyMetadata().getDeclaringClassName(), wrapped.getPropertyMetadata().getName(), reason), cause);
         }

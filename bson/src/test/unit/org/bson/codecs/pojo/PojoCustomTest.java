@@ -187,6 +187,22 @@ public final class PojoCustomTest extends PojoTestCase {
     }
 
     @Test(expected = CodecConfigurationException.class)
+    public void testUseGettersForSettersConventionInvalidTypeForCollection() {
+        PojoCodecProvider.Builder builder = getPojoCodecProviderBuilder(CollectionsGetterMutableModel.class)
+                .conventions(getDefaultAndUseGettersConvention());
+
+        decodingShouldFail(getCodec(builder, CollectionsGetterMutableModel.class), "{listField: ['1', '2']}");
+    }
+
+    @Test(expected = CodecConfigurationException.class)
+    public void testUseGettersForSettersConventionInvalidTypeForMap() {
+        PojoCodecProvider.Builder builder = getPojoCodecProviderBuilder(MapGetterMutableModel.class)
+                .conventions(getDefaultAndUseGettersConvention());
+
+        decodingShouldFail(getCodec(builder, MapGetterMutableModel.class), "{mapField: {a: '1'}}");
+    }
+
+    @Test(expected = CodecConfigurationException.class)
     public void testUseGettersForSettersConventionImmutableCollection() {
         PojoCodecProvider.Builder builder = getPojoCodecProviderBuilder(CollectionsGetterImmutableModel.class)
                 .conventions(getDefaultAndUseGettersConvention());
@@ -225,7 +241,6 @@ public final class PojoCustomTest extends PojoTestCase {
 
         roundTrip(builder, new CollectionsGetterNonEmptyModel(asList(1, 2)), "{listField: [1, 2]}");
     }
-
 
     @Test(expected = CodecConfigurationException.class)
     public void testUseGettersForSettersConventionNotEmptyMap() {
