@@ -201,7 +201,7 @@ functions:
       params:
         script: |
           ${PREPARE_SHELL}
-          MONGODB_VERSION=${VERSION} TOPOLOGY=${TOPOLOGY} AUTH=${AUTH} SSL=${SSL} sh ${DRIVERS_TOOLS}/.evergreen/run-orchestration.sh
+          MONGODB_VERSION="${VERSION}" TOPOLOGY="${TOPOLOGY}" AUTH="${AUTH}" SSL="${SSL}" sh ${DRIVERS_TOOLS}/.evergreen/run-orchestration.sh
     # run-orchestration generates expansion file with the MONGODB_URI for the cluster
     - command: expansions.update
       params:
@@ -234,7 +234,7 @@ functions:
         working_dir: "src"
         script: |
           # DO NOT ECHO WITH XTRACE (which PREPARE_SHELL does)
-          PROJECT_DIRECTORY=${PROJECT_DIRECTORY} JDK=${JDK} MONGODB_URI=${gssapi_auth_mongodb_uri} KDC=${gssapi_auth_kdc} REALM=${gssapi_auth_realm} KEYTAB_BASE64=${gssapi_auth_keytab_base64} .evergreen/run-gssapi-auth-test.sh
+          PROJECT_DIRECTORY="${PROJECT_DIRECTORY}" JDK="${JDK}" MONGODB_URI="${gssapi_auth_mongodb_uri}" KDC="${gssapi_auth_kdc}" REALM="${gssapi_auth_realm}" KEYTAB_BASE64="${gssapi_auth_keytab_base64}" .evergreen/run-gssapi-auth-test.sh
 
   "publish snapshot":
     - command: shell.exec
@@ -244,7 +244,7 @@ functions:
         working_dir: "src"
         script: |
           # DO NOT ECHO WITH XTRACE (which PREPARE_SHELL does)
-          PROJECT_DIRECTORY=${PROJECT_DIRECTORY} NEXUS_USERNAME=${nexus_username} NEXUS_PASSWORD=${nexus_password} SIGNING_PASSWORD=${signing_password} SIGNING_KEY_ID=${signing_keyId} RING_FILE_GPG_BASE64=${ring_file_gpg_base64} .evergreen/publish.sh
+          PROJECT_DIRECTORY="${PROJECT_DIRECTORY}" NEXUS_USERNAME="${nexus_username}" NEXUS_PASSWORD="${nexus_password}" SIGNING_PASSWORD="${signing_password}" SIGNING_KEY_ID="${signing_keyId}" RING_FILE_GPG_BASE64="${ring_file_gpg_base64}" .evergreen/publish.sh
 
   "cleanup":
     - command: shell.exec
