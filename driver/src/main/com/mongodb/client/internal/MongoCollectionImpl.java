@@ -272,7 +272,7 @@ class MongoCollectionImpl<TDocument> implements MongoCollection<TDocument> {
     private <TResult> FindIterable<TResult> createFindIterable(final ClientSession clientSession, final Bson filter,
                                                                final Class<TResult> resultClass) {
         return new FindIterableImpl<TDocument, TResult>(clientSession, namespace, this.documentClass, resultClass, codecRegistry,
-                readPreference, readConcern, executor, filter, new FindOptions());
+                readPreference, readConcern, executor, filter);
     }
 
     @Override
