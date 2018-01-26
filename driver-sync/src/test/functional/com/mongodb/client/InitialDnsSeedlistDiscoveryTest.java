@@ -16,10 +16,9 @@
 
 package com.mongodb.client;
 
-import com.mongodb.MongoClient;
+import com.mongodb.ConnectionString;
 import com.mongodb.MongoClientException;
-import com.mongodb.MongoClientOptions;
-import com.mongodb.MongoClientURI;
+import com.mongodb.MongoClientSettings;
 import com.mongodb.ServerAddress;
 import org.bson.BsonArray;
 import org.bson.BsonBoolean;
@@ -71,14 +70,10 @@ public class InitialDnsSeedlistDiscoveryTest {
 
     @Test
     public void shouldResolve() {
-        MongoClientOptions.Builder builder = MongoClientOptions.builder();
-        if (System.getProperty("java.version").startsWith("1.6.")) {
-            builder.sslInvalidHostNameAllowed(true);
-        }
 
         if (isError) {
             try {
-                new MongoClientURI(this.uri, builder);
+                MongoClientSettings.builder().applyConnectionString(new ConnectionString(uri)).build();
                 fail();
             } catch (IllegalArgumentException e) {
                // all good
@@ -86,17 +81,16 @@ public class InitialDnsSeedlistDiscoveryTest {
                 // all good
             }
         } else {
-            MongoClientURI uri = new MongoClientURI(this.uri, builder);
+            ConnectionString connectionString = new ConnectionString(this.uri);
 
-            assertEquals(seeds.size(), uri.getHosts().size());
-            assertTrue(uri.getHosts().containsAll(seeds));
+            assertEquals(seeds.size(), connectionString.getHosts().size());
+            assertTrue(connectionString.getHosts().containsAll(seeds));
 
-            MongoClientOptions mongoClientOptions = uri.getOptions();
             for (Map.Entry<String, BsonValue> entry : options.entrySet()) {
                 if (entry.getKey().equals("replicaSet")) {
-                    assertEquals(entry.getValue().asString().getValue(), mongoClientOptions.getRequiredReplicaSetName());
+                    assertEquals(entry.getValue().asString().getValue(), connectionString.getRequiredReplicaSetName());
                 } else if (entry.getKey().equals("ssl")) {
-                    assertEquals(entry.getValue().asBoolean().getValue(), mongoClientOptions.isSslEnabled());
+                    assertEquals(entry.getValue().asBoolean().getValue(), connectionString.getSslEnabled());
                 } else if (entry.getKey().equals("authSource")) {
                     // ignoring authSource for now, because without at least a userName also in the connection string,
                     // the authSource is ignored.  If the test gets this far, at least we know that a TXT record
@@ -114,15 +108,15 @@ public class InitialDnsSeedlistDiscoveryTest {
         if (seeds.isEmpty()) {
             return;
         }
-        MongoClientOptions.Builder optionsBuilder = MongoClientOptions.builder()
-                .sslInvalidHostNameAllowed(getSslSettings().isInvalidHostNameAllowed());
-
-        MongoClientURI uri = new MongoClientURI(this.uri, optionsBuilder);
+        MongoClientSettings mongoClientSettings = MongoClients.getDefaultMongoClientSettingsBuilder()
+                .sslSettings(getSslSettings())
+                .applyConnectionString(new ConnectionString(uri))
+                .build();
 
         assumeTrue(isDiscoverableReplicaSet() && !serverVersionAtLeast(3, 7)
-                && getSslSettings().isEnabled() == uri.getOptions().isSslEnabled());
+                && getSslSettings().isEnabled() == mongoClientSettings.getSslSettings().isEnabled());
 
-        MongoClient client = new MongoClient(uri);
+        MongoClient client = MongoClients.create(mongoClientSettings);
         try {
             long startTime = System.currentTimeMillis();
             long currentTime = startTime;
@@ -151,7 +145,7 @@ public class InitialDnsSeedlistDiscoveryTest {
     public static Collection<Object[]> data() throws URISyntaxException, IOException {
         List<Object[]> data = new ArrayList<Object[]>();
         for (File file : JsonPoweredTestHelper.getTestFiles("/initial-dns-seedlist-discovery")) {
-            BsonDocument testDocument = util.JsonPoweredTestHelper.getTestDocument(file);
+            BsonDocument testDocument = JsonPoweredTestHelper.getTestDocument(file);
             data.add(new Object[]{
                     file.getName(),
                     testDocument.getString("uri").getValue(),

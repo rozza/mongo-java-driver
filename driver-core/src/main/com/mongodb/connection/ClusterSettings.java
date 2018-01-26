@@ -90,7 +90,7 @@ public final class ClusterSettings {
         }
 
         private Builder(final ClusterSettings clusterSettings) {
-            notNull("builder", clusterSettings);
+            notNull("clusterSettings", clusterSettings);
             description = clusterSettings.description;
             hosts = clusterSettings.hosts;
             mode = clusterSettings.mode;
@@ -221,9 +221,9 @@ public final class ClusterSettings {
         }
 
         /**
-         * Take the settings from the given ConnectionString and add them to the builder
+         * Takes the settings from the given {@code ConnectionString} and applies them to the builder
          *
-         * @param connectionString a URI containing details of how to connect to MongoDB
+         * @param connectionString the connection string containing details of how to connect to MongoDB
          * @return this
          */
         public Builder applyConnectionString(final ConnectionString connectionString) {

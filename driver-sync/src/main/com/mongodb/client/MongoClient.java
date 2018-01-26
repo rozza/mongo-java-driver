@@ -18,9 +18,12 @@ package com.mongodb.client;
 
 import com.mongodb.ClientSessionOptions;
 import com.mongodb.MongoNamespace;
+import com.mongodb.ServerAddress;
 import com.mongodb.annotations.Immutable;
 import com.mongodb.session.ClientSession;
 import org.bson.Document;
+
+import java.util.List;
 
 /**
  * A client-side representation of a MongoDB cluster.  Instances can represent either a standalone MongoDB instance, a replica set,
@@ -79,7 +82,6 @@ public interface MongoClient {
      * @param clientSession the client session with which to associate this operation
      * @return an iterable containing all the names of all the databases
      * @mongodb.driver.manual reference/command/listDatabases List Databases
-     * @since 3.6
      * @mongodb.server.release 3.6
      */
     MongoIterable<String> listDatabaseNames(ClientSession clientSession);
@@ -97,7 +99,6 @@ public interface MongoClient {
      * @param clientSession the client session with which to associate this operation
      * @return the list databases iterable interface
      * @mongodb.driver.manual reference/command/listDatabases List Databases
-     * @since 3.6
      * @mongodb.server.release 3.6
      */
     ListDatabasesIterable<Document> listDatabases(ClientSession clientSession);
@@ -119,9 +120,15 @@ public interface MongoClient {
      * @param <TResult>   the type of the class to use instead of {@code Document}.
      * @return the list databases iterable interface
      * @mongodb.driver.manual reference/command/listDatabases List Databases
-     * @since 3.6
      * @mongodb.server.release 3.6
      */
     <TResult> ListDatabasesIterable<TResult> listDatabases(ClientSession clientSession, Class<TResult> resultClass);
 
+    /**
+     * Gets the list of server addresses currently seen by this client. This includes addresses auto-discovered from a replica set.
+     *
+     * @return list of server addresses
+     * @throws com.mongodb.MongoException if there's a failure
+     */
+    List<ServerAddress> getServerAddressList();
 }

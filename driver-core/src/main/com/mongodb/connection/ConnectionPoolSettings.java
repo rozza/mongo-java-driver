@@ -87,6 +87,7 @@ public class ConnectionPoolSettings {
         }
 
         Builder(final ConnectionPoolSettings connectionPoolSettings) {
+            notNull("connectionPoolSettings", connectionPoolSettings);
             maxSize = connectionPoolSettings.maxSize;
             minSize = connectionPoolSettings.minSize;
             maxWaitQueueSize = connectionPoolSettings.maxWaitQueueSize;
@@ -225,9 +226,9 @@ public class ConnectionPoolSettings {
         }
 
         /**
-         * Takes connection pool settings from the given connection string and applies them to this builder.
+         * Takes the settings from the given {@code ConnectionString} and applies them to the builder
          *
-         * @param connectionString a URL with details of how to connect to MongoDB
+         * @param connectionString the connection string containing details of how to connect to MongoDB
          * @return this
          */
         public Builder applyConnectionString(final ConnectionString connectionString) {

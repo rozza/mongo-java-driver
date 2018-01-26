@@ -23,10 +23,7 @@ import com.mongodb.MongoDriverInformation;
 import com.mongodb.client.gridfs.codecs.GridFSFileCodecProvider;
 import com.mongodb.client.model.geojson.codecs.GeoJsonCodecProvider;
 import com.mongodb.connection.AsynchronousSocketChannelStreamFactory;
-import com.mongodb.connection.ClusterSettings;
-import com.mongodb.connection.ConnectionPoolSettings;
 import com.mongodb.connection.DefaultClusterFactory;
-import com.mongodb.connection.ServerSettings;
 import com.mongodb.connection.SocketSettings;
 import com.mongodb.connection.SslSettings;
 import com.mongodb.connection.StreamFactory;
@@ -135,41 +132,9 @@ public final class MongoClients {
      * @see MongoClients#create(ConnectionString)
      */
     public static MongoClient create(final ConnectionString connectionString, final MongoDriverInformation mongoDriverInformation) {
-        MongoClientSettings.Builder builder = MongoClientSettings.builder()
-                .clusterSettings(ClusterSettings.builder()
-                        .applyConnectionString(connectionString)
-                        .build())
-                .connectionPoolSettings(ConnectionPoolSettings.builder()
-                        .applyConnectionString(connectionString)
-                        .build())
-                .serverSettings(ServerSettings.builder()
-                        .applyConnectionString(connectionString)
-                        .build())
-                .sslSettings(SslSettings.builder()
-                        .applyConnectionString(connectionString)
-                        .build())
-                .socketSettings(SocketSettings.builder()
-                        .applyConnectionString(connectionString)
-                        .build());
 
-        if (connectionString.getCredential() != null) {
-            builder.credential(connectionString.getCredential());
-        }
-
-        if (connectionString.getReadPreference() != null) {
-            builder.readPreference(connectionString.getReadPreference());
-        }
-        if (connectionString.getReadConcern() != null) {
-            builder.readConcern(connectionString.getReadConcern());
-        }
-        if (connectionString.getWriteConcern() != null) {
-            builder.writeConcern(connectionString.getWriteConcern());
-        }
-        if (connectionString.getApplicationName() != null) {
-            builder.applicationName(connectionString.getApplicationName());
-        }
-        builder.compressorList(connectionString.getCompressorList());
-        return create(builder.build(), mongoDriverInformation, connectionString.getStreamType());
+        return create(MongoClientSettings.builder().applyConnectionString(connectionString).build(),
+                mongoDriverInformation, connectionString.getStreamType());
     }
 
     private static MongoClient create(final MongoClientSettings settings, final MongoDriverInformation mongoDriverInformation,

@@ -19,22 +19,10 @@ package com.mongodb.client;
 import com.mongodb.ConnectionString;
 import com.mongodb.DBRefCodecProvider;
 import com.mongodb.DocumentToDBRefTransformer;
-import com.mongodb.MongoCredential;
-import com.mongodb.ReadConcern;
-import com.mongodb.ReadPreference;
-import com.mongodb.WriteConcern;
+import com.mongodb.MongoClientSettings;
+import com.mongodb.MongoDriverInformation;
 import com.mongodb.client.gridfs.codecs.GridFSFileCodecProvider;
 import com.mongodb.client.model.geojson.codecs.GeoJsonCodecProvider;
-import com.mongodb.connection.Cluster;
-import com.mongodb.connection.ClusterSettings;
-import com.mongodb.connection.ConnectionPoolSettings;
-import com.mongodb.connection.DefaultClusterFactory;
-import com.mongodb.connection.ServerSettings;
-import com.mongodb.connection.SocketSettings;
-import com.mongodb.connection.SocketStreamFactory;
-import com.mongodb.connection.SslSettings;
-import com.mongodb.connection.StreamFactory;
-import com.mongodb.event.CommandListener;
 import org.bson.codecs.BsonValueCodecProvider;
 import org.bson.codecs.DocumentCodecProvider;
 import org.bson.codecs.IterableCodecProvider;
@@ -42,11 +30,6 @@ import org.bson.codecs.MapCodecProvider;
 import org.bson.codecs.ValueCodecProvider;
 import org.bson.codecs.configuration.CodecRegistry;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.concurrent.TimeUnit;
-
-import static com.mongodb.internal.event.EventListenerHelper.getCommandListener;
 import static java.util.Arrays.asList;
 import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
 
@@ -84,7 +67,35 @@ public final class MongoClients {
      * @return the default codec registry
      */
     public static CodecRegistry getDefaultCodecRegistry() {
-        return MongoClients.DEFAULT_CODEC_REGISTRY;
+        return DEFAULT_CODEC_REGISTRY;
+    }
+
+    /**
+     * Creates a {@link MongoClientSettings.Builder} instance configured with the {@link #getDefaultCodecRegistry()}.
+     *
+     * @return a MongoClientSettings instance with the default codecRegistry
+     */
+    public static MongoClientSettings.Builder getDefaultMongoClientSettingsBuilder() {
+        return MongoClientSettings.builder().codecRegistry(DEFAULT_CODEC_REGISTRY);
+    }
+
+    /**
+     * Creates a new client with the default connection string "mongodb://localhost".
+     *
+     * @return the client
+     */
+    public static MongoClient create() {
+        return create(new ConnectionString("mongodb://localhost"));
+    }
+
+    /**
+     * Create a new client with the given client settings.
+     *
+     * @param settings the settings
+     * @return the client
+     */
+    public static MongoClient create(final MongoClientSettings settings) {
+        return create(settings, null);
     }
 
     /**
@@ -92,6 +103,7 @@ public final class MongoClients {
      *
      * @param connectionString the connection
      * @return the client
+     * @see #create(ConnectionString)
      */
     public static MongoClient create(final String connectionString) {
         return create(new ConnectionString(connectionString));
@@ -99,81 +111,53 @@ public final class MongoClients {
 
     /**
      * Create a new client with the given connection string.
+     * <p>
+     * For each of the settings classed configurable via {@link MongoClientSettings}, the connection string is applied by calling the
+     * {@code applyConnectionString} method on an instance of setting's builder class, building the setting, and adding it to an instance of
+     * {@link com.mongodb.MongoClientSettings.Builder}.
+     * </p>
+     * <p>
+     * The connection string's stream type is then applied by setting the
+     * {@link com.mongodb.connection.StreamFactory} to an instance of NettyStreamFactory,
+     * </p>
      *
      * @param connectionString the settings
      * @return the client
+     * @throws IllegalArgumentException if the connection string's stream type is not one of "netty" or "nio2"
+     *
+     * @see com.mongodb.MongoClientSettings.Builder#applyConnectionString(ConnectionString)
      */
     public static MongoClient create(final ConnectionString connectionString) {
-        return create(connectionString, Collections.<CommandListener>emptyList());
+        return create(connectionString, null);
     }
-
-
 
     /**
      * Create a new client with the given connection string.
      *
-     * TODO: In scope of JAVA-2166 this method will be replaced with one that takes a complete settings class rather than just a command
-     * listener.
+     * <p>Note: Intended for driver and library authors to associate extra driver metadata with the connections.</p>
      *
-     * @param connectionString the settings
-     * @param commandListeners the command listeners
+     * @param connectionString       the settings
+     * @param mongoDriverInformation any driver information to associate with the MongoClient
+     * @return the client
+     * @throws IllegalArgumentException if the connection string's stream type is not one of "netty" or "nio2"
+     * @see MongoClients#create(ConnectionString)
+     */
+    public static MongoClient create(final ConnectionString connectionString, final MongoDriverInformation mongoDriverInformation) {
+        return create(getDefaultMongoClientSettingsBuilder().applyConnectionString(connectionString).build(), mongoDriverInformation);
+    }
+
+    /**
+     * Creates a new client with the given client settings.
      *
+     * <p>Note: Intended for driver and library authors to associate extra driver metadata with the connections.</p>
+     *
+     * @param settings               the settings
+     * @param mongoDriverInformation any driver information to associate with the MongoClient
      * @return the client
      */
-    public static MongoClient create(final ConnectionString connectionString, final List<CommandListener> commandListeners) {
-        ClusterSettings clusterSettings = ClusterSettings.builder()
-                .applyConnectionString(connectionString)
-                .build();
-        ConnectionPoolSettings connectionPoolSettings = ConnectionPoolSettings.builder()
-                .applyConnectionString(connectionString)
-                .build();
-        ServerSettings serverSettings = ServerSettings.builder()
-                .applyConnectionString(connectionString)
-                .build();
-        SslSettings sslSettings = SslSettings.builder()
-                .applyConnectionString(connectionString)
-                .build();
-        SocketSettings socketSettings = SocketSettings.builder()
-                .applyConnectionString(connectionString)
-                .build();
-        SocketSettings heartbeatSocketSettings = SocketSettings.builder()
-                .connectTimeout(20, TimeUnit.SECONDS)
-                .readTimeout(20, TimeUnit.SECONDS)
-                .build();
-
-        StreamFactory streamFactory = new SocketStreamFactory(socketSettings, sslSettings);
-
-        StreamFactory heartbeatStreamFactory = new SocketStreamFactory(heartbeatSocketSettings, sslSettings);
-
-        List<MongoCredential> credentialList = getCredentialList(connectionString);
-        Cluster cluster = new DefaultClusterFactory().createCluster(clusterSettings,
-                serverSettings, connectionPoolSettings, streamFactory, heartbeatStreamFactory,
-                credentialList,
-                getCommandListener(commandListeners), connectionString.getApplicationName(),
-                null, connectionString.getCompressorList());
-
-        return new MongoClientImpl(cluster, credentialList, getReadPreference(connectionString), getWriteConcern(connectionString),
-                connectionString.getRetryWrites(), getReadConcern(connectionString));
+    public static MongoClient create(final MongoClientSettings settings, final MongoDriverInformation mongoDriverInformation) {
+        return new MongoClientImpl(settings, mongoDriverInformation);
     }
-
-    private static ReadConcern getReadConcern(final ConnectionString connectionString) {
-        return connectionString.getReadConcern() == null ? ReadConcern.DEFAULT : connectionString.getReadConcern();
-    }
-
-    private static WriteConcern getWriteConcern(final ConnectionString connectionString) {
-        return connectionString.getWriteConcern() == null ? WriteConcern.ACKNOWLEDGED : connectionString.getWriteConcern();
-    }
-
-    private static ReadPreference getReadPreference(final ConnectionString connectionString) {
-        return connectionString.getReadPreference() == null ? ReadPreference.primary() : connectionString.getReadPreference();
-    }
-
-    private static List<MongoCredential> getCredentialList(final ConnectionString connectionString) {
-        return connectionString.getCredential() == null
-                ? Collections.<MongoCredential>emptyList()
-                : Collections.singletonList(connectionString.getCredential());
-    }
-
 
     private MongoClients() {
     }

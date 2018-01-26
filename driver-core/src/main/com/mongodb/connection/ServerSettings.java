@@ -134,9 +134,9 @@ public class ServerSettings {
         }
 
         /**
-         * Take the settings from the given ConnectionString and add them to the builder
+         * Takes the settings from the given {@code ConnectionString} and applies them to the builder
          *
-         * @param connectionString a URI containing details of how to connect to MongoDB
+         * @param connectionString the connection string containing details of how to connect to MongoDB
          * @return this
          * @since 3.3
          */

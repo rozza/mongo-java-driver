@@ -14,14 +14,8 @@
  * limitations under the License.
  */
 
-package com.mongodb.async.client;
+package com.mongodb;
 
-import com.mongodb.ConnectionString;
-import com.mongodb.MongoCompressor;
-import com.mongodb.MongoCredential;
-import com.mongodb.ReadConcern;
-import com.mongodb.ReadPreference;
-import com.mongodb.WriteConcern;
 import com.mongodb.annotations.Immutable;
 import com.mongodb.annotations.NotThreadSafe;
 import com.mongodb.connection.ClusterSettings;
@@ -33,24 +27,39 @@ import com.mongodb.connection.StreamFactoryFactory;
 import com.mongodb.event.CommandListener;
 import org.bson.codecs.configuration.CodecRegistry;
 
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import static com.mongodb.assertions.Assertions.isTrue;
+import static com.mongodb.assertions.Assertions.isTrueArgument;
 import static com.mongodb.assertions.Assertions.notNull;
-import static java.util.Collections.singletonList;
 
 
 /**
  * Various settings to control the behavior of a {@code MongoClient}.
  *
- * @since 3.0
+ * @since 3.7
  */
 @Immutable
 public final class MongoClientSettings {
-    private final com.mongodb.MongoClientSettings wrapped;
-    private final List<MongoCredential> credentialList;
+    private final ReadPreference readPreference;
+    private final WriteConcern writeConcern;
+    private final boolean retryWrites;
+    private final ReadConcern readConcern;
+    private final MongoCredential credential;
+    private final StreamFactoryFactory streamFactoryFactory;
+    private final List<CommandListener> commandListeners;
+    private final CodecRegistry codecRegistry;
+
+    private final ClusterSettings clusterSettings;
+    private final SocketSettings socketSettings;
+    private final SocketSettings heartbeatSocketSettings;
+    private final ConnectionPoolSettings connectionPoolSettings;
+    private final ServerSettings serverSettings;
+    private final SslSettings sslSettings;
+    private final String applicationName;
+    private final List<MongoCompressor> compressorList;
 
     /**
      * Convenience method to create a Builder.
@@ -77,9 +86,23 @@ public final class MongoClientSettings {
      */
     @NotThreadSafe
     public static final class Builder {
-        private List<MongoCredential> credentialList = Collections.emptyList();
-        private com.mongodb.MongoClientSettings.Builder wrappedBuilder = com.mongodb.MongoClientSettings.builder()
-                .codecRegistry(MongoClients.getDefaultCodecRegistry());
+        private ReadPreference readPreference = ReadPreference.primary();
+        private WriteConcern writeConcern = WriteConcern.ACKNOWLEDGED;
+        private boolean retryWrites;
+        private ReadConcern readConcern = ReadConcern.DEFAULT;
+        private CodecRegistry codecRegistry;
+        private StreamFactoryFactory streamFactoryFactory;
+        private List<CommandListener> commandListeners = new ArrayList<CommandListener>();
+
+        private ClusterSettings clusterSettings;
+        private SocketSettings socketSettings = SocketSettings.builder().build();
+        private SocketSettings heartbeatSocketSettings = SocketSettings.builder().build();
+        private ConnectionPoolSettings connectionPoolSettings = ConnectionPoolSettings.builder().build();
+        private ServerSettings serverSettings = ServerSettings.builder().build();
+        private SslSettings sslSettings = SslSettings.builder().build();
+        private MongoCredential credential;
+        private String applicationName;
+        private List<MongoCompressor> compressorList = Collections.emptyList();
 
         private Builder() {
         }
@@ -90,50 +113,22 @@ public final class MongoClientSettings {
          * @param settings create a builder from existing settings
          */
         private Builder(final MongoClientSettings settings) {
-            credentialList = new ArrayList<MongoCredential>(settings.credentialList);
-
-            wrappedBuilder.commandListenerList(new ArrayList<CommandListener>(settings.getCommandListeners()));
-            if (settings.getCodecRegistry() != null) {
-                wrappedBuilder.codecRegistry(settings.getCodecRegistry());
-            }
-            if (settings.getReadPreference() != null) {
-                wrappedBuilder.readPreference(settings.getReadPreference());
-            }
-            if (settings.getWriteConcern() != null) {
-                wrappedBuilder.writeConcern(settings.getWriteConcern());
-            }
-            wrappedBuilder.retryWrites(settings.getRetryWrites());
-            if (settings.getReadConcern() != null) {
-                wrappedBuilder.readConcern(settings.getReadConcern());
-            }
-            if (settings.getCredential() != null) {
-                wrappedBuilder.credential(settings.getCredential());
-            }
-            if (settings.getStreamFactoryFactory() != null) {
-                wrappedBuilder.streamFactoryFactory(settings.getStreamFactoryFactory());
-            }
-            if (settings.getClusterSettings() != null) {
-                wrappedBuilder.clusterSettings(settings.getClusterSettings());
-            }
-            if (settings.getServerSettings() != null) {
-                wrappedBuilder.serverSettings(settings.getServerSettings());
-            }
-            if (settings.getSocketSettings() != null) {
-                wrappedBuilder.socketSettings(settings.getSocketSettings());
-            }
-            if (settings.getHeartbeatSocketSettings() != null) {
-                wrappedBuilder.heartbeatSocketSettings(settings.getHeartbeatSocketSettings());
-            }
-            if (settings.getConnectionPoolSettings() != null) {
-                wrappedBuilder.connectionPoolSettings(settings.getConnectionPoolSettings());
-            }
-            if (settings.getSslSettings() != null) {
-                wrappedBuilder.sslSettings(settings.getSslSettings());
-            }
-            if (settings.getApplicationName() != null) {
-                wrappedBuilder.applicationName(settings.getApplicationName());
-            }
-            wrappedBuilder.compressorList(new ArrayList<MongoCompressor>(settings.getCompressorList()));
+            applicationName = settings.getApplicationName();
+            clusterSettings = settings.getClusterSettings();
+            codecRegistry = settings.getCodecRegistry();
+            commandListeners = new ArrayList<CommandListener>(settings.getCommandListeners());
+            compressorList = new ArrayList<MongoCompressor>(settings.getCompressorList());
+            connectionPoolSettings = settings.getConnectionPoolSettings();
+            credential = settings.getCredential();
+            heartbeatSocketSettings = settings.getHeartbeatSocketSettings();
+            readConcern = settings.getReadConcern();
+            readPreference = settings.getReadPreference();
+            retryWrites = settings.getRetryWrites();
+            serverSettings = settings.getServerSettings();
+            socketSettings = settings.getSocketSettings();
+            sslSettings = settings.getSslSettings();
+            streamFactoryFactory = settings.getStreamFactoryFactory();
+            writeConcern = settings.getWriteConcern();
         }
 
         /**
@@ -141,12 +136,35 @@ public final class MongoClientSettings {
          *
          * @param connectionString the connection string containing details of how to connect to MongoDB
          * @return this
-         * @since 3.7
          */
-        @SuppressWarnings("deprecation")
         public Builder applyConnectionString(final ConnectionString connectionString) {
-            credentialList = new ArrayList<MongoCredential>(connectionString.getCredentialList());
-            wrappedBuilder.applyConnectionString(connectionString);
+            if (connectionString.getApplicationName() != null) {
+                applicationName = connectionString.getApplicationName();
+            }
+            ClusterSettings.Builder clusterSettingsBuilder = clusterSettings != null
+                    ? ClusterSettings.builder(clusterSettings) : ClusterSettings.builder();
+            clusterSettings = clusterSettingsBuilder.applyConnectionString(connectionString).build();
+            if (!connectionString.getCompressorList().isEmpty()) {
+                compressorList = connectionString.getCompressorList();
+            }
+            connectionPoolSettings = ConnectionPoolSettings.builder(connectionPoolSettings).applyConnectionString(connectionString).build();
+            if (connectionString.getCredential() != null) {
+                credential = connectionString.getCredential();
+            }
+            heartbeatSocketSettings = SocketSettings.builder(heartbeatSocketSettings).applyConnectionString(connectionString).build();
+            if (connectionString.getReadConcern() != null) {
+                readConcern = connectionString.getReadConcern();
+            }
+            if (connectionString.getReadPreference() != null) {
+                readPreference = connectionString.getReadPreference();
+            }
+            retryWrites = connectionString.getRetryWrites();
+            serverSettings = ServerSettings.builder(serverSettings).applyConnectionString(connectionString).build();
+            socketSettings = SocketSettings.builder(socketSettings).applyConnectionString(connectionString).build();
+            sslSettings = SslSettings.builder(sslSettings).applyConnectionString(connectionString).build();
+            if (connectionString.getWriteConcern() != null) {
+                writeConcern = connectionString.getWriteConcern();
+            }
             return this;
         }
 
@@ -158,7 +176,7 @@ public final class MongoClientSettings {
          * @see MongoClientSettings#getClusterSettings()
          */
         public Builder clusterSettings(final ClusterSettings clusterSettings) {
-            wrappedBuilder.clusterSettings(clusterSettings);
+            this.clusterSettings = notNull("clusterSettings", clusterSettings);
             return this;
         }
 
@@ -170,7 +188,7 @@ public final class MongoClientSettings {
          * @see MongoClientSettings#getSocketSettings()
          */
         public Builder socketSettings(final SocketSettings socketSettings) {
-            wrappedBuilder.socketSettings(socketSettings);
+            this.socketSettings = notNull("socketSettings", socketSettings);
             return this;
         }
 
@@ -182,7 +200,7 @@ public final class MongoClientSettings {
          * @see MongoClientSettings#getHeartbeatSocketSettings()
          */
         public Builder heartbeatSocketSettings(final SocketSettings heartbeatSocketSettings) {
-            wrappedBuilder.heartbeatSocketSettings(heartbeatSocketSettings);
+            this.heartbeatSocketSettings = notNull("heartbeatSocketSettings", heartbeatSocketSettings);
             return this;
         }
 
@@ -194,7 +212,7 @@ public final class MongoClientSettings {
          * @see MongoClientSettings#getConnectionPoolSettings() ()
          */
         public Builder connectionPoolSettings(final ConnectionPoolSettings connectionPoolSettings) {
-            wrappedBuilder.connectionPoolSettings(connectionPoolSettings);
+            this.connectionPoolSettings = notNull("connectionPoolSettings", connectionPoolSettings);
             return this;
         }
 
@@ -206,7 +224,7 @@ public final class MongoClientSettings {
          * @see MongoClientSettings#getServerSettings() ()
          */
         public Builder serverSettings(final ServerSettings serverSettings) {
-            wrappedBuilder.serverSettings(serverSettings);
+            this.serverSettings = notNull("serverSettings", serverSettings);
             return this;
         }
 
@@ -218,7 +236,7 @@ public final class MongoClientSettings {
          * @see MongoClientSettings#getSslSettings() ()
          */
         public Builder sslSettings(final SslSettings sslSettings) {
-            wrappedBuilder.sslSettings(sslSettings);
+            this.sslSettings = notNull("sslSettings", sslSettings);
             return this;
         }
 
@@ -231,7 +249,7 @@ public final class MongoClientSettings {
          * @see MongoClientSettings#getReadPreference()
          */
         public Builder readPreference(final ReadPreference readPreference) {
-            wrappedBuilder.readPreference(readPreference);
+            this.readPreference = notNull("readPreference", readPreference);
             return this;
         }
 
@@ -243,7 +261,7 @@ public final class MongoClientSettings {
          * @see MongoClientSettings#getWriteConcern()
          */
         public Builder writeConcern(final WriteConcern writeConcern) {
-            wrappedBuilder.writeConcern(writeConcern);
+            this.writeConcern = notNull("writeConcern", writeConcern);
             return this;
         }
 
@@ -253,11 +271,10 @@ public final class MongoClientSettings {
          * @param retryWrites sets if writes should be retried if they fail due to a network error.
          * @return {@code this}
          * @see #getRetryWrites()
-         * @since 3.6
          * @mongodb.server.release 3.6
          */
         public Builder retryWrites(final boolean retryWrites) {
-            wrappedBuilder.retryWrites(retryWrites);
+            this.retryWrites = retryWrites;
             return this;
         }
 
@@ -266,29 +283,11 @@ public final class MongoClientSettings {
          *
          * @param readConcern the read concern
          * @return {@code this}
-         * @since 3.2
          * @mongodb.server.release 3.2
          * @mongodb.driver.manual reference/readConcern/ Read Concern
          */
         public Builder readConcern(final ReadConcern readConcern) {
-            wrappedBuilder.readConcern(readConcern);
-            return this;
-        }
-
-        /**
-         * Sets the credential list.
-         *
-         * @param credentialList the credential list
-         * @return {@code this}
-         * @see MongoClientSettings#getCredentialList()
-         * @deprecated Prefer {@link #credential(MongoCredential)}
-         */
-        @Deprecated
-        public Builder credentialList(final List<MongoCredential> credentialList) {
-            this.credentialList = Collections.unmodifiableList(notNull("credentialList", credentialList));
-            if (!credentialList.isEmpty()) {
-                wrappedBuilder.credential(credentialList.get(credentialList.size() - 1));
-            }
+            this.readConcern = notNull("readConcern", readConcern);
             return this;
         }
 
@@ -297,12 +296,9 @@ public final class MongoClientSettings {
          *
          * @param credential the credential
          * @return {@code this}
-         * @see MongoClientSettings#getCredential()
-         * @since 3.6
          */
         public Builder credential(final MongoCredential credential) {
-            this.credentialList = singletonList(notNull("credential", credential));
-            wrappedBuilder.credential(credential);
+            this.credential = notNull("credential", credential);
             return this;
         }
 
@@ -312,10 +308,9 @@ public final class MongoClientSettings {
          * @param codecRegistry the codec registry
          * @return {@code this}
          * @see MongoClientSettings#getCodecRegistry()
-         * @since 3.0
          */
         public Builder codecRegistry(final CodecRegistry codecRegistry) {
-            wrappedBuilder.codecRegistry(codecRegistry);
+            this.codecRegistry = notNull("codecRegistry", codecRegistry);
             return this;
         }
 
@@ -324,10 +319,9 @@ public final class MongoClientSettings {
          *
          * @param streamFactoryFactory the stream factory factory
          * @return this
-         * @since 3.1
          */
         public Builder streamFactoryFactory(final StreamFactoryFactory streamFactoryFactory) {
-            wrappedBuilder.streamFactoryFactory(streamFactoryFactory);
+            this.streamFactoryFactory = notNull("streamFactoryFactory", streamFactoryFactory);
             return this;
         }
 
@@ -336,13 +330,24 @@ public final class MongoClientSettings {
          *
          * @param commandListener the command listener
          * @return this
-         * @since 3.3
          */
         public Builder addCommandListener(final CommandListener commandListener) {
-            wrappedBuilder.addCommandListener(commandListener);
+            notNull("commandListener", commandListener);
+            commandListeners.add(commandListener);
             return this;
         }
 
+        /**
+         * Sets the the command listeners
+         *
+         * @param commandListeners the list of command listeners
+         * @return {@code this}
+         */
+        public Builder commandListenerList(final List<CommandListener> commandListeners) {
+            notNull("commandListeners", commandListeners);
+            this.commandListeners = new ArrayList<CommandListener>(commandListeners);
+            return this;
+        }
 
         /**
          * Sets the logical name of the application using this MongoClient.  The application name may be used by the client to identify
@@ -352,11 +357,14 @@ public final class MongoClientSettings {
          *                        The UTF-8 encoding may not exceed 128 bytes.
          * @return {@code this}
          * @see #getApplicationName()
-         * @since 3.4
          * @mongodb.server.release 3.4
          */
         public Builder applicationName(final String applicationName) {
-            wrappedBuilder.applicationName(applicationName);
+            if (applicationName != null) {
+                isTrueArgument("applicationName UTF-8 encoding length <= 128",
+                        applicationName.getBytes(Charset.forName("UTF-8")).length <= 128);
+            }
+            this.applicationName = applicationName;
             return this;
         }
 
@@ -366,12 +374,12 @@ public final class MongoClientSettings {
          *
          * @param compressorList the list of compressors to request
          * @return {@code this}
-         * @see #getCompressorList() ()
-         * @since 3.6
+         * @see #getCompressorList()
          * @mongodb.server.release 3.4
          */
         public Builder compressorList(final List<MongoCompressor> compressorList) {
-            wrappedBuilder.compressorList(compressorList);
+            notNull("compressorList", compressorList);
+            this.compressorList = new ArrayList<MongoCompressor>(compressorList);
             return this;
         }
 
@@ -391,32 +399,19 @@ public final class MongoClientSettings {
      * <p>Default is {@code ReadPreference.primary()}.</p>
      *
      * @return the read preference
-     * @see com.mongodb.ReadPreference#primary()
+     * @see ReadPreference#primary()
      */
     public ReadPreference getReadPreference() {
-        return wrapped.getReadPreference();
+        return readPreference;
     }
 
     /**
      * Gets the credential list.
      *
      * @return the credential list
-     * @deprecated Prefer {@link #getCredential()}
-     */
-    @Deprecated
-    public List<MongoCredential> getCredentialList() {
-        return credentialList;
-    }
-
-    /**
-     * Gets the credential list.
-     *
-     * @return the credential list
-     * @since 3.6
      */
     public MongoCredential getCredential() {
-        isTrue("Single or no credential", credentialList.size() <= 1);
-        return wrapped.getCredential();
+        return credential;
     }
 
     /**
@@ -425,65 +420,60 @@ public final class MongoClientSettings {
      * <p>Default is {@code WriteConcern.ACKNOWLEDGED}.</p>
      *
      * @return the write concern
-     * @see com.mongodb.WriteConcern#ACKNOWLEDGED
+     * @see WriteConcern#ACKNOWLEDGED
      */
     public WriteConcern getWriteConcern() {
-        return wrapped.getWriteConcern();
+        return writeConcern;
     }
 
     /**
      * Returns true if writes should be retried if they fail due to a network error.
      *
      * @return the retryWrites value
-     * @since 3.6
      * @mongodb.server.release 3.6
      */
     public boolean getRetryWrites() {
-        return wrapped.getRetryWrites();
+        return retryWrites;
     }
 
     /**
      * The read concern to use.
      *
      * @return the read concern
-     * @since 3.2
      * @mongodb.server.release 3.2
      * @mongodb.driver.manual reference/readConcern/ Read Concern
      */
     public ReadConcern getReadConcern() {
-        return wrapped.getReadConcern();
+        return readConcern;
     }
 
     /**
-     * The codec registry to use.  By default, a {@code MongoClient} will be able to encode and decode instances of {@code
-     * Document}.
+     * The codec registry to use, or null if not set.
      *
      * @return the codec registry
-     * @see MongoClient#getDatabase
-     * @since 3.0
      */
     public CodecRegistry getCodecRegistry() {
-        return wrapped.getCodecRegistry();
+        return codecRegistry;
     }
 
     /**
      * Gets the factory to use to create a {@code StreamFactory}.
      *
      * @return the stream factory factory
-     * @since 3.1
      */
     public StreamFactoryFactory getStreamFactoryFactory() {
-        return wrapped.getStreamFactoryFactory();
+        return streamFactoryFactory;
     }
 
     /**
-     * Gets the list of added {@code CommandListener}. The default is an empty list.
+     * Gets the list of added {@code CommandListener}.
+     *
+     * <p>The default is an empty list.</p>
      *
      * @return the unmodifiable list of command listeners
-     * @since 3.3
      */
     public List<CommandListener> getCommandListeners() {
-        return wrapped.getCommandListeners();
+        return Collections.unmodifiableList(commandListeners);
     }
 
     /**
@@ -493,11 +483,10 @@ public final class MongoClientSettings {
      * <p>Default is null.</p>
      *
      * @return the application name, which may be null
-     * @since 3.4
      * @mongodb.server.release 3.4
      */
     public String getApplicationName() {
-        return wrapped.getApplicationName();
+        return applicationName;
     }
 
     /**
@@ -507,11 +496,10 @@ public final class MongoClientSettings {
      * <p>Default is the empty list.</p>
      *
      * @return the compressors
-     * @since 3.6
      * @mongodb.server.release 3.4
      */
     public List<MongoCompressor> getCompressorList() {
-        return wrapped.getCompressorList();
+        return Collections.unmodifiableList(compressorList);
     }
 
     /**
@@ -520,7 +508,7 @@ public final class MongoClientSettings {
      * @return the cluster settings
      */
     public ClusterSettings getClusterSettings() {
-        return wrapped.getClusterSettings();
+        return clusterSettings;
     }
 
     /**
@@ -529,7 +517,7 @@ public final class MongoClientSettings {
      * @return the SSL settings
      */
     public SslSettings getSslSettings() {
-        return wrapped.getSslSettings();
+        return sslSettings;
     }
 
     /**
@@ -537,10 +525,10 @@ public final class MongoClientSettings {
      * socketTimeout and socketKeepAlive.
      *
      * @return a SocketSettings object populated with the connection settings from this {@code MongoClientSettings} instance.
-     * @see com.mongodb.connection.SocketSettings
+     * @see SocketSettings
      */
     public SocketSettings getSocketSettings() {
-        return wrapped.getSocketSettings();
+        return socketSettings;
     }
 
     /**
@@ -548,10 +536,10 @@ public final class MongoClientSettings {
      * settings object. This settings object uses the values for heartbeatConnectTimeout, heartbeatSocketTimeout and socketKeepAlive.
      *
      * @return a SocketSettings object populated with the heartbeat connection settings from this {@code MongoClientSettings} instance.
-     * @see com.mongodb.connection.SocketSettings
+     * @see SocketSettings
      */
     public SocketSettings getHeartbeatSocketSettings() {
-        return wrapped.getHeartbeatSocketSettings();
+        return heartbeatSocketSettings;
     }
 
     /**
@@ -561,10 +549,10 @@ public final class MongoClientSettings {
      *
      * @return a ConnectionPoolSettings populated with the settings from this {@code MongoClientSettings} instance that relate to the
      * connection provider.
-     * @see com.mongodb.connection.ConnectionPoolSettings
+     * @see ConnectionPoolSettings
      */
     public ConnectionPoolSettings getConnectionPoolSettings() {
-        return wrapped.getConnectionPoolSettings();
+        return connectionPoolSettings;
     }
 
     /**
@@ -572,14 +560,28 @@ public final class MongoClientSettings {
      * minHeartbeatFrequency values from this {@code MongoClientSettings} instance.
      *
      * @return a ServerSettings
-     * @see com.mongodb.connection.ServerSettings
+     * @see ServerSettings
      */
     public ServerSettings getServerSettings() {
-        return wrapped.getServerSettings();
+        return serverSettings;
     }
 
     private MongoClientSettings(final Builder builder) {
-        wrapped = builder.wrappedBuilder.build();
-        credentialList = builder.credentialList;
+        readPreference = builder.readPreference;
+        writeConcern = builder.writeConcern;
+        retryWrites = builder.retryWrites;
+        readConcern = builder.readConcern;
+        credential = builder.credential;
+        streamFactoryFactory = builder.streamFactoryFactory;
+        codecRegistry = builder.codecRegistry;
+        commandListeners = builder.commandListeners;
+        applicationName = builder.applicationName;
+        clusterSettings = builder.clusterSettings;
+        serverSettings = builder.serverSettings;
+        socketSettings = builder.socketSettings;
+        heartbeatSocketSettings = builder.heartbeatSocketSettings;
+        connectionPoolSettings = builder.connectionPoolSettings;
+        sslSettings = builder.sslSettings;
+        compressorList = builder.compressorList;
     }
 }

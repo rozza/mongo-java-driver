@@ -14,14 +14,8 @@
  * limitations under the License.
  */
 
-package com.mongodb.async.client
+package com.mongodb
 
-import com.mongodb.MongoCompressor
-import com.mongodb.MongoCredential
-import com.mongodb.ReadConcern
-import com.mongodb.ReadPreference
-import com.mongodb.ServerAddress
-import com.mongodb.WriteConcern
 import com.mongodb.connection.ClusterSettings
 import com.mongodb.connection.ConnectionPoolSettings
 import com.mongodb.connection.ServerSettings
@@ -30,8 +24,12 @@ import com.mongodb.connection.SslSettings
 import com.mongodb.connection.netty.NettyStreamFactoryFactory
 import com.mongodb.event.CommandListener
 import org.bson.codecs.configuration.CodecRegistry
+import spock.lang.IgnoreIf
 import spock.lang.Specification
 
+import java.util.concurrent.TimeUnit
+
+import static com.mongodb.ClusterFixture.isNotAtLeastJava7
 import static com.mongodb.CustomMatchers.isTheSameAs
 import static spock.util.matcher.HamcrestSupport.expect
 
@@ -48,14 +46,14 @@ class MongoClientSettingsSpecification extends Specification {
         settings.getReadPreference() == ReadPreference.primary()
         settings.getCommandListeners().isEmpty()
         settings.getApplicationName() == null
-        settings.getConnectionPoolSettings() == ConnectionPoolSettings.builder().build()
-        settings.getSocketSettings() == SocketSettings.builder().build()
-        settings.getHeartbeatSocketSettings() == SocketSettings.builder().build()
-        settings.getServerSettings() == ServerSettings.builder().build()
-        settings.getStreamFactoryFactory() == null
-        settings.getCompressorList() == []
-        settings.getCredentialList() == []
-        settings.getCredential() == null
+        settings.connectionPoolSettings == ConnectionPoolSettings.builder().build()
+        settings.socketSettings == SocketSettings.builder().build()
+        settings.heartbeatSocketSettings == SocketSettings.builder().build()
+        settings.serverSettings == ServerSettings.builder().build()
+        settings.streamFactoryFactory == null
+        settings.compressorList == []
+        settings.credential == null
+        settings.credential == null
     }
 
     @SuppressWarnings('UnnecessaryObjectReferences')
@@ -109,7 +107,7 @@ class MongoClientSettingsSpecification extends Specification {
         thrown(IllegalArgumentException)
 
         when:
-        builder.credentialList(null)
+        builder.credential(null)
         then:
         thrown(IllegalArgumentException)
 
@@ -134,14 +132,14 @@ class MongoClientSettingsSpecification extends Specification {
         thrown(IllegalArgumentException)
     }
 
-    def 'should build with supplied settings'() {
+    def 'should build with set configuration'() {
         given:
         def streamFactoryFactory = NettyStreamFactoryFactory.builder().build()
         def sslSettings = Stub(SslSettings)
         def socketSettings = Stub(SocketSettings)
         def serverSettings = Stub(ServerSettings)
         def heartbeatSocketSettings = Stub(SocketSettings)
-        def credentialList = [MongoCredential.createMongoX509Credential('test')]
+        def credential = MongoCredential.createMongoX509Credential('test')
         def connectionPoolSettings = Stub(ConnectionPoolSettings)
         def codecRegistry = Stub(CodecRegistry)
         def commandListener = Stub(CommandListener)
@@ -159,11 +157,11 @@ class MongoClientSettingsSpecification extends Specification {
                 .socketSettings(socketSettings)
                 .serverSettings(serverSettings)
                 .heartbeatSocketSettings(heartbeatSocketSettings)
-                .credentialList(credentialList)
+                .credential(credential)
                 .connectionPoolSettings(connectionPoolSettings)
                 .codecRegistry(codecRegistry)
                 .clusterSettings(clusterSettings)
-                                         .streamFactoryFactory(streamFactoryFactory)
+                .streamFactoryFactory(streamFactoryFactory)
                 .compressorList([MongoCompressor.createZlibCompressor()])
                 .build()
 
@@ -173,42 +171,17 @@ class MongoClientSettingsSpecification extends Specification {
         settings.getRetryWrites()
         settings.getReadConcern() == ReadConcern.LOCAL
         settings.getApplicationName() == 'app1'
-        settings.getCommandListeners().get(0) == commandListener
-        settings.getConnectionPoolSettings() == connectionPoolSettings
-        settings.getSocketSettings() == socketSettings
-        settings.getHeartbeatSocketSettings() == heartbeatSocketSettings
-        settings.getServerSettings() == serverSettings
-        settings.getCodecRegistry() == codecRegistry
-        settings.getCredentialList() == credentialList
-        settings.getCredential() == credentialList.get(0)
-        settings.getConnectionPoolSettings() == connectionPoolSettings
-        settings.getClusterSettings() == clusterSettings
-        settings.getStreamFactoryFactory() == streamFactoryFactory
-        settings.getCompressorList() == [MongoCompressor.createZlibCompressor()]
-    }
-
-    def 'should support deprecated multiple credentials'() {
-        given:
-        def credentialList = [MongoCredential.createMongoX509Credential('test'), MongoCredential.createGSSAPICredential('gssapi')]
-
-        when:
-        def settings = MongoClientSettings.builder().credentialList(credentialList).build()
-
-        then:
-        settings.getCredentialList() == credentialList
-
-        when:
-        settings.getCredential()
-
-        then:
-        thrown(IllegalStateException)
-
-        when:
-        settings = MongoClientSettings.builder().credential(credentialList.get(0)).build()
-
-        then:
-        settings.getCredentialList() == [credentialList.get(0)]
-        settings.getCredential() == credentialList.get(0)
+        settings.commandListeners.get(0) == commandListener
+        settings.connectionPoolSettings == connectionPoolSettings
+        settings.socketSettings == socketSettings
+        settings.heartbeatSocketSettings == heartbeatSocketSettings
+        settings.serverSettings == serverSettings
+        settings.codecRegistry == codecRegistry
+        settings.credential == credential
+        settings.connectionPoolSettings == connectionPoolSettings
+        settings.clusterSettings == clusterSettings
+        settings.streamFactoryFactory == streamFactoryFactory
+        settings.compressorList == [MongoCompressor.createZlibCompressor()]
     }
 
     def 'should be easy to create new settings from existing'() {
@@ -223,7 +196,7 @@ class MongoClientSettingsSpecification extends Specification {
         def socketSettings = Stub(SocketSettings)
         def serverSettings = Stub(ServerSettings)
         def heartbeatSocketSettings = Stub(SocketSettings)
-        def credentialList = [MongoCredential.createMongoX509Credential('test')]
+        def credential = MongoCredential.createMongoX509Credential('test')
         def connectionPoolSettings = Stub(ConnectionPoolSettings)
         def codecRegistry = Stub(CodecRegistry)
         def commandListener = Stub(CommandListener)
@@ -241,7 +214,7 @@ class MongoClientSettingsSpecification extends Specification {
                 .socketSettings(socketSettings)
                 .serverSettings(serverSettings)
                 .heartbeatSocketSettings(heartbeatSocketSettings)
-                .credentialList(credentialList)
+                .credential(credential)
                 .connectionPoolSettings(connectionPoolSettings)
                 .codecRegistry(codecRegistry)
                 .clusterSettings(clusterSettings)
@@ -282,7 +255,8 @@ class MongoClientSettingsSpecification extends Specification {
         CommandListener commandListenerThree = Mock(CommandListener)
 
         when:
-        def settings = MongoClientSettings.builder().build()
+        def settings = MongoClientSettings.builder()
+                .build()
 
         then:
         settings.commandListeners.size() == 0
@@ -308,27 +282,68 @@ class MongoClientSettingsSpecification extends Specification {
         settings.commandListeners[1].is commandListenerTwo
 
         when:
-        def copiedsettings = MongoClientSettings.builder(settings).addCommandListener(commandListenerThree).build()
+        def copied = MongoClientSettings.builder(settings).addCommandListener(commandListenerThree).build()
 
         then:
-        copiedsettings.commandListeners.size() == 3
-        copiedsettings.commandListeners[0].is commandListenerOne
-        copiedsettings.commandListeners[1].is commandListenerTwo
-        copiedsettings.commandListeners[2].is commandListenerThree
+        copied.commandListeners.size() == 3
+        copied.commandListeners[0].is commandListenerOne
+        copied.commandListeners[1].is commandListenerTwo
+        copied.commandListeners[2].is commandListenerThree
         settings.commandListeners.size() == 2
         settings.commandListeners[0].is commandListenerOne
         settings.commandListeners[1].is commandListenerTwo
     }
 
+    @IgnoreIf({ isNotAtLeastJava7() })
+    def 'should build settings from a connection string'() {
+        when:
+        ConnectionString connectionString = new ConnectionString('mongodb://user:pass@host1:1,host2:2/'
+                + '?authMechanism=SCRAM-SHA-1&authSource=test'
+                + '&minPoolSize=5&maxPoolSize=10&waitQueueMultiple=7'
+                + '&waitQueueTimeoutMS=150&maxIdleTimeMS=200&maxLifeTimeMS=300'
+                + '&connectTimeoutMS=2500'
+                + '&socketTimeoutMS=5500'
+                + '&serverSelectionTimeoutMS=25000'
+                + '&localThresholdMS=30'
+                + '&heartbeatFrequencyMS=20000'
+                + '&appName=MyApp'
+                + '&replicaSet=test'
+                + '&retryWrites=true'
+                + '&ssl=true&sslInvalidHostNameAllowed=true'
+                + '&w=majority&wTimeoutMS=2500'
+                + '&readPreference=secondary'
+                + '&readConcernLevel=majority'
+                + '&compressors=zlib&zlibCompressionLevel=5'
+        )
+
+        MongoClientSettings settings = MongoClientSettings.builder().applyConnectionString(connectionString).build()
+        MongoClientSettings expected = MongoClientSettings.builder()
+            .clusterSettings(ClusterSettings.builder().applyConnectionString(connectionString).build())
+            .heartbeatSocketSettings(SocketSettings.builder().applyConnectionString(connectionString).build())
+            .connectionPoolSettings(ConnectionPoolSettings.builder().applyConnectionString(connectionString).build())
+            .serverSettings(ServerSettings.builder().applyConnectionString(connectionString).build())
+            .socketSettings(SocketSettings.builder().applyConnectionString(connectionString).build())
+            .sslSettings(SslSettings.builder().applyConnectionString(connectionString).build())
+            .readConcern(ReadConcern.MAJORITY)
+            .readPreference(ReadPreference.secondary())
+            .writeConcern(WriteConcern.MAJORITY.withWTimeout(2500, TimeUnit.MILLISECONDS))
+            .applicationName('MyApp')
+            .credential(MongoCredential.createScramSha1Credential('user', 'test', 'pass'.toCharArray()))
+            .compressorList([MongoCompressor.createZlibCompressor().withProperty(MongoCompressor.LEVEL, 5)])
+            .retryWrites(true)
+            .build()
+
+        then:
+        expect expected, isTheSameAs(settings)
+    }
 
     def 'should only have the following methods in the builder'() {
         when:
         // A regression test so that if anymore methods are added then the builder(final MongoClientSettings settings) should be updated
-        def actual = MongoClientSettings.Builder.declaredMethods.grep { !it.synthetic } *.name.sort()
-        def expected = ['addCommandListener', 'applicationName', 'applyConnectionString', 'build', 'clusterSettings', 'codecRegistry',
-                        'compressorList', 'connectionPoolSettings', 'credential', 'credentialList', 'heartbeatSocketSettings',
-                        'readConcern', 'readPreference', 'retryWrites', 'serverSettings', 'socketSettings', 'sslSettings',
-                        'streamFactoryFactory', 'writeConcern']
+        def actual = MongoClientSettings.Builder.declaredFields.grep {  !it.synthetic } *.name.sort()
+        def expected = ['applicationName', 'clusterSettings', 'codecRegistry', 'commandListeners', 'compressorList',
+                        'connectionPoolSettings', 'credential', 'heartbeatSocketSettings', 'readConcern', 'readPreference',
+                        'retryWrites', 'serverSettings', 'socketSettings', 'sslSettings', 'streamFactoryFactory', 'writeConcern']
 
         then:
         actual == expected

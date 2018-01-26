@@ -38,8 +38,13 @@ class MongoClientSpecification extends Specification {
 
     def 'should pass the correct settings to getDatabase'() {
         given:
-        def client = new MongoClientImpl(Stub(Cluster), [], secondary(), WriteConcern.MAJORITY, true, ReadConcern.MAJORITY,
-                new TestOperationExecutor([]))
+        def settings = MongoClients.getDefaultMongoClientSettingsBuilder()
+                .readPreference(secondary())
+                .writeConcern(WriteConcern.MAJORITY)
+                .readConcern(ReadConcern.MAJORITY)
+                .retryWrites(true)
+                .build()
+        def client = new MongoClientImpl(Stub(Cluster), settings, new TestOperationExecutor([]))
 
         when:
         def database = client.getDatabase('name')
@@ -55,8 +60,7 @@ class MongoClientSpecification extends Specification {
     def 'should use ListDatabasesIterableImpl correctly'() {
         given:
         def executor = new TestOperationExecutor([null, null])
-        def client = new MongoClientImpl(Stub(Cluster), [], primary(), WriteConcern.ACKNOWLEDGED, false, ReadConcern.DEFAULT,
-                executor)
+        def client = new MongoClientImpl(Stub(Cluster), MongoClients.getDefaultMongoClientSettingsBuilder().build(), executor)
         def listDatabasesMethod = client.&listDatabases
         def listDatabasesNamesMethod = client.&listDatabaseNames
 
