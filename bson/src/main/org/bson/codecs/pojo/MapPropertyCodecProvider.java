@@ -18,6 +18,7 @@ package org.bson.codecs.pojo;
 import org.bson.BsonReader;
 import org.bson.BsonType;
 import org.bson.BsonWriter;
+import org.bson.Document;
 import org.bson.codecs.Codec;
 import org.bson.codecs.DecoderContext;
 import org.bson.codecs.EncoderContext;
@@ -39,7 +40,19 @@ final class MapPropertyCodecProvider implements PropertyCodecProvider {
             if (!keyType.equals(String.class)) {
                 throw new CodecConfigurationException(format("Invalid Map type. Maps MUST have string keys, found %s instead.", keyType));
             }
-            return new MapCodec(type.getType(), registry.get(type.getTypeParameters().get(1)));
+
+            try {
+                return new MapCodec(type.getType(), registry.get(type.getTypeParameters().get(1)));
+            } catch (CodecConfigurationException e) {
+                if (type.getTypeParameters().get(1).getType() == Object.class) {
+                    try {
+                        return (Codec<T>) registry.get(TypeData.builder(Document.class).build());
+                    } catch (CodecConfigurationException e1) {
+                        // Ignore and return original exception
+                    }
+                }
+                throw e;
+            }
         } else {
             return null;
         }
