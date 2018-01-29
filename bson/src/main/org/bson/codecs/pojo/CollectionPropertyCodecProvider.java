@@ -53,7 +53,11 @@ final class CollectionPropertyCodecProvider implements PropertyCodecProvider {
         public void encode(final BsonWriter writer, final Collection<T> collection, final EncoderContext encoderContext) {
             writer.writeStartArray();
             for (final T value : collection) {
-                codec.encode(writer, value, encoderContext);
+                if (value == null) {
+                    writer.writeNull();
+                } else {
+                    codec.encode(writer, value, encoderContext);
+                }
             }
             writer.writeEndArray();
         }
@@ -63,7 +67,12 @@ final class CollectionPropertyCodecProvider implements PropertyCodecProvider {
             Collection<T> collection = getInstance();
             reader.readStartArray();
             while (reader.readBsonType() != BsonType.END_OF_DOCUMENT) {
-                collection.add(codec.decode(reader, context));
+                if (reader.getCurrentBsonType() == BsonType.NULL) {
+                    collection.add(null);
+                    reader.skipValue();
+                } else {
+                    collection.add(codec.decode(reader, context));
+                }
             }
             reader.readEndArray();
             return collection;
