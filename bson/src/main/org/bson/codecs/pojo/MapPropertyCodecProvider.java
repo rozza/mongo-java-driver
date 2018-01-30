@@ -18,7 +18,6 @@ package org.bson.codecs.pojo;
 import org.bson.BsonReader;
 import org.bson.BsonType;
 import org.bson.BsonWriter;
-import org.bson.Document;
 import org.bson.codecs.Codec;
 import org.bson.codecs.DecoderContext;
 import org.bson.codecs.EncoderContext;
@@ -46,7 +45,7 @@ final class MapPropertyCodecProvider implements PropertyCodecProvider {
             } catch (CodecConfigurationException e) {
                 if (type.getTypeParameters().get(1).getType() == Object.class) {
                     try {
-                        return (Codec<T>) registry.get(TypeData.builder(Document.class).build());
+                        return (Codec<T>) registry.get(TypeData.builder(Map.class).build());
                     } catch (CodecConfigurationException e1) {
                         // Ignore and return original exception
                     }

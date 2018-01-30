@@ -21,9 +21,9 @@ import org.bson.BsonWriter;
 import org.bson.Document;
 import org.bson.codecs.Codec;
 import org.bson.codecs.DecoderContext;
-import org.bson.codecs.DocumentCodec;
 import org.bson.codecs.EncoderContext;
 import org.bson.codecs.LongCodec;
+import org.bson.codecs.MapCodec;
 import org.bson.codecs.configuration.CodecConfigurationException;
 import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.codecs.pojo.entities.AsymmetricalCreatorModel;
@@ -51,23 +51,24 @@ import org.bson.codecs.pojo.entities.SimpleModel;
 import org.bson.codecs.pojo.entities.SimpleNestedPojoModel;
 import org.bson.codecs.pojo.entities.UpperBoundsModel;
 import org.bson.codecs.pojo.entities.conventions.AnnotationModel;
-import org.bson.codecs.pojo.entities.conventions.CollectionsGetterNonEmptyModel;
-import org.bson.codecs.pojo.entities.conventions.CollectionsGetterNullModel;
 import org.bson.codecs.pojo.entities.conventions.CollectionsGetterImmutableModel;
 import org.bson.codecs.pojo.entities.conventions.CollectionsGetterMutableModel;
+import org.bson.codecs.pojo.entities.conventions.CollectionsGetterNonEmptyModel;
+import org.bson.codecs.pojo.entities.conventions.CollectionsGetterNullModel;
 import org.bson.codecs.pojo.entities.conventions.CreatorConstructorPrimitivesModel;
 import org.bson.codecs.pojo.entities.conventions.CreatorConstructorThrowsExceptionModel;
 import org.bson.codecs.pojo.entities.conventions.CreatorMethodThrowsExceptionModel;
-import org.bson.codecs.pojo.entities.conventions.MapGetterNonEmptyModel;
-import org.bson.codecs.pojo.entities.conventions.MapGetterNullModel;
 import org.bson.codecs.pojo.entities.conventions.MapGetterImmutableModel;
 import org.bson.codecs.pojo.entities.conventions.MapGetterMutableModel;
+import org.bson.codecs.pojo.entities.conventions.MapGetterNonEmptyModel;
+import org.bson.codecs.pojo.entities.conventions.MapGetterNullModel;
 import org.bson.types.ObjectId;
 import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -385,16 +386,16 @@ public final class PojoCustomTest extends PojoTestCase {
 
     @Test
     public void testMapStringObjectModel() {
-        MapStringObjectModel model = new MapStringObjectModel(Document.parse("{a : 1, b: 'b', c: [1, 2, 3]}"));
-        CodecRegistry registry = fromRegistries(fromCodecs(new DocumentCodec()),
+        MapStringObjectModel model = new MapStringObjectModel(new HashMap<String, Object>(Document.parse("{a : 1, b: 'b', c: [1, 2, 3]}")));
+        CodecRegistry registry = fromRegistries(fromCodecs(new MapCodec()),
                 fromProviders(getPojoCodecProviderBuilder(MapStringObjectModel.class).build()));
         roundTrip(registry, model, "{ map: {a : 1, b: 'b', c: [1, 2, 3]}}");
     }
 
     @Test(expected = UnsupportedOperationException.class)
     public void testMapStringObjectModelWithObjectCodec() {
-        MapStringObjectModel model = new MapStringObjectModel(Document.parse("{a : 1, b: 'b', c: [1, 2, 3]}"));
-        CodecRegistry registry = fromRegistries(fromCodecs(new ObjectCodec()),
+        MapStringObjectModel model = new MapStringObjectModel(new HashMap<String, Object>(Document.parse("{a : 1, b: 'b', c: [1, 2, 3]}")));
+        CodecRegistry registry = fromRegistries(fromCodecs(new MapCodec()), fromCodecs(new ObjectCodec()),
                 fromProviders(getPojoCodecProviderBuilder(MapStringObjectModel.class).build()));
         roundTrip(registry, model, "{ map: {a : 1, b: 'b', c: [1, 2, 3]}}");
     }
