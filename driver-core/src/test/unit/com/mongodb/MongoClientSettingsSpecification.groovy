@@ -31,6 +31,7 @@ import java.util.concurrent.TimeUnit
 
 import static com.mongodb.ClusterFixture.isNotAtLeastJava7
 import static com.mongodb.CustomMatchers.isTheSameAs
+import static java.util.Collections.singletonList
 import static spock.util.matcher.HamcrestSupport.expect
 
 class MongoClientSettingsSpecification extends Specification {
@@ -247,7 +248,6 @@ class MongoClientSettingsSpecification extends Specification {
         thrown(IllegalArgumentException)
     }
 
-
     def 'should add command listeners'() {
         given:
         CommandListener commandListenerOne = Mock(CommandListener)
@@ -315,7 +315,6 @@ class MongoClientSettingsSpecification extends Specification {
                 + '&readConcernLevel=majority'
                 + '&compressors=zlib&zlibCompressionLevel=5'
         )
-
         MongoClientSettings settings = MongoClientSettings.builder().applyConnectionString(connectionString).build()
         MongoClientSettings expected = MongoClientSettings.builder()
             .clusterSettings(ClusterSettings.builder().applyConnectionString(connectionString).build())
@@ -332,6 +331,60 @@ class MongoClientSettingsSpecification extends Specification {
             .compressorList([MongoCompressor.createZlibCompressor().withProperty(MongoCompressor.LEVEL, 5)])
             .retryWrites(true)
             .build()
+
+        then:
+        expect expected, isTheSameAs(settings)
+    }
+
+    @IgnoreIf({ isNotAtLeastJava7() })
+    def 'should allow easy configuration of nested settings'() {
+        when:
+        MongoClientSettings settings = MongoClientSettings.builder()
+                .applyToClusterSettings(new Block<ClusterSettings.Builder>() {
+            @Override
+            void apply(final ClusterSettings.Builder builder) {
+                builder.description('My Cluster').hosts(singletonList(new ServerAddress()))
+            }
+        })
+        .applyToConnectionPoolSettings(new Block<ConnectionPoolSettings.Builder>() {
+            @Override
+            void apply(final ConnectionPoolSettings.Builder builder) {
+                builder.maxWaitQueueSize(22)
+            }
+        })
+        .applyToHeartbeatSocketSettings(new Block<SocketSettings.Builder>() {
+            @Override
+            void apply(final SocketSettings.Builder builder) {
+                builder.receiveBufferSize(99)
+            }
+        })
+        .applyToServerSettings(new Block<ServerSettings.Builder>() {
+            @Override
+            void apply(final ServerSettings.Builder builder) {
+                builder.heartbeatFrequency(10, TimeUnit.SECONDS)
+            }
+        })
+        .applyToSocketSettings(new Block<SocketSettings.Builder>() {
+            @Override
+            void apply(final SocketSettings.Builder builder) {
+                builder.sendBufferSize(99)
+            }
+        })
+        .applyToSslSettings(new Block<SslSettings.Builder>() {
+            @Override
+            void apply(final SslSettings.Builder builder) {
+                builder.enabled(true).invalidHostNameAllowed(true)
+            }
+        }).build()
+
+        MongoClientSettings expected = MongoClientSettings.builder()
+                .clusterSettings(ClusterSettings.builder().description('My Cluster').hosts(singletonList(new ServerAddress())).build())
+                .connectionPoolSettings(ConnectionPoolSettings.builder().maxWaitQueueSize(22).build())
+                .heartbeatSocketSettings(SocketSettings.builder().receiveBufferSize(99).build())
+                .serverSettings(ServerSettings.builder().heartbeatFrequency(10, TimeUnit.SECONDS).build())
+                .socketSettings(SocketSettings.builder().sendBufferSize(99).build())
+                .sslSettings(SslSettings.builder().enabled(true).invalidHostNameAllowed(true).build())
+                .build()
 
         then:
         expect expected, isTheSameAs(settings)

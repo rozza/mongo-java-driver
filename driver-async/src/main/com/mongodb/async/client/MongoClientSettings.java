@@ -16,6 +16,7 @@
 
 package com.mongodb.async.client;
 
+import com.mongodb.Block;
 import com.mongodb.ConnectionString;
 import com.mongodb.MongoCompressor;
 import com.mongodb.MongoCredential;
@@ -151,10 +152,88 @@ public final class MongoClientSettings {
         }
 
         /**
+         * Applies the {@link ClusterSettings.Builder} block and then sets the clusterSettings.
+         *
+         * @param block the block to apply to the ClusterSettings.
+         * @return this
+         * @since 3.7
+         * @see MongoClientSettings#getClusterSettings()
+         */
+        public Builder applyToClusterSettings(final Block<ClusterSettings.Builder> block) {
+            wrappedBuilder.applyToClusterSettings(block);
+            return this;
+        }
+
+        /**
+         * Applies the {@link SocketSettings.Builder} block and then sets the socketSettings.
+         *
+         * @param block the block to apply to the SocketSettings.
+         * @return this
+         * @since 3.7
+         * @see MongoClientSettings#getSocketSettings()
+         */
+        public Builder applyToSocketSettings(final Block<SocketSettings.Builder> block) {
+            wrappedBuilder.applyToSocketSettings(block);
+            return this;
+        }
+
+        /**
+         * Applies the {@link SocketSettings.Builder} block and then sets the heartbeatSocketSettings.
+         *
+         * @param block the block to apply to the heartbeatSocketSettings.
+         * @return this
+         * @since 3.7
+         * @see MongoClientSettings#getHeartbeatSocketSettings()
+         */
+        public Builder applyToHeartbeatSocketSettings(final Block<SocketSettings.Builder> block) {
+            wrappedBuilder.applyToHeartbeatSocketSettings(block);
+            return this;
+        }
+
+        /**
+         * Applies the {@link ConnectionPoolSettings.Builder} block and then sets the connectionPoolSettings.
+         *
+         * @param block the block to apply to the ConnectionPoolSettings.
+         * @return this
+         * @since 3.7
+         * @see MongoClientSettings#getConnectionPoolSettings()
+         */
+        public Builder applyToConnectionPoolSettings(final Block<ConnectionPoolSettings.Builder> block) {
+            wrappedBuilder.applyToConnectionPoolSettings(block);
+            return this;
+        }
+
+        /**
+         * Applies the {@link ServerSettings.Builder} block and then sets the serverSettings.
+         *
+         * @param block the block to apply to the ServerSettings.
+         * @return this
+         * @since 3.7
+         * @see MongoClientSettings#getServerSettings()
+         */
+        public Builder applyToServerSettings(final Block<ServerSettings.Builder> block) {
+            wrappedBuilder.applyToServerSettings(block);
+            return this;
+        }
+
+        /**
+         * Applies the {@link SslSettings.Builder} block and then sets the sslSettings.
+         *
+         * @param block the block to apply to the SslSettings.
+         * @return this
+         * @since 3.7
+         * @see MongoClientSettings#getSslSettings()
+         */
+        public Builder applyToSslSettings(final Block<SslSettings.Builder> block) {
+            wrappedBuilder.applyToSslSettings(block);
+            return this;
+        }
+
+        /**
          * Sets the cluster settings.
          *
          * @param clusterSettings the cluster settings
-         * @return {@code this}
+         * @return this
          * @see MongoClientSettings#getClusterSettings()
          */
         public Builder clusterSettings(final ClusterSettings clusterSettings) {
@@ -166,7 +245,7 @@ public final class MongoClientSettings {
          * Sets the socket settings.
          *
          * @param socketSettings the socket settings
-         * @return {@code this}
+         * @return this
          * @see MongoClientSettings#getSocketSettings()
          */
         public Builder socketSettings(final SocketSettings socketSettings) {
@@ -178,7 +257,7 @@ public final class MongoClientSettings {
          * Sets the heartbeat socket settings.
          *
          * @param heartbeatSocketSettings the socket settings
-         * @return {@code this}
+         * @return this
          * @see MongoClientSettings#getHeartbeatSocketSettings()
          */
         public Builder heartbeatSocketSettings(final SocketSettings heartbeatSocketSettings) {
@@ -190,7 +269,7 @@ public final class MongoClientSettings {
          * Sets the connection pool settings.
          *
          * @param connectionPoolSettings the connection settings
-         * @return {@code this}
+         * @return this
          * @see MongoClientSettings#getConnectionPoolSettings() ()
          */
         public Builder connectionPoolSettings(final ConnectionPoolSettings connectionPoolSettings) {
@@ -202,7 +281,7 @@ public final class MongoClientSettings {
          * Sets the server settings.
          *
          * @param serverSettings the server settings
-         * @return {@code this}
+         * @return this
          * @see MongoClientSettings#getServerSettings() ()
          */
         public Builder serverSettings(final ServerSettings serverSettings) {
@@ -214,7 +293,7 @@ public final class MongoClientSettings {
          * Sets the socket settings.
          *
          * @param sslSettings the SSL settings
-         * @return {@code this}
+         * @return this
          * @see MongoClientSettings#getSslSettings() ()
          */
         public Builder sslSettings(final SslSettings sslSettings) {
@@ -227,7 +306,7 @@ public final class MongoClientSettings {
          * Sets the read preference.
          *
          * @param readPreference read preference
-         * @return {@code this}
+         * @return this
          * @see MongoClientSettings#getReadPreference()
          */
         public Builder readPreference(final ReadPreference readPreference) {
@@ -239,7 +318,7 @@ public final class MongoClientSettings {
          * Sets the write concern.
          *
          * @param writeConcern the write concern
-         * @return {@code this}
+         * @return this
          * @see MongoClientSettings#getWriteConcern()
          */
         public Builder writeConcern(final WriteConcern writeConcern) {
@@ -251,7 +330,7 @@ public final class MongoClientSettings {
          * Sets whether writes should be retried if they fail due to a network error.
          *
          * @param retryWrites sets if writes should be retried if they fail due to a network error.
-         * @return {@code this}
+         * @return this
          * @see #getRetryWrites()
          * @since 3.6
          * @mongodb.server.release 3.6
@@ -265,7 +344,7 @@ public final class MongoClientSettings {
          * Sets the read concern.
          *
          * @param readConcern the read concern
-         * @return {@code this}
+         * @return this
          * @since 3.2
          * @mongodb.server.release 3.2
          * @mongodb.driver.manual reference/readConcern/ Read Concern
@@ -279,7 +358,7 @@ public final class MongoClientSettings {
          * Sets the credential list.
          *
          * @param credentialList the credential list
-         * @return {@code this}
+         * @return this
          * @see MongoClientSettings#getCredentialList()
          * @deprecated Prefer {@link #credential(MongoCredential)}
          */
@@ -296,7 +375,7 @@ public final class MongoClientSettings {
          * Sets the credential.
          *
          * @param credential the credential
-         * @return {@code this}
+         * @return this
          * @see MongoClientSettings#getCredential()
          * @since 3.6
          */
@@ -310,7 +389,7 @@ public final class MongoClientSettings {
          * Sets the codec registry
          *
          * @param codecRegistry the codec registry
-         * @return {@code this}
+         * @return this
          * @see MongoClientSettings#getCodecRegistry()
          * @since 3.0
          */
@@ -350,7 +429,7 @@ public final class MongoClientSettings {
          *
          * @param applicationName the logical name of the application using this MongoClient.  It may be null.
          *                        The UTF-8 encoding may not exceed 128 bytes.
-         * @return {@code this}
+         * @return this
          * @see #getApplicationName()
          * @since 3.4
          * @mongodb.server.release 3.4
@@ -365,7 +444,7 @@ public final class MongoClientSettings {
          * that the server is configured to support.
          *
          * @param compressorList the list of compressors to request
-         * @return {@code this}
+         * @return this
          * @see #getCompressorList() ()
          * @since 3.6
          * @mongodb.server.release 3.4

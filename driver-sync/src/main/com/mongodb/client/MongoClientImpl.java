@@ -23,7 +23,6 @@ import com.mongodb.MongoClientSettings;
 import com.mongodb.MongoCredential;
 import com.mongodb.MongoDriverInformation;
 import com.mongodb.ReadPreference;
-import com.mongodb.ServerAddress;
 import com.mongodb.client.internal.ListDatabasesIterableImpl;
 import com.mongodb.client.internal.MongoClientDelegate;
 import com.mongodb.client.internal.MongoDatabaseImpl;
@@ -93,11 +92,6 @@ final class MongoClientImpl implements MongoClient {
     public <T> ListDatabasesIterable<T> listDatabases(final ClientSession clientSession, final Class<T> clazz) {
         notNull("clientSession", clientSession);
         return createListDatabasesIterable(clientSession, clazz);
-    }
-
-    @Override
-    public List<ServerAddress> getServerAddressList() {
-        return delegate.getServerAddressList();
     }
 
     @Override

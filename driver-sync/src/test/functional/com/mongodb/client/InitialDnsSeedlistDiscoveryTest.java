@@ -20,6 +20,13 @@ import com.mongodb.ConnectionString;
 import com.mongodb.MongoClientException;
 import com.mongodb.MongoClientSettings;
 import com.mongodb.ServerAddress;
+import com.mongodb.connection.ClusterSettings;
+import com.mongodb.connection.ServerDescription;
+import com.mongodb.connection.SslSettings;
+import com.mongodb.event.ClusterClosedEvent;
+import com.mongodb.event.ClusterDescriptionChangedEvent;
+import com.mongodb.event.ClusterListener;
+import com.mongodb.event.ClusterOpeningEvent;
 import org.bson.BsonArray;
 import org.bson.BsonBoolean;
 import org.bson.BsonDocument;
@@ -37,6 +44,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import static com.mongodb.ClusterFixture.getSslSettings;
@@ -108,33 +116,49 @@ public class InitialDnsSeedlistDiscoveryTest {
         if (seeds.isEmpty()) {
             return;
         }
-        MongoClientSettings mongoClientSettings = MongoClients.getDefaultMongoClientSettingsBuilder()
-                .sslSettings(getSslSettings())
-                .applyConnectionString(new ConnectionString(uri))
-                .build();
+        final CountDownLatch latch = new CountDownLatch(1);
+
+        ConnectionString connectionString = new ConnectionString(uri);
+
+        SslSettings sslSettings = getSslSettings(connectionString);
 
         assumeTrue(isDiscoverableReplicaSet() && !serverVersionAtLeast(3, 7)
-                && getSslSettings().isEnabled() == mongoClientSettings.getSslSettings().isEnabled());
+                && getSslSettings().isEnabled() == sslSettings.isEnabled());
 
-        MongoClient client = MongoClients.create(mongoClientSettings);
+        MongoClientSettings settings = MongoClientSettings
+                .builder()
+                .clusterSettings(ClusterSettings.builder()
+                        .applyConnectionString(connectionString)
+                        .addClusterListener(new ClusterListener() {
+                            @Override
+                            public void clusterOpening(final ClusterOpeningEvent event) {
+                            }
+
+                            @Override
+                            public void clusterClosed(final ClusterClosedEvent event) {
+                            }
+
+                            @Override
+                            public void clusterDescriptionChanged(final ClusterDescriptionChangedEvent event) {
+                                List<ServerAddress> curHostList = new ArrayList<ServerAddress>();
+                                for (ServerDescription cur : event.getNewDescription().getServerDescriptions()) {
+                                    if (cur.isOk()) {
+                                        curHostList.add(cur.getAddress());
+                                    }
+                                }
+                                if (hosts.size() == curHostList.size() && curHostList.containsAll(hosts)) {
+                                    latch.countDown();
+                                }
+
+                            }
+                        }).build())
+                .sslSettings(sslSettings)
+                .build();
+
+        MongoClient client = MongoClients.create(settings);
+
         try {
-            long startTime = System.currentTimeMillis();
-            long currentTime = startTime;
-            boolean hostsMatch = false;
-            while (currentTime < startTime + TimeUnit.SECONDS.toMillis(5)) {
-
-                List<ServerAddress> currentAddresses = client.getServerAddressList();
-                if (currentAddresses.size() == hosts.size() && currentAddresses.containsAll(hosts)) {
-                    hostsMatch = true;
-                    break;
-                }
-
-                Thread.sleep(100);
-                currentTime = System.currentTimeMillis();
-            }
-
-            assertTrue(hostsMatch);
-
+            assertTrue(latch.await(5, TimeUnit.SECONDS));
             assertTrue(client.getDatabase("admin").runCommand(new Document("ping", 1)).containsKey("ok"));
         } finally {
             client.close();
