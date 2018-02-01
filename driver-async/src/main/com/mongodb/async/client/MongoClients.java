@@ -17,29 +17,18 @@
 package com.mongodb.async.client;
 
 import com.mongodb.ConnectionString;
-import com.mongodb.DBRefCodecProvider;
-import com.mongodb.DocumentToDBRefTransformer;
 import com.mongodb.MongoDriverInformation;
-import com.mongodb.client.gridfs.codecs.GridFSFileCodecProvider;
-import com.mongodb.client.model.geojson.codecs.GeoJsonCodecProvider;
 import com.mongodb.connection.AsynchronousSocketChannelStreamFactory;
 import com.mongodb.connection.DefaultClusterFactory;
 import com.mongodb.connection.SocketSettings;
 import com.mongodb.connection.SslSettings;
 import com.mongodb.connection.StreamFactory;
 import com.mongodb.connection.StreamFactoryFactory;
-import org.bson.codecs.BsonValueCodecProvider;
-import org.bson.codecs.DocumentCodecProvider;
-import org.bson.codecs.IterableCodecProvider;
-import org.bson.codecs.MapCodecProvider;
-import org.bson.codecs.ValueCodecProvider;
 import org.bson.codecs.configuration.CodecRegistry;
 
 import java.io.Closeable;
 
 import static com.mongodb.internal.event.EventListenerHelper.getCommandListener;
-import static java.util.Arrays.asList;
-import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
 
 /**
  * A factory for MongoClient instances.
@@ -180,18 +169,8 @@ public final class MongoClients {
      * @since 3.1
      */
     public static CodecRegistry getDefaultCodecRegistry() {
-        return MongoClients.DEFAULT_CODEC_REGISTRY;
+        return com.mongodb.MongoClientSettings.getDefaultCodecRegistry();
     }
-
-    private static final CodecRegistry DEFAULT_CODEC_REGISTRY =
-            fromProviders(asList(new ValueCodecProvider(),
-                    new BsonValueCodecProvider(),
-                    new DBRefCodecProvider(),
-                    new DocumentCodecProvider(new DocumentToDBRefTransformer()),
-                    new IterableCodecProvider(new DocumentToDBRefTransformer()),
-                    new MapCodecProvider(new DocumentToDBRefTransformer()),
-                    new GeoJsonCodecProvider(),
-                    new GridFSFileCodecProvider()));
 
     private static StreamFactory getStreamFactory(final StreamFactoryFactory streamFactoryFactory,
                                                   final SocketSettings socketSettings, final SslSettings sslSettings,

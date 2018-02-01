@@ -16,6 +16,7 @@
 
 package com.mongodb.client;
 
+import com.mongodb.Block;
 import com.mongodb.ConnectionString;
 import com.mongodb.MongoClientException;
 import com.mongodb.MongoClientSettings;
@@ -117,42 +118,48 @@ public class InitialDnsSeedlistDiscoveryTest {
             return;
         }
         final CountDownLatch latch = new CountDownLatch(1);
-
-        ConnectionString connectionString = new ConnectionString(uri);
-
-        SslSettings sslSettings = getSslSettings(connectionString);
+        final ConnectionString connectionString = new ConnectionString(uri);
+        final SslSettings sslSettings = getSslSettings(connectionString);
 
         assumeTrue(isDiscoverableReplicaSet() && !serverVersionAtLeast(3, 7)
                 && getSslSettings().isEnabled() == sslSettings.isEnabled());
 
-        MongoClientSettings settings = MongoClientSettings
-                .builder()
-                .clusterSettings(ClusterSettings.builder()
-                        .applyConnectionString(connectionString)
-                        .addClusterListener(new ClusterListener() {
-                            @Override
-                            public void clusterOpening(final ClusterOpeningEvent event) {
-                            }
-
-                            @Override
-                            public void clusterClosed(final ClusterClosedEvent event) {
-                            }
-
-                            @Override
-                            public void clusterDescriptionChanged(final ClusterDescriptionChangedEvent event) {
-                                List<ServerAddress> curHostList = new ArrayList<ServerAddress>();
-                                for (ServerDescription cur : event.getNewDescription().getServerDescriptions()) {
-                                    if (cur.isOk()) {
-                                        curHostList.add(cur.getAddress());
+        MongoClientSettings settings = MongoClientSettings.builder()
+                .applyToClusterSettings(new Block<ClusterSettings.Builder>() {
+                    @Override
+                    public void apply(final ClusterSettings.Builder builder) {
+                        builder.applyConnectionString(connectionString)
+                                .addClusterListener(new ClusterListener() {
+                                    @Override
+                                    public void clusterOpening(final ClusterOpeningEvent event) {
                                     }
-                                }
-                                if (hosts.size() == curHostList.size() && curHostList.containsAll(hosts)) {
-                                    latch.countDown();
-                                }
 
-                            }
-                        }).build())
-                .sslSettings(sslSettings)
+                                    @Override
+                                    public void clusterClosed(final ClusterClosedEvent event) {
+                                    }
+
+                                    @Override
+                                    public void clusterDescriptionChanged(final ClusterDescriptionChangedEvent event) {
+                                        List<ServerAddress> curHostList = new ArrayList<ServerAddress>();
+                                        for (ServerDescription cur : event.getNewDescription().getServerDescriptions()) {
+                                            if (cur.isOk()) {
+                                                curHostList.add(cur.getAddress());
+                                            }
+                                        }
+                                        if (hosts.size() == curHostList.size() && curHostList.containsAll(hosts)) {
+                                            latch.countDown();
+                                        }
+
+                                    }
+                                });
+                    }
+                })
+                .applyToSslSettings(new Block<SslSettings.Builder>() {
+                    @Override
+                    public void apply(final SslSettings.Builder builder) {
+                        builder.applySettings(sslSettings);
+                    }
+                })
                 .build();
 
         MongoClient client = MongoClients.create(settings);

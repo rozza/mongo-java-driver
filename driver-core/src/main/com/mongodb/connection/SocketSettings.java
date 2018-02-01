@@ -53,7 +53,7 @@ public class SocketSettings {
      * @since 3.7
      */
     public static Builder builder(final SocketSettings socketSettings) {
-        return new Builder(socketSettings);
+        return builder().applySettings(socketSettings);
     }
 
     /**
@@ -69,13 +69,20 @@ public class SocketSettings {
         private Builder() {
         }
 
-        private Builder(final SocketSettings socketSettings) {
+        /**
+         * Applies the socketSettings to the builder
+         *
+         * @param socketSettings the socketSettings
+         * @return this
+         */
+        public Builder applySettings(final SocketSettings socketSettings) {
             notNull("socketSettings", socketSettings);
             connectTimeoutMS = socketSettings.connectTimeoutMS;
             readTimeoutMS = socketSettings.readTimeoutMS;
             keepAlive = socketSettings.keepAlive;
             receiveBufferSize = socketSettings.receiveBufferSize;
             sendBufferSize = socketSettings.sendBufferSize;
+            return this;
         }
 
         /**

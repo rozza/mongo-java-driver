@@ -79,18 +79,14 @@ public final class MongoClientSettings {
     @NotThreadSafe
     public static final class Builder {
         private List<MongoCredential> credentialList = Collections.emptyList();
-        private com.mongodb.MongoClientSettings.Builder wrappedBuilder = com.mongodb.MongoClientSettings.builder()
-                .codecRegistry(MongoClients.getDefaultCodecRegistry());
+        private final com.mongodb.MongoClientSettings.Builder wrappedBuilder = com.mongodb.MongoClientSettings.builder();
 
         private Builder() {
         }
 
-        /**
-         * Creates a Builder from an existing {@code MongoClientSettings}.
-         *
-         * @param settings create a builder from existing settings
-         */
+        @SuppressWarnings("deprecation")
         private Builder(final MongoClientSettings settings) {
+            notNull("settings", settings);
             credentialList = new ArrayList<MongoCredential>(settings.credentialList);
 
             wrappedBuilder.commandListenerList(new ArrayList<CommandListener>(settings.getCommandListeners()));
@@ -114,26 +110,24 @@ public final class MongoClientSettings {
                 wrappedBuilder.streamFactoryFactory(settings.getStreamFactoryFactory());
             }
             if (settings.getClusterSettings() != null) {
-                wrappedBuilder.clusterSettings(settings.getClusterSettings());
+                clusterSettings(settings.getClusterSettings());
             }
             if (settings.getServerSettings() != null) {
-                wrappedBuilder.serverSettings(settings.getServerSettings());
+                serverSettings(settings.getServerSettings());
             }
             if (settings.getSocketSettings() != null) {
-                wrappedBuilder.socketSettings(settings.getSocketSettings());
+                socketSettings(settings.getSocketSettings());
             }
             if (settings.getHeartbeatSocketSettings() != null) {
-                wrappedBuilder.heartbeatSocketSettings(settings.getHeartbeatSocketSettings());
+                heartbeatSocketSettings(settings.getHeartbeatSocketSettings());
             }
             if (settings.getConnectionPoolSettings() != null) {
-                wrappedBuilder.connectionPoolSettings(settings.getConnectionPoolSettings());
+                connectionPoolSettings(settings.getConnectionPoolSettings());
             }
             if (settings.getSslSettings() != null) {
-                wrappedBuilder.sslSettings(settings.getSslSettings());
+                sslSettings(settings.getSslSettings());
             }
-            if (settings.getApplicationName() != null) {
-                wrappedBuilder.applicationName(settings.getApplicationName());
-            }
+            wrappedBuilder.applicationName(settings.getApplicationName());
             wrappedBuilder.compressorList(new ArrayList<MongoCompressor>(settings.getCompressorList()));
         }
 
@@ -235,9 +229,16 @@ public final class MongoClientSettings {
          * @param clusterSettings the cluster settings
          * @return this
          * @see MongoClientSettings#getClusterSettings()
+         * @deprecated Prefer {@link Builder#applyToClusterSettings(Block)}
          */
+        @Deprecated
         public Builder clusterSettings(final ClusterSettings clusterSettings) {
-            wrappedBuilder.clusterSettings(clusterSettings);
+            wrappedBuilder.applyToClusterSettings(new Block<ClusterSettings.Builder>() {
+                @Override
+                public void apply(final ClusterSettings.Builder builder) {
+                    builder.applySettings(clusterSettings);
+                }
+            });
             return this;
         }
 
@@ -247,9 +248,16 @@ public final class MongoClientSettings {
          * @param socketSettings the socket settings
          * @return this
          * @see MongoClientSettings#getSocketSettings()
+         * @deprecated Prefer {@link Builder#applyToSocketSettings(Block)}
          */
+        @Deprecated
         public Builder socketSettings(final SocketSettings socketSettings) {
-            wrappedBuilder.socketSettings(socketSettings);
+            wrappedBuilder.applyToSocketSettings(new Block<SocketSettings.Builder>() {
+                @Override
+                public void apply(final SocketSettings.Builder builder) {
+                    builder.applySettings(socketSettings);
+                }
+            });
             return this;
         }
 
@@ -259,9 +267,16 @@ public final class MongoClientSettings {
          * @param heartbeatSocketSettings the socket settings
          * @return this
          * @see MongoClientSettings#getHeartbeatSocketSettings()
+         * @deprecated Prefer {@link Builder#applyToHeartbeatSocketSettings(Block)}
          */
+        @Deprecated
         public Builder heartbeatSocketSettings(final SocketSettings heartbeatSocketSettings) {
-            wrappedBuilder.heartbeatSocketSettings(heartbeatSocketSettings);
+            wrappedBuilder.applyToHeartbeatSocketSettings(new Block<SocketSettings.Builder>() {
+                @Override
+                public void apply(final SocketSettings.Builder builder) {
+                    builder.applySettings(heartbeatSocketSettings);
+                }
+            });
             return this;
         }
 
@@ -271,9 +286,16 @@ public final class MongoClientSettings {
          * @param connectionPoolSettings the connection settings
          * @return this
          * @see MongoClientSettings#getConnectionPoolSettings() ()
+         * @deprecated Prefer {@link Builder#applyToConnectionPoolSettings(Block)}
          */
+        @Deprecated
         public Builder connectionPoolSettings(final ConnectionPoolSettings connectionPoolSettings) {
-            wrappedBuilder.connectionPoolSettings(connectionPoolSettings);
+            wrappedBuilder.applyToConnectionPoolSettings(new Block<ConnectionPoolSettings.Builder>() {
+                @Override
+                public void apply(final ConnectionPoolSettings.Builder builder) {
+                    builder.applySettings(connectionPoolSettings);
+                }
+            });
             return this;
         }
 
@@ -283,9 +305,16 @@ public final class MongoClientSettings {
          * @param serverSettings the server settings
          * @return this
          * @see MongoClientSettings#getServerSettings() ()
+         * @deprecated Prefer {@link Builder#applyToServerSettings(Block)}
          */
+        @Deprecated
         public Builder serverSettings(final ServerSettings serverSettings) {
-            wrappedBuilder.serverSettings(serverSettings);
+            wrappedBuilder.applyToServerSettings(new Block<ServerSettings.Builder>() {
+                @Override
+                public void apply(final ServerSettings.Builder builder) {
+                    builder.applySettings(serverSettings);
+                }
+            });
             return this;
         }
 
@@ -295,12 +324,18 @@ public final class MongoClientSettings {
          * @param sslSettings the SSL settings
          * @return this
          * @see MongoClientSettings#getSslSettings() ()
+         * @deprecated Prefer {@link Builder#applyToSslSettings(Block)}
          */
+        @Deprecated
         public Builder sslSettings(final SslSettings sslSettings) {
-            wrappedBuilder.sslSettings(sslSettings);
+            wrappedBuilder.applyToSslSettings(new Block<SslSettings.Builder>() {
+                @Override
+                public void apply(final SslSettings.Builder builder) {
+                    builder.applySettings(sslSettings);
+                }
+            });
             return this;
         }
-
 
         /**
          * Sets the read preference.

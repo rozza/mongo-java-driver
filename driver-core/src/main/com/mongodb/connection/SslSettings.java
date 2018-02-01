@@ -53,9 +53,8 @@ public class SslSettings {
      * @since 3.7
      */
     public static Builder builder(final SslSettings sslSettings) {
-        return new Builder(sslSettings);
+        return builder().applySettings(sslSettings);
     }
-
 
     /**
      * A builder for creating SSLSettings.
@@ -69,11 +68,18 @@ public class SslSettings {
         private Builder(){
         }
 
-        private Builder(final SslSettings sslSettings) {
+        /**
+         * Applies the sslSettings to the builder
+         *
+         * @param sslSettings the sslSettings
+         * @return this
+         */
+        public Builder applySettings(final SslSettings sslSettings) {
             notNull("sslSettings", sslSettings);
             enabled = sslSettings.enabled;
             invalidHostNameAllowed = sslSettings.invalidHostNameAllowed;
             context = sslSettings.context;
+            return this;
         }
 
         /**

@@ -16,9 +16,9 @@
 
 package com.mongodb.client.gridfs
 
+import com.mongodb.MongoClientSettings
 import com.mongodb.MongoGridFSException
 import com.mongodb.client.FunctionalSpecification
-import com.mongodb.client.MongoClients
 import com.mongodb.client.MongoCollection
 import com.mongodb.client.MongoDatabase
 import com.mongodb.client.gridfs.model.GridFSDownloadOptions
@@ -516,7 +516,8 @@ class GridFSBucketSmokeTestSpecification extends FunctionalSpecification {
 
     def 'should use the user provided codec registries for encoding / decoding data'() {
         given:
-        def codecRegistry = fromRegistries(fromCodecs(new UuidCodec(UuidRepresentation.STANDARD)), MongoClients.getDefaultCodecRegistry())
+        def codecRegistry = fromRegistries(fromCodecs(new UuidCodec(UuidRepresentation.STANDARD)),
+                MongoClientSettings.getDefaultCodecRegistry())
         def database = getDefaultDatabase().withCodecRegistry(codecRegistry)
         def uuid = UUID.randomUUID()
         def fileMeta = new Document('uuid', uuid)

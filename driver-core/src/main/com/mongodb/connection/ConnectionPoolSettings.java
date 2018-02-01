@@ -65,7 +65,7 @@ public class ConnectionPoolSettings {
      * @since 3.5
      */
     public static Builder builder(final ConnectionPoolSettings connectionPoolSettings) {
-        return new Builder(connectionPoolSettings);
+        return builder().applySettings(connectionPoolSettings);
     }
 
     /**
@@ -86,7 +86,13 @@ public class ConnectionPoolSettings {
         Builder() {
         }
 
-        Builder(final ConnectionPoolSettings connectionPoolSettings) {
+        /**
+         * Applies the connectionPoolSettings to the builder
+         *
+         * @param connectionPoolSettings the connectionPoolSettings
+         * @return this
+         */
+        public Builder applySettings(final ConnectionPoolSettings connectionPoolSettings) {
             notNull("connectionPoolSettings", connectionPoolSettings);
             maxSize = connectionPoolSettings.maxSize;
             minSize = connectionPoolSettings.minSize;
@@ -96,6 +102,7 @@ public class ConnectionPoolSettings {
             maxConnectionIdleTimeMS = connectionPoolSettings.maxConnectionIdleTimeMS;
             maintenanceInitialDelayMS = connectionPoolSettings.maintenanceInitialDelayMS;
             maintenanceFrequencyMS = connectionPoolSettings.maintenanceFrequencyMS;
+            return this;
         }
 
         /**

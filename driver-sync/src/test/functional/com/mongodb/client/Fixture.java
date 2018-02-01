@@ -16,6 +16,7 @@
 
 package com.mongodb.client;
 
+import com.mongodb.Block;
 import com.mongodb.ConnectionString;
 import com.mongodb.MongoClientSettings;
 import com.mongodb.ServerAddress;
@@ -80,11 +81,17 @@ public final class Fixture {
 
     public static synchronized MongoClientSettings getMongoClientSettings() {
         if (mongoClientSettings == null) {
-            MongoClientSettings.Builder builder = MongoClients.getDefaultMongoClientSettingsBuilder();
+            MongoClientSettings.Builder builder = MongoClientSettings.builder()
+                    .applyConnectionString(new ConnectionString(getConnectionStringProperty()));
             if (System.getProperty("java.version").startsWith("1.6.")) {
-                builder.sslSettings(SslSettings.builder().invalidHostNameAllowed(true).build());
+                builder.applyToSslSettings(new Block<SslSettings.Builder>() {
+                    @Override
+                    public void apply(final SslSettings.Builder builder) {
+                        builder.invalidHostNameAllowed(true);
+                    }
+                });
             }
-            mongoClientSettings = builder.applyConnectionString(new ConnectionString(getConnectionStringProperty())).build();
+            mongoClientSettings = builder.build();
         }
         return mongoClientSettings;
     }

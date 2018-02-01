@@ -17,21 +17,8 @@
 package com.mongodb.client;
 
 import com.mongodb.ConnectionString;
-import com.mongodb.DBRefCodecProvider;
-import com.mongodb.DocumentToDBRefTransformer;
 import com.mongodb.MongoClientSettings;
 import com.mongodb.MongoDriverInformation;
-import com.mongodb.client.gridfs.codecs.GridFSFileCodecProvider;
-import com.mongodb.client.model.geojson.codecs.GeoJsonCodecProvider;
-import org.bson.codecs.BsonValueCodecProvider;
-import org.bson.codecs.DocumentCodecProvider;
-import org.bson.codecs.IterableCodecProvider;
-import org.bson.codecs.MapCodecProvider;
-import org.bson.codecs.ValueCodecProvider;
-import org.bson.codecs.configuration.CodecRegistry;
-
-import static java.util.Arrays.asList;
-import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
 
 /**
  * A factory for {@link MongoClient} instances.  Use of this class is now the recommended way to connect to MongoDB via the Java driver.
@@ -40,44 +27,6 @@ import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
  * @since 3.7
  */
 public final class MongoClients {
-    private static final CodecRegistry DEFAULT_CODEC_REGISTRY =
-            fromProviders(asList(new ValueCodecProvider(),
-                    new BsonValueCodecProvider(),
-                    new DBRefCodecProvider(),
-                    new DocumentCodecProvider(new DocumentToDBRefTransformer()),
-                    new IterableCodecProvider(new DocumentToDBRefTransformer()),
-                    new MapCodecProvider(new DocumentToDBRefTransformer()),
-                    new GeoJsonCodecProvider(),
-                    new GridFSFileCodecProvider()));
-
-    /**
-     * Gets the default codec registry.  It includes the following providers:
-     *
-     * <ul>
-     * <li>{@link org.bson.codecs.ValueCodecProvider}</li>
-     * <li>{@link org.bson.codecs.BsonValueCodecProvider}</li>
-     * <li>{@link com.mongodb.DBRefCodecProvider}</li>
-     * <li>{@link org.bson.codecs.DocumentCodecProvider}</li>
-     * <li>{@link org.bson.codecs.IterableCodecProvider}</li>
-     * <li>{@link org.bson.codecs.MapCodecProvider}</li>
-     * <li>{@link com.mongodb.client.model.geojson.codecs.GeoJsonCodecProvider}</li>
-     * <li>{@link com.mongodb.client.gridfs.codecs.GridFSFileCodecProvider}</li>
-     * </ul>
-     *
-     * @return the default codec registry
-     */
-    public static CodecRegistry getDefaultCodecRegistry() {
-        return DEFAULT_CODEC_REGISTRY;
-    }
-
-    /**
-     * Creates a {@link MongoClientSettings.Builder} instance configured with the {@link #getDefaultCodecRegistry()}.
-     *
-     * @return a MongoClientSettings instance with the default codecRegistry
-     */
-    public static MongoClientSettings.Builder getDefaultMongoClientSettingsBuilder() {
-        return MongoClientSettings.builder().codecRegistry(DEFAULT_CODEC_REGISTRY);
-    }
 
     /**
      * Creates a new client with the default connection string "mongodb://localhost".
@@ -143,7 +92,7 @@ public final class MongoClients {
      * @see MongoClients#create(ConnectionString)
      */
     public static MongoClient create(final ConnectionString connectionString, final MongoDriverInformation mongoDriverInformation) {
-        return create(getDefaultMongoClientSettingsBuilder().applyConnectionString(connectionString).build(), mongoDriverInformation);
+        return create(MongoClientSettings.builder().applyConnectionString(connectionString).build(), mongoDriverInformation);
     }
 
     /**

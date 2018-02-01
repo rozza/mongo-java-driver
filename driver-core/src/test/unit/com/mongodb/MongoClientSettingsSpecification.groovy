@@ -16,6 +16,7 @@
 
 package com.mongodb
 
+import com.mongodb.connection.ClusterConnectionMode
 import com.mongodb.connection.ClusterSettings
 import com.mongodb.connection.ConnectionPoolSettings
 import com.mongodb.connection.ServerSettings
@@ -31,7 +32,6 @@ import java.util.concurrent.TimeUnit
 
 import static com.mongodb.ClusterFixture.isNotAtLeastJava7
 import static com.mongodb.CustomMatchers.isTheSameAs
-import static java.util.Collections.singletonList
 import static spock.util.matcher.HamcrestSupport.expect
 
 class MongoClientSettingsSpecification extends Specification {
@@ -47,6 +47,7 @@ class MongoClientSettingsSpecification extends Specification {
         settings.getReadPreference() == ReadPreference.primary()
         settings.getCommandListeners().isEmpty()
         settings.getApplicationName() == null
+        settings.clusterSettings == ClusterSettings.builder().build()
         settings.connectionPoolSettings == ConnectionPoolSettings.builder().build()
         settings.socketSettings == SocketSettings.builder().build()
         settings.heartbeatSocketSettings == SocketSettings.builder().build()
@@ -61,36 +62,6 @@ class MongoClientSettingsSpecification extends Specification {
     def 'should handle illegal arguments'() {
         given:
         def builder = MongoClientSettings.builder()
-
-        when:
-        builder.clusterSettings(null)
-        then:
-        thrown(IllegalArgumentException)
-
-        when:
-        builder.socketSettings(null)
-        then:
-        thrown(IllegalArgumentException)
-
-        when:
-        builder.heartbeatSocketSettings(null)
-        then:
-        thrown(IllegalArgumentException)
-
-        when:
-        builder.connectionPoolSettings(null)
-        then:
-        thrown(IllegalArgumentException)
-
-        when:
-        builder.serverSettings(null)
-        then:
-        thrown(IllegalArgumentException)
-
-        when:
-        builder.sslSettings(null)
-        then:
-        thrown(IllegalArgumentException)
 
         when:
         builder.readPreference(null)
@@ -136,12 +107,7 @@ class MongoClientSettingsSpecification extends Specification {
     def 'should build with set configuration'() {
         given:
         def streamFactoryFactory = NettyStreamFactoryFactory.builder().build()
-        def sslSettings = Stub(SslSettings)
-        def socketSettings = Stub(SocketSettings)
-        def serverSettings = Stub(ServerSettings)
-        def heartbeatSocketSettings = Stub(SocketSettings)
         def credential = MongoCredential.createMongoX509Credential('test')
-        def connectionPoolSettings = Stub(ConnectionPoolSettings)
         def codecRegistry = Stub(CodecRegistry)
         def commandListener = Stub(CommandListener)
         def clusterSettings = ClusterSettings.builder().hosts([new ServerAddress('localhost')]).requiredReplicaSetName('test').build()
@@ -154,14 +120,14 @@ class MongoClientSettingsSpecification extends Specification {
                 .readConcern(ReadConcern.LOCAL)
                 .applicationName('app1')
                 .addCommandListener(commandListener)
-                .sslSettings(sslSettings)
-                .socketSettings(socketSettings)
-                .serverSettings(serverSettings)
-                .heartbeatSocketSettings(heartbeatSocketSettings)
                 .credential(credential)
-                .connectionPoolSettings(connectionPoolSettings)
                 .codecRegistry(codecRegistry)
-                .clusterSettings(clusterSettings)
+                .applyToClusterSettings(new Block<ClusterSettings.Builder>() {
+                    @Override
+                    void apply(final ClusterSettings.Builder builder) {
+                        builder.applySettings(clusterSettings)
+                    }
+                })
                 .streamFactoryFactory(streamFactoryFactory)
                 .compressorList([MongoCompressor.createZlibCompressor()])
                 .build()
@@ -173,13 +139,8 @@ class MongoClientSettingsSpecification extends Specification {
         settings.getReadConcern() == ReadConcern.LOCAL
         settings.getApplicationName() == 'app1'
         settings.commandListeners.get(0) == commandListener
-        settings.connectionPoolSettings == connectionPoolSettings
-        settings.socketSettings == socketSettings
-        settings.heartbeatSocketSettings == heartbeatSocketSettings
-        settings.serverSettings == serverSettings
         settings.codecRegistry == codecRegistry
         settings.credential == credential
-        settings.connectionPoolSettings == connectionPoolSettings
         settings.clusterSettings == clusterSettings
         settings.streamFactoryFactory == streamFactoryFactory
         settings.compressorList == [MongoCompressor.createZlibCompressor()]
@@ -193,15 +154,9 @@ class MongoClientSettingsSpecification extends Specification {
         expect settings, isTheSameAs(MongoClientSettings.builder(settings).build())
 
         when:
-        def sslSettings = Stub(SslSettings)
-        def socketSettings = Stub(SocketSettings)
-        def serverSettings = Stub(ServerSettings)
-        def heartbeatSocketSettings = Stub(SocketSettings)
         def credential = MongoCredential.createMongoX509Credential('test')
-        def connectionPoolSettings = Stub(ConnectionPoolSettings)
         def codecRegistry = Stub(CodecRegistry)
         def commandListener = Stub(CommandListener)
-        def clusterSettings = ClusterSettings.builder().hosts([new ServerAddress('localhost')]).requiredReplicaSetName('test').build()
         def compressorList = [MongoCompressor.createZlibCompressor()]
 
         settings = MongoClientSettings.builder()
@@ -211,14 +166,15 @@ class MongoClientSettingsSpecification extends Specification {
                 .readConcern(ReadConcern.LOCAL)
                 .applicationName('app1')
                 .addCommandListener(commandListener)
-                .sslSettings(sslSettings)
-                .socketSettings(socketSettings)
-                .serverSettings(serverSettings)
-                .heartbeatSocketSettings(heartbeatSocketSettings)
+                .applyToClusterSettings(new Block<ClusterSettings.Builder>() {
+                    @Override
+                    void apply(final ClusterSettings.Builder builder) {
+                           builder.hosts([new ServerAddress('localhost')])
+                                   .requiredReplicaSetName('test')
+                    }
+                })
                 .credential(credential)
-                .connectionPoolSettings(connectionPoolSettings)
                 .codecRegistry(codecRegistry)
-                .clusterSettings(clusterSettings)
                 .compressorList(compressorList)
                 .build()
 
@@ -317,12 +273,54 @@ class MongoClientSettingsSpecification extends Specification {
         )
         MongoClientSettings settings = MongoClientSettings.builder().applyConnectionString(connectionString).build()
         MongoClientSettings expected = MongoClientSettings.builder()
-            .clusterSettings(ClusterSettings.builder().applyConnectionString(connectionString).build())
-            .heartbeatSocketSettings(SocketSettings.builder().applyConnectionString(connectionString).build())
-            .connectionPoolSettings(ConnectionPoolSettings.builder().applyConnectionString(connectionString).build())
-            .serverSettings(ServerSettings.builder().applyConnectionString(connectionString).build())
-            .socketSettings(SocketSettings.builder().applyConnectionString(connectionString).build())
-            .sslSettings(SslSettings.builder().applyConnectionString(connectionString).build())
+            .applyToClusterSettings(new Block<ClusterSettings.Builder>() {
+            @Override
+            void apply(final ClusterSettings.Builder builder) {
+                builder.hosts([new ServerAddress('host1', 1), new ServerAddress('host2', 2)])
+                        .mode(ClusterConnectionMode.MULTIPLE)
+                        .requiredReplicaSetName('test')
+                        .serverSelectionTimeout(25000, TimeUnit.MILLISECONDS)
+                        .maxWaitQueueSize(10 * 7) // maxPoolSize * waitQueueMultiple
+            }
+        })
+            .applyToHeartbeatSocketSettings(new Block<SocketSettings.Builder>() {
+            @Override
+            void apply(final SocketSettings.Builder builder) {
+                builder.connectTimeout(2500, TimeUnit.MILLISECONDS)
+                        .readTimeout(5500, TimeUnit.MILLISECONDS)
+            }
+        })
+            .applyToConnectionPoolSettings(new Block<ConnectionPoolSettings.Builder>() {
+            @Override
+            void apply(final ConnectionPoolSettings.Builder builder) {
+                builder.minSize(5)
+                        .maxSize(10)
+                        .maxWaitQueueSize(10 * 7) // maxPoolSize * waitQueueMultiple
+                        .maxWaitTime(150, TimeUnit.MILLISECONDS)
+                        .maxConnectionLifeTime(300, TimeUnit.MILLISECONDS)
+                        .maxConnectionIdleTime(200, TimeUnit.MILLISECONDS)
+            }
+        })
+            .applyToServerSettings(new Block<ServerSettings.Builder>() {
+            @Override
+            void apply(final ServerSettings.Builder builder) {
+                builder.heartbeatFrequency(20000, TimeUnit.MILLISECONDS)
+            }
+        })
+            .applyToSocketSettings(new Block<SocketSettings.Builder>() {
+            @Override
+            void apply(final SocketSettings.Builder builder) {
+                builder.connectTimeout(2500, TimeUnit.MILLISECONDS)
+                        .readTimeout(5500, TimeUnit.MILLISECONDS)
+            }
+        })
+            .applyToSslSettings(new Block<SslSettings.Builder>() {
+            @Override
+            void apply(final SslSettings.Builder builder) {
+                builder.enabled(true)
+                        .invalidHostNameAllowed(true)
+            }
+        })
             .readConcern(ReadConcern.MAJORITY)
             .readPreference(ReadPreference.secondary())
             .writeConcern(WriteConcern.MAJORITY.withWTimeout(2500, TimeUnit.MILLISECONDS))
@@ -336,67 +334,14 @@ class MongoClientSettingsSpecification extends Specification {
         expect expected, isTheSameAs(settings)
     }
 
-    @IgnoreIf({ isNotAtLeastJava7() })
-    def 'should allow easy configuration of nested settings'() {
-        when:
-        MongoClientSettings settings = MongoClientSettings.builder()
-                .applyToClusterSettings(new Block<ClusterSettings.Builder>() {
-            @Override
-            void apply(final ClusterSettings.Builder builder) {
-                builder.description('My Cluster').hosts(singletonList(new ServerAddress()))
-            }
-        })
-        .applyToConnectionPoolSettings(new Block<ConnectionPoolSettings.Builder>() {
-            @Override
-            void apply(final ConnectionPoolSettings.Builder builder) {
-                builder.maxWaitQueueSize(22)
-            }
-        })
-        .applyToHeartbeatSocketSettings(new Block<SocketSettings.Builder>() {
-            @Override
-            void apply(final SocketSettings.Builder builder) {
-                builder.receiveBufferSize(99)
-            }
-        })
-        .applyToServerSettings(new Block<ServerSettings.Builder>() {
-            @Override
-            void apply(final ServerSettings.Builder builder) {
-                builder.heartbeatFrequency(10, TimeUnit.SECONDS)
-            }
-        })
-        .applyToSocketSettings(new Block<SocketSettings.Builder>() {
-            @Override
-            void apply(final SocketSettings.Builder builder) {
-                builder.sendBufferSize(99)
-            }
-        })
-        .applyToSslSettings(new Block<SslSettings.Builder>() {
-            @Override
-            void apply(final SslSettings.Builder builder) {
-                builder.enabled(true).invalidHostNameAllowed(true)
-            }
-        }).build()
-
-        MongoClientSettings expected = MongoClientSettings.builder()
-                .clusterSettings(ClusterSettings.builder().description('My Cluster').hosts(singletonList(new ServerAddress())).build())
-                .connectionPoolSettings(ConnectionPoolSettings.builder().maxWaitQueueSize(22).build())
-                .heartbeatSocketSettings(SocketSettings.builder().receiveBufferSize(99).build())
-                .serverSettings(ServerSettings.builder().heartbeatFrequency(10, TimeUnit.SECONDS).build())
-                .socketSettings(SocketSettings.builder().sendBufferSize(99).build())
-                .sslSettings(SslSettings.builder().enabled(true).invalidHostNameAllowed(true).build())
-                .build()
-
-        then:
-        expect expected, isTheSameAs(settings)
-    }
-
     def 'should only have the following methods in the builder'() {
         when:
         // A regression test so that if anymore methods are added then the builder(final MongoClientSettings settings) should be updated
         def actual = MongoClientSettings.Builder.declaredFields.grep {  !it.synthetic } *.name.sort()
-        def expected = ['applicationName', 'clusterSettings', 'codecRegistry', 'commandListeners', 'compressorList',
-                        'connectionPoolSettings', 'credential', 'heartbeatSocketSettings', 'readConcern', 'readPreference',
-                        'retryWrites', 'serverSettings', 'socketSettings', 'sslSettings', 'streamFactoryFactory', 'writeConcern']
+        def expected = ['applicationName', 'clusterSettingsBuilder', 'codecRegistry', 'commandListeners', 'compressorList',
+                        'connectionPoolSettingsBuilder', 'credential', 'heartbeatSocketSettingsBuilder', 'readConcern', 'readPreference',
+                        'retryWrites', 'serverSettingsBuilder', 'socketSettingsBuilder', 'sslSettingsBuilder', 'streamFactoryFactory',
+                        'writeConcern']
 
         then:
         actual == expected

@@ -18,6 +18,8 @@ package com.mongodb;
 
 import com.mongodb.annotations.Immutable;
 import com.mongodb.annotations.NotThreadSafe;
+import com.mongodb.client.gridfs.codecs.GridFSFileCodecProvider;
+import com.mongodb.client.model.geojson.codecs.GeoJsonCodecProvider;
 import com.mongodb.connection.ClusterSettings;
 import com.mongodb.connection.ConnectionPoolSettings;
 import com.mongodb.connection.ServerSettings;
@@ -25,6 +27,11 @@ import com.mongodb.connection.SocketSettings;
 import com.mongodb.connection.SslSettings;
 import com.mongodb.connection.StreamFactoryFactory;
 import com.mongodb.event.CommandListener;
+import org.bson.codecs.BsonValueCodecProvider;
+import org.bson.codecs.DocumentCodecProvider;
+import org.bson.codecs.IterableCodecProvider;
+import org.bson.codecs.MapCodecProvider;
+import org.bson.codecs.ValueCodecProvider;
 import org.bson.codecs.configuration.CodecRegistry;
 
 import java.nio.charset.Charset;
@@ -34,6 +41,8 @@ import java.util.List;
 
 import static com.mongodb.assertions.Assertions.isTrueArgument;
 import static com.mongodb.assertions.Assertions.notNull;
+import static java.util.Arrays.asList;
+import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
 
 
 /**
@@ -43,6 +52,17 @@ import static com.mongodb.assertions.Assertions.notNull;
  */
 @Immutable
 public final class MongoClientSettings {
+    private static final CodecRegistry DEFAULT_CODEC_REGISTRY =
+            fromProviders(asList(new ValueCodecProvider(),
+                    new BsonValueCodecProvider(),
+                    new DBRefCodecProvider(),
+                    new DBObjectCodecProvider(),
+                    new DocumentCodecProvider(new DocumentToDBRefTransformer()),
+                    new IterableCodecProvider(new DocumentToDBRefTransformer()),
+                    new MapCodecProvider(new DocumentToDBRefTransformer()),
+                    new GeoJsonCodecProvider(),
+                    new GridFSFileCodecProvider()));
+
     private final ReadPreference readPreference;
     private final WriteConcern writeConcern;
     private final boolean retryWrites;
@@ -60,6 +80,27 @@ public final class MongoClientSettings {
     private final SslSettings sslSettings;
     private final String applicationName;
     private final List<MongoCompressor> compressorList;
+
+    /**
+     * Gets the default codec registry.  It includes the following providers:
+     *
+     * <ul>
+     * <li>{@link org.bson.codecs.ValueCodecProvider}</li>
+     * <li>{@link org.bson.codecs.BsonValueCodecProvider}</li>
+     * <li>{@link com.mongodb.DBRefCodecProvider}</li>
+     * <li>{@link com.mongodb.DBObjectCodecProvider}</li>
+     * <li>{@link org.bson.codecs.DocumentCodecProvider}</li>
+     * <li>{@link org.bson.codecs.IterableCodecProvider}</li>
+     * <li>{@link org.bson.codecs.MapCodecProvider}</li>
+     * <li>{@link com.mongodb.client.model.geojson.codecs.GeoJsonCodecProvider}</li>
+     * <li>{@link com.mongodb.client.gridfs.codecs.GridFSFileCodecProvider}</li>
+     * </ul>
+     *
+     * @return the default codec registry
+     */
+    public static CodecRegistry getDefaultCodecRegistry() {
+        return DEFAULT_CODEC_REGISTRY;
+    }
 
     /**
      * Convenience method to create a Builder.
@@ -90,16 +131,16 @@ public final class MongoClientSettings {
         private WriteConcern writeConcern = WriteConcern.ACKNOWLEDGED;
         private boolean retryWrites;
         private ReadConcern readConcern = ReadConcern.DEFAULT;
-        private CodecRegistry codecRegistry;
+        private CodecRegistry codecRegistry = MongoClientSettings.getDefaultCodecRegistry();
         private StreamFactoryFactory streamFactoryFactory;
         private List<CommandListener> commandListeners = new ArrayList<CommandListener>();
 
-        private ClusterSettings clusterSettings;
-        private SocketSettings socketSettings = SocketSettings.builder().build();
-        private SocketSettings heartbeatSocketSettings = SocketSettings.builder().build();
-        private ConnectionPoolSettings connectionPoolSettings = ConnectionPoolSettings.builder().build();
-        private ServerSettings serverSettings = ServerSettings.builder().build();
-        private SslSettings sslSettings = SslSettings.builder().build();
+        private final ClusterSettings.Builder clusterSettingsBuilder = ClusterSettings.builder();
+        private final SocketSettings.Builder socketSettingsBuilder = SocketSettings.builder();
+        private final SocketSettings.Builder heartbeatSocketSettingsBuilder = SocketSettings.builder();
+        private final ConnectionPoolSettings.Builder connectionPoolSettingsBuilder = ConnectionPoolSettings.builder();
+        private final ServerSettings.Builder serverSettingsBuilder = ServerSettings.builder();
+        private final SslSettings.Builder sslSettingsBuilder = SslSettings.builder();
         private MongoCredential credential;
         private String applicationName;
         private List<MongoCompressor> compressorList = Collections.emptyList();
@@ -107,28 +148,24 @@ public final class MongoClientSettings {
         private Builder() {
         }
 
-        /**
-         * Creates a Builder from an existing {@code MongoClientSettings}.
-         *
-         * @param settings create a builder from existing settings
-         */
         private Builder(final MongoClientSettings settings) {
+            notNull("settings", settings);
             applicationName = settings.getApplicationName();
-            clusterSettings = settings.getClusterSettings();
-            codecRegistry = settings.getCodecRegistry();
             commandListeners = new ArrayList<CommandListener>(settings.getCommandListeners());
             compressorList = new ArrayList<MongoCompressor>(settings.getCompressorList());
-            connectionPoolSettings = settings.getConnectionPoolSettings();
-            credential = settings.getCredential();
-            heartbeatSocketSettings = settings.getHeartbeatSocketSettings();
-            readConcern = settings.getReadConcern();
+            codecRegistry = settings.getCodecRegistry();
             readPreference = settings.getReadPreference();
-            retryWrites = settings.getRetryWrites();
-            serverSettings = settings.getServerSettings();
-            socketSettings = settings.getSocketSettings();
-            sslSettings = settings.getSslSettings();
-            streamFactoryFactory = settings.getStreamFactoryFactory();
             writeConcern = settings.getWriteConcern();
+            retryWrites = settings.getRetryWrites();
+            readConcern = settings.getReadConcern();
+            credential = settings.getCredential();
+            streamFactoryFactory = settings.getStreamFactoryFactory();
+            clusterSettingsBuilder.applySettings(settings.getClusterSettings());
+            serverSettingsBuilder.applySettings(settings.getServerSettings());
+            socketSettingsBuilder.applySettings(settings.getSocketSettings());
+            heartbeatSocketSettingsBuilder.applySettings(settings.getHeartbeatSocketSettings());
+            connectionPoolSettingsBuilder.applySettings(settings.getConnectionPoolSettings());
+            sslSettingsBuilder.applySettings(settings.getSslSettings());
         }
 
         /**
@@ -141,17 +178,15 @@ public final class MongoClientSettings {
             if (connectionString.getApplicationName() != null) {
                 applicationName = connectionString.getApplicationName();
             }
-            ClusterSettings.Builder clusterSettingsBuilder = clusterSettings != null
-                    ? ClusterSettings.builder(clusterSettings) : ClusterSettings.builder();
-            clusterSettings = clusterSettingsBuilder.applyConnectionString(connectionString).build();
+            clusterSettingsBuilder.applyConnectionString(connectionString);
             if (!connectionString.getCompressorList().isEmpty()) {
                 compressorList = connectionString.getCompressorList();
             }
-            connectionPoolSettings = ConnectionPoolSettings.builder(connectionPoolSettings).applyConnectionString(connectionString).build();
+            connectionPoolSettingsBuilder.applyConnectionString(connectionString);
             if (connectionString.getCredential() != null) {
                 credential = connectionString.getCredential();
             }
-            heartbeatSocketSettings = SocketSettings.builder(heartbeatSocketSettings).applyConnectionString(connectionString).build();
+            heartbeatSocketSettingsBuilder.applyConnectionString(connectionString);
             if (connectionString.getReadConcern() != null) {
                 readConcern = connectionString.getReadConcern();
             }
@@ -159,9 +194,9 @@ public final class MongoClientSettings {
                 readPreference = connectionString.getReadPreference();
             }
             retryWrites = connectionString.getRetryWrites();
-            serverSettings = ServerSettings.builder(serverSettings).applyConnectionString(connectionString).build();
-            socketSettings = SocketSettings.builder(socketSettings).applyConnectionString(connectionString).build();
-            sslSettings = SslSettings.builder(sslSettings).applyConnectionString(connectionString).build();
+            serverSettingsBuilder.applyConnectionString(connectionString);
+            socketSettingsBuilder.applyConnectionString(connectionString);
+            sslSettingsBuilder.applyConnectionString(connectionString);
             if (connectionString.getWriteConcern() != null) {
                 writeConcern = connectionString.getWriteConcern();
             }
@@ -176,11 +211,7 @@ public final class MongoClientSettings {
          * @see MongoClientSettings#getClusterSettings()
          */
         public Builder applyToClusterSettings(final Block<ClusterSettings.Builder> block) {
-            notNull("block", block);
-            ClusterSettings.Builder builder = clusterSettings == null ? ClusterSettings.builder()
-                    : ClusterSettings.builder(clusterSettings);
-            block.apply(builder);
-            clusterSettings = builder.build();
+            notNull("block", block).apply(clusterSettingsBuilder);
             return this;
         }
 
@@ -192,10 +223,7 @@ public final class MongoClientSettings {
          * @see MongoClientSettings#getSocketSettings()
          */
         public Builder applyToSocketSettings(final Block<SocketSettings.Builder> block) {
-            notNull("block", block);
-            SocketSettings.Builder builder = SocketSettings.builder(socketSettings);
-            block.apply(builder);
-            socketSettings = builder.build();
+            notNull("block", block).apply(socketSettingsBuilder);
             return this;
         }
 
@@ -207,10 +235,7 @@ public final class MongoClientSettings {
          * @see MongoClientSettings#getHeartbeatSocketSettings()
          */
         public Builder applyToHeartbeatSocketSettings(final Block<SocketSettings.Builder> block) {
-            notNull("block", block);
-            SocketSettings.Builder builder = SocketSettings.builder(heartbeatSocketSettings);
-            block.apply(builder);
-            heartbeatSocketSettings = builder.build();
+            notNull("block", block).apply(heartbeatSocketSettingsBuilder);
             return this;
         }
 
@@ -222,10 +247,7 @@ public final class MongoClientSettings {
          * @see MongoClientSettings#getConnectionPoolSettings()
          */
         public Builder applyToConnectionPoolSettings(final Block<ConnectionPoolSettings.Builder> block) {
-            notNull("block", block);
-            ConnectionPoolSettings.Builder builder = ConnectionPoolSettings.builder(connectionPoolSettings);
-            block.apply(builder);
-            connectionPoolSettings = builder.build();
+            notNull("block", block).apply(connectionPoolSettingsBuilder);
             return this;
         }
 
@@ -237,10 +259,7 @@ public final class MongoClientSettings {
          * @see MongoClientSettings#getServerSettings()
          */
         public Builder applyToServerSettings(final Block<ServerSettings.Builder> block) {
-            notNull("block", block);
-            ServerSettings.Builder builder = ServerSettings.builder(serverSettings);
-            block.apply(builder);
-            serverSettings = builder.build();
+            notNull("block", block).apply(serverSettingsBuilder);
             return this;
         }
 
@@ -252,82 +271,7 @@ public final class MongoClientSettings {
          * @see MongoClientSettings#getSslSettings()
          */
         public Builder applyToSslSettings(final Block<SslSettings.Builder> block) {
-            notNull("block", block);
-            SslSettings.Builder builder = SslSettings.builder(sslSettings);
-            block.apply(builder);
-            sslSettings = builder.build();
-            return this;
-        }
-
-        /**
-         * Sets the cluster settings.
-         *
-         * @param clusterSettings the cluster settings
-         * @return this
-         * @see MongoClientSettings#getClusterSettings()
-         */
-        public Builder clusterSettings(final ClusterSettings clusterSettings) {
-            this.clusterSettings = notNull("clusterSettings", clusterSettings);
-            return this;
-        }
-
-        /**
-         * Sets the socket settings.
-         *
-         * @param socketSettings the socket settings
-         * @return this
-         * @see MongoClientSettings#getSocketSettings()
-         */
-        public Builder socketSettings(final SocketSettings socketSettings) {
-            this.socketSettings = notNull("socketSettings", socketSettings);
-            return this;
-        }
-
-        /**
-         * Sets the heartbeat socket settings.
-         *
-         * @param heartbeatSocketSettings the socket settings
-         * @return this
-         * @see MongoClientSettings#getHeartbeatSocketSettings()
-         */
-        public Builder heartbeatSocketSettings(final SocketSettings heartbeatSocketSettings) {
-            this.heartbeatSocketSettings = notNull("heartbeatSocketSettings", heartbeatSocketSettings);
-            return this;
-        }
-
-        /**
-         * Sets the connection pool settings.
-         *
-         * @param connectionPoolSettings the connection settings
-         * @return this
-         * @see MongoClientSettings#getConnectionPoolSettings() ()
-         */
-        public Builder connectionPoolSettings(final ConnectionPoolSettings connectionPoolSettings) {
-            this.connectionPoolSettings = notNull("connectionPoolSettings", connectionPoolSettings);
-            return this;
-        }
-
-        /**
-         * Sets the server settings.
-         *
-         * @param serverSettings the server settings
-         * @return this
-         * @see MongoClientSettings#getServerSettings() ()
-         */
-        public Builder serverSettings(final ServerSettings serverSettings) {
-            this.serverSettings = notNull("serverSettings", serverSettings);
-            return this;
-        }
-
-        /**
-         * Sets the socket settings.
-         *
-         * @param sslSettings the SSL settings
-         * @return this
-         * @see MongoClientSettings#getSslSettings() ()
-         */
-        public Builder sslSettings(final SslSettings sslSettings) {
-            this.sslSettings = notNull("sslSettings", sslSettings);
+            notNull("block", block).apply(sslSettingsBuilder);
             return this;
         }
 
@@ -666,12 +610,12 @@ public final class MongoClientSettings {
         codecRegistry = builder.codecRegistry;
         commandListeners = builder.commandListeners;
         applicationName = builder.applicationName;
-        clusterSettings = builder.clusterSettings;
-        serverSettings = builder.serverSettings;
-        socketSettings = builder.socketSettings;
-        heartbeatSocketSettings = builder.heartbeatSocketSettings;
-        connectionPoolSettings = builder.connectionPoolSettings;
-        sslSettings = builder.sslSettings;
+        clusterSettings = builder.clusterSettingsBuilder.build();
+        serverSettings = builder.serverSettingsBuilder.build();
+        socketSettings = builder.socketSettingsBuilder.build();
+        heartbeatSocketSettings = builder.heartbeatSocketSettingsBuilder.build();
+        connectionPoolSettings = builder.connectionPoolSettingsBuilder.build();
+        sslSettings = builder.sslSettingsBuilder.build();
         compressorList = builder.compressorList;
     }
 }

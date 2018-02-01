@@ -144,12 +144,12 @@ class MongoClientSettingsSpecification extends Specification {
     def 'should build with supplied settings'() {
         given:
         def streamFactoryFactory = NettyStreamFactoryFactory.builder().build()
-        def sslSettings = Stub(SslSettings)
-        def socketSettings = Stub(SocketSettings)
-        def serverSettings = Stub(ServerSettings)
-        def heartbeatSocketSettings = Stub(SocketSettings)
+        def sslSettings = SslSettings.builder().build()
+        def socketSettings = SocketSettings.builder().build()
+        def serverSettings = ServerSettings.builder().build()
+        def heartbeatSocketSettings = SocketSettings.builder().build()
         def credentialList = [MongoCredential.createMongoX509Credential('test')]
-        def connectionPoolSettings = Stub(ConnectionPoolSettings)
+        def connectionPoolSettings = ConnectionPoolSettings.builder().build()
         def codecRegistry = Stub(CodecRegistry)
         def commandListener = Stub(CommandListener)
         def clusterSettings = ClusterSettings.builder().hosts([new ServerAddress('localhost')]).requiredReplicaSetName('test').build()
@@ -227,11 +227,11 @@ class MongoClientSettingsSpecification extends Specification {
 
         when:
         def sslSettings = Stub(SslSettings)
-        def socketSettings = Stub(SocketSettings)
-        def serverSettings = Stub(ServerSettings)
-        def heartbeatSocketSettings = Stub(SocketSettings)
+        def socketSettings = SocketSettings.builder().build()
+        def serverSettings = ServerSettings.builder().build()
+        def heartbeatSocketSettings = SocketSettings.builder().build()
         def credentialList = [MongoCredential.createMongoX509Credential('test')]
-        def connectionPoolSettings = Stub(ConnectionPoolSettings)
+        def connectionPoolSettings = ConnectionPoolSettings.builder().build()
         def codecRegistry = Stub(CodecRegistry)
         def commandListener = Stub(CommandListener)
         def clusterSettings = ClusterSettings.builder().hosts([new ServerAddress('localhost')]).requiredReplicaSetName('test').build()
@@ -426,7 +426,9 @@ class MongoClientSettingsSpecification extends Specification {
     def 'should only have the following methods in the builder'() {
         when:
         // A regression test so that if anymore methods are added then the builder(final MongoClientSettings settings) should be updated
-        def actual = MongoClientSettings.Builder.declaredMethods.grep { !it.synthetic } *.name.sort() - 'credentialList'
+        def extras = ['credentialList', 'clusterSettings', 'connectionPoolSettings', 'heartbeatSocketSettings', 'serverSettings',
+                      'socketSettings' , 'sslSettings']
+        def actual = MongoClientSettings.Builder.declaredMethods.grep { !it.synthetic } *.name.sort() - extras
         def expected = com.mongodb.MongoClientSettings.Builder.declaredMethods.grep { !it.synthetic } *.name.sort() - 'commandListenerList'
 
         then:
