@@ -72,6 +72,29 @@ class ClusterSettingsSpecification extends Specification {
         settings.clusterListeners == [listenerOne, listenerTwo]
     }
 
+    def 'should apply settings'() {
+        given:
+        def listenerOne = Mock(ClusterListener)
+        def listenerTwo = Mock(ClusterListener)
+        def defaultSettings = ClusterSettings.builder().build()
+        def customSettings = ClusterSettings.builder()
+                .hosts(hosts)
+                .mode(ClusterConnectionMode.MULTIPLE)
+                .description('my cluster')
+                .requiredClusterType(ClusterType.REPLICA_SET)
+                .requiredReplicaSetName('foo')
+                .serverSelector(serverSelector)
+                .serverSelectionTimeout(1, TimeUnit.SECONDS)
+                .addClusterListener(listenerOne)
+                .addClusterListener(listenerTwo)
+                .maxWaitQueueSize(100)
+                .build()
+
+        expect:
+        ClusterSettings.builder().applySettings(customSettings).build() == customSettings
+        ClusterSettings.builder(customSettings).applySettings(defaultSettings).build() == defaultSettings
+    }
+
     def 'when connection string is applied to builder, all properties should be set'() {
         when:
         def settings = ClusterSettings.builder().applyConnectionString(new ConnectionString('mongodb://example.com:27018'))

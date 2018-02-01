@@ -72,8 +72,11 @@ public class SocketSettings {
         /**
          * Applies the socketSettings to the builder
          *
+         * <p>Note: Overwrites all existing settings</p>
+         *
          * @param socketSettings the socketSettings
          * @return this
+         * @since 3.7
          */
         public Builder applySettings(final SocketSettings socketSettings) {
             notNull("socketSettings", socketSettings);

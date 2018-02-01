@@ -77,8 +77,11 @@ public class ServerSettings {
         /**
          * Applies the serverSettings to the builder
          *
+         * <p>Note: Overwrites all existing settings</p>
+         *
          * @param serverSettings the serverSettings
          * @return this
+         * @since 3.7
          */
         public Builder applySettings(final ServerSettings serverSettings) {
             notNull("serverSettings", serverSettings);

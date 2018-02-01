@@ -71,8 +71,11 @@ public class SslSettings {
         /**
          * Applies the sslSettings to the builder
          *
+         * <p>Note: Overwrites all existing settings</p>
+         *
          * @param sslSettings the sslSettings
          * @return this
+         * @since 3.7
          */
         public Builder applySettings(final SslSettings sslSettings) {
             notNull("sslSettings", sslSettings);

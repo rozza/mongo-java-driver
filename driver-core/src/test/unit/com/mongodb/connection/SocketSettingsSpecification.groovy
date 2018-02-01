@@ -36,7 +36,7 @@ class SocketSettingsSpecification extends Specification {
         settings.sendBufferSize == 0
     }
 
-    def 'should apply settings'() {
+    def 'should set settings'() {
         when:
         def settings = SocketSettings.builder()
                                      .connectTimeout(5000, MILLISECONDS)
@@ -89,6 +89,22 @@ class SocketSettingsSpecification extends Specification {
         settings.keepAlive
         settings.sendBufferSize == 0
         settings.receiveBufferSize == 0
+    }
+
+    def 'should apply settings'() {
+        given:
+        def defaultSettings = SocketSettings.builder().build()
+        def customSettings = SocketSettings.builder()
+                .connectTimeout(5000, MILLISECONDS)
+                .readTimeout(2000, MILLISECONDS)
+                .keepAlive(false)
+                .sendBufferSize(1000)
+                .receiveBufferSize(1500)
+                .build()
+
+        expect:
+        SocketSettings.builder().applySettings(customSettings).build() == customSettings
+        SocketSettings.builder(customSettings).applySettings(defaultSettings).build() == defaultSettings
     }
 
     def 'identical settings should be equal'() {

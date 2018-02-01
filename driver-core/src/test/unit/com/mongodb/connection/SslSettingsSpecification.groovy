@@ -38,7 +38,7 @@ class SslSettingsSpecification extends Specification {
     }
 
     @IgnoreIf({ isNotAtLeastJava7() })
-    def 'should apply settings'() {
+    def 'should set settings'() {
         when:
         def settings = SslSettings.builder()
                 .context(SSLContext.getDefault())
@@ -86,6 +86,21 @@ class SslSettingsSpecification extends Specification {
                                                     .context(SSLContext.getDefault())    | SslSettings.builder().enabled(true)
                                                                                                 .context(SSLContext.getDefault())
                                                                                                 .invalidHostNameAllowed(true).build()
+    }
+
+    @IgnoreIf({ isNotAtLeastJava7() })
+    def 'should apply settings'() {
+        given:
+        def defaultSettings = SslSettings.builder().build()
+        def customSettings = SslSettings.builder()
+                .context(SSLContext.getDefault())
+                .enabled(true)
+                .invalidHostNameAllowed(true)
+                .build()
+
+        expect:
+        SslSettings.builder().applySettings(customSettings).build() == customSettings
+        SslSettings.builder(customSettings).applySettings(defaultSettings).build() == defaultSettings
     }
 
     @IgnoreIf({ isNotAtLeastJava7() })

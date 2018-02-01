@@ -91,8 +91,11 @@ public final class ClusterSettings {
         /**
          * Applies the clusterSettings to the builder
          *
+         * <p>Note: Overwrites all existing settings</p>
+         *
          * @param clusterSettings the clusterSettings
          * @return this
+         * @since 3.7
          */
         public Builder applySettings(final ClusterSettings clusterSettings) {
             notNull("clusterSettings", clusterSettings);

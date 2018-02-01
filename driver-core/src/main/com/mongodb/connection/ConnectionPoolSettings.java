@@ -89,8 +89,11 @@ public class ConnectionPoolSettings {
         /**
          * Applies the connectionPoolSettings to the builder
          *
+         * <p>Note: Overwrites all existing settings</p>
+         *
          * @param connectionPoolSettings the connectionPoolSettings
          * @return this
+         * @since 3.7
          */
         public Builder applySettings(final ConnectionPoolSettings connectionPoolSettings) {
             notNull("connectionPoolSettings", connectionPoolSettings);
