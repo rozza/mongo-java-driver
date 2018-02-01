@@ -14,5 +14,29 @@
  * limitations under the License.
  */
 
-include 'util','bson', 'driver-core', 'driver-sync', 'driver-async', 'driver-legacy', 'mongodb-driver', 'driver-embedded', 'mongo-java-driver'
+package com.mongodb.embedded.client;
 
+import com.mongodb.MongoClientException;
+import org.junit.After;
+import org.junit.Before;
+
+import static com.mongodb.embedded.client.Fixture.getMongoClient;
+import static java.lang.String.format;
+import static org.junit.Assume.assumeTrue;
+
+public class DatabaseTestCase {
+
+
+    @Before
+    public void setUp() {
+        try {
+            getMongoClient();
+        } catch (MongoClientException e) {
+            assumeTrue(format("Could not create a MongoClient: %s", e.getMessage()), false);
+        }
+    }
+
+    @After
+    public void tearDown() {
+    }
+}

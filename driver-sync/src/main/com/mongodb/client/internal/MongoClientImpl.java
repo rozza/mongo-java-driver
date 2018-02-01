@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.mongodb.client;
+package com.mongodb.client.internal;
 
 import com.mongodb.ClientSessionOptions;
 import com.mongodb.Function;
@@ -23,10 +23,10 @@ import com.mongodb.MongoClientSettings;
 import com.mongodb.MongoCredential;
 import com.mongodb.MongoDriverInformation;
 import com.mongodb.ReadPreference;
-import com.mongodb.client.internal.ListDatabasesIterableImpl;
-import com.mongodb.client.internal.MongoClientDelegate;
-import com.mongodb.client.internal.MongoDatabaseImpl;
-import com.mongodb.client.internal.OperationExecutor;
+import com.mongodb.client.ListDatabasesIterable;
+import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.MongoIterable;
 import com.mongodb.connection.Cluster;
 import com.mongodb.connection.DefaultClusterFactory;
 import com.mongodb.connection.SocketStreamFactory;
@@ -41,16 +41,17 @@ import java.util.List;
 import static com.mongodb.assertions.Assertions.notNull;
 import static com.mongodb.internal.event.EventListenerHelper.getCommandListener;
 
-final class MongoClientImpl implements MongoClient {
+public final class MongoClientImpl implements MongoClient {
 
     private final MongoClientSettings settings;
     private final MongoClientDelegate delegate;
 
-    MongoClientImpl(final MongoClientSettings settings, final MongoDriverInformation mongoDriverInformation) {
+
+    public MongoClientImpl(final MongoClientSettings settings, final MongoDriverInformation mongoDriverInformation) {
         this(createCluster(settings, mongoDriverInformation), settings, null);
     }
 
-    private MongoClientImpl(final Cluster cluster, final MongoClientSettings settings, final OperationExecutor operationExecutor) {
+    public MongoClientImpl(final Cluster cluster, final MongoClientSettings settings, final OperationExecutor operationExecutor) {
         this.settings = notNull("settings", settings);
         this.delegate = new MongoClientDelegate(notNull("cluster", cluster),
                 Collections.singletonList(settings.getCredential()), this, operationExecutor);
@@ -108,7 +109,7 @@ final class MongoClientImpl implements MongoClient {
         delegate.close();
     }
 
-    Cluster getCluster() {
+    public Cluster getCluster() {
         return delegate.getCluster();
     }
 
