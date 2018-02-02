@@ -22,6 +22,7 @@ import org.bson.codecs.pojo.annotations.BsonCreator;
 import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 import org.bson.codecs.pojo.annotations.BsonId;
 import org.bson.codecs.pojo.annotations.BsonIgnore;
+import org.bson.codecs.pojo.annotations.BsonNotId;
 import org.bson.codecs.pojo.annotations.BsonProperty;
 
 import java.lang.annotation.Annotation;
@@ -80,6 +81,8 @@ final class ConventionAnnotationImpl implements Convention {
                 propertyModelBuilder.discriminatorEnabled(bsonProperty.useDiscriminator());
             } else if (annotation instanceof BsonId) {
                 classModelBuilder.idPropertyName(propertyModelBuilder.getName());
+            } else if (annotation instanceof BsonNotId) {
+                classModelBuilder.idPropertyName(null);
             } else if (annotation instanceof BsonIgnore) {
                 propertyModelBuilder.readName(null);
             }

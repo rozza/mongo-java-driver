@@ -61,6 +61,7 @@ import org.bson.codecs.pojo.entities.SimpleGenericsModel;
 import org.bson.codecs.pojo.entities.SimpleModel;
 import org.bson.codecs.pojo.entities.SimpleNestedPojoModel;
 import org.bson.codecs.pojo.entities.UpperBoundsConcreteModel;
+import org.bson.codecs.pojo.entities.conventions.AnnotationBsonNotIdModel;
 import org.bson.codecs.pojo.entities.conventions.BsonIgnoreInvalidMapModel;
 import org.bson.codecs.pojo.entities.conventions.CollectionDiscriminatorAbstractClassesModel;
 import org.bson.codecs.pojo.entities.conventions.CollectionDiscriminatorInterfacesModel;
@@ -374,6 +375,10 @@ public final class PojoRoundTripTest extends PojoTestCase {
                 new SimpleEnumModel(SimpleEnum.BRAVO),
                 getPojoCodecProviderBuilder(SimpleEnumModel.class),
                 "{ 'myEnum': 'BRAVO' }"));
+
+        data.add(new TestData("AnnotationBsonNotIdModel", new AnnotationBsonNotIdModel(42L),
+                getPojoCodecProviderBuilder(AnnotationBsonNotIdModel.class),
+                "{'id': {'$numberLong': '42' }}"));
         return data;
     }
 
