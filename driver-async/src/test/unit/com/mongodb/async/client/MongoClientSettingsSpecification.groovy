@@ -57,7 +57,7 @@ class MongoClientSettingsSpecification extends Specification {
         settings.getApplicationName() == null
         settings.getConnectionPoolSettings() == ConnectionPoolSettings.builder().build()
         settings.getSocketSettings() == SocketSettings.builder().build()
-        settings.getHeartbeatSocketSettings() == SocketSettings.builder().build()
+        settings.getHeartbeatSocketSettings() == SocketSettings.builder().readTimeout(20000, TimeUnit.MILLISECONDS).build()
         settings.getServerSettings() == ServerSettings.builder().build()
         settings.getStreamFactoryFactory() == null
         settings.getCompressorList() == []
@@ -389,6 +389,7 @@ class MongoClientSettingsSpecification extends Specification {
             @Override
             void apply(final SocketSettings.Builder builder) {
                 builder.receiveBufferSize(99)
+                builder.readTimeout(1, TimeUnit.SECONDS)
             }
         })
                 .applyToServerSettings(new Block<ServerSettings.Builder>() {
@@ -413,7 +414,7 @@ class MongoClientSettingsSpecification extends Specification {
         MongoClientSettings expected = MongoClientSettings.builder()
                 .clusterSettings(ClusterSettings.builder().description('My Cluster').hosts(singletonList(new ServerAddress())).build())
                 .connectionPoolSettings(ConnectionPoolSettings.builder().maxWaitQueueSize(22).build())
-                .heartbeatSocketSettings(SocketSettings.builder().receiveBufferSize(99).build())
+                .heartbeatSocketSettings(SocketSettings.builder().readTimeout(1, TimeUnit.SECONDS).receiveBufferSize(99).build())
                 .serverSettings(ServerSettings.builder().heartbeatFrequency(10, TimeUnit.SECONDS).build())
                 .socketSettings(SocketSettings.builder().sendBufferSize(99).build())
                 .sslSettings(SslSettings.builder().enabled(true).invalidHostNameAllowed(true).build())

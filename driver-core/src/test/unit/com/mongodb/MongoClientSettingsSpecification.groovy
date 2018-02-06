@@ -50,7 +50,7 @@ class MongoClientSettingsSpecification extends Specification {
         settings.clusterSettings == ClusterSettings.builder().build()
         settings.connectionPoolSettings == ConnectionPoolSettings.builder().build()
         settings.socketSettings == SocketSettings.builder().build()
-        settings.heartbeatSocketSettings == SocketSettings.builder().build()
+        settings.heartbeatSocketSettings == SocketSettings.builder().readTimeout(20000, TimeUnit.MILLISECONDS).build()
         settings.serverSettings == ServerSettings.builder().build()
         settings.streamFactoryFactory == null
         settings.compressorList == []

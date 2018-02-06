@@ -42,6 +42,7 @@ import java.util.List;
 import static com.mongodb.assertions.Assertions.isTrueArgument;
 import static com.mongodb.assertions.Assertions.notNull;
 import static java.util.Arrays.asList;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
 
 
@@ -137,7 +138,7 @@ public final class MongoClientSettings {
 
         private final ClusterSettings.Builder clusterSettingsBuilder = ClusterSettings.builder();
         private final SocketSettings.Builder socketSettingsBuilder = SocketSettings.builder();
-        private final SocketSettings.Builder heartbeatSocketSettingsBuilder = SocketSettings.builder();
+        private final SocketSettings.Builder heartbeatSocketSettingsBuilder = SocketSettings.builder().readTimeout(20000, MILLISECONDS);
         private final ConnectionPoolSettings.Builder connectionPoolSettingsBuilder = ConnectionPoolSettings.builder();
         private final ServerSettings.Builder serverSettingsBuilder = ServerSettings.builder();
         private final SslSettings.Builder sslSettingsBuilder = SslSettings.builder();
