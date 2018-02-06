@@ -138,7 +138,6 @@ public final class MongoClientSettings {
 
         private final ClusterSettings.Builder clusterSettingsBuilder = ClusterSettings.builder();
         private final SocketSettings.Builder socketSettingsBuilder = SocketSettings.builder();
-        private final SocketSettings.Builder heartbeatSocketSettingsBuilder = SocketSettings.builder().readTimeout(20000, MILLISECONDS);
         private final ConnectionPoolSettings.Builder connectionPoolSettingsBuilder = ConnectionPoolSettings.builder();
         private final ServerSettings.Builder serverSettingsBuilder = ServerSettings.builder();
         private final SslSettings.Builder sslSettingsBuilder = SslSettings.builder();
@@ -164,7 +163,6 @@ public final class MongoClientSettings {
             clusterSettingsBuilder.applySettings(settings.getClusterSettings());
             serverSettingsBuilder.applySettings(settings.getServerSettings());
             socketSettingsBuilder.applySettings(settings.getSocketSettings());
-            heartbeatSocketSettingsBuilder.applySettings(settings.getHeartbeatSocketSettings());
             connectionPoolSettingsBuilder.applySettings(settings.getConnectionPoolSettings());
             sslSettingsBuilder.applySettings(settings.getSslSettings());
         }
@@ -187,7 +185,6 @@ public final class MongoClientSettings {
             if (connectionString.getCredential() != null) {
                 credential = connectionString.getCredential();
             }
-            heartbeatSocketSettingsBuilder.applyConnectionString(connectionString);
             if (connectionString.getReadConcern() != null) {
                 readConcern = connectionString.getReadConcern();
             }
@@ -225,18 +222,6 @@ public final class MongoClientSettings {
          */
         public Builder applyToSocketSettings(final Block<SocketSettings.Builder> block) {
             notNull("block", block).apply(socketSettingsBuilder);
-            return this;
-        }
-
-        /**
-         * Applies the {@link SocketSettings.Builder} block and then sets the heartbeatSocketSettings.
-         *
-         * @param block the block to apply to the heartbeatSocketSettings.
-         * @return this
-         * @see MongoClientSettings#getHeartbeatSocketSettings()
-         */
-        public Builder applyToHeartbeatSocketSettings(final Block<SocketSettings.Builder> block) {
-            notNull("block", block).apply(heartbeatSocketSettingsBuilder);
             return this;
         }
 
@@ -614,9 +599,15 @@ public final class MongoClientSettings {
         clusterSettings = builder.clusterSettingsBuilder.build();
         serverSettings = builder.serverSettingsBuilder.build();
         socketSettings = builder.socketSettingsBuilder.build();
-        heartbeatSocketSettings = builder.heartbeatSocketSettingsBuilder.build();
         connectionPoolSettings = builder.connectionPoolSettingsBuilder.build();
         sslSettings = builder.sslSettingsBuilder.build();
         compressorList = builder.compressorList;
+        SocketSettings.Builder heartbeatSocketSettingsBuilder = SocketSettings.builder()
+                .readTimeout(20000, MILLISECONDS)
+                .connectTimeout(socketSettings.getConnectTimeout(MILLISECONDS), MILLISECONDS);
+        if (socketSettings.getReadTimeout(MILLISECONDS) > 0) {
+            heartbeatSocketSettingsBuilder.readTimeout(socketSettings.getReadTimeout(MILLISECONDS), MILLISECONDS);
+        }
+        heartbeatSocketSettings = heartbeatSocketSettingsBuilder.build();
     }
 }

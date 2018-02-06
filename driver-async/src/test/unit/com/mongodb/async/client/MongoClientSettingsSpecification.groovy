@@ -351,7 +351,8 @@ class MongoClientSettingsSpecification extends Specification {
         MongoClientSettings settings = MongoClientSettings.builder().applyConnectionString(connectionString).build()
         MongoClientSettings expected = MongoClientSettings.builder()
                 .clusterSettings(ClusterSettings.builder().applyConnectionString(connectionString).build())
-                .heartbeatSocketSettings(SocketSettings.builder().applyConnectionString(connectionString).build())
+                .heartbeatSocketSettings(SocketSettings.builder().readTimeout(20000, TimeUnit.MILLISECONDS)
+                    .applyConnectionString(connectionString).build())
                 .connectionPoolSettings(ConnectionPoolSettings.builder().applyConnectionString(connectionString).build())
                 .serverSettings(ServerSettings.builder().applyConnectionString(connectionString).build())
                 .socketSettings(SocketSettings.builder().applyConnectionString(connectionString).build())
@@ -385,13 +386,6 @@ class MongoClientSettingsSpecification extends Specification {
                 builder.maxWaitQueueSize(22)
             }
         })
-                .applyToHeartbeatSocketSettings(new Block<SocketSettings.Builder>() {
-            @Override
-            void apply(final SocketSettings.Builder builder) {
-                builder.receiveBufferSize(99)
-                builder.readTimeout(1, TimeUnit.SECONDS)
-            }
-        })
                 .applyToServerSettings(new Block<ServerSettings.Builder>() {
             @Override
             void apply(final ServerSettings.Builder builder) {
@@ -409,7 +403,9 @@ class MongoClientSettingsSpecification extends Specification {
             void apply(final SslSettings.Builder builder) {
                 builder.enabled(true).invalidHostNameAllowed(true)
             }
-        }).build()
+        })
+                .heartbeatSocketSettings(SocketSettings.builder().receiveBufferSize(99).readTimeout(1, TimeUnit.SECONDS).build())
+        .build()
 
         MongoClientSettings expected = MongoClientSettings.builder()
                 .clusterSettings(ClusterSettings.builder().description('My Cluster').hosts(singletonList(new ServerAddress())).build())
