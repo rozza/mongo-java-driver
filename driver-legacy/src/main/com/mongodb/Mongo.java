@@ -747,6 +747,7 @@ public class Mongo {
                 .hosts(new ArrayList<ServerAddress>(seedList))
                 .mode(clusterConnectionMode)
                 .requiredReplicaSetName(options.getRequiredReplicaSetName())
+                .serverSelectionTimeout(options.getServerSelectionTimeout(), MILLISECONDS)
                 .localThreshold(options.getLocalThreshold(), MILLISECONDS)
                 .serverSelector(options.getServerSelector())
                 .description(options.getDescription())

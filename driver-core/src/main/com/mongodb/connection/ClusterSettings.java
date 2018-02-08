@@ -199,9 +199,9 @@ public final class ClusterSettings {
         }
 
         /**
-         * Sets the final server selector for the cluster to apply before selecting a server.
+         * Adds a server selector for the cluster to apply before selecting a server.
          *
-         * @param serverSelector the server selector to apply as the final selector.
+         * @param serverSelector the server selector to apply as selector.
          * @return this
          * @see #getServerSelector()
          */
@@ -288,8 +288,7 @@ public final class ClusterSettings {
 
         private ServerSelector unpackServerSelector(final ServerSelector serverSelector) {
             if (serverSelector instanceof CompositeServerSelector) {
-                List<ServerSelector> serverSelectors = ((CompositeServerSelector) serverSelector).getServerSelectors();
-                return new CompositeServerSelector(serverSelectors.subList(1, serverSelectors.size()));
+                return ((CompositeServerSelector) serverSelector).getServerSelectors().get(0);
             }
             return null;
         }
@@ -299,7 +298,7 @@ public final class ClusterSettings {
             if (serverSelector == null) {
                 return latencyMinimizingServerSelector;
             }
-            return new CompositeServerSelector(asList(latencyMinimizingServerSelector, serverSelector));
+            return new CompositeServerSelector(asList(serverSelector, latencyMinimizingServerSelector));
         }
 
         /**

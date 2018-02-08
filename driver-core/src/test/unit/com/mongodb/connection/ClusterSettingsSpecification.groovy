@@ -72,7 +72,7 @@ class ClusterSettingsSpecification extends Specification {
         settings.mode == ClusterConnectionMode.MULTIPLE
         settings.requiredClusterType == ClusterType.REPLICA_SET
         settings.requiredReplicaSetName == 'foo'
-        settings.serverSelector == new CompositeServerSelector([oneSecondLatencySelector, serverSelector])
+        settings.serverSelector == new CompositeServerSelector([serverSelector, oneSecondLatencySelector])
         settings.getServerSelectionTimeout(TimeUnit.MILLISECONDS) == 1000
         settings.maxWaitQueueSize == 100
         settings.clusterListeners == [listenerOne, listenerTwo]
@@ -116,13 +116,13 @@ class ClusterSettingsSpecification extends Specification {
         settings = ClusterSettings.builder().serverSelector(serverSelector).build()
 
         then:
-        settings.serverSelector == new CompositeServerSelector([defaultServerSelector, serverSelector])
+        settings.serverSelector == new CompositeServerSelector([serverSelector, defaultServerSelector])
 
         when:
         settings = ClusterSettings.builder().localThreshold(10, TimeUnit.MILLISECONDS).serverSelector(serverSelector).build()
 
         then:
-        settings.serverSelector == new CompositeServerSelector([latMinServerSelector, serverSelector])
+        settings.serverSelector == new CompositeServerSelector([serverSelector, latMinServerSelector])
     }
 
     def 'when connection string is applied to builder, all properties should be set'() {
