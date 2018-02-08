@@ -41,7 +41,6 @@ import java.util.List;
 import static com.mongodb.assertions.Assertions.isTrue;
 import static com.mongodb.assertions.Assertions.notNull;
 import static java.util.Collections.singletonList;
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 
 /**
@@ -82,7 +81,7 @@ public final class MongoClientSettings {
     public static final class Builder {
         private List<MongoCredential> credentialList = Collections.emptyList();
         private final com.mongodb.MongoClientSettings.Builder wrappedBuilder = com.mongodb.MongoClientSettings.builder();
-        private final SocketSettings.Builder heartbeatSocketSettingsBuilder = SocketSettings.builder().readTimeout(20000, MILLISECONDS);
+        private SocketSettings.Builder heartbeatSocketSettingsBuilder = null;
 
         private Builder() {
         }
@@ -121,8 +120,8 @@ public final class MongoClientSettings {
             if (settings.getSocketSettings() != null) {
                 socketSettings(settings.getSocketSettings());
             }
-            if (settings.getHeartbeatSocketSettings() != null) {
-                heartbeatSocketSettings(settings.getHeartbeatSocketSettings());
+            if (settings.heartbeatSocketSettings != null) {
+                heartbeatSocketSettings(settings.heartbeatSocketSettings);
             }
             if (settings.getConnectionPoolSettings() != null) {
                 connectionPoolSettings(settings.getConnectionPoolSettings());
@@ -144,7 +143,6 @@ public final class MongoClientSettings {
         @SuppressWarnings("deprecation")
         public Builder applyConnectionString(final ConnectionString connectionString) {
             credentialList = new ArrayList<MongoCredential>(connectionString.getCredentialList());
-            heartbeatSocketSettingsBuilder.applyConnectionString(connectionString);
             wrappedBuilder.applyConnectionString(connectionString);
             return this;
         }
@@ -262,6 +260,9 @@ public final class MongoClientSettings {
          */
         @Deprecated
         public Builder heartbeatSocketSettings(final SocketSettings heartbeatSocketSettings) {
+            if (heartbeatSocketSettingsBuilder == null) {
+                heartbeatSocketSettingsBuilder = SocketSettings.builder();
+            }
             heartbeatSocketSettingsBuilder.applySettings(heartbeatSocketSettings);
             return this;
         }
@@ -442,7 +443,6 @@ public final class MongoClientSettings {
             wrappedBuilder.addCommandListener(commandListener);
             return this;
         }
-
 
         /**
          * Sets the logical name of the application using this MongoClient.  The application name may be used by the client to identify
@@ -651,7 +651,7 @@ public final class MongoClientSettings {
      * @see com.mongodb.connection.SocketSettings
      */
     public SocketSettings getHeartbeatSocketSettings() {
-        return heartbeatSocketSettings;
+        return heartbeatSocketSettings != null ? heartbeatSocketSettings : wrapped.getHeartbeatSocketSettings();
     }
 
     /**
@@ -681,6 +681,6 @@ public final class MongoClientSettings {
     private MongoClientSettings(final Builder builder) {
         wrapped = builder.wrappedBuilder.build();
         credentialList = builder.credentialList;
-        heartbeatSocketSettings = builder.heartbeatSocketSettingsBuilder.build();
+        heartbeatSocketSettings = builder.heartbeatSocketSettingsBuilder != null ?  builder.heartbeatSocketSettingsBuilder.build() : null;
     }
 }

@@ -603,11 +603,8 @@ public final class MongoClientSettings {
         sslSettings = builder.sslSettingsBuilder.build();
         compressorList = builder.compressorList;
         SocketSettings.Builder heartbeatSocketSettingsBuilder = SocketSettings.builder()
-                .readTimeout(20000, MILLISECONDS)
+                .readTimeout(socketSettings.getConnectTimeout(MILLISECONDS), MILLISECONDS)
                 .connectTimeout(socketSettings.getConnectTimeout(MILLISECONDS), MILLISECONDS);
-        if (socketSettings.getReadTimeout(MILLISECONDS) > 0) {
-            heartbeatSocketSettingsBuilder.readTimeout(socketSettings.getReadTimeout(MILLISECONDS), MILLISECONDS);
-        }
         heartbeatSocketSettings = heartbeatSocketSettingsBuilder.build();
     }
 }

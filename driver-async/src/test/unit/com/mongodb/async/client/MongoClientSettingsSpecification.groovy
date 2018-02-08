@@ -57,7 +57,7 @@ class MongoClientSettingsSpecification extends Specification {
         settings.getApplicationName() == null
         settings.getConnectionPoolSettings() == ConnectionPoolSettings.builder().build()
         settings.getSocketSettings() == SocketSettings.builder().build()
-        settings.getHeartbeatSocketSettings() == SocketSettings.builder().readTimeout(20000, TimeUnit.MILLISECONDS).build()
+        settings.getHeartbeatSocketSettings() == SocketSettings.builder().readTimeout(10000, TimeUnit.MILLISECONDS).build()
         settings.getServerSettings() == ServerSettings.builder().build()
         settings.getStreamFactoryFactory() == null
         settings.getCompressorList() == []
@@ -351,8 +351,9 @@ class MongoClientSettingsSpecification extends Specification {
         MongoClientSettings settings = MongoClientSettings.builder().applyConnectionString(connectionString).build()
         MongoClientSettings expected = MongoClientSettings.builder()
                 .clusterSettings(ClusterSettings.builder().applyConnectionString(connectionString).build())
-                .heartbeatSocketSettings(SocketSettings.builder().readTimeout(20000, TimeUnit.MILLISECONDS)
-                    .applyConnectionString(connectionString).build())
+                .heartbeatSocketSettings(SocketSettings.builder()
+                    .connectTimeout(connectionString.getConnectTimeout(), TimeUnit.MILLISECONDS)
+                    .readTimeout(connectionString.getConnectTimeout(), TimeUnit.MILLISECONDS).build())
                 .connectionPoolSettings(ConnectionPoolSettings.builder().applyConnectionString(connectionString).build())
                 .serverSettings(ServerSettings.builder().applyConnectionString(connectionString).build())
                 .socketSettings(SocketSettings.builder().applyConnectionString(connectionString).build())
@@ -367,7 +368,8 @@ class MongoClientSettingsSpecification extends Specification {
                 .build()
 
         then:
-        expect expected, isTheSameAs(settings)
+        expect expected, isTheSameAs(settings, ['heartbeatSocketSettings'])
+        settings.getHeartbeatSocketSettings() == expected.getHeartbeatSocketSettings()
     }
 
     @IgnoreIf({ isNotAtLeastJava7() })
