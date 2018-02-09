@@ -50,6 +50,7 @@ import com.mongodb.client.model.InsertManyOptions
 import com.mongodb.client.model.InsertOneModel
 import com.mongodb.client.model.InsertOneOptions
 import com.mongodb.client.model.ReplaceOneModel
+import com.mongodb.client.model.ReplaceOptions
 import com.mongodb.client.model.UpdateManyModel
 import com.mongodb.client.model.UpdateOneModel
 import com.mongodb.client.model.UpdateOptions
@@ -443,9 +444,10 @@ class MongoCollectionSpecification extends Specification {
             ], ordered, wc, retryWrites).bypassDocumentValidation(bypassDocumentValidation)
         }
         def updateOptions = new UpdateOptions().upsert(true).collation(collation).arrayFilters(arrayFilters)
+        def replaceOptions = new ReplaceOptions().upsert(true).collation(collation)
         def deleteOptions = new DeleteOptions().collation(collation)
         def bulkOperations = [new InsertOneModel(BsonDocument.parse('{_id: 1}')),
-                              new ReplaceOneModel(BsonDocument.parse('{a: 2}'), BsonDocument.parse('{a: 200}'), updateOptions),
+                              new ReplaceOneModel(BsonDocument.parse('{a: 2}'), BsonDocument.parse('{a: 200}'), replaceOptions),
                               new UpdateOneModel(BsonDocument.parse('{a: 3}'), BsonDocument.parse('{$set: {a: 1}}'), updateOptions),
                               new UpdateManyModel(BsonDocument.parse('{a: 4}'), BsonDocument.parse('{$set: {a: 1}}'), updateOptions),
                               new DeleteOneModel(BsonDocument.parse('{a: 5}')),
@@ -760,7 +762,7 @@ class MongoCollectionSpecification extends Specification {
 
         when:
         result = execute(replaceOneMethod, session, new Document('a', 1), new Document('a', 10),
-                new UpdateOptions().upsert(true).bypassDocumentValidation(bypassDocumentValidation).collation(collation))
+                new ReplaceOptions().upsert(true).bypassDocumentValidation(bypassDocumentValidation).collation(collation))
         executor.getClientSession() == session
         operation = executor.getWriteOperation() as MixedBulkWriteOperation
 
