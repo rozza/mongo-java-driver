@@ -49,7 +49,7 @@ public final class ReplaceOneModel<T> extends WriteModel<T> {
      * @param filter    a document describing the query filter, which may not be null.
      * @param replacement the replacement document
      * @param options     the options to apply
-     * @deprecated use {@link ReplaceOptions(Bson, Object, ReplaceOptions)} instead
+     * @deprecated use {@link #ReplaceOneModel(Bson, Object, ReplaceOptions)} instead
      */
     @Deprecated
     public ReplaceOneModel(final Bson filter, final T replacement, final UpdateOptions options) {
