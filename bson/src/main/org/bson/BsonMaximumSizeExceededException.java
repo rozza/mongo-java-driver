@@ -22,6 +22,7 @@ package org.bson;
  * @since 3.7
  */
 public class BsonMaximumSizeExceededException extends BsonSerializationException {
+    private static final long serialVersionUID = 8725368828269129777L;
 
     /**
      * Construct a new instance.
