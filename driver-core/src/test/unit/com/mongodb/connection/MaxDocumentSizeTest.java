@@ -20,6 +20,7 @@ import com.mongodb.bulk.InsertRequest;
 import com.mongodb.internal.connection.NoOpSessionContext;
 import org.bson.BsonBinary;
 import org.bson.BsonDocument;
+import org.bson.BsonMaximumSizeExceededException;
 import org.bson.BsonSerializationException;
 import org.junit.After;
 import org.junit.Before;
@@ -43,7 +44,7 @@ public class MaxDocumentSizeTest {
         buffer.close();
     }
 
-    @Test(expected = BsonSerializationException.class)
+    @Test(expected = BsonMaximumSizeExceededException.class)
     public void testMaxDocumentSize() {
         message.encode(buffer, NoOpSessionContext.INSTANCE);
     }
