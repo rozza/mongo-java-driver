@@ -21,7 +21,7 @@ import org.bson.BsonReader;
 import org.bson.BsonWriter;
 
 import static java.lang.String.format;
-import static org.bson.codecs.NumberCodecHelper.decodeDouble;
+import static org.bson.internal.NumberCodecHelper.decodeDouble;
 
 /**
  * Encodes and decodes {@code Float} objects.

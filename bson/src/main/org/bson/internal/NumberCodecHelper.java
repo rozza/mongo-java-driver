@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.bson.codecs;
+package org.bson.internal;
 
 import org.bson.BsonInvalidOperationException;
 import org.bson.BsonReader;
@@ -22,9 +22,14 @@ import org.bson.BsonType;
 
 import static java.lang.String.format;
 
-final class NumberCodecHelper {
+/**
+ * <p>
+ * This class is not part of the public API and may be removed or changed at any time.
+ * </p>
+ */
+public final class NumberCodecHelper {
 
-    static int decodeInt(final BsonReader reader) {
+    public static int decodeInt(final BsonReader reader) {
         int intValue;
         BsonType bsonType = reader.getCurrentBsonType();
         switch (bsonType) {
@@ -51,7 +56,7 @@ final class NumberCodecHelper {
         return intValue;
     }
 
-    static long decodeLong(final BsonReader reader) {
+    public static long decodeLong(final BsonReader reader) {
         long longValue;
         BsonType bsonType = reader.getCurrentBsonType();
         switch (bsonType) {
@@ -74,7 +79,7 @@ final class NumberCodecHelper {
         return longValue;
     }
 
-    static double decodeDouble(final BsonReader reader) {
+    public static double decodeDouble(final BsonReader reader) {
         double doubleValue;
         BsonType bsonType = reader.getCurrentBsonType();
         switch (bsonType) {
