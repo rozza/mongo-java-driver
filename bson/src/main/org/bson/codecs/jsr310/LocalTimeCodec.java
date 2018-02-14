@@ -34,7 +34,6 @@ import static org.bson.codecs.jsr310.Jsr310DecoderHelper.validateIsDateTime;
  *
  * <p>
  * Encodes and decodes {@code LocalTime} objects to and from {@code DateTime}. Data is stored to millisecond accuracy.
- * The value stored represents the nanoseconds of the day.
  * </p>
  * <p>Note: Requires Java 8 or greater.</p>
  *

@@ -33,7 +33,6 @@ import static org.bson.internal.NumberCodecHelper.decodeInt;
  *
  * <p>
  * Encodes and decodes {@code Month} objects to and from {@code Int32}.
- * The value stored represents the nanoseconds of the day.
  * </p>
  * <p>Note: Requires Java 8 or greater.</p>
  *
