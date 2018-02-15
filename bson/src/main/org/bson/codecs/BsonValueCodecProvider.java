@@ -65,6 +65,18 @@ public class BsonValueCodecProvider implements CodecProvider {
     }
 
     /**
+     * Construct an instance with the default codec mapping, but replacing the default mapping with any values contained in the given map.
+     * This allows a caller to easily replace a single or a few mappings, while leaving the rest at their default values.
+     *
+     * @param replacementsForDefaults the replacement mappings
+     * @since 3.7
+     */
+    public BsonValueCodecProvider(final Map<Class<?>, Codec<?>> replacementsForDefaults) {
+        addCodecs();
+        codecs.putAll(replacementsForDefaults);
+    }
+
+    /**
      * Get the {@code BsonValue} subclass associated with the given {@code BsonType}.
      * @param bsonType the BsonType
      * @return the class associated with the given type

@@ -161,6 +161,18 @@ class RawBsonDocumentSpecification extends Specification {
         rawDocument << createRawDocumentVariants()
     }
 
+    def 'should return RawBsonDocument for sub documents'() {
+        expect:
+        rawDocument.get('a') instanceof BsonInt32
+        rawDocument.get('b') instanceof BsonInt32
+        rawDocument.get('c') instanceof RawBsonDocument
+        rawDocument.get('d') instanceof BsonArray
+        rawDocument.get('d').asArray().getValues().get(0) instanceof RawBsonDocument
+
+        where:
+        rawDocument << createRawDocumentVariants()
+    }
+
     def 'containValue should find an existing value'() {
         expect:
         rawDocument.containsValue(document.get('a'))

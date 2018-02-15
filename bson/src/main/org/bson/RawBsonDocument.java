@@ -37,6 +37,7 @@ import java.io.StringWriter;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
@@ -54,8 +55,7 @@ import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
 public final class RawBsonDocument extends BsonDocument {
     private static final long serialVersionUID = 1L;
     private static final int MIN_BSON_DOCUMENT_SIZE = 5;
-
-    private static final CodecRegistry REGISTRY = fromProviders(new BsonValueCodecProvider());
+    private static final CodecRegistry REGISTRY;
 
     private final byte[] bytes;
     private final int offset;
@@ -350,6 +350,7 @@ public final class RawBsonDocument extends BsonDocument {
         return new RawBsonDocument(bytes.clone(), offset, length);
     }
 
+    @SuppressWarnings("unchecked")
     private BsonValue deserializeBsonValue(final BsonBinaryReader bsonReader) {
         return REGISTRY.get(getClassForBsonType(bsonReader.getCurrentBsonType())).decode(bsonReader, DecoderContext.builder().build());
     }
@@ -394,5 +395,11 @@ public final class RawBsonDocument extends BsonDocument {
         private Object readResolve() {
             return new RawBsonDocument(bytes);
         }
+    }
+
+    static {
+        HashMap<Class<?>, Codec<?>> replacementsForDefaults = new HashMap<Class<?>, Codec<?>>();
+        replacementsForDefaults.put(BsonDocument.class, new RawBsonDocumentCodec());
+        REGISTRY = fromProviders(new BsonValueCodecProvider(replacementsForDefaults));
     }
 }
