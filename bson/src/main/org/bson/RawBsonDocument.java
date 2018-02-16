@@ -60,7 +60,7 @@ public final class RawBsonDocument extends BsonDocument {
     private final byte[] bytes;
     private final int offset;
     private final int length;
-    private final CodecRegistry codecRegistry;
+    private final transient CodecRegistry codecRegistry;
 
     /**
      * Parses a string in MongoDB Extended JSON format to a {@code RawBsonDocument}
@@ -408,6 +408,7 @@ public final class RawBsonDocument extends BsonDocument {
 
     class RawBsonDocumentNoCopyCodec implements Codec<RawBsonDocument> {
 
+        @SuppressWarnings("unchecked")
         @Override
         public RawBsonDocument decode(final BsonReader reader, final DecoderContext decoderContext) {
             BsonBinaryReader bsonReader = (BsonBinaryReader) reader;
