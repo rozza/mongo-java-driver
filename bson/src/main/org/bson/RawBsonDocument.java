@@ -25,7 +25,6 @@ import org.bson.codecs.EncoderContext;
 import org.bson.codecs.RawBsonDocumentCodec;
 import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.io.BasicOutputBuffer;
-import org.bson.io.BsonInput;
 import org.bson.io.ByteBufferBsonInput;
 import org.bson.json.JsonReader;
 import org.bson.json.JsonWriter;
@@ -37,8 +36,9 @@ import java.io.Serializable;
 import java.io.StringWriter;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
@@ -56,11 +56,11 @@ import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
 public final class RawBsonDocument extends BsonDocument {
     private static final long serialVersionUID = 1L;
     private static final int MIN_BSON_DOCUMENT_SIZE = 5;
+    private static final CodecRegistry REGISTRY = fromProviders(new BsonValueCodecProvider());
 
     private final byte[] bytes;
     private final int offset;
     private final int length;
-    private final transient CodecRegistry codecRegistry;
 
     /**
      * Parses a string in MongoDB Extended JSON format to a {@code RawBsonDocument}
@@ -106,7 +106,6 @@ public final class RawBsonDocument extends BsonDocument {
         this.bytes = bytes;
         this.offset = offset;
         this.length = length;
-        this.codecRegistry = createCodecRegistry();
     }
 
     /**
@@ -126,7 +125,6 @@ public final class RawBsonDocument extends BsonDocument {
             this.bytes = buffer.getInternalBuffer();
             this.offset = 0;
             this.length = buffer.getPosition();
-            this.codecRegistry = createCodecRegistry();
         } finally {
             writer.close();
         }
@@ -355,7 +353,23 @@ public final class RawBsonDocument extends BsonDocument {
 
     @SuppressWarnings("unchecked")
     private BsonValue deserializeBsonValue(final BsonBinaryReader bsonReader) {
-        return codecRegistry.get(getClassForBsonType(bsonReader.getCurrentBsonType())).decode(bsonReader, DecoderContext.builder().build());
+        if (bsonReader.getCurrentBsonType() == BsonType.DOCUMENT) {
+            int position = bsonReader.getBsonInput().getPosition();
+            int size = bsonReader.getBsonInput().readInt32();
+            bsonReader.getBsonInput().skip(size - 4);
+            bsonReader.setState(AbstractBsonReader.State.TYPE);
+            return new RawBsonDocument(bytes, position, size);
+        } else if (bsonReader.getCurrentBsonType() == BsonType.ARRAY) {
+            bsonReader.readStartArray();
+            List<BsonValue> list = new ArrayList<BsonValue>();
+            while (bsonReader.readBsonType() != BsonType.END_OF_DOCUMENT) {
+                list.add(deserializeBsonValue(bsonReader));
+            }
+            bsonReader.readEndArray();
+            return new BsonArray(list);
+        } else {
+            return REGISTRY.get(getClassForBsonType(bsonReader.getCurrentBsonType())).decode(bsonReader, DecoderContext.builder().build());
+        }
     }
 
     private BsonBinaryReader createReader() {
@@ -397,37 +411,6 @@ public final class RawBsonDocument extends BsonDocument {
 
         private Object readResolve() {
             return new RawBsonDocument(bytes);
-        }
-    }
-
-    private CodecRegistry createCodecRegistry() {
-        HashMap<Class<?>, Codec<?>> replacementsForDefaults = new HashMap<Class<?>, Codec<?>>();
-        replacementsForDefaults.put(BsonDocument.class, new RawBsonDocumentNoCopyCodec());
-        return fromProviders(new BsonValueCodecProvider(replacementsForDefaults));
-    }
-
-    class RawBsonDocumentNoCopyCodec implements Codec<RawBsonDocument> {
-
-        @SuppressWarnings("unchecked")
-        @Override
-        public RawBsonDocument decode(final BsonReader reader, final DecoderContext decoderContext) {
-            BsonBinaryReader bsonReader = (BsonBinaryReader) reader;
-            BsonInput bsonInput = bsonReader.getBsonInput();
-            int subDocOffset = bsonInput.getPosition();
-            int subDocLength = bsonInput.readInt32();
-            bsonInput.skip(subDocLength - 4);
-            bsonReader.setState(AbstractBsonReader.State.TYPE);
-            return new RawBsonDocument(bytes, subDocOffset, subDocLength);
-        }
-
-        @Override
-        public void encode(final BsonWriter writer, final RawBsonDocument value, final EncoderContext encoderContext) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public Class<RawBsonDocument> getEncoderClass() {
-            return RawBsonDocument.class;
         }
     }
 }

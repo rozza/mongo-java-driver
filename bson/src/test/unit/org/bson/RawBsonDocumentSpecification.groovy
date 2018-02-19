@@ -168,6 +168,12 @@ class RawBsonDocumentSpecification extends Specification {
         rawDocument.get('c') instanceof RawBsonDocument
         rawDocument.get('d') instanceof BsonArray
         rawDocument.get('d').asArray().getValues().get(0) instanceof RawBsonDocument
+        rawDocument.get('d').asArray().getValues().get(1) instanceof BsonInt32
+
+        and:
+        rawDocument.getDocument('c').getBoolean('x').value
+        !rawDocument.get('d').asArray().getValues().get(0).asDocument().getBoolean('y').value
+        rawDocument.get('d').asArray().getValues().get(1).asInt32().value == 1
 
         where:
         rawDocument << createRawDocumentVariants()
