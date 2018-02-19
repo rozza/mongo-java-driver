@@ -17,60 +17,62 @@
 package org.bson.codecs.jsr310
 
 import org.bson.BsonDocument
-import org.bson.BsonDocumentReader
-import org.bson.BsonDocumentWriter
-import org.bson.BsonReader
-import org.bson.codecs.DecoderContext
-import org.bson.codecs.EncoderContext
+import org.bson.codecs.Codec
 import org.bson.codecs.configuration.CodecConfigurationException
 import spock.lang.IgnoreIf
-import spock.lang.Specification
 
 @IgnoreIf({ javaVersion < 1.8 })
-class LocalDateTimeCodecSpecification extends Specification {
+class LocalDateTimeCodecSpecification extends JsrSpecification {
 
     def 'should round trip LocalDateTime successfully'() {
-        given:
-        def codec = new LocalDateTimeCodec()
-
         when:
-        def writer = new BsonDocumentWriter(new BsonDocument())
-        writer.writeStartDocument()
-        writer.writeName('localDateTime')
-        codec.encode(writer, localDateTime , EncoderContext.builder().build())
-        writer.writeEndDocument()
+        def writer = encode(localDateTime)
 
         then:
-        writer.getDocument().get('localDateTime').isDateTime()
+        writer.getDocument().get('key').asDateTime().value == millis
 
         when:
-        BsonReader bsonReader = new BsonDocumentReader(writer.getDocument())
-        bsonReader.readStartDocument()
-        bsonReader.readName()
-        java.time.LocalDateTime actual = codec.decode(bsonReader, DecoderContext.builder().build())
+        java.time.LocalDateTime actual = decode(writer)
 
         then:
         localDateTime  == actual
 
         where:
-        localDateTime  << [
-            // Can't use LocalDateTime.now() as JDK 9 uses a higher resolution clock.
-            java.time.Instant.ofEpochMilli(System.currentTimeMillis()).atZone(java.time.ZoneOffset.UTC).toLocalDateTime(),
-            java.time.LocalDateTime.ofEpochSecond(0, 0, java.time.ZoneOffset.UTC),
-            java.time.LocalDateTime.ofEpochSecond(-99_999_999_999, 0, java.time.ZoneOffset.UTC),
-            java.time.LocalDateTime.ofEpochSecond(99_999_999_999, 0, java.time.ZoneOffset.UTC)
-        ]
+        localDateTime                                                                        | millis
+        java.time.LocalDateTime.of(2007, 10, 20, 0, 35)                                      | 1_192_840_500_000
+        java.time.LocalDateTime.ofEpochSecond(0, 0, java.time.ZoneOffset.UTC)                | 0
+        java.time.LocalDateTime.ofEpochSecond(-99_999_999_999, 0, java.time.ZoneOffset.UTC)  | -99_999_999_999 * 1000
+        java.time.LocalDateTime.ofEpochSecond(99_999_999_999, 0, java.time.ZoneOffset.UTC)   | 99_999_999_999 * 1000
+    }
+
+    def 'should round trip different timezones the same'() {
+        given:
+        def defaultTimeZone = TimeZone.getDefault()
+        TimeZone.setDefault(TimeZone.getTimeZone(timeZone))
+        def localDate = java.time.LocalDateTime.of(java.time.LocalDate.ofEpochDay(0), java.time.LocalTime.MIDNIGHT)
+
+        when:
+        def writer = encode(localDate)
+
+        then:
+        writer.getDocument().get('key').asDateTime().value == 0
+
+        when:
+        def actual = decode(writer)
+
+        then:
+        localDate == actual
+
+        cleanup:
+        TimeZone.setDefault(defaultTimeZone)
+
+        where:
+        timeZone << ['Pacific/Auckland', 'UTC', 'US/Hawaii']
     }
 
     def 'should wrap long overflow error in a CodecConfigurationException'() {
-        given:
-        def codec = new LocalDateTimeCodec()
-
         when:
-        def writer = new BsonDocumentWriter(new BsonDocument())
-        writer.writeStartDocument()
-        writer.writeName('localDateTime')
-        codec.encode(writer, localDateTime , EncoderContext.builder().build())
+        encode(localDateTime)
 
         then:
         def e = thrown(CodecConfigurationException)
@@ -84,14 +86,8 @@ class LocalDateTimeCodecSpecification extends Specification {
     }
 
     def 'should throw a CodecConfiguration exception if BsonType is invalid'() {
-        given:
-        def codec = new LocalDateTimeCodec()
-
         when:
-        BsonReader bsonReader = new BsonDocumentReader(invalidDuration)
-        bsonReader.readStartDocument()
-        bsonReader.readName()
-        codec.decode(bsonReader, DecoderContext.builder().build())
+        decode(invalidDuration)
 
         then:
         thrown(CodecConfigurationException)
@@ -101,5 +97,10 @@ class LocalDateTimeCodecSpecification extends Specification {
                 BsonDocument.parse('{key: "10 Minutes"}'),
                 BsonDocument.parse('{key: 10}')
         ]
+    }
+
+    @Override
+    Codec<?> getCodec() {
+        new LocalDateTimeCodec()
     }
 }

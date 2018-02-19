@@ -17,59 +17,62 @@
 package org.bson.codecs.jsr310
 
 import org.bson.BsonDocument
-import org.bson.BsonDocumentReader
-import org.bson.BsonDocumentWriter
-import org.bson.BsonReader
-import org.bson.codecs.DecoderContext
-import org.bson.codecs.EncoderContext
+import org.bson.codecs.Codec
 import org.bson.codecs.configuration.CodecConfigurationException
 import spock.lang.IgnoreIf
-import spock.lang.Specification
 
 @IgnoreIf({ javaVersion < 1.8 })
-class LocalDateCodecSpecification extends Specification {
+class LocalDateCodecSpecification extends JsrSpecification {
 
     def 'should round trip LocalDate successfully'() {
-        given:
-        def codec = new LocalDateCodec()
-
         when:
-        def writer = new BsonDocumentWriter(new BsonDocument())
-        writer.writeStartDocument()
-        writer.writeName('localDate')
-        codec.encode(writer, localDate, EncoderContext.builder().build())
-        writer.writeEndDocument()
+        def writer = encode(localDate)
 
         then:
-        writer.getDocument().get('localDate').isDateTime()
+        writer.getDocument().get('key').asDateTime().value == millis
 
         when:
-        BsonReader bsonReader = new BsonDocumentReader(writer.getDocument())
-        bsonReader.readStartDocument()
-        bsonReader.readName()
-        java.time.LocalDate actual = codec.decode(bsonReader, DecoderContext.builder().build())
+        java.time.LocalDate actual = decode(writer)
 
         then:
         localDate == actual
 
         where:
-        localDate << [
-            java.time.LocalDate.now(),
-            java.time.LocalDate.ofEpochDay(0),
-            java.time.LocalDate.ofEpochDay(-99_999_999_999),
-            java.time.LocalDate.ofEpochDay(99_999_999_999)
-        ]
+        localDate                                           | millis
+        java.time.LocalDate.of(2007, 10, 20)                | 1_192_838_400_000
+        java.time.LocalDate.ofEpochDay(0)                   | 0
+        java.time.LocalDate.ofEpochDay(-99_999_999_999)     | -99_999_999_999 * 86_400_000
+        java.time.LocalDate.ofEpochDay(99_999_999_999)      | 99_999_999_999 * 86_400_000
+    }
+
+    def 'should round trip different timezones the same'() {
+        given:
+        def defaultTimeZone = TimeZone.getDefault()
+        TimeZone.setDefault(TimeZone.getTimeZone(timeZone))
+        def localDate = java.time.LocalDate.ofEpochDay(0)
+
+        when:
+        def writer = encode(localDate)
+
+        then:
+        writer.getDocument().get('key').asDateTime().value == 0
+
+        when:
+        def actual = decode(writer)
+
+        then:
+        localDate == actual
+
+        cleanup:
+        TimeZone.setDefault(defaultTimeZone)
+
+        where:
+        timeZone << ['Pacific/Auckland', 'UTC', 'US/Hawaii']
     }
 
     def 'should wrap long overflow error in a CodecConfigurationException'() {
-        given:
-        def codec = new LocalDateCodec()
-
         when:
-        def writer = new BsonDocumentWriter(new BsonDocument())
-        writer.writeStartDocument()
-        writer.writeName('localDate')
-        codec.encode(writer, localDate, EncoderContext.builder().build())
+        encode(localDate)
 
         then:
         def e = thrown(CodecConfigurationException)
@@ -83,14 +86,8 @@ class LocalDateCodecSpecification extends Specification {
     }
 
     def 'should throw a CodecConfiguration exception if BsonType is invalid'() {
-        given:
-        def codec = new LocalDateCodec()
-
         when:
-        BsonReader bsonReader = new BsonDocumentReader(invalidDuration)
-        bsonReader.readStartDocument()
-        bsonReader.readName()
-        codec.decode(bsonReader, DecoderContext.builder().build())
+        decode(invalidDuration)
 
         then:
         thrown(CodecConfigurationException)
@@ -100,5 +97,10 @@ class LocalDateCodecSpecification extends Specification {
                 BsonDocument.parse('{key: "10 Minutes"}'),
                 BsonDocument.parse('{key: 10}')
         ]
+    }
+
+    @Override
+    Codec<?> getCodec() {
+        new LocalDateCodec()
     }
 }

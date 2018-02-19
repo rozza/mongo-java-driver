@@ -32,9 +32,8 @@ import static java.lang.String.format;
 /**
  * LocalDateTime Codec.
  *
- * <p>
- * Encodes and decodes {@code LocalDateTime} objects to and from {@code DateTime}. Data is stored to millisecond accuracy.
- * </p>
+ * <p>Encodes and decodes {@code LocalDateTime} objects to and from {@code DateTime}. Data is stored to millisecond accuracy.</p>
+ * <p>Converts the {@code LocalDateTime} values to and from {@link ZoneOffset#UTC}.</p>
  * <p>Note: Requires Java 8 or greater.</p>
  *
  * @mongodb.driver.manual reference/bson-types
@@ -49,6 +48,7 @@ public class LocalDateTimeCodec extends DateTimeBasedCodec<LocalDateTime> {
 
     /**
      * {@inheritDoc}
+     * <p>Converts the {@code LocalDateTime} to {@link ZoneOffset#UTC} via {@link LocalDateTime#toInstant(ZoneOffset)}.</p>
      * @throws CodecConfigurationException if the LocalDateTime cannot be converted to a valid Bson DateTime.
      */
     @Override

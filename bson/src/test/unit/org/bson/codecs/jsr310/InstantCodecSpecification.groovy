@@ -17,58 +17,35 @@
 package org.bson.codecs.jsr310
 
 import org.bson.BsonDocument
-import org.bson.BsonDocumentReader
-import org.bson.BsonDocumentWriter
-import org.bson.BsonReader
-import org.bson.codecs.DecoderContext
-import org.bson.codecs.EncoderContext
+import org.bson.codecs.Codec
 import org.bson.codecs.configuration.CodecConfigurationException
 import spock.lang.IgnoreIf
-import spock.lang.Specification
 
 @IgnoreIf({ javaVersion < 1.8 })
-class InstantCodecSpecification extends Specification {
+class InstantCodecSpecification extends JsrSpecification {
 
     def 'should round trip Instant successfully'() {
-        given:
-        def codec = new InstantCodec()
-
         when:
-        def writer = new BsonDocumentWriter(new BsonDocument())
-        writer.writeStartDocument()
-        writer.writeName('instant')
-        codec.encode(writer, instant, EncoderContext.builder().build())
-        writer.writeEndDocument()
+        def writer = encode(instant)
 
         then:
-        writer.getDocument().get('instant').isDateTime()
+        writer.getDocument().get('key').asDateTime().value == millis
 
         when:
-        BsonReader bsonReader = new BsonDocumentReader(writer.getDocument())
-        bsonReader.readStartDocument()
-        bsonReader.readName()
-        java.time.Instant actual = codec.decode(bsonReader, DecoderContext.builder().build())
+        java.time.Instant actual = decode(writer)
 
         then:
         instant == actual
 
         where:
-        instant << [
-            java.time.Instant.EPOCH,
-            // Can't use Instant.now() as JDK 9 uses a higher resolution clock.
-            java.time.Instant.ofEpochMilli(System.currentTimeMillis())
-        ]
+        instant                                                                             | millis
+        java.time.Instant.EPOCH                                                             | 0
+        java.time.LocalDateTime.of(2007, 10, 20, 0, 35).toInstant(java.time.ZoneOffset.UTC) | 1_192_840_500_000
     }
 
     def 'should wrap long overflow error in a CodecConfigurationException'() {
-        given:
-        def codec = new InstantCodec()
-
         when:
-        def writer = new BsonDocumentWriter(new BsonDocument())
-        writer.writeStartDocument()
-        writer.writeName('instant')
-        codec.encode(writer, instant, EncoderContext.builder().build())
+        encode(instant)
 
         then:
         def e = thrown(CodecConfigurationException)
@@ -82,14 +59,8 @@ class InstantCodecSpecification extends Specification {
     }
 
     def 'should throw a CodecConfiguration exception if BsonType is invalid'() {
-        given:
-        def codec = new InstantCodec()
-
         when:
-        BsonReader bsonReader = new BsonDocumentReader(invalidDuration)
-        bsonReader.readStartDocument()
-        bsonReader.readName()
-        codec.decode(bsonReader, DecoderContext.builder().build())
+        decode(invalidDuration)
 
         then:
         thrown(CodecConfigurationException)
@@ -99,5 +70,10 @@ class InstantCodecSpecification extends Specification {
                 BsonDocument.parse('{key: "10 Minutes"}'),
                 BsonDocument.parse('{key: 10}')
         ]
+    }
+
+    @Override
+    Codec<?> getCodec() {
+        new InstantCodec()
     }
 }

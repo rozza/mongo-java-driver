@@ -25,6 +25,7 @@ import org.bson.codecs.configuration.CodecConfigurationException;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 
 import static java.lang.String.format;
@@ -32,9 +33,8 @@ import static java.lang.String.format;
 /**
  * LocalDate Codec.
  *
- * <p>
- * Encodes and decodes {@code LocalDate} objects to and from {@code DateTime}.
- * </p>
+ * <p>Encodes and decodes {@code LocalDate} objects to and from {@code DateTime}.</p>
+ * <p>Converts the {@code LocalDate} values to and from {@link ZoneOffset#UTC}.</p>
  * <p>Note: Requires Java 8 or greater.</p>
  *
  * @mongodb.driver.manual reference/bson-types
@@ -49,6 +49,7 @@ public class LocalDateCodec extends DateTimeBasedCodec<LocalDate> {
 
     /**
      * {@inheritDoc}
+     * <p>Converts the {@code LocalDate} to {@link ZoneOffset#UTC} via {@link LocalDate#atStartOfDay(ZoneId)}.</p>
      * @throws CodecConfigurationException if the LocalDate cannot be converted to a valid Bson DateTime.
      */
     @Override

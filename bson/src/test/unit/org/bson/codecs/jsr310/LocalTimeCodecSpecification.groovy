@@ -17,59 +17,60 @@
 package org.bson.codecs.jsr310
 
 import org.bson.BsonDocument
-import org.bson.BsonDocumentReader
-import org.bson.BsonDocumentWriter
-import org.bson.BsonReader
-import org.bson.codecs.DecoderContext
-import org.bson.codecs.EncoderContext
+import org.bson.codecs.Codec
 import org.bson.codecs.configuration.CodecConfigurationException
 import spock.lang.IgnoreIf
-import spock.lang.Specification
 
 @IgnoreIf({ javaVersion < 1.8 })
-class LocalTimeCodecSpecification extends Specification {
+class LocalTimeCodecSpecification extends JsrSpecification {
 
     def 'should round trip LocalTime successfully'() {
-        given:
-        def codec = new LocalTimeCodec()
-
         when:
-        def writer = new BsonDocumentWriter(new BsonDocument())
-        writer.writeStartDocument()
-        writer.writeName('localTime')
-        codec.encode(writer, localTime, EncoderContext.builder().build())
-        writer.writeEndDocument()
+        def writer = encode(localTime)
 
         then:
-        writer.getDocument().get('localTime').isDateTime()
+        writer.getDocument().get('key').asDateTime().value == millis
 
         when:
-        BsonReader bsonReader = new BsonDocumentReader(writer.getDocument())
-        bsonReader.readStartDocument()
-        bsonReader.readName()
-        java.time.LocalTime actual = codec.decode(bsonReader, DecoderContext.builder().build())
+        java.time.LocalTime actual = decode(writer)
 
         then:
         localTime == actual
 
         where:
-        localTime << [
-            // Can't use LocalTime.now() as JDK 9 uses a higher resolution clock.
-            java.time.Instant.ofEpochMilli(System.currentTimeMillis()).atZone(java.time.ZoneOffset.UTC).toLocalDateTime().toLocalTime(),
-            java.time.LocalTime.MIN,
-            java.time.LocalTime.of(23, 59, 59, 999_000_000)
-        ]
+        localTime                                        | millis
+        java.time.LocalTime.MIN                          | 0
+        java.time.LocalTime.of(23, 59, 59, 999_000_000)  | 86_399_999
+    }
+
+    def 'should round trip different timezones the same'() {
+        given:
+        def defaultTimeZone = TimeZone.getDefault()
+        TimeZone.setDefault(TimeZone.getTimeZone(timeZone))
+        def localDate = java.time.LocalTime.MIDNIGHT
+
+        when:
+        def writer = encode(localDate)
+
+        then:
+        writer.getDocument().get('key').asDateTime().value == 0
+
+        when:
+        def actual = decode(writer)
+
+        then:
+        localDate == actual
+
+        cleanup:
+        TimeZone.setDefault(defaultTimeZone)
+
+        where:
+        timeZone << ['Pacific/Auckland', 'UTC', 'US/Hawaii']
     }
 
     def 'should throw a CodecConfiguration exception if BsonType is invalid'() {
-        given:
-        def codec = new LocalTimeCodec()
-
         when:
-        BsonReader bsonReader = new BsonDocumentReader(invalidDuration)
-        bsonReader.readStartDocument()
-        bsonReader.readName()
-        codec.decode(bsonReader, DecoderContext.builder().build())
+        decode(invalidDuration)
 
         then:
         thrown(CodecConfigurationException)
@@ -78,5 +79,10 @@ class LocalTimeCodecSpecification extends Specification {
         invalidDuration << [
             BsonDocument.parse('{key: "10:00"}')
         ]
+    }
+
+    @Override
+    Codec<?> getCodec() {
+        new LocalTimeCodec()
     }
 }

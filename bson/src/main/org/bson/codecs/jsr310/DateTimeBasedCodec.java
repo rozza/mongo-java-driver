@@ -27,9 +27,6 @@ abstract class DateTimeBasedCodec<T> implements Codec<T> {
 
     long validateAndReadDateTime(final BsonReader reader) {
         BsonType currentType = reader.getCurrentBsonType();
-        if (currentType == null) {
-            currentType = reader.readBsonType();
-        }
         if (!currentType.equals(BsonType.DATE_TIME)) {
             throw new CodecConfigurationException(format("Could not decode into %s, expected '%s' BsonType but got '%s'.",
                     getEncoderClass().getSimpleName(), BsonType.DATE_TIME, currentType));
