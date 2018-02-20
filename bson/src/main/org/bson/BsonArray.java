@@ -200,13 +200,12 @@ public class BsonArray extends BsonValue implements List<BsonValue>, Cloneable {
         if (this == o) {
             return true;
         }
-        if (o == null || getClass() != o.getClass()) {
+        if (!(o instanceof BsonArray)) {
             return false;
         }
 
         BsonArray that = (BsonArray) o;
-
-        if (!values.equals(that.values)) {
+        if (!getValues().equals(that.getValues())) {
             return false;
         }
 
