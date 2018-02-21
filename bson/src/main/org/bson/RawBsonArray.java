@@ -24,10 +24,8 @@ import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.AbstractList;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
-import java.util.List;
 import java.util.ListIterator;
 import java.util.NoSuchElementException;
 
@@ -41,18 +39,15 @@ import static org.bson.assertions.Assertions.notNull;
  */
 public class RawBsonArray extends BsonArray implements Serializable {
     private static final long serialVersionUID = 2L;
-    private static final int MIN_BSON_ARRAY_SIZE = 5;
+    private static final String IMMUTABLE_MSG = "RawBsonArray instances are immutable";
 
-    private final byte[] bytes;
-    private final int offset;
-    private final int length;
-    private final transient List<BsonValue> wrappedList;
+    private final transient RawBsonArrayList delegate;
 
     /**
-     * Constructs a new instance with the given byte array.  Note that it does not make a copy of the array, so do not modify it after
+     * Constructs a new instance with the given byte array. Note that it does not make a copy of the array, so do not modify it after
      * passing it to this constructor.
      *
-     * @param bytes the bytes representing a BSON document.  Note that the byte array is NOT copied, so care must be taken not to modify it
+     * @param bytes the bytes representing a BSON document. Note that the byte array is NOT copied, so care must be taken not to modify it
      *              after passing it to this construction, unless of course that is your intention.
      */
     public RawBsonArray(final byte[] bytes) {
@@ -69,180 +64,86 @@ public class RawBsonArray extends BsonArray implements Serializable {
      * @param length the length of the subarray to use
      */
     public RawBsonArray(final byte[] bytes, final int offset, final int length) {
-        notNull("bytes", bytes);
-        isTrueArgument("offset >= 0", offset >= 0);
-        isTrueArgument("offset < bytes.length", offset < bytes.length);
-        isTrueArgument("length <= bytes.length - offset", length <= bytes.length - offset);
-        isTrueArgument("length >= 5", length >= MIN_BSON_ARRAY_SIZE);
-        this.bytes = bytes;
-        this.offset = offset;
-        this.length = length;
-        this.wrappedList = new RawBsonArrayList();
+        this(new RawBsonArrayList(bytes, offset, length));
     }
 
-    /**
-     * Gets the values in this array as a list of {@code BsonValue} objects.
-     *
-     * @return the values in this array.
-     */
-    @Override
-    public List<BsonValue> getValues() {
-        return toBsonArray().getValues();
+    private RawBsonArray(final RawBsonArrayList values) {
+        super(values, false);
+        this.delegate = values;
     }
 
-    /**
-     * Returns a {@code ByteBuf} that wraps the byte array, with the proper byte order.  Any changes made to the returned will be reflected
-     * in the underlying byte array owned by this instance.
-     *
-     * @return a byte buffer that wraps the byte array owned by this instance.
-     */
-    public ByteBuf getByteBuffer() {
-        ByteBuffer buffer = ByteBuffer.wrap(bytes, offset, length);
-        buffer.order(ByteOrder.LITTLE_ENDIAN);
-        return new ByteBufNIO(buffer);
-    }
-
-    @Override
-    public int size() {
-        return wrappedList.size();
-    }
-
-    @Override
-    public boolean isEmpty() {
-        return wrappedList.isEmpty();
-    }
-
-    @Override
-    public boolean contains(final Object o) {
-       return wrappedList.contains(o);
-    }
-
-    @Override
-    public Iterator<BsonValue> iterator() {
-        return wrappedList.iterator();
-    }
-
-    @Override
-    public Object[] toArray() {
-        return wrappedList.toArray();
-    }
-
-    @Override
-    public <T> T[] toArray(final T[] a) {
-        return wrappedList.toArray(a);
+    ByteBuf getByteBuffer() {
+        return delegate.getByteBuffer();
     }
 
     @Override
     public boolean add(final BsonValue bsonValue) {
-        throw new UnsupportedOperationException("RawBsonArray instances are immutable");
+        throw new UnsupportedOperationException(IMMUTABLE_MSG);
     }
 
     @Override
     public boolean remove(final Object o) {
-        throw new UnsupportedOperationException("RawBsonArray instances are immutable");
-    }
-
-    @Override
-    public boolean containsAll(final Collection<?> c) {
-        return wrappedList.containsAll(c);
+        throw new UnsupportedOperationException(IMMUTABLE_MSG);
     }
 
     @Override
     public boolean addAll(final Collection<? extends BsonValue> c) {
-        throw new UnsupportedOperationException("RawBsonArray instances are immutable");
+        throw new UnsupportedOperationException(IMMUTABLE_MSG);
     }
 
     @Override
     public boolean addAll(final int index, final Collection<? extends BsonValue> c) {
-        throw new UnsupportedOperationException("RawBsonArray instances are immutable");
+        throw new UnsupportedOperationException(IMMUTABLE_MSG);
     }
 
     @Override
     public boolean removeAll(final Collection<?> c) {
-        throw new UnsupportedOperationException("RawBsonArray instances are immutable");
+        throw new UnsupportedOperationException(IMMUTABLE_MSG);
     }
 
     @Override
     public boolean retainAll(final Collection<?> c) {
-        throw new UnsupportedOperationException("RawBsonArray instances are immutable");
+        throw new UnsupportedOperationException(IMMUTABLE_MSG);
     }
 
     @Override
     public void clear() {
-        throw new UnsupportedOperationException("RawBsonArray instances are immutable");
-    }
-
-    @Override
-    public boolean equals(final Object o) {
-        return toBsonArray().equals(o);
-    }
-
-    @Override
-    public int hashCode() {
-        return toBsonArray().hashCode();
-    }
-
-    @Override
-    public BsonValue get(final int index) {
-        return wrappedList.get(index);
+        throw new UnsupportedOperationException(IMMUTABLE_MSG);
     }
 
     @Override
     public BsonValue set(final int index, final BsonValue element) {
-        throw new UnsupportedOperationException("RawBsonArray instances are immutable");
+        throw new UnsupportedOperationException(IMMUTABLE_MSG);
     }
 
     @Override
     public void add(final int index, final BsonValue element) {
-        throw new UnsupportedOperationException("RawBsonArray instances are immutable");
+        throw new UnsupportedOperationException(IMMUTABLE_MSG);
     }
 
     @Override
     public BsonValue remove(final int index) {
-        throw new UnsupportedOperationException("RawBsonArray instances are immutable");
-    }
-
-    @Override
-    public int indexOf(final Object o) {
-        return wrappedList.indexOf(o);
-    }
-
-    @Override
-    public int lastIndexOf(final Object o) {
-        return wrappedList.lastIndexOf(o);
-    }
-
-    @Override
-    public ListIterator<BsonValue> listIterator() {
-        return wrappedList.listIterator();
-    }
-
-    @Override
-    public ListIterator<BsonValue> listIterator(final int index) {
-        return wrappedList.listIterator(index);
-    }
-
-    @Override
-    public List<BsonValue> subList(final int fromIndex, final int toIndex) {
-        return wrappedList.subList(fromIndex, toIndex);
+        throw new UnsupportedOperationException(IMMUTABLE_MSG);
     }
 
     @Override
     public BsonArray clone() {
-        return new RawBsonArray(bytes.clone(), offset, length);
+        return new RawBsonArray(delegate.bytes.clone(), delegate.offset, delegate.length);
     }
 
-    private BsonBinaryReader createReader() {
-        return new BsonBinaryReader(new ByteBufferBsonInput(getByteBuffer()));
+    @Override
+    public boolean equals(final Object o) {
+        return super.equals(o);
     }
 
-    private BsonArray toBsonArray() {
-        return new BsonArray(new ArrayList<BsonValue>(this));
+    @Override
+    public int hashCode() {
+        return super.hashCode();
     }
 
     // see https://docs.oracle.com/javase/6/docs/platform/serialization/spec/output.html
     private Object writeReplace() {
-        return new SerializationProxy(this.bytes, offset, length);
+        return new SerializationProxy(delegate.bytes, delegate.offset, delegate.length);
     }
 
     // see https://docs.oracle.com/javase/6/docs/platform/serialization/spec/input.html
@@ -269,8 +170,23 @@ public class RawBsonArray extends BsonArray implements Serializable {
         }
     }
 
-    class RawBsonArrayList extends AbstractList<BsonValue> {
+    static class RawBsonArrayList extends AbstractList<BsonValue> {
+        private static final int MIN_BSON_ARRAY_SIZE = 5;
         private Integer cachedSize;
+        private final byte[] bytes;
+        private final int offset;
+        private final int length;
+
+        RawBsonArrayList(final byte[] bytes, final int offset, final int length) {
+            notNull("bytes", bytes);
+            isTrueArgument("offset >= 0", offset >= 0);
+            isTrueArgument("offset < bytes.length", offset < bytes.length);
+            isTrueArgument("length <= bytes.length - offset", length <= bytes.length - offset);
+            isTrueArgument("length >= 5", length >= MIN_BSON_ARRAY_SIZE);
+            this.bytes = bytes;
+            this.offset = offset;
+            this.length = length;
+        }
 
         @Override
         public BsonValue get(final int index) {
@@ -376,7 +292,7 @@ public class RawBsonArray extends BsonArray implements Serializable {
 
             @Override
             public void remove() {
-                throw new UnsupportedOperationException("RawBsonArray instances are immutable");
+                throw new UnsupportedOperationException(IMMUTABLE_MSG);
             }
 
             public int getCursor() {
@@ -416,13 +332,23 @@ public class RawBsonArray extends BsonArray implements Serializable {
 
             @Override
             public void set(final BsonValue bsonValue) {
-                throw new UnsupportedOperationException("RawBsonArray instances are immutable");
+                throw new UnsupportedOperationException(IMMUTABLE_MSG);
             }
 
             @Override
             public void add(final BsonValue bsonValue) {
-                throw new UnsupportedOperationException("RawBsonArray instances are immutable");
+                throw new UnsupportedOperationException(IMMUTABLE_MSG);
             }
+        }
+
+        private BsonBinaryReader createReader() {
+            return new BsonBinaryReader(new ByteBufferBsonInput(getByteBuffer()));
+        }
+
+        ByteBuf getByteBuffer() {
+            ByteBuffer buffer = ByteBuffer.wrap(bytes, offset, length);
+            buffer.order(ByteOrder.LITTLE_ENDIAN);
+            return new ByteBufNIO(buffer);
         }
     }
 }
