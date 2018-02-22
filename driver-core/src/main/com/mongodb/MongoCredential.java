@@ -28,6 +28,7 @@ import static com.mongodb.AuthenticationMechanism.MONGODB_CR;
 import static com.mongodb.AuthenticationMechanism.MONGODB_X509;
 import static com.mongodb.AuthenticationMechanism.PLAIN;
 import static com.mongodb.AuthenticationMechanism.SCRAM_SHA_1;
+import static com.mongodb.AuthenticationMechanism.SCRAM_SHA_256;
 import static com.mongodb.assertions.Assertions.notNull;
 
 /**
@@ -86,7 +87,16 @@ public final class MongoCredential {
      * @mongodb.server.release 3.0
      * @mongodb.driver.manual core/authentication/#authentication-scram-sha-1 SCRAM-SHA-1
      */
-    public static final String SCRAM_SHA_1_MECHANISM = AuthenticationMechanism.SCRAM_SHA_1.getMechanismName();
+    public static final String SCRAM_SHA_1_MECHANISM = AuthenticationMechanism.SCRAM_SHA_1.getMechanismName(); // TODO Deprecated?
+
+    /**
+     * The SCRAM-SHA-256 Mechanism.
+     *
+     * @since 3.8
+     * @mongodb.server.release 4.0
+     * @mongodb.driver.manual core/authentication/#authentication-scram-sha-256 SCRAM-SHA-256
+     */
+    public static final String SCRAM_SHA_256_MECHANISM = AuthenticationMechanism.SCRAM_SHA_256.getMechanismName();
 
     /**
      * Mechanism property key for overriding the service name for GSSAPI authentication.
@@ -138,10 +148,10 @@ public final class MongoCredential {
 
     /**
      * Creates a MongoCredential instance with an unspecified mechanism.  The client will negotiate the best mechanism based on the
-     * version of the server that the client is authenticating to.  If the server version is 3.0 or higher,
-     * the driver will authenticate using the SCRAM-SHA-1 mechanism.  Otherwise, the driver will authenticate using the MONGODB_CR
-     * mechanism.
+     * version of the server that the client is authenticating to.
      *
+     * <p>If the server version is 4.0 or higher, the driver will negotiate with the server preferring the SCRAM-SHA-256 mechanism. 3.x
+     * servers will authenticate using SCRAM-SHA-1, older servers will authenticate using the MONGODB_CR mechanism.</p>
      *
      * @param userName the user name
      * @param database the database where the user is defined
@@ -149,8 +159,9 @@ public final class MongoCredential {
      * @return the credential
      *
      * @since 2.13
-     * @mongodb.driver.manual core/authentication/#mongodb-cr-authentication MONGODB-CR
+     * @mongodb.driver.manual core/authentication/#authentication-scram-sha-256 SCRAM-SHA-256
      * @mongodb.driver.manual core/authentication/#authentication-scram-sha-1 SCRAM-SHA-1
+     * @mongodb.driver.manual core/authentication/#mongodb-cr-authentication MONGODB-CR
      */
     public static MongoCredential createCredential(final String userName, final String database, final char[] password) {
         return new MongoCredential(null, userName, database, password);
@@ -175,6 +186,23 @@ public final class MongoCredential {
      */
     public static MongoCredential createScramSha1Credential(final String userName, final String source, final char[] password) {
         return new MongoCredential(SCRAM_SHA_1, userName, source, password);
+    }
+
+    /**
+     * Creates a MongoCredential instance for the SCRAM-SHA-256 SASL mechanism.
+     *
+     * @param userName the non-null user name
+     * @param source the source where the user is defined.
+     * @param password the non-null user password
+     * @return the credential
+     * @see #createCredential(String, String, char[])
+     *
+     * @since 3.8
+     * @mongodb.server.release 4.0
+     * @mongodb.driver.manual core/authentication/#authentication-scram-sha-256 SCRAM-SHA-256
+     */
+    public static MongoCredential createScramSha256Credential(final String userName, final String source, final char[] password) {
+        return new MongoCredential(SCRAM_SHA_256, userName, source, password);
     }
 
     /**
@@ -321,7 +349,7 @@ public final class MongoCredential {
 
     @SuppressWarnings("deprecation")
     private boolean mechanismRequiresPassword(final AuthenticationMechanism mechanism) {
-        return mechanism == PLAIN || mechanism == MONGODB_CR || mechanism == SCRAM_SHA_1;
+        return mechanism == PLAIN || mechanism == MONGODB_CR || mechanism == SCRAM_SHA_1 || mechanism == SCRAM_SHA_256;
     }
 
     /**
