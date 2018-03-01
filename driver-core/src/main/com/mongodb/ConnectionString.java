@@ -643,6 +643,9 @@ public class ConnectionString {
         switch (mechanism) {
             case GSSAPI:
                 credential = MongoCredential.createGSSAPICredential(userName);
+                if (!authSource.equals("$external") && database != null) {
+                    throw new IllegalArgumentException("Invalid authSource for GSSAPI, it must be '$external'");
+                }
                 if (gssapiServiceName != null) {
                     credential = credential.withMechanismProperty("SERVICE_NAME", gssapiServiceName);
                 }
@@ -654,6 +657,9 @@ public class ConnectionString {
                 credential = MongoCredential.createMongoCRCredential(userName, authSource, password);
                 break;
             case MONGODB_X509:
+                if (!authSource.equals("$external") && database != null) {
+                    throw new IllegalArgumentException("Invalid authSource for MONGODB-X509, it must be '$external'");
+                }
                 credential = MongoCredential.createMongoX509Credential(userName);
                 break;
             case SCRAM_SHA_1:
