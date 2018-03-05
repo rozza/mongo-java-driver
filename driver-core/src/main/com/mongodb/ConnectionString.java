@@ -586,7 +586,7 @@ public class ConnectionString {
     private MongoCredential createCredentials(final Map<String, List<String>> optionsMap, final String userName,
                                               final char[] password) {
         AuthenticationMechanism mechanism = null;
-        String authSource = (database == null) ? "admin" : database;
+        String authSource = null;
         String gssapiServiceName = null;
         String authMechanismProperties = null;
 
@@ -613,7 +613,7 @@ public class ConnectionString {
         if (mechanism != null) {
             credential = createMongoCredentialWithMechanism(mechanism, userName, password, authSource, gssapiServiceName);
         } else if (userName != null) {
-            credential = MongoCredential.createCredential(userName, authSource, password);
+            credential = MongoCredential.createCredential(userName, getAuthSourceOrDefault(authSource, "admin"), password);
         }
 
         if (credential != null && authMechanismProperties != null) {
@@ -640,27 +640,43 @@ public class ConnectionString {
                                                                final char[] password, final String authSource,
                                                                final String gssapiServiceName) {
         MongoCredential credential;
+        String mechanismAuthSource;
         switch (mechanism) {
             case GSSAPI:
+            case MONGODB_X509:
+                mechanismAuthSource = getAuthSourceOrDefault(authSource, "$external");
+                break;
+            default:
+                mechanismAuthSource = getAuthSourceOrDefault(authSource, "admin");
+        }
+
+        switch (mechanism) {
+            case GSSAPI:
+                if (!mechanismAuthSource.equals("$external")) {
+                    throw new IllegalArgumentException("Invalid authSource for GSSAPI, it must be '$external'");
+                }
                 credential = MongoCredential.createGSSAPICredential(userName);
                 if (gssapiServiceName != null) {
                     credential = credential.withMechanismProperty("SERVICE_NAME", gssapiServiceName);
                 }
                 break;
             case PLAIN:
-                credential = MongoCredential.createPlainCredential(userName, authSource, password);
+                credential = MongoCredential.createPlainCredential(userName, mechanismAuthSource, password);
                 break;
             case MONGODB_CR:
-                credential = MongoCredential.createMongoCRCredential(userName, authSource, password);
+                credential = MongoCredential.createMongoCRCredential(userName, mechanismAuthSource, password);
                 break;
             case MONGODB_X509:
+                if (!mechanismAuthSource.equals("$external")) {
+                    throw new IllegalArgumentException("Invalid authSource for MONGODB_X509, it must be '$external'");
+                }
                 credential = MongoCredential.createMongoX509Credential(userName);
                 break;
             case SCRAM_SHA_1:
-                credential = MongoCredential.createScramSha1Credential(userName, authSource, password);
+                credential = MongoCredential.createScramSha1Credential(userName, mechanismAuthSource, password);
                 break;
             case SCRAM_SHA_256:
-                credential = MongoCredential.createScramSha256Credential(userName, authSource, password);
+                credential = MongoCredential.createScramSha256Credential(userName, mechanismAuthSource, password);
                 break;
             default:
                 throw new UnsupportedOperationException(format("The connection string contains an invalid authentication mechanism'. "
@@ -668,6 +684,14 @@ public class ConnectionString {
                         mechanism));
         }
         return credential;
+    }
+
+    private String getAuthSourceOrDefault(String authSource, String defaultAuthSource) {
+        if (authSource != null) {
+            return authSource;
+        } else {
+            return database != null ? database : defaultAuthSource;
+        }
     }
 
     private String getLastValue(final Map<String, List<String>> optionsMap, final String key) {
