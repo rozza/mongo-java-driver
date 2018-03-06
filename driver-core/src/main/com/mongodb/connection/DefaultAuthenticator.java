@@ -39,8 +39,6 @@ class DefaultAuthenticator extends Authenticator {
     private static final ServerVersion THREE_ZERO = new ServerVersion(3, 0);
     private static final BsonString DEFAULT_MECHANISM_NAME = new BsonString(SCRAM_SHA_256.getMechanismName());
 
-    private Authenticator authenticator;
-
     DefaultAuthenticator(final MongoCredential credential) {
         super(credential);
         isTrueArgument("unspecified authentication mechanism", credential.getAuthenticationMechanism() == null);
@@ -48,9 +46,7 @@ class DefaultAuthenticator extends Authenticator {
 
     @Override
     void authenticate(final InternalConnection connection, final ConnectionDescription connectionDescription) {
-        if (authenticator != null) {
-            authenticator.authenticate(connection, connectionDescription);
-        } else if (connectionDescription.getServerVersion().compareTo(FOUR_ZERO) < 0) {
+        if (connectionDescription.getServerVersion().compareTo(FOUR_ZERO) < 0) {
             getLegacyDefaultAuthenticator(connectionDescription.getServerVersion())
                     .authenticate(connection, connectionDescription);
         } else {
@@ -67,9 +63,7 @@ class DefaultAuthenticator extends Authenticator {
     @Override
     void authenticateAsync(final InternalConnection connection, final ConnectionDescription connectionDescription,
                            final SingleResultCallback<Void> callback) {
-        if (authenticator != null) {
-            authenticator.authenticateAsync(connection, connectionDescription, callback);
-        } else if (connectionDescription.getServerVersion().compareTo(FOUR_ZERO) < 0) {
+        if (connectionDescription.getServerVersion().compareTo(FOUR_ZERO) < 0) {
             getLegacyDefaultAuthenticator(connectionDescription.getServerVersion())
                     .authenticateAsync(connection, connectionDescription, callback);
         } else {
@@ -87,11 +81,7 @@ class DefaultAuthenticator extends Authenticator {
         }
     }
 
-    void setAuthenticatorFromIsMasterResult(final BsonDocument isMasterResult, final ServerVersion serverVersion) {
-        authenticator = getAuthenticatorFromIsMasterResult(isMasterResult, serverVersion);
-    }
-
-    private Authenticator getAuthenticatorFromIsMasterResult(final BsonDocument isMasterResult, final ServerVersion serverVersion) {
+    Authenticator getAuthenticatorFromIsMasterResult(final BsonDocument isMasterResult, final ServerVersion serverVersion) {
         if (isMasterResult.containsKey("saslSupportedMechs")) {
             BsonArray saslSupportedMechs = isMasterResult.getArray("saslSupportedMechs");
             AuthenticationMechanism mechanism = saslSupportedMechs.contains(DEFAULT_MECHANISM_NAME) ? SCRAM_SHA_256 : SCRAM_SHA_1;

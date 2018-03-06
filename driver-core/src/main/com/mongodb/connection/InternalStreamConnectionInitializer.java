@@ -26,6 +26,7 @@ import org.bson.BsonDocument;
 import org.bson.BsonInt32;
 import org.bson.BsonString;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -42,12 +43,14 @@ class InternalStreamConnectionInitializer implements InternalConnectionInitializ
     private final List<Authenticator> authenticators;
     private final BsonDocument clientMetadataDocument;
     private final List<MongoCompressor> requestedCompressors;
+    private final boolean checkSaslSupportedMechs;
 
     InternalStreamConnectionInitializer(final List<Authenticator> authenticators, final BsonDocument clientMetadataDocument,
                                         final List<MongoCompressor> requestedCompressors) {
-        this.authenticators = notNull("authenticators", authenticators);
+        this.authenticators = new ArrayList<Authenticator>(notNull("authenticators", authenticators));
         this.clientMetadataDocument = clientMetadataDocument;
         this.requestedCompressors = notNull("requestedCompressors", requestedCompressors);
+        this.checkSaslSupportedMechs = this.authenticators.size() > 0 && this.authenticators.get(0) instanceof DefaultAuthenticator;
     }
 
     @Override
@@ -56,7 +59,6 @@ class InternalStreamConnectionInitializer implements InternalConnectionInitializ
 
         ConnectionDescription connectionDescription = initializeConnectionDescription(internalConnection);
         authenticateAll(internalConnection, connectionDescription);
-
         return completeConnectionDescriptionInitialization(internalConnection, connectionDescription);
     }
 
@@ -95,27 +97,20 @@ class InternalStreamConnectionInitializer implements InternalConnectionInitializ
 
     private ConnectionDescription initializeConnectionDescription(final InternalConnection internalConnection) {
         BsonDocument isMasterResult;
-        MongoCredential credential = null;
         BsonDocument isMasterCommandDocument = createIsMasterCommand();
-        boolean checkSaslMechanism = authenticators.size() == 1 && authenticators.get(0) instanceof DefaultAuthenticator;
-
-        if (checkSaslMechanism) {
-            credential = authenticators.get(0).getCredential();
-            isMasterCommandDocument.append("saslSupportedMechs",
-                    new BsonString(format("%s.%s", credential.getSource(), credential.getUserName())));
-        }
 
         try {
             isMasterResult = executeCommand("admin", isMasterCommandDocument, internalConnection);
         } catch (MongoException e) {
-            if (credential != null && e.getCode() == USER_NOT_FOUND_CODE) {
+            if (checkSaslSupportedMechs && e.getCode() == USER_NOT_FOUND_CODE) {
+                MongoCredential credential = authenticators.get(0).getCredential();
                 throw new MongoSecurityException(credential, format("Exception authenticating %s", credential), e);
             }
             throw e;
         }
         BsonDocument buildInfoResult = executeCommand("admin", new BsonDocument("buildinfo", new BsonInt32(1)), internalConnection);
 
-        setDefaultAuthenticator(checkSaslMechanism, isMasterResult, buildInfoResult);
+        setFirstAuthenticator(isMasterResult, buildInfoResult);
         return createConnectionDescription(internalConnection.getDescription().getConnectionId(), isMasterResult, buildInfoResult);
     }
 
@@ -130,6 +125,11 @@ class InternalStreamConnectionInitializer implements InternalConnectionInitializ
                 compressors.add(new BsonString(cur.getName()));
             }
             isMasterCommandDocument.append("compression", compressors);
+        }
+        if (checkSaslSupportedMechs) {
+            MongoCredential credential = authenticators.get(0).getCredential();
+            isMasterCommandDocument.append("saslSupportedMechs",
+                    new BsonString(credential.getSource() + "." + credential.getUserName()));
         }
         return isMasterCommandDocument;
     }
@@ -152,20 +152,12 @@ class InternalStreamConnectionInitializer implements InternalConnectionInitializ
 
     private void initializeConnectionDescriptionAsync(final InternalConnection internalConnection,
                                                       final SingleResultCallback<ConnectionDescription> callback) {
-        BsonDocument isMasterCommandDocument = createIsMasterCommand();
-        final boolean checkSaslMechanism = authenticators.size() == 1 && authenticators.get(0) instanceof DefaultAuthenticator;
-        if (checkSaslMechanism) {
-            MongoCredential credential = authenticators.get(0).getCredential();
-            isMasterCommandDocument.append("saslSupportedMechs",
-                    new BsonString(format("%s.%s", credential.getSource(), credential.getUserName())));
-        }
-
         executeCommandAsync("admin", createIsMasterCommand(), internalConnection,
                             new SingleResultCallback<BsonDocument>() {
                                 @Override
                                 public void onResult(final BsonDocument isMasterResult, final Throwable t) {
                                     if (t != null) {
-                                        if (checkSaslMechanism && t instanceof MongoException
+                                        if (checkSaslSupportedMechs && t instanceof MongoException
                                                 && ((MongoException) t).getCode() == USER_NOT_FOUND_CODE) {
                                             MongoCredential credential = authenticators.get(0).getCredential();
                                             callback.onResult(null,  new MongoSecurityException(credential,
@@ -184,8 +176,7 @@ class InternalStreamConnectionInitializer implements InternalConnectionInitializ
                                                                     } else {
                                                                         ConnectionId connectionId = internalConnection.getDescription()
                                                                                                                       .getConnectionId();
-                                                                        setDefaultAuthenticator(checkSaslMechanism, isMasterResult,
-                                                                                buildInfoResult);
+                                                                        setFirstAuthenticator(isMasterResult, buildInfoResult);
                                                                         callback.onResult(createConnectionDescription(connectionId,
                                                                                                                       isMasterResult,
                                                                                                                       buildInfoResult),
@@ -199,10 +190,10 @@ class InternalStreamConnectionInitializer implements InternalConnectionInitializ
     }
 
     @SuppressWarnings("unchecked")
-    private void setDefaultAuthenticator(final boolean checkSaslMechanism, final BsonDocument isMasterResult,
-                                         final BsonDocument buildInfoResult) {
-        if (checkSaslMechanism) {
-            ((DefaultAuthenticator) authenticators.get(0)).setAuthenticatorFromIsMasterResult(isMasterResult, getVersion(buildInfoResult));
+    private void setFirstAuthenticator(final BsonDocument isMasterResult, final BsonDocument buildInfoResult) {
+        if (checkSaslSupportedMechs) {
+            authenticators.set(0, ((DefaultAuthenticator) authenticators.get(0))
+                    .getAuthenticatorFromIsMasterResult(isMasterResult, getVersion(buildInfoResult)));
         }
     }
 
