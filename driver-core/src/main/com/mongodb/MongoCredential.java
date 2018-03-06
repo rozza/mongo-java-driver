@@ -325,7 +325,7 @@ public final class MongoCredential {
         if (this.mechanism != null) {
             throw new IllegalArgumentException("Mechanism already set");
         }
-        return new MongoCredential(this, mechanism);
+        return new MongoCredential(mechanism, userName, source, password, mechanismProperties);
     }
 
     /**
@@ -337,6 +337,11 @@ public final class MongoCredential {
      * @param password  the password
      */
     MongoCredential(final AuthenticationMechanism mechanism, final String userName, final String source, final char[] password) {
+        this(mechanism, userName, source, password, Collections.<String, Object>emptyMap());
+    }
+
+    MongoCredential(final AuthenticationMechanism mechanism, final String userName, final String source, final char[] password,
+                    final Map<String, Object> mechanismProperties) {
         if (mechanism != MONGODB_X509 && userName == null) {
             throw new IllegalArgumentException("username can not be null");
         }
@@ -358,7 +363,7 @@ public final class MongoCredential {
         this.source = notNull("source", source);
 
         this.password = password != null ? password.clone() : null;
-        this.mechanismProperties = Collections.emptyMap();
+        this.mechanismProperties = new HashMap<String, Object>(mechanismProperties);
     }
 
     @SuppressWarnings("deprecation")
