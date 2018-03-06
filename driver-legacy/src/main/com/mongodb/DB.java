@@ -599,6 +599,7 @@ public class DB {
     /**
      * Adds or updates a user for this database
      *
+     * <p>Never create or modify users over an insecure network without the use of TLS.</p>
      * @param userName the user name
      * @param password the password
      * @return the result of executing this operation
@@ -616,6 +617,7 @@ public class DB {
     /**
      * Adds or updates a user for this database
      *
+     * <p>Never create or modify users over an insecure network without the use of TLS.</p>
      * @param userName the user name
      * @param password the password
      * @param readOnly if true, user will only be able to read
