@@ -131,7 +131,7 @@ class ScramShaAuthenticator extends SaslAuthenticator {
         }
 
         public boolean isComplete() {
-            return step == 3;
+            return step == 2;
         }
 
         public byte[] unwrap(final byte[] incoming, final int offset, final int len) {
