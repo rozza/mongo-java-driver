@@ -20,14 +20,18 @@ import com.mongodb.MongoCredential;
 import com.mongodb.async.SingleResultCallback;
 
 abstract class Authenticator {
-    private final MongoCredential credential;
+    private final MongoCredentialWithCache credential;
 
-    Authenticator(final MongoCredential credential) {
+    Authenticator(final MongoCredentialWithCache credential) {
         this.credential = credential;
     }
 
-    MongoCredential getCredential() {
+    MongoCredentialWithCache getMongoCredentialWithCache() {
         return credential;
+    }
+
+    MongoCredential getMongoCredential() {
+        return credential.getCredential();
     }
 
     abstract void authenticate(InternalConnection connection, ConnectionDescription connectionDescription);

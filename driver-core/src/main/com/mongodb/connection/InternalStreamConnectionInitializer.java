@@ -103,7 +103,7 @@ class InternalStreamConnectionInitializer implements InternalConnectionInitializ
             isMasterResult = executeCommand("admin", isMasterCommandDocument, internalConnection);
         } catch (MongoException e) {
             if (checkSaslSupportedMechs && e.getCode() == USER_NOT_FOUND_CODE) {
-                MongoCredential credential = authenticators.get(0).getCredential();
+                MongoCredential credential = authenticators.get(0).getMongoCredential();
                 throw new MongoSecurityException(credential, format("Exception authenticating %s", credential), e);
             }
             throw e;
@@ -127,7 +127,7 @@ class InternalStreamConnectionInitializer implements InternalConnectionInitializ
             isMasterCommandDocument.append("compression", compressors);
         }
         if (checkSaslSupportedMechs) {
-            MongoCredential credential = authenticators.get(0).getCredential();
+            MongoCredential credential = authenticators.get(0).getMongoCredential();
             isMasterCommandDocument.append("saslSupportedMechs",
                     new BsonString(credential.getSource() + "." + credential.getUserName()));
         }
@@ -159,7 +159,7 @@ class InternalStreamConnectionInitializer implements InternalConnectionInitializ
                                     if (t != null) {
                                         if (checkSaslSupportedMechs && t instanceof MongoException
                                                 && ((MongoException) t).getCode() == USER_NOT_FOUND_CODE) {
-                                            MongoCredential credential = authenticators.get(0).getCredential();
+                                            MongoCredential credential = authenticators.get(0).getMongoCredential();
                                             callback.onResult(null,  new MongoSecurityException(credential,
                                                     format("Exception authenticating %s", credential), t));
                                         } else {

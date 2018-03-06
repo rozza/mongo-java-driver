@@ -17,7 +17,6 @@
 package com.mongodb.connection;
 
 import com.mongodb.AuthenticationMechanism;
-import com.mongodb.MongoCredential;
 import com.mongodb.MongoException;
 import com.mongodb.MongoSecurityException;
 import com.mongodb.async.SingleResultCallback;
@@ -39,7 +38,7 @@ class DefaultAuthenticator extends Authenticator {
     private static final ServerVersion THREE_ZERO = new ServerVersion(3, 0);
     private static final BsonString DEFAULT_MECHANISM_NAME = new BsonString(SCRAM_SHA_256.getMechanismName());
 
-    DefaultAuthenticator(final MongoCredential credential) {
+    DefaultAuthenticator(final MongoCredentialWithCache credential) {
         super(credential);
         isTrueArgument("unspecified authentication mechanism", credential.getAuthenticationMechanism() == null);
     }
@@ -85,7 +84,7 @@ class DefaultAuthenticator extends Authenticator {
         if (isMasterResult.containsKey("saslSupportedMechs")) {
             BsonArray saslSupportedMechs = isMasterResult.getArray("saslSupportedMechs");
             AuthenticationMechanism mechanism = saslSupportedMechs.contains(DEFAULT_MECHANISM_NAME) ? SCRAM_SHA_256 : SCRAM_SHA_1;
-            return new ScramShaAuthenticator(getCredential().withMechanism(mechanism));
+            return new ScramShaAuthenticator(getMongoCredentialWithCache().withMechanism(mechanism));
         } else {
             return getLegacyDefaultAuthenticator(serverVersion);
         }
@@ -93,16 +92,16 @@ class DefaultAuthenticator extends Authenticator {
 
     private Authenticator getLegacyDefaultAuthenticator(final ServerVersion serverVersion) {
         if (serverVersion.compareTo(THREE_ZERO) >= 0) {
-            return new ScramShaAuthenticator(getCredential().withMechanism(SCRAM_SHA_1));
+            return new ScramShaAuthenticator(getMongoCredentialWithCache().withMechanism(SCRAM_SHA_1));
         } else {
-            return new NativeAuthenticator(getCredential());
+            return new NativeAuthenticator(getMongoCredentialWithCache());
         }
     }
 
     private BsonDocument createIsMasterCommand() {
         BsonDocument isMasterCommandDocument = new BsonDocument("ismaster", new BsonInt32(1));
         isMasterCommandDocument.append("saslSupportedMechs",
-                new BsonString(format("%s.%s", getCredential().getSource(), getCredential().getUserName())));
+                new BsonString(format("%s.%s", getMongoCredential().getSource(), getMongoCredential().getUserName())));
         return isMasterCommandDocument;
     }
 
@@ -110,7 +109,7 @@ class DefaultAuthenticator extends Authenticator {
         if (t instanceof MongoSecurityException) {
             return (MongoSecurityException) t;
         } else if (t instanceof MongoException && ((MongoException) t).getCode() == USER_NOT_FOUND_CODE) {
-            return new MongoSecurityException(getCredential(), format("Exception authenticating %s", getCredential()), t);
+            return new MongoSecurityException(getMongoCredential(), format("Exception authenticating %s", getMongoCredential()), t);
         } else {
             return MongoException.fromThrowable(t);
         }

@@ -31,10 +31,7 @@ import java.security.InvalidKeyException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.Map;
 import java.util.Random;
 
 import static com.mongodb.AuthenticationMechanism.SCRAM_SHA_1;
@@ -47,19 +44,19 @@ class ScramShaAuthenticator extends SaslAuthenticator {
     private final AuthenticationHashGenerator authenticationHashGenerator;
 
     private static final int MINIMUM_ITERATION_COUNT = 4096;
+    private static final String GS2_HEADER = "n,,";
+    private static final int RANDOM_LENGTH = 24;
+    private static final byte[] INT_1 = new byte[]{0, 0, 0, 1};
 
-    private static final int KEY_CACHE_SIZE = 25;
-    private static final Map<CacheKey, CacheValue> KEY_CACHE = createKeyCache();
-
-    ScramShaAuthenticator(final MongoCredential credential) {
+    ScramShaAuthenticator(final MongoCredentialWithCache credential) {
         this(credential, new DefaultRandomStringGenerator(), getAuthenicationHashGenerator(credential.getAuthenticationMechanism()));
     }
 
-    ScramShaAuthenticator(final MongoCredential credential, final RandomStringGenerator randomStringGenerator) {
+    ScramShaAuthenticator(final MongoCredentialWithCache credential, final RandomStringGenerator randomStringGenerator) {
         this(credential, randomStringGenerator, getAuthenicationHashGenerator(credential.getAuthenticationMechanism()));
     }
 
-    ScramShaAuthenticator(final MongoCredential credential, final RandomStringGenerator randomStringGenerator,
+    ScramShaAuthenticator(final MongoCredentialWithCache credential, final RandomStringGenerator randomStringGenerator,
                           final AuthenticationHashGenerator authenticationHashGenerator) {
         super(credential);
         this.randomStringGenerator = randomStringGenerator;
@@ -68,18 +65,15 @@ class ScramShaAuthenticator extends SaslAuthenticator {
 
     @Override
     public String getMechanismName() {
-        return getCredential().getAuthenticationMechanism().getMechanismName();
+        return getMongoCredential().getAuthenticationMechanism().getMechanismName();
     }
 
     @Override
     protected SaslClient createSaslClient(final ServerAddress serverAddress) {
-        return new ScramShaSaslClient(getCredential(), randomStringGenerator, authenticationHashGenerator);
+        return new ScramShaSaslClient(getMongoCredential(), randomStringGenerator, authenticationHashGenerator);
     }
 
-    static class ScramShaSaslClient implements SaslClient {
-        private static final String GS2_HEADER = "n,,";
-        private static final int RANDOM_LENGTH = 24;
-        private static final byte[] INT_1 = new byte[]{0, 0, 0, 1};
+    class ScramShaSaslClient implements SaslClient {
 
         private final MongoCredential credential;
         private final RandomStringGenerator randomStringGenerator;
@@ -202,13 +196,13 @@ class ScramShaAuthenticator extends SaslAuthenticator {
             String hashedPasswordAndSalt = encodeUTF8(h(decodeUTF8(password + salt)));
 
             CacheKey cacheKey = new CacheKey(hashedPasswordAndSalt, salt, iterationCount);
-            CacheValue cachedKeys = KEY_CACHE.get(cacheKey);
+            CacheValue cachedKeys = getMongoCredentialWithCache().getFromCache(cacheKey, CacheValue.class);
             if (cachedKeys == null) {
                 byte[] saltedPassword = hi(decodeUTF8(password), decodeBase64(salt), iterationCount);
                 byte[] clientKey = hmac(saltedPassword, "Client Key");
                 byte[] serverKey = hmac(saltedPassword, "Server Key");
                 cachedKeys = new CacheValue(clientKey, serverKey);
-                KEY_CACHE.put(cacheKey, new CacheValue(clientKey, serverKey));
+                getMongoCredentialWithCache().putInCache(cacheKey, new CacheValue(clientKey, serverKey));
             }
             serverSignature = hmac(cachedKeys.serverKey, authMessage);
 
@@ -383,16 +377,6 @@ class ScramShaAuthenticator extends SaslAuthenticator {
 
     private static AuthenticationHashGenerator getAuthenicationHashGenerator(final AuthenticationMechanism authenticationMechanism) {
         return authenticationMechanism == SCRAM_SHA_1 ? LEGACY_AUTHENTICATION_HASH_GENERATOR : DEFAULT_AUTHENTICATION_HASH_GENERATOR;
-    }
-
-    private static Map<CacheKey, CacheValue> createKeyCache() {
-        return Collections.synchronizedMap(new LinkedHashMap<CacheKey, CacheValue>() {
-            private static final long serialVersionUID = 1L;
-            @Override
-            protected boolean removeEldestEntry(final Map.Entry<CacheKey, CacheValue> eldest) {
-                return size() >= KEY_CACHE_SIZE;
-            }
-        });
     }
 
     private static class CacheKey {

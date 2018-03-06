@@ -22,6 +22,7 @@ import com.mongodb.ServerAddress
 import com.mongodb.async.FutureResultCallback
 import org.bson.BsonDocument
 import org.bson.internal.Base64
+import spock.lang.Shared
 import spock.lang.Specification
 
 import javax.security.sasl.SaslException
@@ -34,6 +35,8 @@ import static com.mongodb.connection.MessageHelper.buildSuccessfulReply
 class ScramShaAuthenticatorSpecification extends Specification {
     def serverId = new ServerId(new ClusterId(), new ServerAddress('localhost', 27017))
     def connectionDescription = new ConnectionDescription(serverId)
+    @Shared
+    def sharedCache = [:]
     private final static MongoCredential SHA1_CREDENTIAL = createScramSha1Credential('user', 'database', 'pencil' as char[])
     private final static MongoCredential SHA256_CREDENTIAL = createScramSha256Credential('user', 'database', 'pencil' as char[])
 
@@ -45,13 +48,14 @@ class ScramShaAuthenticatorSpecification extends Specification {
             C: c=biws,r=fyko+d2lbbFgONRv9qkxdawL3rfcNHYJY1ZVvWVs7j,p=v0X8v3Bz2T0CJGbJQyF0X+HI4Ts=
             S: v=rmF9pqV8S7suAoZWja4dJRkFsKQ=
         '''
-        def authenticator = new ScramShaAuthenticator(SHA1_CREDENTIAL, { 'fyko+d2lbbFgONRv9qkxdawL' }, { 'pencil' })
+        def credentialWithCache = getCredentialWithCache(SHA1_CREDENTIAL, credentialCache)
+        def authenticator = new ScramShaAuthenticator(credentialWithCache, { 'fyko+d2lbbFgONRv9qkxdawL' }, { 'pencil' })
 
         then:
         validateAuthentication(payloads, authenticator, async)
 
         where:
-        async << [true, false]
+        [async, credentialCache] << [[true, false], [null, sharedCache]].combinations()
     }
 
     def 'should successfully authenticate with sha256 to RFC spec'() {
@@ -62,13 +66,14 @@ class ScramShaAuthenticatorSpecification extends Specification {
             C: c=biws,r=rOprNGfwEbeRWgbNEkqO%hvYDpWUa2RaTCAfuxFIlj)hNlF$k0,p=dHzbZapWIk4jUhN+Ute9ytag9zjfMHgsqmmiz7AndVQ=
             S: v=6rriTRBi23WpRR/wtup+mMhUZUn/dB5nLTJRsjl95G4=
         '''
-        def authenticator = new ScramShaAuthenticator(SHA256_CREDENTIAL, { 'rOprNGfwEbeRWgbNEkqO' }, { 'pencil' })
+        def credentialWithCache = getCredentialWithCache(SHA256_CREDENTIAL, credentialCache)
+        def authenticator = new ScramShaAuthenticator(credentialWithCache, { 'rOprNGfwEbeRWgbNEkqO' }, { 'pencil' })
 
         then:
         validateAuthentication(payloads, authenticator, async)
 
         where:
-        async << [true, false]
+        [async, credentialCache] << [[true, false], [null, sharedCache]].combinations()
     }
 
     def 'should successfully authenticate with sha1 to MongoDB spec'() {
@@ -80,13 +85,14 @@ class ScramShaAuthenticatorSpecification extends Specification {
             S: v=UMWeI25JD1yNYZRMpZ4VHvhZ9e0=
         '''
 
-        def authenticator = new ScramShaAuthenticator(SHA1_CREDENTIAL, { 'fyko+d2lbbFgONRv9qkxdawL' })
+        def credentialWithCache = getCredentialWithCache(SHA1_CREDENTIAL, credentialCache)
+        def authenticator = new ScramShaAuthenticator(credentialWithCache, { 'fyko+d2lbbFgONRv9qkxdawL' })
 
         then:
         validateAuthentication(payloads, authenticator, async)
 
         where:
-        async << [true, false]
+        [async, credentialCache] << [[true, false], [null, sharedCache]].combinations()
     }
 
     def 'should successfully authenticate with sha256 to MongoDB spec'() {
@@ -97,13 +103,14 @@ class ScramShaAuthenticatorSpecification extends Specification {
             C: c=biws,r=rOprNGfwEbeRWgbNEkqO%hvYDpWUa2RaTCAfuxFIlj)hNlF$k0,p=dHzbZapWIk4jUhN+Ute9ytag9zjfMHgsqmmiz7AndVQ=
             S: v=6rriTRBi23WpRR/wtup+mMhUZUn/dB5nLTJRsjl95G4=
         '''
-        def authenticator = new ScramShaAuthenticator(SHA256_CREDENTIAL, { 'rOprNGfwEbeRWgbNEkqO' })
+        def credentialWithCache = getCredentialWithCache(SHA256_CREDENTIAL, credentialCache)
+        def authenticator = new ScramShaAuthenticator(credentialWithCache, { 'rOprNGfwEbeRWgbNEkqO' })
 
         then:
         validateAuthentication(payloads, authenticator, async)
 
         where:
-        async << [true, false]
+        [async, credentialCache] << [[true, false], [null, sharedCache]].combinations()
     }
 
     def 'should prep username and password correctly for SHA1'() {
@@ -116,13 +123,14 @@ class ScramShaAuthenticatorSpecification extends Specification {
         '''
 
         def credential = createScramSha1Credential('ramo\u0312n', 'database', 'p\u212Bssword' as char[])
-        def authenticator = new ScramShaAuthenticator(credential, { 'R815pGP84+H0OFRk+U/48qC+kwjw5TYS' })
+        def credentialWithCache = getCredentialWithCache(credential, credentialCache)
+        def authenticator = new ScramShaAuthenticator(credentialWithCache, { 'R815pGP84+H0OFRk+U/48qC+kwjw5TYS' })
 
         then:
         validateAuthentication(payloads, authenticator, async)
 
         where:
-        async << [true, false]
+        [async, credentialCache] << [[true, false], [null, sharedCache]].combinations()
     }
 
     def 'should prep username and password correctly for SHA256'() {
@@ -134,19 +142,20 @@ class ScramShaAuthenticatorSpecification extends Specification {
             S: v=DKoN/Dii8S1ozDCVVJ7eAPHAe0KczTtxn2BsQtUeUgI=
         '''
         def credential = createScramSha256Credential('u,s\u00BDe\u00B4r\u2168=', 'database', '\u2168pen\u00AAcil' as char[])
-        def authenticator = new ScramShaAuthenticator(credential, { 'rOfhDB+wEbeRWgbNEkq9' })
+        def credentialWithCache = getCredentialWithCache(credential, credentialCache)
+        def authenticator = new ScramShaAuthenticator(credentialWithCache, { 'rOfhDB+wEbeRWgbNEkq9' })
 
         then:
         validateAuthentication(payloads, authenticator, async)
 
         where:
-        async << [true, false]
+        [async, credentialCache] << [[true, false], [null, sharedCache]].combinations()
     }
 
     def 'should throw if invalid r value from server'() {
         when:
         def serverResponses = ['r=InvalidRValue,s=MYSALT,i=4096']
-        def authenticator = new ScramShaAuthenticator(credential, { 'rOprNGfwEbeRWgbNEkqO' }, { 'pencil' })
+        def authenticator = new ScramShaAuthenticator(getCredentialWithCache(credential), { 'rOprNGfwEbeRWgbNEkqO' }, { 'pencil' })
         authenticate(createConnection(serverResponses), authenticator, async)
 
         then:
@@ -161,7 +170,7 @@ class ScramShaAuthenticatorSpecification extends Specification {
     def 'should throw if iteration count is below the minimium allowed count'() {
         when:
         def serverResponses = createMessages('S: r=rOprNGfwEbeRWgbNEkqO%hvYDpWUa2RaTCAfuxFIlj)hNlF$k0,s=QSXCR+Q6sek8bf92,i=4095').first()
-        def authenticator = new ScramShaAuthenticator(credential, { 'rOprNGfwEbeRWgbNEkqO' }, { 'pencil' })
+        def authenticator = new ScramShaAuthenticator(getCredentialWithCache(credential), { 'rOprNGfwEbeRWgbNEkqO' }, { 'pencil' })
         authenticate(createConnection(serverResponses), authenticator, async)
 
         then:
@@ -179,7 +188,7 @@ class ScramShaAuthenticatorSpecification extends Specification {
             S: r=rOprNGfwEbeRWgbNEkqO%hvYDpWUa2RaTCAfuxFIlj)hNlF$k0,s=QSXCR+Q6sek8bf92,i=4096
             S: v=InvalidServerSignature
         ''').last()
-        def authenticator = new ScramShaAuthenticator(credential, { 'rOprNGfwEbeRWgbNEkqO' }, { 'pencil' })
+        def authenticator = new ScramShaAuthenticator(getCredentialWithCache(credential), { 'rOprNGfwEbeRWgbNEkqO' }, { 'pencil' })
         authenticate(createConnection(serverResponses), authenticator, async)
 
         then:
@@ -198,7 +207,8 @@ class ScramShaAuthenticatorSpecification extends Specification {
             S: v=rmF9pqV8S7suAoZWja4dJRkFsKQ=
             S: z=ExtraStep
         ''').last()
-        def authenticator = new ScramShaAuthenticator(SHA1_CREDENTIAL, { 'fyko+d2lbbFgONRv9qkxdawL' }, { 'pencil' })
+        def credentialWithCache = getCredentialWithCache(SHA1_CREDENTIAL, credentialCache)
+        def authenticator = new ScramShaAuthenticator(credentialWithCache, { 'fyko+d2lbbFgONRv9qkxdawL' }, { 'pencil' })
         authenticate(createConnection(serverResponses), authenticator, async)
 
         then:
@@ -207,7 +217,7 @@ class ScramShaAuthenticatorSpecification extends Specification {
         e.getCause().getMessage() == 'Too many steps involved in the SCRAM-SHA-1 negotiation.'
 
         where:
-        async << [true, false]
+        [async, credentialCache] << [[true, false], [null, sharedCache]].combinations()
     }
 
     def 'should throw if too many steps SHA-256'() {
@@ -217,7 +227,8 @@ class ScramShaAuthenticatorSpecification extends Specification {
             S: v=6rriTRBi23WpRR/wtup+mMhUZUn/dB5nLTJRsjl95G4=
             S: z=ExtraStep
         ''').last()
-        def authenticator = new ScramShaAuthenticator(SHA256_CREDENTIAL, { 'rOprNGfwEbeRWgbNEkqO' }, { 'pencil' })
+        def credentialWithCache = getCredentialWithCache(SHA256_CREDENTIAL, credentialCache)
+        def authenticator = new ScramShaAuthenticator(credentialWithCache, { 'rOprNGfwEbeRWgbNEkqO' }, { 'pencil' })
         authenticate(createConnection(serverResponses), authenticator, async)
 
         then:
@@ -226,7 +237,7 @@ class ScramShaAuthenticatorSpecification extends Specification {
         e.getCause().getMessage() == 'Too many steps involved in the SCRAM-SHA-256 negotiation.'
 
         where:
-        async << [true, false]
+        [async, credentialCache] << [[true, false], [null, sharedCache]].combinations()
     }
 
     def createConnection(List<String> serverResponses) {
@@ -289,5 +300,13 @@ class ScramShaAuthenticatorSpecification extends Specification {
         }
         clientMessages += serverResponses.last()
         [clientMessages, serverResponses]
+    }
+
+    def getCredentialWithCache(MongoCredential credential) {
+        getCredentialWithCache(credential, null)
+    }
+
+    def getCredentialWithCache(MongoCredential credential, cache) {
+        new MongoCredentialWithCache(credential, cache)
     }
 }
