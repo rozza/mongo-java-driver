@@ -199,9 +199,9 @@ class ScramShaAuthenticator extends SaslAuthenticator {
          */
         String getClientProof(final String password, final String salt, final int iterationCount, final String authMessage)
                 throws SaslException {
-            String hashedPassword = encodeUTF8(h(decodeUTF8(password + salt)));
+            String hashedPasswordAndSalt = encodeUTF8(h(decodeUTF8(password + salt)));
 
-            CacheKey cacheKey = new CacheKey(hashedPassword, salt, iterationCount);
+            CacheKey cacheKey = new CacheKey(hashedPasswordAndSalt, salt, iterationCount);
             CacheValue cachedKeys = KEY_CACHE.get(cacheKey);
             if (cachedKeys == null) {
                 byte[] saltedPassword = hi(decodeUTF8(password), decodeBase64(salt), iterationCount);
@@ -396,12 +396,12 @@ class ScramShaAuthenticator extends SaslAuthenticator {
     }
 
     private static class CacheKey {
-        private final String password;
+        private final String hashedPasswordAndSalt;
         private final String salt;
         private final int iterationCount;
 
-        CacheKey(final String password, final String salt, final int iterationCount) {
-            this.password = password;
+        CacheKey(final String hashedPasswordAndSalt, final String salt, final int iterationCount) {
+            this.hashedPasswordAndSalt = hashedPasswordAndSalt;
             this.salt = salt;
             this.iterationCount = iterationCount;
         }
@@ -420,7 +420,7 @@ class ScramShaAuthenticator extends SaslAuthenticator {
             if (iterationCount != that.iterationCount) {
                 return false;
             }
-            if (!password.equals(that.password)) {
+            if (!hashedPasswordAndSalt.equals(that.hashedPasswordAndSalt)) {
                 return false;
             }
             return salt.equals(that.salt);
@@ -428,7 +428,7 @@ class ScramShaAuthenticator extends SaslAuthenticator {
 
         @Override
         public int hashCode() {
-            int result = password.hashCode();
+            int result = hashedPasswordAndSalt.hashCode();
             result = 31 * result + salt.hashCode();
             result = 31 * result + iterationCount;
             return result;
