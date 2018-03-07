@@ -50,7 +50,7 @@ class DefaultClusterableServerFactory implements ClusterableServerFactory {
         this.serverSettings = serverSettings;
         this.connectionPoolSettings = connectionPoolSettings;
         this.streamFactory = streamFactory;
-        this.credentialList = MongoCredentialWithCache.create(credentialList);
+        this.credentialList = MongoCredentialWithCache.wrapCredentialList(credentialList);
         this.heartbeatStreamFactory = heartbeatStreamFactory;
         this.commandListener = commandListener;
         this.applicationName = applicationName;

@@ -20,33 +20,27 @@ import com.mongodb.AuthenticationMechanism;
 import com.mongodb.MongoCredential;
 
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 class MongoCredentialWithCache {
     private final MongoCredential credential;
-    private final Map<Object, Object> cache;
+    private final Cache cache;
 
-    static List<MongoCredentialWithCache> create(final List<MongoCredential> credentialList) {
-        Map<Object, Object> cache = Collections.synchronizedMap(new LinkedHashMap<Object, Object>() {
-            private static final long serialVersionUID = 1L;
-            @Override
-            protected boolean removeEldestEntry(final Map.Entry<Object, Object> eldest) {
-                return size() > credentialList.size();
-            }
-        });
+    static List<MongoCredentialWithCache> wrapCredentialList(final List<MongoCredential> credentialList) {
         ArrayList<MongoCredentialWithCache> credentialListWithCache = new ArrayList<MongoCredentialWithCache>();
         for (MongoCredential credential : credentialList) {
-            credentialListWithCache.add(new MongoCredentialWithCache(credential, cache));
+            credentialListWithCache.add(new MongoCredentialWithCache(credential));
         }
         return credentialListWithCache;
     }
 
-    MongoCredentialWithCache(final MongoCredential credential, final Map<Object, Object> cache) {
+    MongoCredentialWithCache(final MongoCredential credential) {
+        this(credential, null);
+    }
+
+    MongoCredentialWithCache(final MongoCredential credential, final Cache cache) {
         this.credential = credential;
-        this.cache = cache;
+        this.cache = cache != null ? cache : new Cache();
     }
 
     MongoCredentialWithCache withMechanism(final AuthenticationMechanism mechanism) {
@@ -63,15 +57,29 @@ class MongoCredentialWithCache {
 
     @SuppressWarnings("unchecked")
     <T> T getFromCache(final Object key, final Class<T> clazz) {
-        if (cache != null) {
-            return clazz.cast(cache.get(key));
-        }
-        return null;
+        return clazz.cast(cache.get(key));
     }
 
     void putInCache(final Object key, final Object value) {
-        if (cache != null) {
-            cache.put(key, value);
+        cache.set(key, value);
+    }
+
+
+    static class Cache {
+        private Object cacheKey;
+        private Object cacheValue;
+
+        synchronized Object get(final Object key) {
+            if (cacheKey != null && cacheKey.equals(key)) {
+                return cacheValue;
+            }
+            return null;
+        }
+
+        synchronized void set(final Object key, final Object value) {
+            cacheKey = key;
+            cacheValue = value;
         }
     }
 }
+

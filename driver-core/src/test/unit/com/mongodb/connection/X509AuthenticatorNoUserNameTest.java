@@ -104,6 +104,6 @@ public class X509AuthenticatorNoUserNameTest {
     }
 
     private MongoCredentialWithCache getCredentialWithCache() {
-        return new MongoCredentialWithCache(MongoCredential.createMongoX509Credential(), null);
+        return new MongoCredentialWithCache(MongoCredential.createMongoX509Credential());
     }
 }

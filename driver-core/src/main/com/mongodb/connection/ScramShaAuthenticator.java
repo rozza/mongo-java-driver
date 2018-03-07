@@ -70,12 +70,12 @@ class ScramShaAuthenticator extends SaslAuthenticator {
 
     @Override
     protected SaslClient createSaslClient(final ServerAddress serverAddress) {
-        return new ScramShaSaslClient(getMongoCredential(), randomStringGenerator, authenticationHashGenerator);
+        return new ScramShaSaslClient(getMongoCredentialWithCache(), randomStringGenerator, authenticationHashGenerator);
     }
 
     class ScramShaSaslClient implements SaslClient {
 
-        private final MongoCredential credential;
+        private final MongoCredentialWithCache credential;
         private final RandomStringGenerator randomStringGenerator;
         private final AuthenticationHashGenerator authenticationHashGenerator;
         private final String hAlgorithm;
@@ -86,7 +86,7 @@ class ScramShaAuthenticator extends SaslAuthenticator {
         private byte[] serverSignature;
         private int step = -1;
 
-        ScramShaSaslClient(final MongoCredential credential, final RandomStringGenerator randomStringGenerator,
+        ScramShaSaslClient(final MongoCredentialWithCache credential, final RandomStringGenerator randomStringGenerator,
                            final AuthenticationHashGenerator authenticationHashGenerator) {
             this.credential = credential;
             this.randomStringGenerator = randomStringGenerator;
@@ -298,7 +298,7 @@ class ScramShaAuthenticator extends SaslAuthenticator {
         }
 
         private String getUserName() {
-            String userName = credential.getUserName().replace("=", "=3D").replace(",", "=2C");
+            String userName = credential.getCredential().getUserName().replace("=", "=3D").replace(",", "=2C");
             if (credential.getAuthenticationMechanism() == SCRAM_SHA_256) {
                 userName = SaslPrep.saslPrepStored(userName);
             }
@@ -306,7 +306,7 @@ class ScramShaAuthenticator extends SaslAuthenticator {
         }
 
         private String getAuthenicationHash() {
-            String password = authenticationHashGenerator.generate(credential);
+            String password = authenticationHashGenerator.generate(credential.getCredential());
             if (credential.getAuthenticationMechanism() == SCRAM_SHA_256) {
                 password = SaslPrep.saslPrepStored(password);
             }

@@ -67,6 +67,6 @@ public class PlainAuthenticatorTest {
     }
 
     private static MongoCredentialWithCache getCredentialWithCache(final String userName, final String source, final char[] password) {
-        return new MongoCredentialWithCache(MongoCredential.createPlainCredential(userName, source, password), null);
+        return new MongoCredentialWithCache(MongoCredential.createPlainCredential(userName, source, password));
     }
 }
