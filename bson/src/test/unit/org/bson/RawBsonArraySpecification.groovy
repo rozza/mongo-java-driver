@@ -265,7 +265,7 @@ class RawBsonArraySpecification extends Specification {
     }
 
 
-    def 'should return a valid iterator'() {
+    def 'should return a valid iterator for empty Bson Arrays'() {
         when:
         def iterator = emptyRawBsonArray.iterator()
 
@@ -290,6 +290,26 @@ class RawBsonArraySpecification extends Specification {
         rawBsonArray.listIterator(1).toList() == rawBsonArray.getValues().subList(1, 4)
     }
 
+    def 'should iterate forwards and backwards through a list iterator'() {
+        when:
+        RawBsonArray rawBsonArray = RawBsonDocument.parse('{a: [1, 2, 3, 4]}').get('a')
+        def iter = rawBsonArray.listIterator()
+
+        then:
+
+        iter.next() == new BsonInt32(1)
+        iter.previous() == new BsonInt32(1)
+        iter.next() == new BsonInt32(1)
+        iter.next() == new BsonInt32(2)
+        iter.previous() == new BsonInt32(2)
+        iter.previous() == new BsonInt32(1)
+
+        when:
+        iter.previous()
+
+        then:
+        thrown(NoSuchElementException)
+    }
 
     def 'should return a sublist'() {
         when:

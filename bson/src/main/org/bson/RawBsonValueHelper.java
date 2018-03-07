@@ -19,6 +19,7 @@ package org.bson;
 import org.bson.codecs.BsonValueCodecProvider;
 import org.bson.codecs.DecoderContext;
 import org.bson.codecs.configuration.CodecRegistry;
+import org.bson.io.BsonInputMark;
 
 import static org.bson.codecs.BsonValueCodecProvider.getClassForBsonType;
 import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
@@ -29,8 +30,10 @@ final class RawBsonValueHelper {
     static BsonValue decode(final byte[] bytes, final BsonBinaryReader bsonReader) {
         if (bsonReader.getCurrentBsonType() == BsonType.DOCUMENT || bsonReader.getCurrentBsonType() == BsonType.ARRAY) {
             int position = bsonReader.getBsonInput().getPosition();
+            BsonInputMark mark = bsonReader.getBsonInput().getMark(4);
             int size = bsonReader.getBsonInput().readInt32();
-            bsonReader.getBsonInput().skip(size - 4);
+            mark.reset();
+            bsonReader.skipValue();
             bsonReader.setState(AbstractBsonReader.State.TYPE);
             if (bsonReader.getCurrentBsonType() == BsonType.DOCUMENT) {
                 return new RawBsonDocument(bytes, position, size);

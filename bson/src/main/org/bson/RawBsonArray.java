@@ -258,10 +258,8 @@ public class RawBsonArray extends BsonArray implements Serializable {
                 this(0);
             }
 
-            Itr(final int cursor) {
-                this.cursor = cursor;
-                this.bsonReader = createReader();
-                bsonReader.readStartDocument();
+            Itr(final int cursorPosition) {
+                setIterator(cursorPosition);
             }
 
             public boolean hasNext() {
@@ -302,6 +300,16 @@ public class RawBsonArray extends BsonArray implements Serializable {
             public void setCursor(final int cursor) {
                 this.cursor = cursor;
             }
+
+            void setIterator(int cursorPosition) {
+                cursor = cursorPosition;
+                currentPosition = 0;
+                if (bsonReader != null) {
+                    bsonReader.close();
+                }
+                bsonReader = createReader();
+                bsonReader.readStartDocument();
+            }
         }
 
         private class ListItr extends Itr implements ListIterator<BsonValue> {
@@ -315,8 +323,9 @@ public class RawBsonArray extends BsonArray implements Serializable {
 
             public BsonValue previous() {
                 try {
-                    setCursor(getCursor() - 1);
-                    return get(getCursor());
+                    BsonValue previous = get(previousIndex());
+                    setIterator(previousIndex());
+                    return previous;
                 } catch (IndexOutOfBoundsException e) {
                     throw new NoSuchElementException();
                 }
