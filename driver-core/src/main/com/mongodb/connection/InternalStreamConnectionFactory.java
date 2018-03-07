@@ -17,7 +17,6 @@
 package com.mongodb.connection;
 
 import com.mongodb.MongoCompressor;
-import com.mongodb.MongoCredential;
 import com.mongodb.MongoDriverInformation;
 import com.mongodb.event.CommandListener;
 import org.bson.BsonDocument;
@@ -35,7 +34,7 @@ class InternalStreamConnectionFactory implements InternalConnectionFactory {
     private final List<MongoCompressor> compressorList;
     private final CommandListener commandListener;
 
-    InternalStreamConnectionFactory(final StreamFactory streamFactory, final List<MongoCredential> credentialList,
+    InternalStreamConnectionFactory(final StreamFactory streamFactory, final List<MongoCredentialWithCache> credentialList,
                                     final String applicationName, final MongoDriverInformation mongoDriverInformation,
                                     final List<MongoCompressor> compressorList,
                                     final CommandListener commandListener) {
@@ -45,7 +44,7 @@ class InternalStreamConnectionFactory implements InternalConnectionFactory {
         this.clientMetadataDocument = createClientMetadataDocument(applicationName, mongoDriverInformation);
         notNull("credentialList", credentialList);
         this.authenticators = new ArrayList<Authenticator>(credentialList.size());
-        for (MongoCredential credential : credentialList) {
+        for (MongoCredentialWithCache credential : credentialList) {
             authenticators.add(createAuthenticator(credential));
         }
     }
@@ -57,7 +56,7 @@ class InternalStreamConnectionFactory implements InternalConnectionFactory {
                                                                                            compressorList));
     }
 
-    private Authenticator createAuthenticator(final MongoCredential credential) {
+    private Authenticator createAuthenticator(final MongoCredentialWithCache credential) {
         if (credential.getAuthenticationMechanism() == null) {
             return new DefaultAuthenticator(credential);
         }
@@ -70,7 +69,8 @@ class InternalStreamConnectionFactory implements InternalConnectionFactory {
             case MONGODB_X509:
                 return new X509Authenticator(credential);
             case SCRAM_SHA_1:
-                return new ScramSha1Authenticator(credential);
+            case SCRAM_SHA_256:
+                return new ScramShaAuthenticator(credential);
             case MONGODB_CR:
                 return new NativeAuthenticator(credential);
             default:

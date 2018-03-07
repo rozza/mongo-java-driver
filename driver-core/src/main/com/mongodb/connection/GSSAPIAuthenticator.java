@@ -45,11 +45,11 @@ class GSSAPIAuthenticator extends SaslAuthenticator {
     public static final String SERVICE_NAME_DEFAULT_VALUE = "mongodb";
     public static final Boolean CANONICALIZE_HOST_NAME_DEFAULT_VALUE = false;
 
-    GSSAPIAuthenticator(final MongoCredential credential) {
+    GSSAPIAuthenticator(final MongoCredentialWithCache credential) {
         super(credential);
 
-        if (getCredential().getAuthenticationMechanism() != GSSAPI) {
-            throw new MongoException("Incorrect mechanism: " + this.getCredential().getMechanism());
+        if (getMongoCredential().getAuthenticationMechanism() != GSSAPI) {
+            throw new MongoException("Incorrect mechanism: " + this.getMongoCredential().getMechanism());
         }
     }
 
@@ -60,9 +60,9 @@ class GSSAPIAuthenticator extends SaslAuthenticator {
 
     @Override
     protected SaslClient createSaslClient(final ServerAddress serverAddress) {
-        MongoCredential credential = getCredential();
+        MongoCredential credential = getMongoCredential();
         try {
-            Map<String, Object> saslClientProperties = getCredential().getMechanismProperty(JAVA_SASL_CLIENT_PROPERTIES_KEY, null);
+            Map<String, Object> saslClientProperties = getMongoCredential().getMechanismProperty(JAVA_SASL_CLIENT_PROPERTIES_KEY, null);
             if (saslClientProperties == null) {
                 saslClientProperties = new HashMap<String, Object>();
                 saslClientProperties.put(Sasl.MAX_BUFFER, "0");
@@ -94,7 +94,7 @@ class GSSAPIAuthenticator extends SaslAuthenticator {
     }
 
     private String getHostName(final ServerAddress serverAddress) throws UnknownHostException {
-        return getCredential().getMechanismProperty(CANONICALIZE_HOST_NAME_KEY, CANONICALIZE_HOST_NAME_DEFAULT_VALUE)
+        return getMongoCredential().getMechanismProperty(CANONICALIZE_HOST_NAME_KEY, CANONICALIZE_HOST_NAME_DEFAULT_VALUE)
                ? InetAddress.getByName(serverAddress.getHost()).getCanonicalHostName()
                : serverAddress.getHost();
     }
