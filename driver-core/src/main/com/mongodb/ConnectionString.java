@@ -824,8 +824,7 @@ public class ConnectionString {
             if (host.length() == 0) {
                 throw new IllegalArgumentException(format("The connection string contains an empty host '%s'. ", rawHosts));
             } else if (host.endsWith(".sock")) {
-                throw new IllegalArgumentException(format("The connection string contains an invalid host '%s'. "
-                        + "Unix Domain Socket which is not supported by the Java driver", host));
+                host = urldecode(host);
             } else if (host.startsWith("[")) {
                 if (!host.contains("]")) {
                     throw new IllegalArgumentException(format("The connection string contains an invalid host '%s'. "

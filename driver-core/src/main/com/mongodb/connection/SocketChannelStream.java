@@ -16,11 +16,8 @@
 
 package com.mongodb.connection;
 
-import com.mongodb.MongoSocketOpenException;
 import com.mongodb.MongoSocketReadException;
 import com.mongodb.ServerAddress;
-import jnr.unixsocket.UnixSocketAddress;
-import jnr.unixsocket.UnixSocketChannel;
 import org.bson.ByteBuf;
 
 import java.io.IOException;
@@ -31,7 +28,7 @@ import java.util.List;
 import static com.mongodb.assertions.Assertions.isTrue;
 import static com.mongodb.assertions.Assertions.notNull;
 
-class SocketChannelStream implements Stream {
+abstract class SocketChannelStream implements Stream {
     private final ServerAddress address;
     private final SocketSettings settings;
     private final SslSettings sslSettings;
@@ -45,21 +42,6 @@ class SocketChannelStream implements Stream {
         this.settings = notNull("settings", settings);
         this.sslSettings = notNull("sslSettings", sslSettings);
         this.bufferProvider = notNull("bufferProvider", bufferProvider);
-    }
-
-    @Override
-    public void open() throws IOException {
-        try {
-            if (address.getSocketAddress() instanceof UnixSocketAddress) {
-                socketChannel = UnixSocketChannel.open((UnixSocketAddress) address.getSocketAddress());
-            } else {
-                socketChannel = SocketChannel.open();
-                SocketStreamHelper.initialize(socketChannel.socket(), address, settings, sslSettings);
-            }
-        } catch (IOException e) {
-            close();
-            throw new MongoSocketOpenException("Exception opening socket", getAddress(), e);
-        }
     }
 
     @Override
@@ -121,13 +103,16 @@ class SocketChannelStream implements Stream {
         return address;
     }
 
-    /**
-     * Get the settings for this socket.
-     *
-     * @return the settings
-     */
     SocketSettings getSettings() {
         return settings;
+    }
+
+    SslSettings getSslSettings() {
+        return sslSettings;
+    }
+
+    void setSocketChannel(final SocketChannel socketChannel) {
+        this.socketChannel = socketChannel;
     }
 
     @Override

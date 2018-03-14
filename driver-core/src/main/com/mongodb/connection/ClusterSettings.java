@@ -142,9 +142,9 @@ public final class ClusterSettings {
                 throw new IllegalArgumentException("hosts list may not be empty");
             }
             Set<ServerAddress> hostsSet = new LinkedHashSet<ServerAddress>(hosts.size());
-            for (ServerAddress host : hosts) {
-                notNull("host", host);
-                hostsSet.add(new ServerAddress(host));
+            for (ServerAddress serverAddress : hosts) {
+                notNull("serverAddress", serverAddress);
+                hostsSet.add(serverAddress);
             }
             this.hosts = unmodifiableList(new ArrayList<ServerAddress>(hostsSet));
             return this;

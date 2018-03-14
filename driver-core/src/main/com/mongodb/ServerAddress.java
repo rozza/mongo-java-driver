@@ -17,7 +17,7 @@
 package com.mongodb;
 
 import com.mongodb.annotations.Immutable;
-import jnr.unixsocket.UnixSocketAddress;
+import com.mongodb.internal.connection.UnixSocketAddressHelper;
 
 import java.io.File;
 import java.io.Serializable;
@@ -84,19 +84,11 @@ public class ServerAddress implements Serializable {
     /**
      * Creates a ServerAddress
      *
-     * @param serverAddress an instance to be shallow-copied
-     */
-    public ServerAddress(final ServerAddress serverAddress) {
-        this(serverAddress.host, serverAddress.port, serverAddress.address);
-    }
-
-    /**
-     * Creates a ServerAddress
-     *
      * @param path the file used for the Unix domain socket
+     * @since 3.7
      */
     public ServerAddress(final File path) {
-        this(path.toString(), 0, new UnixSocketAddress(path));
+        this(path.toString(), 0, UnixSocketAddressHelper.getSocketAddress(path));
     }
 
     /**
@@ -119,50 +111,56 @@ public class ServerAddress implements Serializable {
      * @param port mongod port
      */
     public ServerAddress(final String host, final int port) {
-        String hostToUse = host;
-        if (hostToUse == null) {
-            hostToUse = defaultHost();
-        }
-        hostToUse = hostToUse.trim();
-        if (hostToUse.length() == 0) {
-            hostToUse = defaultHost();
-        }
-
-        int portToUse = port;
-
-        if (hostToUse.startsWith("[")) {
-            int idx = host.indexOf("]");
-            if (idx == -1) {
-                throw new IllegalArgumentException("an IPV6 address must be encosed with '[' and ']'"
-                                                   + " according to RFC 2732.");
-            }
-
-            int portIdx = host.indexOf("]:");
-            if (portIdx != -1) {
-                if (port != defaultPort()) {
-                    throw new IllegalArgumentException("can't specify port in construct and via host");
-                }
-                portToUse = Integer.parseInt(host.substring(portIdx + 2));
-            }
-            hostToUse = host.substring(1, idx);
+        if (host != null && host.endsWith(".sock")) {
+            this.host = host;
+            this.port = 0;
+            this.address = UnixSocketAddressHelper.getSocketAddress(new File(host));
         } else {
-            int idx = hostToUse.indexOf(":");
-            int lastIdx = hostToUse.lastIndexOf(":");
-            if (idx == lastIdx && idx > 0) {
-                if (port != defaultPort()) {
-                    throw new IllegalArgumentException("can't specify port in construct and via host");
-                }
-                try {
-                    portToUse = Integer.parseInt(hostToUse.substring(idx + 1));
-                } catch (NumberFormatException e) {
-                    throw new MongoException("host and port should be specified in host:port format");
-                }
-                hostToUse = hostToUse.substring(0, idx).trim();
+            String hostToUse = host;
+            if (hostToUse == null) {
+                hostToUse = defaultHost();
             }
+            hostToUse = hostToUse.trim();
+            if (hostToUse.length() == 0) {
+                hostToUse = defaultHost();
+            }
+
+            int portToUse = port;
+
+            if (hostToUse.startsWith("[")) {
+                int idx = host.indexOf("]");
+                if (idx == -1) {
+                    throw new IllegalArgumentException("an IPV6 address must be encosed with '[' and ']'"
+                            + " according to RFC 2732.");
+                }
+
+                int portIdx = host.indexOf("]:");
+                if (portIdx != -1) {
+                    if (port != defaultPort()) {
+                        throw new IllegalArgumentException("can't specify port in construct and via host");
+                    }
+                    portToUse = Integer.parseInt(host.substring(portIdx + 2));
+                }
+                hostToUse = host.substring(1, idx);
+            } else {
+                int idx = hostToUse.indexOf(":");
+                int lastIdx = hostToUse.lastIndexOf(":");
+                if (idx == lastIdx && idx > 0) {
+                    if (port != defaultPort()) {
+                        throw new IllegalArgumentException("can't specify port in construct and via host");
+                    }
+                    try {
+                        portToUse = Integer.parseInt(hostToUse.substring(idx + 1));
+                    } catch (NumberFormatException e) {
+                        throw new MongoException("host and port should be specified in host:port format");
+                    }
+                    hostToUse = hostToUse.substring(0, idx).trim();
+                }
+            }
+            this.host = hostToUse.toLowerCase();
+            this.port = portToUse;
+            this.address = null;
         }
-        this.host = hostToUse.toLowerCase();
-        this.port = portToUse;
-        this.address = null;
     }
 
     @Override
