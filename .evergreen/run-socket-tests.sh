@@ -53,4 +53,4 @@ export JAVA_HOME="/opt/java/jdk8"
 
 echo "Running tests with ${JDK}"
 ./gradlew -version
-./gradlew -PjdkHome=/opt/java/${JDK} -Dorg.mongodb.test.uri=${MONGODB_URI} ${GRADLE_EXTRA_VARS} --stacktrace --info :driver-sync:test
+./gradlew -PjdkHome=/opt/java/${JDK} -Dorg.mongodb.test.uri=${MONGODB_URI} ${GRADLE_EXTRA_VARS} --stacktrace --info :driver-legacy:test :driver-sync:test

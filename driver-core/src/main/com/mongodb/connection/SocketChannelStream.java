@@ -16,6 +16,7 @@
 
 package com.mongodb.connection;
 
+import com.mongodb.MongoSocketOpenException;
 import com.mongodb.MongoSocketReadException;
 import com.mongodb.ServerAddress;
 import org.bson.ByteBuf;
@@ -28,7 +29,7 @@ import java.util.List;
 import static com.mongodb.assertions.Assertions.isTrue;
 import static com.mongodb.assertions.Assertions.notNull;
 
-abstract class SocketChannelStream implements Stream {
+class SocketChannelStream implements Stream {
     private final ServerAddress address;
     private final SocketSettings settings;
     private final SslSettings sslSettings;
@@ -42,6 +43,17 @@ abstract class SocketChannelStream implements Stream {
         this.settings = notNull("settings", settings);
         this.sslSettings = notNull("sslSettings", sslSettings);
         this.bufferProvider = notNull("bufferProvider", bufferProvider);
+    }
+
+    @Override
+    public void open() throws IOException {
+        try {
+            socketChannel = SocketChannel.open();
+            SocketStreamHelper.initialize(socketChannel.socket(), address, settings, sslSettings);
+        } catch (IOException e) {
+            close();
+            throw new MongoSocketOpenException("Exception opening socket", getAddress(), e);
+        }
     }
 
     @Override
@@ -105,10 +117,6 @@ abstract class SocketChannelStream implements Stream {
 
     SocketSettings getSettings() {
         return settings;
-    }
-
-    SslSettings getSslSettings() {
-        return sslSettings;
     }
 
     void setSocketChannel(final SocketChannel socketChannel) {

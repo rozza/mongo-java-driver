@@ -16,14 +16,24 @@
 
 package com.mongodb.internal.connection;
 
-import jnr.unixsocket.UnixSocketAddress;
 
-public final class UnixSocketAddressHelper {
+import com.mongodb.ServerAddress;
+import com.mongodb.UnixServerAddress;
 
-    public static UnixSocketAddress getSocketAddress(final String path) {
-        return new UnixSocketAddress(path);
+public final class ServerAddressHelper {
+
+    public static ServerAddress createServerAddress(final String host) {
+        return createServerAddress(host, ServerAddress.defaultPort());
     }
 
-    private UnixSocketAddressHelper() {
+    public static ServerAddress createServerAddress(final String host, final int port) {
+        if (host != null && host.endsWith(".sock")) {
+            return new UnixServerAddress(host);
+        } else {
+            return new ServerAddress(host, port);
+        }
+    }
+
+    private ServerAddressHelper() {
     }
 }

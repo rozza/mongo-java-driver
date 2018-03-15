@@ -17,23 +17,26 @@
 package com.mongodb.connection;
 
 import com.mongodb.MongoSocketOpenException;
-import com.mongodb.ServerAddress;
+import com.mongodb.UnixServerAddress;
 import jnr.unixsocket.UnixSocketAddress;
 import jnr.unixsocket.UnixSocketChannel;
 
 import java.io.IOException;
 
 class UnixSocketChannelStream extends SocketChannelStream {
-    UnixSocketChannelStream(final ServerAddress address, final SocketSettings settings, final SslSettings sslSettings,
+    private final UnixServerAddress address;
+
+    UnixSocketChannelStream(final UnixServerAddress address, final SocketSettings settings, final SslSettings sslSettings,
                             final BufferProvider bufferProvider) {
         super(address, settings, sslSettings, bufferProvider);
+        this.address = address;
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public void open() throws IOException {
         try {
-            UnixSocketChannel socketChannel = UnixSocketChannel.open((UnixSocketAddress) getAddress().getSocketAddress());
-            setSocketChannel(socketChannel);
+            setSocketChannel(UnixSocketChannel.open((UnixSocketAddress) address.getUnixSocketAddress()));
         } catch (IOException e) {
             close();
             throw new MongoSocketOpenException("Exception opening socket", getAddress(), e);
