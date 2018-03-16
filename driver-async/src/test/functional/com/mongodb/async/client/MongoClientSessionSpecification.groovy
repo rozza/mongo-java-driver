@@ -23,7 +23,7 @@ import com.mongodb.ReadConcern
 import com.mongodb.ReadPreference
 import com.mongodb.async.FutureResultCallback
 import com.mongodb.async.SingleResultCallback
-import com.mongodb.connection.TestCommandListener
+import com.mongodb.internal.connection.TestCommandListener
 import com.mongodb.event.CommandStartedEvent
 import com.mongodb.session.ClientSession
 import org.bson.BsonBinarySubType
