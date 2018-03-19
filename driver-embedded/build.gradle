@@ -24,6 +24,7 @@ dependencies {
     testCompile project(':driver-core').sourceSets.test.output
 }
 
+archivesBaseName = 'mongodb-driver-embedded'
 
 jar {
     manifest {

@@ -59,7 +59,7 @@ public final class Fixture {
         return mongoClient;
     }
 
-    public static synchronized MongoDatabase getDefaultDatabase() {
+    static synchronized MongoDatabase getDefaultDatabase() {
         if (defaultDatabase == null) {
             defaultDatabase = getMongoClient().getDatabase(getDefaultDatabaseName());
         }
