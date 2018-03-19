@@ -17,7 +17,7 @@
 package com.mongodb;
 
 import com.mongodb.annotations.Immutable;
-import com.mongodb.internal.connection.UnixSocketAddressHelper;
+import jnr.unixsocket.UnixSocketAddress;
 
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
@@ -53,7 +53,7 @@ public final class UnixServerAddress extends ServerAddress {
      * @return the SocketAddress for the MongoD unix domain socket.
      */
     public SocketAddress getUnixSocketAddress() {
-        return UnixSocketAddressHelper.getSocketAddress(getHost());
+        return new UnixSocketAddress(getHost());
     }
 
     @Override

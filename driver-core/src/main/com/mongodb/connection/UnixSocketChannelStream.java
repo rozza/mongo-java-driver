@@ -34,7 +34,7 @@ class UnixSocketChannelStream extends SocketChannelStream {
 
     @Override
     @SuppressWarnings("unchecked")
-    public void open() throws IOException {
+    public void open() {
         try {
             setSocketChannel(UnixSocketChannel.open((UnixSocketAddress) address.getUnixSocketAddress()));
         } catch (IOException e) {
