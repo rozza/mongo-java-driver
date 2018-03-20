@@ -34,7 +34,7 @@ import static com.mongodb.assertions.Assertions.notNull;
  * connecting to a database server.  For some authentication mechanisms, only the username is specified and the password is not,
  * in which case the ":" after the username is left off as well</li>
  * <li>{@code host1} is the only required part of the connection string. It identifies a server address to connect to.
- * Support for Unix domain sockets was added in 3.8. Note: The path must be urlencoded eg: {@code mongodb://%2Ftmp%2Fmongodb-27017.sock}
+ * Support for Unix domain sockets was added in 3.7. Note: The path must be urlencoded eg: {@code mongodb://%2Ftmp%2Fmongodb-27017.sock}
  * and the {@code jnr.unixsocket} library installed.
  * <li>{@code :portX} is optional and defaults to :27017 if not provided.</li>
  * <li>{@code /database} is the name of the database to login to and thus is only relevant if the
