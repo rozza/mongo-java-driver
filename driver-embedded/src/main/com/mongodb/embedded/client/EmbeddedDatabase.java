@@ -61,9 +61,13 @@ final class EmbeddedDatabase implements Closeable {
         }
 
         String[] cmdArgs = createCmdArgs(mongoClientSettings);
-        this.databasePointer = mongoDBCAPI.libmongodbcapi_db_new(cmdArgs.length, cmdArgs, createEnvArgs());
-        if (databasePointer == null) {
-            throw new MongoException("Could not create a new embedded database");
+        try {
+            this.databasePointer = mongoDBCAPI.libmongodbcapi_db_new(cmdArgs.length, cmdArgs, createEnvArgs());
+            if (databasePointer == null) {
+                throw new MongoException("Could not create a new embedded database");
+            }
+        } catch (Throwable t) {
+            throw new MongoException("Error from embedded server when calling db_new: " + t.getMessage(), t);
         }
     }
 
@@ -72,16 +76,24 @@ final class EmbeddedDatabase implements Closeable {
     }
 
     public void pump() {
-        int errorCode = mongoDBCAPI.libmongodbcapi_db_pump(databasePointer);
-        if (errorCode != 0) {
-            throw new MongoException(errorCode, "Error from embedded server: + " + errorCode);
+        try {
+            int errorCode = mongoDBCAPI.libmongodbcapi_db_pump(databasePointer);
+            if (errorCode != 0) {
+                throw new MongoException(errorCode, "Error from embedded server: + " + errorCode);
+            }
+        } catch (Throwable t) {
+            throw new MongoException("Error from embedded server when calling db_pump: " + t.getMessage(), t);
         }
     }
 
     @Override
     public void close() {
         if (databasePointer != null) {
-            mongoDBCAPI.libmongodbcapi_db_destroy(databasePointer);
+            try {
+                mongoDBCAPI.libmongodbcapi_db_destroy(databasePointer);
+            } catch (Throwable t) {
+                throw new MongoException("Error from embedded server when calling db_destroy: " + t.getMessage(), t);
+            }
             databasePointer = null;
         }
     }

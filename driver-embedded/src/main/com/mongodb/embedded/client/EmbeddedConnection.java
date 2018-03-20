@@ -32,7 +32,11 @@ final class EmbeddedConnection implements Closeable {
 
     EmbeddedConnection(final MongoDBCAPI mongoDBCAPI, final Pointer databasePointer) {
         this.mongoDBCAPI = mongoDBCAPI;
-        this.clientPointer = mongoDBCAPI.libmongodbcapi_db_client_new(databasePointer);
+        try {
+            this.clientPointer = mongoDBCAPI.libmongodbcapi_db_client_new(databasePointer);
+        } catch (Throwable t) {
+            throw new MongoException("Error from embedded server when calling db_client_new: " + t.getMessage(), t);
+        }
     }
 
     public ByteBuffer sendAndReceive(final List<ByteBuffer> messageBufferList) {
@@ -41,19 +45,26 @@ final class EmbeddedConnection implements Closeable {
         PointerByReference outputBufferReference = new PointerByReference();
         IntByReference outputSize = new IntByReference();
 
-        int errorCode = mongoDBCAPI.libmongodbcapi_db_client_wire_protocol_rpc(clientPointer, message, message.length,
-                outputBufferReference, outputSize);
-        if (errorCode != 0) {
-            throw new MongoException(errorCode, "Error from embedded server: + " + errorCode);
+        try {
+            int errorCode = mongoDBCAPI.libmongodbcapi_db_client_wire_protocol_rpc(clientPointer, message, message.length,
+                    outputBufferReference, outputSize);
+            if (errorCode != 0) {
+                throw new MongoException(errorCode, "Error from embedded server: " + errorCode);
+            }
+            return outputBufferReference.getValue().getByteBuffer(0, outputSize.getValue());
+        } catch (Throwable t) {
+            throw new MongoException("Error from embedded server when calling db_client_wire_protocol_rpc: " + t.getMessage(), t);
         }
-
-        return outputBufferReference.getValue().getByteBuffer(0, outputSize.getValue());
     }
 
     @Override
     public void close() {
-         mongoDBCAPI.libmongodbcapi_db_client_destroy(clientPointer);
-         clientPointer = null;
+        try {
+            mongoDBCAPI.libmongodbcapi_db_client_destroy(clientPointer);
+        } catch (Throwable t) {
+            throw new MongoException("Error from embedded server when calling db_client_destroy: " + t.getMessage(), t);
+        }
+        clientPointer = null;
     }
 
     private byte[] createCompleteMessage(final List<ByteBuffer> buffers) {
@@ -64,7 +75,7 @@ final class EmbeddedConnection implements Closeable {
         byte[] completeMessage = new byte[totalLength];
 
         int offset = 0;
-        for (ByteBuffer cur: buffers) {
+        for (ByteBuffer cur : buffers) {
             int remaining = cur.remaining();
             cur.get(completeMessage, offset, cur.remaining());
             offset += remaining;
