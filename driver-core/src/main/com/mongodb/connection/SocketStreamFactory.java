@@ -19,6 +19,8 @@ package com.mongodb.connection;
 import com.mongodb.MongoClientException;
 import com.mongodb.ServerAddress;
 import com.mongodb.internal.connection.PowerOfTwoBufferPool;
+import com.mongodb.internal.connection.SocketChannelStream;
+import com.mongodb.internal.connection.SocketStream;
 
 import javax.net.SocketFactory;
 import javax.net.ssl.SSLContext;
