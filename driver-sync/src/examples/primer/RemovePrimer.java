@@ -16,10 +16,10 @@
 
 package primer;
 
+import org.bson.Document;
 import org.junit.Test;
 
 // @import: start
-import org.bson.Document;
 // @import: end
 
 public class RemovePrimer extends PrimerTestCase {

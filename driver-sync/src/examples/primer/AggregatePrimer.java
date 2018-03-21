@@ -16,14 +16,14 @@
 
 package primer;
 
-import org.junit.Test;
-
-// @import: start
 import com.mongodb.Block;
 import com.mongodb.client.AggregateIterable;
 import org.bson.Document;
+import org.junit.Test;
 
 import static java.util.Arrays.asList;
+
+// @import: start
 // @import: end
 
 public class AggregatePrimer extends PrimerTestCase {
