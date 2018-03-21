@@ -17,10 +17,10 @@
 package primer;
 
 
+import org.bson.Document;
 import org.junit.Test;
 
 // @imports: start
-import org.bson.Document;
 // @imports: end
 
 public class IndexesPrimer extends PrimerTestCase {

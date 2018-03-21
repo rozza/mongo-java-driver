@@ -16,10 +16,8 @@
 
 package primer;
 
-import org.junit.Test;
-
-// @imports: start
 import org.bson.Document;
+import org.junit.Test;
 
 import java.text.DateFormat;
 import java.text.ParseException;
@@ -27,6 +25,8 @@ import java.text.SimpleDateFormat;
 import java.util.Locale;
 
 import static java.util.Arrays.asList;
+
+// @imports: start
 // @imports: end
 
 public class InsertPrimer extends PrimerTestCase {

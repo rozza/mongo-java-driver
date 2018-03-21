@@ -16,11 +16,12 @@
 
 package primer;
 
-import org.junit.Test;
-// @import: start
 import org.bson.Document;
+import org.junit.Test;
 
 import static java.util.Arrays.asList;
+
+// @import: start
 // @import: end
 
 
