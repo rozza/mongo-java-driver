@@ -50,7 +50,7 @@ public final class Fixture {
 
     static synchronized MongoClient getMongoClient() {
         if (mongoClient == null) {
-            MongoClients.init(MongoEmbeddedSettings.builder().build());
+            MongoClients.init(MongoEmbeddedSettings.builder().libraryPath(System.getProperty(EMBEDDED_PATH_PROPERTY_NAME)).build());
             mongoClient = MongoClients.create(getMongoClientSettings());
             Runtime.getRuntime().addShutdownHook(new ShutdownHook());
         }
@@ -114,7 +114,6 @@ public final class Fixture {
         if (mongoClientSettings == null) {
             MongoClientSettings.Builder builder = MongoClientSettings.builder()
                     .applyConnectionString(new ConnectionString(getConnectionStringProperty()));
-            builder.libraryPath(System.getProperty(EMBEDDED_PATH_PROPERTY_NAME));
             mongoClientSettings = builder.build();
         }
         return mongoClientSettings;

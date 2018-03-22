@@ -36,7 +36,7 @@ final class EmbeddedDatabase implements Closeable {
     private final MongoDBCAPI mongoDBCAPI;
     private volatile Pointer databasePointer;
 
-    EmbeddedDatabase(final MongoClientSettings mongoClientSettings) {
+    EmbeddedDatabase(final MongoDBCAPI mongoDBCAPI, final MongoClientSettings mongoClientSettings) {
         File directory = new File(mongoClientSettings.getDbPath());
         try {
             if (directory.mkdirs() && LOGGER.isInfoEnabled()) {
@@ -45,21 +45,7 @@ final class EmbeddedDatabase implements Closeable {
         } catch (SecurityException e) {
             throw new MongoException(format("Could not validate / create the dbpath: %s", mongoClientSettings.getDbPath()));
         }
-
-        if (mongoClientSettings.getLibraryPath() != null) {
-            NativeLibrary.addSearchPath(NATIVE_LIBRARY_NAME, mongoClientSettings.getLibraryPath());
-        }
-        try {
-            this.mongoDBCAPI = Native.loadLibrary(NATIVE_LIBRARY_NAME, MongoDBCAPI.class);
-        } catch (UnsatisfiedLinkError e) {
-            throw new MongoClientException(format("Failed to load the mongodb library: '%s'."
-                    + "%n %s %n"
-                    + "%n Please set the library location by either:"
-                    + "%n - Adding it to the classpath."
-                    + "%n - Setting 'jna.library.path' system property"
-                    + "%n - Configuring it in the 'MongoClientSettings.builder().libraryPath' method."
-                    + "%n", NATIVE_LIBRARY_NAME, e.getMessage()), e);
-        }
+       this.mongoDBCAPI = mongoDBCAPI;
 
         String[] cmdArgs = createCmdArgs(mongoClientSettings);
         try {

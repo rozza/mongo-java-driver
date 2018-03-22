@@ -44,8 +44,8 @@ final class EmbeddedCluster implements Cluster {
     private final EmbeddedServer server;
     private volatile boolean isClosed;
 
-    EmbeddedCluster(final MongoClientSettings mongoClientSettings) {
-        this.server = new EmbeddedServer(mongoClientSettings);
+    EmbeddedCluster(final MongoDBCAPI mongoDBCAPI, final MongoClientSettings mongoClientSettings) {
+        this.server = new EmbeddedServer(mongoDBCAPI, mongoClientSettings);
         this.clusterSettings = ClusterSettings.builder().hosts(singletonList(new ServerAddress())).build();
         this.clusterDescription = new ClusterDescription(ClusterConnectionMode.SINGLE, ClusterType.STANDALONE,
                 singletonList(server.getDescription()));
