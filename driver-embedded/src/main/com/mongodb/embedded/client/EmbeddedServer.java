@@ -68,8 +68,8 @@ class EmbeddedServer implements Server, Closeable {
     private final EmbeddedDatabase embeddedDatabase;
     private final ServerDescription serverDescription;
 
-    EmbeddedServer(final MongoDBCAPI mongoDBCAPI, final MongoClientSettings mongoClientSettings) {
-        this.embeddedDatabase = new EmbeddedDatabase(mongoDBCAPI, mongoClientSettings);
+    EmbeddedServer(final MongoClientSettings mongoClientSettings) {
+        this.embeddedDatabase = new EmbeddedDatabase(mongoClientSettings);
         this.clientMetadataDocument = createClientMetadataDocument(mongoClientSettings.getApplicationName(), MONGO_DRIVER_INFORMATION);
         this.clusterId = new ClusterId();
         this.clusterClock = new ClusterClock();
