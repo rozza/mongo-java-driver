@@ -28,7 +28,7 @@ import static java.lang.String.format;
 
 final class MongoDBCAPIHelper {
     private static final String NATIVE_LIBRARY_NAME = "mongo_embedded_capi";
-    private static MongoDBCAPI mongoDBCAPI;
+    private static volatile MongoDBCAPI mongoDBCAPI;
 
     static synchronized void checkHasBeenInitialized() {
         checkInitialized();
@@ -73,17 +73,16 @@ final class MongoDBCAPIHelper {
         }
     }
 
-    static synchronized Pointer db_new(final int argc, final String[] argv, final String[] envp) {
+    static Pointer db_new(final int argc, final String[] argv, final String[] envp) {
         checkInitialized();
         try {
-            Pointer val = mongoDBCAPI.libmongodbcapi_db_new(argc, argv, envp);
-            return val;
+            return mongoDBCAPI.libmongodbcapi_db_new(argc, argv, envp);
         } catch (Throwable t) {
             throw createError("db_new", t);
         }
     }
 
-    static synchronized void db_destroy(final Pointer db) {
+    static void db_destroy(final Pointer db) {
         checkInitialized();
         try {
             mongoDBCAPI.libmongodbcapi_db_destroy(db);
@@ -92,7 +91,7 @@ final class MongoDBCAPIHelper {
         }
     }
 
-    static synchronized void db_pump(final Pointer db) {
+    static void db_pump(final Pointer db) {
         checkInitialized();
         try {
             validateErrorCode(mongoDBCAPI.libmongodbcapi_db_pump(db));
@@ -101,17 +100,16 @@ final class MongoDBCAPIHelper {
         }
     }
 
-    static synchronized Pointer db_client_new(final Pointer db) {
+    static Pointer db_client_new(final Pointer db) {
         checkInitialized();
         try {
-            Pointer val = mongoDBCAPI.libmongodbcapi_db_client_new(db);
-            return val;
+            return mongoDBCAPI.libmongodbcapi_db_client_new(db);
         } catch (Throwable t) {
             throw createError("db_client_new", t);
         }
     }
 
-    static synchronized void db_client_destroy(final Pointer client) {
+    static void db_client_destroy(final Pointer client) {
         checkInitialized();
         try {
             mongoDBCAPI.libmongodbcapi_db_client_destroy(client);
@@ -120,18 +118,17 @@ final class MongoDBCAPIHelper {
         }
     }
 
-    static synchronized void db_client_wire_protocol_rpc(final Pointer client, final byte[] input, final int inputSize,
+    static void db_client_wire_protocol_rpc(final Pointer client, final byte[] input, final int inputSize,
                                                          final PointerByReference output, final IntByReference outputSize) {
         checkInitialized();
         try {
-            int errorCode = mongoDBCAPI.libmongodbcapi_db_client_wire_protocol_rpc(client, input, inputSize, output, outputSize);
-            validateErrorCode(errorCode);
+            validateErrorCode(mongoDBCAPI.libmongodbcapi_db_client_wire_protocol_rpc(client, input, inputSize, output, outputSize));
         } catch (Throwable t) {
             throw createError("db_client_wire_protocol_rpc", t);
         }
     }
 
-    static synchronized int get_last_error() {
+    static int get_last_error() {
         checkInitialized();
         try {
             return mongoDBCAPI.libmongodbcapi_get_last_error();
