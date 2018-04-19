@@ -71,8 +71,20 @@ public interface MongoClient extends Closeable {
      * <p>Note: {@link MongoClientSettings} is immutable.</p>
      *
      * @return the settings
+     * @deprecated use {@link #getClientSettings()} instead
      */
+    @Deprecated
     MongoClientSettings getSettings();
+
+    /**
+     * Gets the settings that this client uses to connect to server.
+     *
+     * <p>Note: {@link com.mongodb.MongoClientSettings} is immutable.</p>
+     *
+     * @return the settings
+     * @since 3.7
+     */
+    com.mongodb.MongoClientSettings getClientSettings();
 
     /**
      * Get a list of the database names

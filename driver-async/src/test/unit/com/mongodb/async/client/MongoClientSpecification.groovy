@@ -39,7 +39,7 @@ class MongoClientSpecification extends Specification {
     def 'should use ListDatabasesIterableImpl correctly'() {
         given:
         def executor = new TestOperationExecutor([null, null])
-        def client = new MongoClientImpl(MongoClientSettings.builder().build(), Stub(Cluster), executor)
+        def client = new MongoClientImpl(com.mongodb.MongoClientSettings.builder().build(), Stub(Cluster), executor)
         def listDatabasesMethod = client.&listDatabases
         def listDatabasesNamesMethod = client.&listDatabaseNames
 
@@ -74,10 +74,10 @@ class MongoClientSpecification extends Specification {
 
     def 'should provide the same settings'() {
         given:
-        def settings = MongoClientSettings.builder().build()
+        def settings = com.mongodb.MongoClientSettings.builder().build()
 
         when:
-        def clientSettings = new MongoClientImpl(settings, Stub(Cluster), new TestOperationExecutor([])).getSettings()
+        def clientSettings = new MongoClientImpl(settings, Stub(Cluster), new TestOperationExecutor([])).getClientSettings()
 
         then:
         settings == clientSettings
@@ -86,7 +86,7 @@ class MongoClientSpecification extends Specification {
     def 'should pass the correct settings to getDatabase'() {
         given:
         def codecRegistry = fromProviders([new BsonValueCodecProvider()])
-        def settings = MongoClientSettings.builder()
+        def settings = com.mongodb.MongoClientSettings.builder()
                                           .readPreference(secondary())
                                           .writeConcern(WriteConcern.MAJORITY)
                                           .retryWrites(true)
@@ -110,7 +110,7 @@ class MongoClientSpecification extends Specification {
     def 'should cleanly close the external resource closer on close'() {
         given:
         def closed = false
-        def client = new MongoClientImpl(MongoClientSettings.builder().build(), Mock(Cluster), {
+        def client = new MongoClientImpl(com.mongodb.MongoClientSettings.builder().build(), Mock(Cluster), {
             closed = true
             throw new IOException()
         })

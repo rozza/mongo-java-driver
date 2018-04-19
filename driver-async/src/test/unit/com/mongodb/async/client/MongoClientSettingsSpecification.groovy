@@ -81,11 +81,6 @@ class MongoClientSettingsSpecification extends Specification {
         thrown(IllegalArgumentException)
 
         when:
-        builder.heartbeatSocketSettings(null)
-        then:
-        thrown(IllegalArgumentException)
-
-        when:
         builder.connectionPoolSettings(null)
         then:
         thrown(IllegalArgumentException)
@@ -147,7 +142,6 @@ class MongoClientSettingsSpecification extends Specification {
         def sslSettings = SslSettings.builder().build()
         def socketSettings = SocketSettings.builder().build()
         def serverSettings = ServerSettings.builder().build()
-        def heartbeatSocketSettings = SocketSettings.builder().build()
         def credentialList = [MongoCredential.createMongoX509Credential('test')]
         def connectionPoolSettings = ConnectionPoolSettings.builder().build()
         def codecRegistry = Stub(CodecRegistry)
@@ -165,7 +159,6 @@ class MongoClientSettingsSpecification extends Specification {
                 .sslSettings(sslSettings)
                 .socketSettings(socketSettings)
                 .serverSettings(serverSettings)
-                .heartbeatSocketSettings(heartbeatSocketSettings)
                 .credentialList(credentialList)
                 .connectionPoolSettings(connectionPoolSettings)
                 .codecRegistry(codecRegistry)
@@ -183,7 +176,7 @@ class MongoClientSettingsSpecification extends Specification {
         settings.getCommandListeners().get(0) == commandListener
         settings.getConnectionPoolSettings() == connectionPoolSettings
         settings.getSocketSettings() == socketSettings
-        settings.getHeartbeatSocketSettings() == heartbeatSocketSettings
+        settings.getHeartbeatSocketSettings() == SocketSettings.builder().readTimeout(10000, TimeUnit.MILLISECONDS).keepAlive(true).build()
         settings.getServerSettings() == serverSettings
         settings.getCodecRegistry() == codecRegistry
         settings.getCredentialList() == credentialList
@@ -199,23 +192,22 @@ class MongoClientSettingsSpecification extends Specification {
         def credentialList = [MongoCredential.createMongoX509Credential('test'), MongoCredential.createGSSAPICredential('gssapi')]
 
         when:
-        def settings = MongoClientSettings.builder().credentialList(credentialList).build()
+        def settings = MongoClientSettings.builder().credentialList([]).build()
 
         then:
-        settings.getCredentialList() == credentialList
+        settings.getCredentialList() == []
 
         when:
-        settings.getCredential()
-
-        then:
-        thrown(IllegalStateException)
-
-        when:
-        settings = MongoClientSettings.builder().credential(credentialList.get(0)).build()
+        settings = MongoClientSettings.builder().credentialList([credentialList.get(0)]).build()
 
         then:
         settings.getCredentialList() == [credentialList.get(0)]
-        settings.getCredential() == credentialList.get(0)
+
+        when:
+        MongoClientSettings.builder().credentialList(credentialList)
+
+        then:
+        thrown(IllegalArgumentException)
     }
 
     def 'should be easy to create new settings from existing'() {

@@ -76,7 +76,7 @@ To connect to a standalone MongoDB instance:
     MongoClient mongoClient = MongoClients.create(new ConnectionString("mongodb://localhost"));
     ```
 
-- You can call [`MongoClients.create()`]({{< apiref "com/mongodb/async/client/MongoClients.html#create-com.mongodb.async.client.MongoClientSettings-" >}}) with a [`MongoClientSettings`]({{< apiref "com/mongodb/async/client/MongoClientSettings.html">}}) object. To specify the host information, use the [`ClusterSettings`]({{<apiref "com/mongodb/connection/ClusterSettings.html">}}).
+- You can call [`MongoClients.create()`]({{< apiref "com/mongodb/async/client/MongoClients.html#create-com.mongodb.async.client.MongoClientSettings-" >}}) with a [`MongoClientSettings`]({{< apiref "com/mongodb/MongoClientSettings.html">}}) object. To specify the host information, use the [`ClusterSettings`]({{<apiref "com/mongodb/connection/ClusterSettings.html">}}).
 
     ```java
     ClusterSettings clusterSettings = ClusterSettings.builder()
@@ -132,7 +132,7 @@ MongoDB will auto-discover the primary and the secondaries.
           new ConnectionString("mongodb://host1:27017,host2:27017,host3:27017/?replicaSet=myReplicaSet"));
       ```
 
-- You can call [`MongoClients.create()`]({{< apiref "com/mongodb/async/client/MongoClients.html#create-com.mongodb.async.client.MongoClientSettings-" >}}) with a [`MongoClientSettings`]({{< apiref "com/mongodb/async/client/MongoClientSettings.html">}}) object. To specify the host information of the replica set members, use [`ClusterSettings`]({{<apiref "com/mongodb/connection/ClusterSettings.html">}}).
+- You can call [`MongoClients.create()`]({{< apiref "com/mongodb/async/client/MongoClients.html#create-com.mongodb.async.client.MongoClientSettings-" >}}) with a [`MongoClientSettings`]({{< apiref "com/mongodb/MongoClientSettings.html">}}) object. To specify the host information of the replica set members, use [`ClusterSettings`]({{<apiref "com/mongodb/connection/ClusterSettings.html">}}).
 
       ```java
       ClusterSettings clusterSettings = ClusterSettings.builder()
@@ -173,7 +173,7 @@ To connect to a single `mongos` instance:
                 new ConnectionString("mongodb://localhost"));
     ```
 
-- You can call [`MongoClients.create()`]({{< apiref "com/mongodb/async/client/MongoClients.html#create-com.mongodb.async.client.MongoClientSettings-" >}}) with a [`MongoClientSettings`]({{< apiref "com/mongodb/async/client/MongoClientSettings.html">}}) object. To specify the host information of the `mongos` instance, use [`ClusterSettings`]({{<apiref "com/mongodb/connection/ClusterSettings.html">}}):
+- You can call [`MongoClients.create()`]({{< apiref "com/mongodb/async/client/MongoClients.html#create-com.mongodb.async.client.MongoClientSettings-" >}}) with a [`MongoClientSettings`]({{< apiref "com/mongodb/MongoClientSettings.html">}}) object. To specify the host information of the `mongos` instance, use [`ClusterSettings`]({{<apiref "com/mongodb/connection/ClusterSettings.html">}}):
 
     ```java
     ClusterSettings clusterSettings = ClusterSettings.builder()
@@ -200,7 +200,7 @@ To connect to multiple `mongos` instances, specify the host and port of the `mon
                 new ConnectionString("mongodb://host1:27017,host2:27017"));
     ```
 
-- You can call [`MongoClients.create()`]({{< apiref "com/mongodb/async/client/MongoClients.html#create-com.mongodb.async.client.MongoClientSettings-" >}}) with a [`MongoClientSettings`]({{< apiref "com/mongodb/async/client/MongoClientSettings.html">}}) object. To specify the host information of the `mongos` instances, use [`ClusterSettings`]({{<apiref "com/mongodb/connection/ClusterSettings.html">}}):
+- You can call [`MongoClients.create()`]({{< apiref "com/mongodb/async/client/MongoClients.html#create-com.mongodb.async.client.MongoClientSettings-" >}}) with a [`MongoClientSettings`]({{< apiref "com/mongodb/MongoClientSettings.html">}}) object. To specify the host information of the `mongos` instances, use [`ClusterSettings`]({{<apiref "com/mongodb/connection/ClusterSettings.html">}}):
 
 
     ```java
