@@ -562,7 +562,7 @@ public final class MongoClientSettings {
      * Gets the connection settings for the heartbeat thread (the background task that checks the state of the cluster) wrapped in a
      * settings object.
      *
-     * @return a SocketSettings for the heartbeat thread
+     * @return the SocketSettings for the heartbeat thread
      * @see SocketSettings
      */
     public SocketSettings getHeartbeatSocketSettings() {

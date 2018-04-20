@@ -27,8 +27,9 @@ import java.io.Closeable;
 
 // Creation of MongoClient using NettyStreamFactory is segregated here to avoid a runtime dependency on Netty in MongoClients
 final class NettyMongoClients {
-    static MongoClient create(final com.mongodb.MongoClientSettings settings,
-                              @Nullable final MongoDriverInformation mongoDriverInformation) {
+
+    @SuppressWarnings("deprecation")
+    static MongoClient create(final MongoClientSettings settings, @Nullable final MongoDriverInformation mongoDriverInformation) {
         final EventLoopGroup eventLoopGroup = new NioEventLoopGroup();
         StreamFactory streamFactory = new NettyStreamFactory(settings.getSocketSettings(), settings.getSslSettings(), eventLoopGroup);
         StreamFactory heartbeatStreamFactory = new NettyStreamFactory(settings.getHeartbeatSocketSettings(), settings.getSslSettings(),

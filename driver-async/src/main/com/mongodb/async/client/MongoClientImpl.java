@@ -37,28 +37,27 @@ import java.io.IOException;
 import static com.mongodb.assertions.Assertions.notNull;
 import static com.mongodb.internal.async.ErrorHandlingResultCallback.errorHandlingCallback;
 
+@SuppressWarnings("deprecation")
 class MongoClientImpl implements MongoClient {
     private static final Logger LOGGER = Loggers.getLogger("client");
     private final Cluster cluster;
-    private final com.mongodb.MongoClientSettings settings;
+    private final MongoClientSettings settings;
     private final AsyncOperationExecutor executor;
     private final Closeable externalResourceCloser;
     private final ServerSessionPool serverSessionPool;
     private final ClientSessionHelper clientSessionHelper;
 
 
-    MongoClientImpl(final com.mongodb.MongoClientSettings settings, final Cluster cluster,
-                    @Nullable final Closeable externalResourceCloser) {
+    MongoClientImpl(final MongoClientSettings settings, final Cluster cluster, @Nullable final Closeable externalResourceCloser) {
         this(settings, cluster, null, externalResourceCloser);
     }
 
-    MongoClientImpl(final com.mongodb.MongoClientSettings settings, final Cluster cluster,
-                    @Nullable final AsyncOperationExecutor executor) {
+    MongoClientImpl(final MongoClientSettings settings, final Cluster cluster, @Nullable final AsyncOperationExecutor executor) {
         this(settings, cluster, executor, null);
     }
 
-    private MongoClientImpl(final com.mongodb.MongoClientSettings settings, final Cluster cluster,
-                            @Nullable final AsyncOperationExecutor executor, @Nullable final Closeable externalResourceCloser) {
+    private MongoClientImpl(final MongoClientSettings settings, final Cluster cluster, @Nullable final AsyncOperationExecutor executor,
+                            @Nullable final Closeable externalResourceCloser) {
         this.settings = notNull("settings", settings);
         this.cluster = notNull("cluster", cluster);
         this.serverSessionPool = new ServerSessionPool(cluster);
@@ -111,11 +110,6 @@ class MongoClientImpl implements MongoClient {
 
     @Override
     public MongoClientSettings getSettings() {
-        return MongoClientSettings.createFromClientSettings(settings);
-    }
-
-    @Override
-    public com.mongodb.MongoClientSettings getClientSettings() {
         return settings;
     }
 

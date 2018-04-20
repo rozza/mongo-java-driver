@@ -115,7 +115,7 @@ public final class MongoClients {
      */
     @Deprecated
     public static MongoClient create(final MongoClientSettings settings, @Nullable final MongoDriverInformation mongoDriverInformation) {
-        return create(settings.getClientSettings(), mongoDriverInformation, null);
+        return create(settings, mongoDriverInformation, null);
     }
 
     /**
@@ -129,10 +129,11 @@ public final class MongoClients {
      * @throws IllegalArgumentException if the connection string's stream type is not one of "netty" or "nio2"
      * @see MongoClients#create(ConnectionString)
      */
+    @SuppressWarnings("deprecation")
     public static MongoClient create(final ConnectionString connectionString,
                                      @Nullable final MongoDriverInformation mongoDriverInformation) {
 
-        return create(com.mongodb.MongoClientSettings.builder().applyConnectionString(connectionString).build(),
+        return create(MongoClientSettings.builder().applyConnectionString(connectionString).build(),
                 mongoDriverInformation, connectionString.getStreamType());
     }
 
@@ -157,12 +158,14 @@ public final class MongoClients {
      * @return the client
      * @since 3.7
      */
+    @SuppressWarnings("deprecation")
     public static MongoClient create(final com.mongodb.MongoClientSettings settings,
                                      @Nullable final MongoDriverInformation mongoDriverInformation) {
-        return create(settings, mongoDriverInformation, null);
+        return create(MongoClientSettings.createFromClientSettings(settings), mongoDriverInformation, null);
     }
 
-    private static MongoClient create(final com.mongodb.MongoClientSettings settings,
+    @SuppressWarnings("deprecation")
+    private static MongoClient create(final MongoClientSettings settings,
                                       @Nullable final MongoDriverInformation mongoDriverInformation,
                                       @Nullable final String requestedStreamType) {
         String streamType = getStreamType(requestedStreamType);
@@ -174,16 +177,16 @@ public final class MongoClients {
         }
     }
 
-    static MongoClient createMongoClient(final com.mongodb.MongoClientSettings settings,
-                                         @Nullable final MongoDriverInformation mongoDriverInformation,
+    @SuppressWarnings("deprecation")
+    static MongoClient createMongoClient(final MongoClientSettings settings, @Nullable final MongoDriverInformation mongoDriverInformation,
                                          final StreamFactory streamFactory, final StreamFactory heartbeatStreamFactory,
                                          @Nullable final Closeable externalResourceCloser) {
         return new MongoClientImpl(settings, createCluster(settings, mongoDriverInformation, streamFactory, heartbeatStreamFactory),
                 externalResourceCloser);
     }
 
-    private static Cluster createCluster(final com.mongodb.MongoClientSettings settings,
-                                         @Nullable final MongoDriverInformation mongoDriverInformation,
+    @SuppressWarnings("deprecation")
+    private static Cluster createCluster(final MongoClientSettings settings, @Nullable final MongoDriverInformation mongoDriverInformation,
                                          final StreamFactory streamFactory, final StreamFactory heartbeatStreamFactory) {
         notNull("settings", settings);
         List<MongoCredential> credentialList = settings.getCredential() != null ? Collections.singletonList(settings.getCredential())
@@ -210,14 +213,15 @@ public final class MongoClients {
      * </ul>
      *
      * @return the default codec registry
-     * @see MongoClientSettings#getCodecRegistry()
+     * @see com.mongodb.MongoClientSettings#getCodecRegistry()
      * @since 3.1
      */
     public static CodecRegistry getDefaultCodecRegistry() {
         return com.mongodb.MongoClientSettings.getDefaultCodecRegistry();
     }
 
-    private static StreamFactory getStreamFactory(final com.mongodb.MongoClientSettings settings, final String streamType,
+    @SuppressWarnings("deprecation")
+    private static StreamFactory getStreamFactory(final MongoClientSettings settings, final String streamType,
                                                   final boolean isHeartbeat) {
         StreamFactoryFactory streamFactoryFactory = settings.getStreamFactoryFactory();
         SocketSettings socketSettings = isHeartbeat ? settings.getHeartbeatSocketSettings() : settings.getSocketSettings();
