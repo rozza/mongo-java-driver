@@ -97,6 +97,10 @@ public final class MongoClientSettings {
         private Builder(final com.mongodb.MongoClientSettings settings) {
             notNull("settings", settings);
             wrappedBuilder = com.mongodb.MongoClientSettings.builder(settings);
+            MongoCredential credential = settings.getCredential();
+            if (credential != null) {
+                credentialList(singletonList(credential));
+            }
         }
 
         @SuppressWarnings("deprecation")

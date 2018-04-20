@@ -189,10 +189,8 @@ public final class MongoClients {
     private static Cluster createCluster(final MongoClientSettings settings, @Nullable final MongoDriverInformation mongoDriverInformation,
                                          final StreamFactory streamFactory, final StreamFactory heartbeatStreamFactory) {
         notNull("settings", settings);
-        List<MongoCredential> credentialList = settings.getCredential() != null ? Collections.singletonList(settings.getCredential())
-                : Collections.<MongoCredential>emptyList();
         return new DefaultClusterFactory().createCluster(settings.getClusterSettings(), settings.getServerSettings(),
-                settings.getConnectionPoolSettings(), streamFactory, heartbeatStreamFactory, credentialList,
+                settings.getConnectionPoolSettings(), streamFactory, heartbeatStreamFactory, settings.getCredentialList(),
                 getCommandListener(settings.getCommandListeners()), settings.getApplicationName(), mongoDriverInformation,
                 settings.getCompressorList());
     }
