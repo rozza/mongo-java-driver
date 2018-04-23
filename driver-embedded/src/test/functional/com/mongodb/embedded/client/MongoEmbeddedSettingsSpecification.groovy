@@ -29,15 +29,32 @@ class MongoEmbeddedSettingsSpecification extends Specification {
         def settings = MongoEmbeddedSettings.builder().build()
 
         expect:
+        settings.getApplicationData() == null
         settings.getLibraryPath() == null
+        settings.getLogLevel() == MongoEmbeddedSettings.LogLevel.STDOUT
+        settings.getYamlConfig() == null
     }
 
     def 'should set the correct settings'() {
+        given:
+        def applicationData = 'My Mobile App'
+        def libraryPath = '/mongo/lib/'
+        def logLevel = MongoEmbeddedSettings.LogLevel.NONE
+        def yamlConfig = '{systemLog: {verbosity: 5} }'
+
         when:
-        def settings = MongoEmbeddedSettings.builder().libraryPath('/mongo/lib/').build()
+        def settings = MongoEmbeddedSettings.builder()
+                .applicationData(applicationData)
+                .libraryPath(libraryPath)
+                .logLevel(logLevel)
+                .yamlConfig(yamlConfig)
+                .build()
 
         then:
-        settings.getLibraryPath() == '/mongo/lib/'
+        settings.getApplicationData() == applicationData
+        settings.getLibraryPath() == libraryPath
+        settings.getLogLevel() == logLevel
+        settings.getYamlConfig() == yamlConfig
         expect settings, isTheSameAs(MongoEmbeddedSettings.builder(settings).build())
     }
 
@@ -45,7 +62,7 @@ class MongoEmbeddedSettingsSpecification extends Specification {
         when:
         // A regression test so that if anymore fields are added then the builder(final MongoEmbeddedSettings settings) should be updated
         def actual = MongoEmbeddedSettings.Builder.declaredFields.grep {  !it.synthetic } *.name.sort()
-        def expected = ['libraryPath']
+        def expected = ['applicationData', 'libraryPath', 'logLevel', 'yamlConfig']
 
         then:
         actual == expected
@@ -55,7 +72,7 @@ class MongoEmbeddedSettingsSpecification extends Specification {
         when:
         // A regression test so that if anymore methods are added then the builder(final MongoEmbeddedSettings settings) should be updated
         def actual = MongoEmbeddedSettings.Builder.declaredMethods.grep {  !it.synthetic } *.name.sort()
-        def expected = ['build', 'libraryPath']
+        def expected = ['applicationData', 'build', 'libraryPath', 'logLevel', 'yamlConfig']
 
         then:
         actual == expected
