@@ -32,7 +32,6 @@ public final class MongoEmbeddedSettings {
     private final String libraryPath;
     private final String yamlConfig;
     private final LogLevel logLevel;
-    private final String applicationData;
 
     /**
      * LogLevel represents the supported logging levels for the embedded mongod
@@ -102,7 +101,6 @@ public final class MongoEmbeddedSettings {
         private String libraryPath;
         private String yamlConfig;
         private LogLevel logLevel = LogLevel.LOGGER;
-        private String applicationData;
 
         private Builder() {
         }
@@ -112,7 +110,6 @@ public final class MongoEmbeddedSettings {
             libraryPath = settings.libraryPath;
             yamlConfig = settings.yamlConfig;
             logLevel = settings.logLevel;
-            applicationData = settings.applicationData;
         }
 
         /**
@@ -146,17 +143,6 @@ public final class MongoEmbeddedSettings {
          */
         public Builder logLevel(final LogLevel logLevel) {
             this.logLevel = logLevel;
-            return this;
-        }
-
-        /**
-         * Sets any application data to included in the logging
-         *
-         * @param applicationData any application data to be included in the logging
-         * @return this
-         */
-        public Builder applicationData(final String applicationData) {
-            this.applicationData = applicationData;
             return this;
         }
 
@@ -198,20 +184,9 @@ public final class MongoEmbeddedSettings {
         return logLevel;
     }
 
-    /**
-     * Gets the application data to be included in the logging
-     *
-     * @return the application data to be included in the logging if set or null
-     */
-    public String getApplicationData() {
-        return applicationData;
-    }
-
-
     private MongoEmbeddedSettings(final Builder builder) {
         this.libraryPath = builder.libraryPath;
         this.yamlConfig = builder.yamlConfig;
         this.logLevel = builder.logLevel;
-        this.applicationData = builder.applicationData;
     }
 }

@@ -18,6 +18,7 @@ package com.mongodb.embedded.client;
 
 import com.sun.jna.Library;
 import com.sun.jna.Pointer;
+import com.sun.jna.Structure;
 import com.sun.jna.ptr.IntByReference;
 import com.sun.jna.ptr.PointerByReference;
 
@@ -26,20 +27,15 @@ interface MongoDBCAPI extends Library {
 
     // CHECKSTYLE.OFF: MethodName
     /**
-     * Interface representing the {@code libmongodbcapi_init_params}.
-     */
-    interface InitParams {}
-
-    /**
      * Initializes the mongodbcapi library, required before any other call. Cannot be called again
      * without libmongodbcapi_fini() being called first.
      *
-     * @param params the embedded mongod initialization parameters.
+     * @param initParams the embedded mongod initialization parameters.
 
      * @note This function is not thread safe.
      * @return the error, or 0 if success
      */
-    int libmongodbcapi_init(InitParams params);
+    int libmongodbcapi_init(Structure initParams);
 
     /**
      * Tears down the state of the library, all databases must be closed before calling this.

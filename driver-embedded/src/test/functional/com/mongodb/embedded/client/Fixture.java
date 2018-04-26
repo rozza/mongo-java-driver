@@ -125,7 +125,6 @@ public final class Fixture {
     static synchronized MongoEmbeddedSettings getMongoEmbeddedSettings() {
         if (mongoEmbeddedSettings == null) {
             mongoEmbeddedSettings = MongoEmbeddedSettings.builder()
-                    .applicationData("Test Suite")
                     .libraryPath(System.getProperty(EMBEDDED_PATH_PROPERTY_NAME))
                     .logLevel(MongoEmbeddedSettings.LogLevel.LOGGER)
                     .build();

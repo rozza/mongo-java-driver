@@ -176,7 +176,7 @@ final class MongoDBCAPIHelper {
     /**
      * Represents libmongodbcapi_init_params
      */
-    public static class MongoDBCAPIInitParams extends Structure implements MongoDBCAPI.InitParams {
+    public static class MongoDBCAPIInitParams extends Structure {
         // CHECKSTYLE.OFF: VisibilityModifier
         public String yamlConfig;
         public long logFlags;
@@ -189,7 +189,6 @@ final class MongoDBCAPIHelper {
             this.yamlConfig = settings.getYamlConfig();
             this.logFlags = settings.getLogLevel().getLevel();
             this.logCallback = settings.getLogLevel() == MongoEmbeddedSettings.LogLevel.LOGGER ? new LogCallback() : null;
-            this.userData = settings.getApplicationData();
         }
 
         protected List<String> getFieldOrder() {
@@ -201,10 +200,7 @@ final class MongoDBCAPIHelper {
 
         public void apply(final String userData, final String message, final String component, final String context,
                           final int severity) {
-            String logMessage = format("%s [%s] %s", component.toUpperCase(), context, message).trim();
-            if (userData != null && !userData.isEmpty()) {
-                logMessage = format("%s : %s", userData, logMessage);
-            }
+            String logMessage = format("%-9s [%s] %s", component.toUpperCase(), context, message).trim();
 
             if (severity < -2) {
                 LOGGER.error(logMessage);   // Severe/Fatal & Error messages
