@@ -27,6 +27,7 @@ import org.bson.ByteBuf;
 import org.bson.codecs.Decoder;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static com.mongodb.assertions.Assertions.isTrue;
 
@@ -45,8 +46,10 @@ class EmbeddedInternalConnectionPool {
     }
 
     void close() {
-        closed = true;
-        pool.prune();
+        if (!closed) {
+            pool.close();
+            closed = true;
+        }
     }
 
     private final class EmbeddedConnectionItemFactory implements ConcurrentPool.ItemFactory<EmbeddedInternalConnection> {
@@ -68,7 +71,7 @@ class EmbeddedInternalConnectionPool {
 
         @Override
         public ConcurrentPool.Prune shouldPrune(final EmbeddedInternalConnection embeddedInternalConnection) {
-            return closed ? ConcurrentPool.Prune.YES : ConcurrentPool.Prune.NO;
+            return ConcurrentPool.Prune.NO;
         }
     }
 
@@ -82,6 +85,7 @@ class EmbeddedInternalConnectionPool {
 
     private class PooledConnection implements InternalConnection {
         private final EmbeddedInternalConnection wrapped;
+        private final AtomicBoolean isClosed = new AtomicBoolean();
 
         PooledConnection(final EmbeddedInternalConnection wrapped) {
             this.wrapped = wrapped;
@@ -104,8 +108,9 @@ class EmbeddedInternalConnectionPool {
 
         @Override
         public void close() {
-            if (!wrapped.isClosed()) {
-                pool.release(wrapped);
+            // All but the first call is a no-op
+            if (!isClosed.getAndSet(true)) {
+                pool.release(wrapped, wrapped.isClosed());
             }
         }
 
