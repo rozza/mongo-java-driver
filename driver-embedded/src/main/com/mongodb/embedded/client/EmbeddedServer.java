@@ -61,9 +61,12 @@ class EmbeddedServer implements Server, Closeable {
     private final ServerDescription serverDescription;
     private final EmbeddedInternalConnectionPool connectionPool;
     private volatile boolean isClosed;
+    private volatile Pointer instanceStatusPointer;
     private volatile Pointer instancePointer;
 
+
     EmbeddedServer(final MongoClientSettings mongoClientSettings) {
+        this.instanceStatusPointer = MongoDBCAPIHelper.createStatusPointer();
         this.instancePointer = createInstancePointer(mongoClientSettings);
         this.clusterClock = new ClusterClock();
         this.commandListener =  getCommandListener(mongoClientSettings.getCommandListeners());
@@ -116,12 +119,13 @@ class EmbeddedServer implements Server, Closeable {
         }
 
         String yamlConfig = createYamlConfig(mongoClientSettings);
-        return MongoDBCAPIHelper.instance_create(yamlConfig);
+        return MongoDBCAPIHelper.instance_create(yamlConfig, instanceStatusPointer);
     }
 
     private void destroyInstancePointer() {
-        MongoDBCAPIHelper.instance_destroy(instancePointer);
+        MongoDBCAPIHelper.instance_destroy(instancePointer, instanceStatusPointer);
         instancePointer = null;
+        instanceStatusPointer = null;
     }
 
     private String createYamlConfig(final MongoClientSettings mongoClientSettings) {
