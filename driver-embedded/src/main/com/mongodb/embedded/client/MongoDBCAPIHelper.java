@@ -37,6 +37,9 @@ final class MongoDBCAPIHelper {
     private static final Logger LOGGER = Loggers.getLogger("embedded.server");
     private static final String NATIVE_LIBRARY_NAME = "mongo_embedded_capi";
     private static volatile MongoDBCAPI mongoDBCAPI;
+    private static volatile Pointer status;
+    private static volatile Pointer lib;
+
 
     static synchronized void checkHasBeenInitialized() {
         checkInitialized();
@@ -64,108 +67,103 @@ final class MongoDBCAPIHelper {
                     + "%n", NATIVE_LIBRARY_NAME, e.getMessage()), e);
         }
         try {
-            validateErrorCode(mongoDBCAPI.libmongodbcapi_init(new MongoDBCAPIInitParams(mongoEmbeddedSettings)));
+            status = mongoDBCAPI.libmongodbcapi_status_create();
         } catch (Throwable t) {
-            throw createError("init", t);
+            throw createError("status_create", t);
+        }
+
+        lib = mongoDBCAPI.libmongodbcapi_lib_init(new MongoDBCAPIInitParams(mongoEmbeddedSettings), status);
+        if (lib == null) {
+            throw createErrorFromStatus();
         }
     }
 
     static synchronized void fini() {
         checkInitialized();
         try {
-            validateErrorCode(mongoDBCAPI.libmongodbcapi_fini());
-            mongoDBCAPI = null;
+            validateErrorCode(mongoDBCAPI.libmongodbcapi_lib_fini(lib, status));
+            lib = null;
         } catch (Throwable t) {
             throw createError("fini", t);
         }
+        try {
+            mongoDBCAPI.libmongodbcapi_status_destroy(status);
+            status = null;
+        } catch (Throwable t) {
+            throw createError("status_destroy", t);
+        }
+
+        mongoDBCAPI = null;
     }
 
-    static Pointer db_new(final String yamlConfig) {
+    static Pointer instance_create(final String yamlConfig) {
         checkInitialized();
         try {
-            return mongoDBCAPI.libmongodbcapi_db_new(yamlConfig);
+            return validatePointerCreated(mongoDBCAPI.libmongodbcapi_instance_create(lib, yamlConfig, status));
         } catch (Throwable t) {
-            throw createError("db_new", t);
+            throw createError("instance_create", t);
         }
     }
 
-    static void db_destroy(final Pointer db) {
+    static void instance_destroy(final Pointer instance) {
         checkInitialized();
         try {
-            mongoDBCAPI.libmongodbcapi_db_destroy(db);
+            validateErrorCode(mongoDBCAPI.libmongodbcapi_instance_destroy(instance, status));
         } catch (Throwable t) {
-            throw createError("db_destroy", t);
+            throw createError("instance_destroy", t);
         }
     }
 
-    static void db_pump(final Pointer db) {
+    static Pointer create_client(final Pointer instance) {
         checkInitialized();
         try {
-            validateErrorCode(mongoDBCAPI.libmongodbcapi_db_pump(db));
+            return validatePointerCreated(mongoDBCAPI.libmongodbcapi_client_create(instance, status));
         } catch (Throwable t) {
-            throw createError("db_pump", t);
+            throw createError("client_create", t);
         }
     }
 
-    static Pointer db_client_new(final Pointer db) {
+    static void client_destroy(final Pointer client) {
         checkInitialized();
         try {
-            return mongoDBCAPI.libmongodbcapi_db_client_new(db);
+            validateErrorCode(mongoDBCAPI.libmongodbcapi_client_destroy(client, status));
         } catch (Throwable t) {
-            throw createError("db_client_new", t);
+            throw createError("client_destroy", t);
         }
     }
 
-    static void db_client_destroy(final Pointer client) {
+    static void client_invoke(final Pointer client, final byte[] input, final PointerByReference output, final IntByReference outputSize) {
         checkInitialized();
         try {
-            mongoDBCAPI.libmongodbcapi_db_client_destroy(client);
+            validateErrorCode(mongoDBCAPI.libmongodbcapi_client_invoke(client, input, input.length, output, outputSize, status));
         } catch (Throwable t) {
-            throw createError("db_client_destroy", t);
+            throw createError("client_invoke", t);
         }
     }
 
-    static void db_client_wire_protocol_rpc(final Pointer client, final byte[] input, final int inputSize,
-                                                         final PointerByReference output, final IntByReference outputSize) {
-        checkInitialized();
-        try {
-            validateErrorCode(mongoDBCAPI.libmongodbcapi_db_client_wire_protocol_rpc(client, input, inputSize, output, outputSize));
-        } catch (Throwable t) {
-            throw createError("db_client_wire_protocol_rpc", t);
-        }
+    private static MongoClientException createError(final String methodName, final Throwable t) {
+        return new MongoClientException(format("Error from embedded server when calling '%s': %s", methodName, t.getMessage()), t);
     }
 
-    static int get_last_error() {
-        checkInitialized();
-        try {
-            return mongoDBCAPI.libmongodbcapi_get_last_error();
-        } catch (Throwable t) {
-            throw createError("get_last_error", t);
-        }
+    private static MongoClientException createErrorFromStatus() {
+        throw new MongoClientException(mongoDBCAPI.libmongodbcapi_status_get_explanation(status));
     }
 
-    private static MongoException createError(final String methodName, final Throwable t) {
-        return new MongoException(format("Error from embedded server when calling '%s': %s", methodName, t.getMessage()), t);
+    private static Pointer validatePointerCreated(final Pointer pointer) {
+        if (pointer == null) {
+           createErrorFromStatus();
+        }
+        return pointer;
     }
 
     private static void validateErrorCode(final int errorCode) {
         if (errorCode != 0) {
-            String errorMessage;
-            if (errorCode == 1) {
-                errorMessage = "The embedded server has already been initialized";
-            } else if (errorCode == 2) {
-                errorMessage = "The embedded server has not been initialized";
-            } else if (errorCode == 3) {
-                errorMessage = "The embedded database has not been closed";
-            } else {
-                errorMessage = "An unknown error occured";
-            }
-            throw new MongoException(format("%s. Error Code(%s).", errorMessage, errorCode));
+            createErrorFromStatus();
         }
     }
 
     private static void checkInitialized() {
-        if (mongoDBCAPI == null) {
+        if (mongoDBCAPI == null || lib == null || status == null) {
             throw new MongoClientException("MongoDBCAPI has not been initialized");
         }
     }

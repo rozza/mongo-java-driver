@@ -18,21 +18,29 @@ package com.mongodb.embedded.client;
 
 import com.mongodb.MongoClientException;
 import com.mongodb.client.MongoClient;
-import org.junit.Ignore;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import static com.mongodb.embedded.client.Fixture.getMongoClientSettings;
 import static com.mongodb.embedded.client.Fixture.getMongoEmbeddedSettings;
 import static org.junit.Assert.fail;
 
-@Ignore  // TODO - Enable again in the future once more init & fini can be called multiple times in a process.
-public class MongoClientsTest extends DatabaseTestCase {
+public class MongoClientsTest {
 
-    @Ignore
+    @BeforeClass
+    public static void beforeAll() {
+        Fixture.close();
+    }
+
     @Test(expected = MongoClientException.class)
     public void shouldThrowIfInitCalledTwice() {
-        MongoClients.init(getMongoEmbeddedSettings());
-        MongoClients.init(getMongoEmbeddedSettings());
+        try {
+            MongoClients.init(getMongoEmbeddedSettings());
+            MongoClients.init(getMongoEmbeddedSettings());
+            fail();
+        } finally {
+            MongoClients.close();
+        }
     }
 
     @Test(expected = MongoClientException.class)
@@ -41,15 +49,15 @@ public class MongoClientsTest extends DatabaseTestCase {
     }
 
     @Test(expected = MongoClientException.class)
-    public void shouldThrowIfUsingMongoClientAfterClose() {
+    public void shouldThrowIfLibHandlesStillExist() {
+        MongoClients.init(getMongoEmbeddedSettings());
         MongoClient mongoClient = MongoClients.create(getMongoClientSettings());
         try {
             MongoClients.close();
-        } catch (MongoClientException e) {
+        } finally {
             mongoClient.close();
-            throw e;
+            MongoClients.close();
         }
-        fail();
     }
 
 }
