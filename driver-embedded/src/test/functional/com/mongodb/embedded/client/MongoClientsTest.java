@@ -16,7 +16,6 @@
 
 package com.mongodb.embedded.client;
 
-import com.mongodb.MongoClientException;
 import com.mongodb.client.MongoClient;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -32,7 +31,7 @@ public class MongoClientsTest {
         Fixture.close();
     }
 
-    @Test(expected = MongoClientException.class)
+    @Test(expected = MongoClientEmbeddedException.class)
     public void shouldThrowIfInitCalledTwice() {
         try {
             MongoClients.init(getMongoEmbeddedSettings());
@@ -43,21 +42,34 @@ public class MongoClientsTest {
         }
     }
 
-    @Test(expected = MongoClientException.class)
+    @Test(expected = MongoClientEmbeddedException.class)
     public void shouldThrowIfCreateCalledWithoutCallingInit() {
         MongoClients.create(getMongoClientSettings());
     }
 
-    @Test(expected = MongoClientException.class)
+    @Test(expected = MongoClientEmbeddedException.class)
     public void shouldThrowIfLibHandlesStillExist() {
         MongoClients.init(getMongoEmbeddedSettings());
         MongoClient mongoClient = MongoClients.create(getMongoClientSettings());
         try {
             MongoClients.close();
+            fail();
         } finally {
             mongoClient.close();
             MongoClients.close();
         }
     }
 
+    @Test(expected = MongoClientEmbeddedException.class)
+    public void shouldThrowWhenTryingToOpenMultipleClients() {
+        MongoClients.init(getMongoEmbeddedSettings());
+        MongoClient mongoClient = MongoClients.create(getMongoClientSettings());
+        try {
+            MongoClients.create(getMongoClientSettings());
+            fail();
+        } finally {
+            mongoClient.close();
+            MongoClients.close();
+        }
+    }
 }

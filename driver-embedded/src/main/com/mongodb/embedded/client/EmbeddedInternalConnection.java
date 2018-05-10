@@ -164,7 +164,7 @@ class EmbeddedInternalConnection implements InternalConnection {
         public ByteBuf read(final int numBytes) {
             ByteBuffer slice = curResponse.slice();
             ((Buffer) slice).limit(numBytes);
-            ((Buffer) curResponse).position(((Buffer)curResponse).position() + numBytes);
+            ((Buffer) curResponse).position(((Buffer) curResponse).position() + numBytes);
             return new ByteBufNIO(slice);
         }
 

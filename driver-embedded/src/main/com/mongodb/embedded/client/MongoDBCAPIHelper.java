@@ -16,8 +16,6 @@
 
 package com.mongodb.embedded.client;
 
-import com.mongodb.MongoClientException;
-import com.mongodb.MongoException;
 import com.mongodb.diagnostics.logging.Logger;
 import com.mongodb.diagnostics.logging.Loggers;
 import com.sun.jna.Callback;
@@ -48,7 +46,7 @@ final class MongoDBCAPIHelper {
     // CHECKSTYLE.OFF: MethodName
     static synchronized void init(final MongoEmbeddedSettings mongoEmbeddedSettings) {
         if (mongoDBCAPI != null) {
-            throw new MongoClientException("MongoDBCAPI has been initialized but not closed");
+            throw new MongoClientEmbeddedException("MongoDBCAPI has been initialized but not closed");
         }
 
         if (mongoEmbeddedSettings.getLibraryPath() != null) {
@@ -58,7 +56,7 @@ final class MongoDBCAPIHelper {
         try {
             mongoDBCAPI = Native.loadLibrary(NATIVE_LIBRARY_NAME, MongoDBCAPI.class);
         } catch (UnsatisfiedLinkError e) {
-            throw new MongoClientException(format("Failed to load the mongodb library: '%s'."
+            throw new MongoClientEmbeddedException(format("Failed to load the mongodb library: '%s'."
                     + "%n %s %n"
                     + "%n Please set the library location by either:"
                     + "%n - Adding it to the classpath."
@@ -74,7 +72,7 @@ final class MongoDBCAPIHelper {
 
         lib = mongoDBCAPI.libmongodbcapi_lib_init(new MongoDBCAPIInitParams(mongoEmbeddedSettings), status);
         if (lib == null) {
-            throw createErrorFromStatus();
+            createErrorFromStatus();
         }
     }
 
@@ -141,12 +139,21 @@ final class MongoDBCAPIHelper {
         }
     }
 
-    private static MongoClientException createError(final String methodName, final Throwable t) {
-        return new MongoClientException(format("Error from embedded server when calling '%s': %s", methodName, t.getMessage()), t);
+    private static MongoClientEmbeddedException createError(final String methodName, final Throwable t) {
+        if (t instanceof MongoClientEmbeddedException) {
+            return (MongoClientEmbeddedException) t;
+        }
+        return new MongoClientEmbeddedException(format("Error from embedded server when calling '%s': %s", methodName, t.getMessage()), t);
     }
 
-    private static MongoClientException createErrorFromStatus() {
-        throw new MongoClientException(mongoDBCAPI.libmongodbcapi_status_get_explanation(status));
+    private static void createErrorFromStatus() {
+        createErrorFromStatus(mongoDBCAPI.libmongodbcapi_status_get_error(status));
+    }
+
+    private static void createErrorFromStatus(final int errorCode) {
+        throw new MongoClientEmbeddedException(errorCode,
+                mongoDBCAPI.libmongodbcapi_status_get_code(status),
+                mongoDBCAPI.libmongodbcapi_status_get_explanation(status));
     }
 
     private static Pointer validatePointerCreated(final Pointer pointer) {
@@ -158,13 +165,13 @@ final class MongoDBCAPIHelper {
 
     private static void validateErrorCode(final int errorCode) {
         if (errorCode != 0) {
-            createErrorFromStatus();
+            createErrorFromStatus(errorCode);
         }
     }
 
     private static void checkInitialized() {
         if (mongoDBCAPI == null || lib == null || status == null) {
-            throw new MongoClientException("MongoDBCAPI has not been initialized");
+            throw new MongoClientEmbeddedException("MongoDBCAPI has not been initialized");
         }
     }
 

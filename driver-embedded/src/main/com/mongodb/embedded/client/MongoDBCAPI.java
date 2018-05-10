@@ -69,8 +69,8 @@ interface MongoDBCAPI extends Library {
     int libmongodbcapi_status_get_code(Pointer status);
 
     /**
-     * Initializes the mongodbcapi library, required before any other call. 
-     * 
+     * Initializes the mongodbcapi library, required before any other call.
+     *
      * <p>Cannot be called again without {@link #libmongodbcapi_lib_fini(Pointer, Pointer)} being called first.</p>
      *
      * @param initParams the embedded mongod initialization parameters.

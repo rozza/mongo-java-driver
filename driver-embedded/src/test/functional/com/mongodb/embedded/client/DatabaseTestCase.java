@@ -27,5 +27,4 @@ public class DatabaseTestCase {
         assumeTrue("No embedded path set.", Fixture.hasLibraryPath());
         Fixture.getMongoClient();
     }
-
 }
