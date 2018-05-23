@@ -43,6 +43,8 @@ import org.bson.FieldNameValidator;
 import org.bson.codecs.BsonDocumentCodec;
 import org.bson.codecs.Decoder;
 
+import java.util.List;
+
 import static com.mongodb.ReadPreference.primary;
 import static com.mongodb.assertions.Assertions.notNull;
 import static com.mongodb.internal.async.ErrorHandlingResultCallback.errorHandlingCallback;
@@ -53,6 +55,7 @@ import static com.mongodb.operation.OperationHelper.canRetryWrite;
 import static com.mongodb.operation.OperationHelper.releasingCallback;
 import static com.mongodb.operation.OperationHelper.withConnection;
 import static com.mongodb.operation.OperationHelper.withReleasableConnection;
+import static java.util.Arrays.asList;
 
 final class CommandOperationHelper {
 
@@ -584,8 +587,15 @@ final class CommandOperationHelper {
         }
     }
 
+    private static final List<Integer> RETRYABLE_ERROR_CODES = asList(6, 7, 89, 64, 91, 189, 9001, 13436, 13435, 11602, 11600, 10107);
     static boolean isRetryableException(final Throwable t) {
-        return t instanceof MongoSocketException || t instanceof MongoNotPrimaryException || t instanceof MongoNodeIsRecoveringException;
+        if (!(t instanceof MongoException)) {
+            return false;
+        }
+        if (t instanceof MongoSocketException || t instanceof MongoNotPrimaryException || t instanceof MongoNodeIsRecoveringException) {
+            return true;
+        }
+        return RETRYABLE_ERROR_CODES.contains(((MongoException) t).getCode());
     }
 
     /* Misc operation helpers */

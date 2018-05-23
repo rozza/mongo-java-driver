@@ -23,7 +23,6 @@ import com.mongodb.connection.ServerVersion;
 import org.bson.BsonArray;
 import org.bson.BsonBoolean;
 import org.bson.BsonDocument;
-import org.bson.BsonString;
 import org.bson.BsonValue;
 import org.bson.Document;
 import org.bson.codecs.DocumentCodec;
@@ -50,6 +49,7 @@ import static com.mongodb.ClusterFixture.isStandalone;
 import static com.mongodb.ClusterFixture.serverVersionAtLeast;
 import static com.mongodb.client.Fixture.getDefaultDatabaseName;
 import static com.mongodb.client.Fixture.getMongoClientSettingsBuilder;
+import static java.lang.String.format;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assume.assumeFalse;
 import static org.junit.Assume.assumeTrue;
@@ -182,7 +182,7 @@ public class RetryableWritesTest {
 
     private void setFailPoint() {
         if (definition.containsKey("failPoint")) {
-            BsonDocument command = new BsonDocument("configureFailPoint", new BsonString("onPrimaryTransactionalWrite"));
+            BsonDocument command = new BsonDocument();
             for (Map.Entry<String, BsonValue> args : definition.getDocument("failPoint").entrySet()) {
                 command.put(args.getKey(), args.getValue());
             }
@@ -191,8 +191,11 @@ public class RetryableWritesTest {
     }
 
     private void unsetFailPoint() {
-        mongoClient.getDatabase("admin").runCommand(
-                BsonDocument.parse("{ configureFailPoint: 'onPrimaryTransactionalWrite', mode: 'off'}"));
+        if (definition.containsKey("failPoint")) {
+            String configureFailPoint = definition.getDocument("failPoint").getString("configureFailPoint").getValue();
+            mongoClient.getDatabase("admin").runCommand(
+                    BsonDocument.parse(format("{ configureFailPoint: '%s', mode: 'off'}", configureFailPoint)));
+        }
     }
 
     private ServerVersion getServerVersion(final String fieldName) {
