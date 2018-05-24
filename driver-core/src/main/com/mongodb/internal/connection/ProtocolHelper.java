@@ -223,6 +223,8 @@ final class ProtocolHelper {
             return new MongoNotPrimaryException(serverAddress);
         } else if (getErrorMessage(response, errorMessageFieldName).startsWith("node is recovering")) {
             return new MongoNodeIsRecoveringException(serverAddress);
+        } else if (response.containsKey("writeConcernError")) {
+            return createSpecialException(response.getDocument("writeConcernError"), serverAddress, "errmsg");
         } else {
             return null;
         }
