@@ -596,6 +596,12 @@ final class CommandOperationHelper {
         if (t instanceof MongoSocketException || t instanceof MongoNotPrimaryException || t instanceof MongoNodeIsRecoveringException) {
             return true;
         }
+        if (t instanceof MongoWriteConcernException) {
+            String errorMessage = ((MongoWriteConcernException) t).getWriteConcernError().getMessage();
+            if (errorMessage.contains("not master") || errorMessage.contains("node is recovering")) {
+                return true;
+            }
+        }
         return RETRYABLE_ERROR_CODES.contains(((MongoException) t).getCode());
     }
 
