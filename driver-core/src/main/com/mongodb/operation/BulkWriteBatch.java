@@ -67,7 +67,6 @@ import static com.mongodb.bulk.WriteRequest.Type.INSERT;
 import static com.mongodb.bulk.WriteRequest.Type.REPLACE;
 import static com.mongodb.bulk.WriteRequest.Type.UPDATE;
 import static com.mongodb.internal.operation.WriteConcernHelper.createWriteConcernError;
-import static com.mongodb.internal.operation.WriteConcernHelper.throwOnSpecialException;
 import static com.mongodb.operation.OperationHelper.LOGGER;
 import static com.mongodb.operation.OperationHelper.isRetryableWrite;
 import static org.bson.codecs.configuration.CodecRegistries.fromProviders;

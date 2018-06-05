@@ -100,6 +100,15 @@ public final class ProtocolHelper {
         }
     }
 
+    static MongoException createSpecialWriteConcernException(final ResponseBuffers responseBuffers, final ServerAddress serverAddress) {
+        BsonValue writeConcernError = getField(createBsonReader(responseBuffers), "writeConcernError");
+        if (writeConcernError == null) {
+            return null;
+        } else {
+            return createSpecialException(writeConcernError.asDocument(), serverAddress, "errmsg");
+        }
+    }
+
     static BsonTimestamp getOperationTime(final ResponseBuffers responseBuffers) {
         try {
             BsonValue operationTime = getField(createBsonReader(responseBuffers), "operationTime");
