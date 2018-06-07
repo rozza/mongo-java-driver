@@ -113,7 +113,8 @@ final class AsyncChangeStreamBatchCursor<T> implements AsyncBatchCursor<T> {
     }
 
     private void retryOperation(final AsyncBlock asyncBlock, final SingleResultCallback<List<RawBsonDocument>> callback) {
-        changeStreamOperation.resumeAfter(resumeToken).executeAsync(binding, new SingleResultCallback<AsyncBatchCursor<T>>() {
+        changeStreamOperation.resumeAfter(resumeToken).startAtOperationTime(null)
+                .executeAsync(binding, new SingleResultCallback<AsyncBatchCursor<T>>() {
             @Override
             public void onResult(final AsyncBatchCursor<T> result, final Throwable t) {
                 if (t != null) {

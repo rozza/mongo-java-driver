@@ -40,6 +40,8 @@ import com.mongodb.diagnostics.logging.Loggers;
 import com.mongodb.event.CommandListener;
 import com.mongodb.session.SessionContext;
 import org.bson.BsonBinaryReader;
+import org.bson.BsonDocument;
+import org.bson.BsonTimestamp;
 import org.bson.ByteBuf;
 import org.bson.codecs.BsonDocumentCodec;
 import org.bson.codecs.Decoder;
@@ -514,8 +516,17 @@ public class InternalStreamConnection implements InternalConnection {
     }
 
     private void updateSessionContext(final SessionContext sessionContext, final ResponseBuffers responseBuffers) {
-        sessionContext.advanceOperationTime(getOperationTime(responseBuffers));
-        sessionContext.advanceClusterTime(getClusterTime(responseBuffers));
+        BsonTimestamp operationTime = getOperationTime(responseBuffers);
+        BsonDocument clusterTime = getClusterTime(responseBuffers);
+        if (operationTime != null) {
+            synchronized (this) {
+                description = description.withOperationTime(operationTime);
+            }
+            sessionContext.advanceOperationTime(operationTime);
+        }
+        if (clusterTime != null) {
+            sessionContext.advanceClusterTime(clusterTime);
+        }
     }
 
     private MongoException translateWriteException(final Throwable e) {
