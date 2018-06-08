@@ -233,7 +233,7 @@ public final class ProtocolHelper {
     private static final List<Integer> NOT_MASTER_CODES = asList(10107, 13435);
     private static final List<Integer> RECOVERING_CODES = asList(11600, 11602, 13436, 189, 91);
     public static MongoException createSpecialException(final BsonDocument response, final ServerAddress serverAddress,
-                                                         final String errorMessageFieldName) {
+                                                        final String errorMessageFieldName) {
         int errorCode = getErrorCode(response);
         String errorMessage = getErrorMessage(response, errorMessageFieldName);
         if (ErrorCategory.fromErrorCode(errorCode) == ErrorCategory.EXECUTION_TIMEOUT) {
@@ -249,6 +249,8 @@ public final class ProtocolHelper {
             return null;
         }
     }
+
+
 
     private static boolean hasWriteError(final BsonDocument response) {
         String err = WriteConcernException.extractErrorMessage(response);

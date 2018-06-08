@@ -18,11 +18,11 @@ package com.mongodb.internal.connection;
 
 import com.mongodb.MongoException;
 
-class ServerInvalidatingResponseContainingException extends MongoException {
+public class MongoWriteConcernWithResponseException extends MongoException {
     private static final long serialVersionUID = 1707360842648550287L;
     private final Object response;
 
-    ServerInvalidatingResponseContainingException(final MongoException exception, final Object response) {
+    public MongoWriteConcernWithResponseException(final MongoException exception, final Object response) {
         super(exception.getMessage());
         this.response = response;
     }

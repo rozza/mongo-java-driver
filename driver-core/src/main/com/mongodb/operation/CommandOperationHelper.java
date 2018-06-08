@@ -36,9 +36,9 @@ import com.mongodb.connection.Connection;
 import com.mongodb.connection.ConnectionDescription;
 import com.mongodb.connection.ServerDescription;
 import com.mongodb.internal.operation.WriteConcernHelper;
+import com.mongodb.internal.validator.NoOpFieldNameValidator;
 import com.mongodb.lang.Nullable;
 import com.mongodb.session.SessionContext;
-import com.mongodb.internal.validator.NoOpFieldNameValidator;
 import org.bson.BsonDocument;
 import org.bson.FieldNameValidator;
 import org.bson.codecs.BsonDocumentCodec;
@@ -453,7 +453,7 @@ final class CommandOperationHelper {
                             commandResultDecoder, binding.getSessionContext()), connection.getDescription().getServerAddress());
                 } catch (MongoException e) {
                     exception = e;
-                    if (shouldNotAttemptToRetry(command, exception, binding.getSessionContext())) {
+                    if (!shouldAttemptToRetry(command, exception, binding.getSessionContext())) {
                         throw exception;
                     }
                 } finally {
@@ -529,33 +529,45 @@ final class CommandOperationHelper {
         return new SingleResultCallback<T>() {
             @Override
             public void onResult(final T result, final Throwable originalError) {
+                SingleResultCallback<R> releasingCallback = releasingCallback(callback, oldSource, oldConnection);
                 if (originalError != null) {
+                    checkRetryableException(originalError, releasingCallback);
+                } else {
+                    try {
+                        releasingCallback.onResult(transformer.apply(result, oldConnection.getDescription().getServerAddress()), null);
+                    } catch (Throwable transformError) {
+                        checkRetryableException(transformError, releasingCallback);
+                    }
+                }
+            }
+
+            private void checkRetryableException(final Throwable originalError, final SingleResultCallback<R> releasingCallback) {
+                if (!shouldAttemptToRetry(command, originalError, binding.getSessionContext())) {
+                    releasingCallback.onResult(null, originalError);
+                } else {
                     oldConnection.release();
                     oldSource.release();
-                    if (shouldNotAttemptToRetry(command, originalError, binding.getSessionContext())) {
-                        callback.onResult(null, originalError);
-                    } else {
-                        withConnection(binding, new AsyncCallableWithConnectionAndSource() {
-                            @Override
-                            public void call(final AsyncConnectionSource source, final AsyncConnection connection, final Throwable t) {
-                                if (t != null) {
-                                    callback.onResult(null, originalError);
-                                } else if (!canRetryWrite(source.getServerDescription(), connection.getDescription())) {
-                                    releasingCallback(callback, source, connection).onResult(null, originalError);
-                                } else {
-                                    connection.commandAsync(database, command, fieldNameValidator, readPreference,
-                                            commandResultDecoder, binding.getSessionContext(),
-                                            new TransformingResultCallback<T, R>(transformer,
-                                                    connection.getDescription().getServerAddress(),
-                                                    releasingCallback(callback, source, connection)));
-                                }
-                            }
-                        });
-                    }
-                } else {
-                    new TransformingResultCallback<T, R>(transformer, oldConnection.getDescription().getServerAddress(),
-                            releasingCallback(callback, oldSource, oldConnection)).onResult(result, null);
+                    retryableCommand(originalError);
                 }
+            }
+
+            private void retryableCommand(final Throwable originalError) {
+                withConnection(binding, new AsyncCallableWithConnectionAndSource() {
+                    @Override
+                    public void call(final AsyncConnectionSource source, final AsyncConnection connection, final Throwable t) {
+                        if (t != null) {
+                            callback.onResult(null, originalError);
+                        } else if (!canRetryWrite(source.getServerDescription(), connection.getDescription())) {
+                            releasingCallback(callback, source, connection).onResult(null, originalError);
+                        } else {
+                            connection.commandAsync(database, command, fieldNameValidator, readPreference,
+                                    commandResultDecoder, binding.getSessionContext(),
+                                    new TransformingResultCallback<T, R>(transformer,
+                                            connection.getDescription().getServerAddress(),
+                                            releasingCallback(callback, source, connection)));
+                        }
+                    }
+                });
             }
         };
     }
@@ -588,19 +600,20 @@ final class CommandOperationHelper {
         }
     }
 
-    private static final List<Integer> RETRYABLE_ERROR_CODES = asList(6, 7, 89, 64, 91, 189, 9001, 13436, 13435, 11602, 11600, 10107);
-    static boolean isRetryableException(final Throwable t) {
+    private static final List<Integer> RETRYABLE_ERROR_CODES = asList(6, 7, 89, 91, 189, 9001, 13436, 13435, 11602, 11600, 10107);
+    private static boolean isRetryableException(final Throwable t) {
         if (!(t instanceof MongoException)) {
             return false;
         }
         if (t instanceof MongoSocketException || t instanceof MongoNotPrimaryException || t instanceof MongoNodeIsRecoveringException) {
             return true;
         }
+        String errorMessage = t.getMessage();
         if (t instanceof MongoWriteConcernException) {
-            String errorMessage = ((MongoWriteConcernException) t).getWriteConcernError().getMessage();
-            if (errorMessage.contains("not master") || errorMessage.contains("node is recovering")) {
-                return true;
-            }
+            errorMessage = ((MongoWriteConcernException) t).getWriteConcernError().getMessage();
+        }
+        if (errorMessage.contains("not master") || errorMessage.contains("node is recovering")) {
+            return true;
         }
         return RETRYABLE_ERROR_CODES.contains(((MongoException) t).getCode());
     }
@@ -683,15 +696,14 @@ final class CommandOperationHelper {
         }
     }
 
-    private static boolean shouldNotAttemptToRetry(@Nullable final BsonDocument command, final Throwable exception,
-                                                   final SessionContext sessionContext) {
-        return shouldNotAttemptToRetry(command != null && command.containsKey("txnNumber"), exception, sessionContext);
+    private static boolean shouldAttemptToRetry(@Nullable final BsonDocument command, final Throwable exception,
+                                                final SessionContext sessionContext) {
+        return shouldAttemptToRetry(command != null && command.containsKey("txnNumber"), exception, sessionContext);
     }
 
-
-    static boolean shouldNotAttemptToRetry(final boolean retryWritesEnabled, final Throwable exception,
-                                           final SessionContext sessionContext) {
-        return !retryWritesEnabled || !isRetryableException(exception) || sessionContext.hasActiveTransaction();
+    static boolean shouldAttemptToRetry(final boolean retryWritesEnabled, final Throwable exception,
+                                        final SessionContext sessionContext) {
+        return retryWritesEnabled && isRetryableException(exception) && !sessionContext.hasActiveTransaction();
     }
 
     private CommandOperationHelper() {

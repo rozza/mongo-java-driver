@@ -198,7 +198,7 @@ class DefaultServer implements ClusterableServer {
             try {
                 protocol.sessionContext(new ClusterClockAdvancingSessionContext(sessionContext, clusterClock));
                 return protocol.execute(connection);
-            } catch (ServerInvalidatingResponseContainingException e) {
+            } catch (MongoWriteConcernWithResponseException e) {
                 invalidate();
                 return (T) e.getResponse();
             } catch (MongoException e) {
@@ -216,9 +216,9 @@ class DefaultServer implements ClusterableServer {
                 @Override
                 public void onResult(final T result, final Throwable t) {
                     if (t != null) {
-                        if (t instanceof ServerInvalidatingResponseContainingException) {
+                        if (t instanceof MongoWriteConcernWithResponseException) {
                             invalidate();
-                            callback.onResult((T) ((ServerInvalidatingResponseContainingException) t).getResponse(), null);
+                            callback.onResult((T) ((MongoWriteConcernWithResponseException) t).getResponse(), null);
                         } else {
                             handleThrowable(t);
                             callback.onResult(null, t);

@@ -44,7 +44,6 @@ import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
 
 import static com.mongodb.ClusterFixture.getDefaultDatabaseName;
 import static com.mongodb.ClusterFixture.isDiscoverableReplicaSet;
@@ -52,7 +51,6 @@ import static com.mongodb.ClusterFixture.isSharded;
 import static com.mongodb.ClusterFixture.isStandalone;
 import static com.mongodb.ClusterFixture.serverVersionAtLeast;
 import static com.mongodb.async.client.Fixture.getMongoClientBuilderFromConnectionString;
-import static java.lang.String.format;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assume.assumeFalse;
 import static org.junit.Assume.assumeTrue;
@@ -140,7 +138,7 @@ public class RetryableWritesTest extends DatabaseTestCase {
         if (mongoClient != null) {
             mongoClient.close();
         }
-        if (definition.containsKey("failPoint")) {
+        if (collectionHelper != null && definition.containsKey("failPoint")) {
             collectionHelper.runAdminCommand(new BsonDocument("configureFailPoint",
                     definition.getDocument("failPoint").getString("configureFailPoint"))
                     .append("mode", new BsonString("off")));
