@@ -35,7 +35,6 @@ import com.mongodb.connection.AsyncConnection;
 import com.mongodb.connection.Connection;
 import com.mongodb.connection.ConnectionDescription;
 import com.mongodb.connection.ServerDescription;
-import com.mongodb.internal.connection.MongoWriteConcernWithResponseException;
 import com.mongodb.internal.operation.WriteConcernHelper;
 import com.mongodb.internal.validator.NoOpFieldNameValidator;
 import com.mongodb.lang.Nullable;
@@ -610,23 +609,17 @@ final class CommandOperationHelper {
             return false;
         }
 
-        MongoException exception = (MongoException) t;
-        if (exception instanceof MongoWriteConcernWithResponseException) {
-            exception = ((MongoWriteConcernWithResponseException) exception).getCause();
-        }
-
-        if (exception instanceof MongoSocketException || exception instanceof MongoNotPrimaryException
-                || exception instanceof MongoNodeIsRecoveringException) {
+        if (t instanceof MongoSocketException || t instanceof MongoNotPrimaryException || t instanceof MongoNodeIsRecoveringException) {
             return true;
         }
-        String errorMessage = exception.getMessage();
-        if (exception instanceof MongoWriteConcernException) {
-            errorMessage = ((MongoWriteConcernException) exception).getWriteConcernError().getMessage();
+        String errorMessage = t.getMessage();
+        if (t instanceof MongoWriteConcernException) {
+            errorMessage = ((MongoWriteConcernException) t).getWriteConcernError().getMessage();
         }
         if (errorMessage.contains("not master") || errorMessage.contains("node is recovering")) {
             return true;
         }
-        return RETRYABLE_ERROR_CODES.contains(exception.getCode());
+        return RETRYABLE_ERROR_CODES.contains(((MongoException) t).getCode());
     }
 
     /* Misc operation helpers */
