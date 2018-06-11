@@ -792,7 +792,7 @@ class MixedBulkWriteOperationSpecification extends OperationFunctionalSpecificat
         ex.writeConcernError.code == 91
 
         cleanup:
-        disableFailPoint(failPoint)
+        disableFailPoint('failCommand')
 
         where:
         async << [true, false]

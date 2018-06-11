@@ -185,7 +185,7 @@ class FindAndDeleteOperationSpecification extends OperationFunctionalSpecificati
         ex.writeResult.upsertedId == null
 
         cleanup:
-        disableFailPoint(failPoint)
+        disableFailPoint('failCommand')
 
         where:
         async << [true, false]

@@ -454,8 +454,8 @@ final class CommandOperationHelper {
                             commandResultDecoder, binding.getSessionContext()), connection.getDescription().getServerAddress());
                 } catch (MongoException e) {
                     exception = e;
-                    if (!shouldAttemptToRetry(command, exception, binding.getSessionContext())) {
-                        checkAndThrowException(exception);
+                    if (!shouldAttemptToRetry(command, e, binding.getSessionContext())) {
+                        throw exception;
                     }
                 } finally {
                     connection.release();
@@ -468,24 +468,18 @@ final class CommandOperationHelper {
                     public R call(final ConnectionSource source, final Connection connection) {
                         try {
                             if (!canRetryWrite(source.getServerDescription(), connection.getDescription())) {
-                                checkAndThrowException(originalException);
+                                throw originalException;
                             }
                             return transformer.apply(connection.command(database, originalCommand, fieldNameValidator,
                                     readPreference, commandResultDecoder, binding.getSessionContext()),
                                     connection.getDescription().getServerAddress());
+                        } catch (MongoException e) {
+                            throw originalException;
                         } finally {
                             connection.release();
                         }
                     }
                 });
-            }
-
-            private void checkAndThrowException(final MongoException exception) {
-                if (exception instanceof MongoWriteConcernWithResponseException
-                        && ((MongoWriteConcernWithResponseException) exception).getResponse() instanceof MongoException) {
-                    throw (MongoException) ((MongoWriteConcernWithResponseException) exception).getResponse();
-                }
-                throw exception;
             }
         });
     }
@@ -551,18 +545,12 @@ final class CommandOperationHelper {
             }
 
             private void checkRetryableException(final Throwable originalError, final SingleResultCallback<R> releasingCallback) {
-                Throwable exception = originalError;
-                if (exception instanceof MongoWriteConcernWithResponseException
-                        && ((MongoWriteConcernWithResponseException) exception).getResponse() instanceof MongoException) {
-                    exception = (MongoException) ((MongoWriteConcernWithResponseException) exception).getResponse();
-                }
-
                 if (!shouldAttemptToRetry(command, originalError, binding.getSessionContext())) {
-                    releasingCallback.onResult(null, exception);
+                    releasingCallback.onResult(null, originalError);
                 } else {
                     oldConnection.release();
                     oldSource.release();
-                    retryableCommand(exception);
+                    retryableCommand(originalError);
                 }
             }
 
@@ -579,7 +567,7 @@ final class CommandOperationHelper {
                                     commandResultDecoder, binding.getSessionContext(),
                                     new TransformingResultCallback<T, R>(transformer,
                                             connection.getDescription().getServerAddress(),
-                                            releasingCallback(callback, source, connection)));
+                                            originalError, releasingCallback(callback, source, connection)));
                         }
                     }
                 });
@@ -589,16 +577,17 @@ final class CommandOperationHelper {
 
     static class TransformingResultCallback<T, R> implements SingleResultCallback<T> {
         private final CommandTransformer<T, R> transformer;
+        private final ServerAddress serverAddress;
+        private final Throwable originalError;
         private final SingleResultCallback<R> callback;
 
         TransformingResultCallback(final CommandTransformer<T, R> transformer, final ServerAddress serverAddress,
-                                          final SingleResultCallback<R> callback) {
+                                   final Throwable originalError, final SingleResultCallback<R> callback) {
             this.transformer = transformer;
-            this.callback = callback;
             this.serverAddress = serverAddress;
+            this.originalError = originalError;
+            this.callback = callback;
         }
-
-        private final ServerAddress serverAddress;
 
         @Override
         public void onResult(final T result, final Throwable t) {
@@ -609,7 +598,7 @@ final class CommandOperationHelper {
                     R transformedResult = transformer.apply(result, serverAddress);
                     callback.onResult(transformedResult, null);
                 } catch (Throwable transformError) {
-                    callback.onResult(null, transformError);
+                    callback.onResult(null, originalError);
                 }
             }
         }

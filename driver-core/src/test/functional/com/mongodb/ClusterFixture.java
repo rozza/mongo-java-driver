@@ -47,7 +47,6 @@ import com.mongodb.connection.SocketStreamFactory;
 import com.mongodb.connection.SslSettings;
 import com.mongodb.connection.StreamFactory;
 import com.mongodb.connection.netty.NettyStreamFactory;
-import com.mongodb.lang.Nullable;
 import com.mongodb.operation.AsyncReadOperation;
 import com.mongodb.operation.AsyncWriteOperation;
 import com.mongodb.operation.BatchCursor;
@@ -411,7 +410,7 @@ public final class ClusterFixture {
     }
 
     public static void disableMaxTimeFailPoint() {
-        configureFailPoint(BsonDocument.parse("{configureFailPoint: 'maxTimeAlwaysTimeOut',}"));
+        disableFailPoint("maxTimeAlwaysTimeOut");
     }
 
     public static void enableOnPrimaryTransactionalWriteFailPoint(final BsonValue failPointData) {
@@ -428,7 +427,7 @@ public final class ClusterFixture {
     }
 
     public static void disableOnPrimaryTransactionalWriteFailPoint() {
-        disableFailPoint(BsonDocument.parse("{configureFailPoint: 'onPrimaryTransactionalWrite'}"));
+        disableFailPoint("onPrimaryTransactionalWrite");
     }
 
     public static void configureFailPoint(final BsonDocument failPointDocument) {
@@ -447,17 +446,14 @@ public final class ClusterFixture {
         }
     }
 
-    public static void disableFailPoint(@Nullable final BsonDocument failPointDocument) {
-        if (failPointDocument != null) {
-            assumeThat(isSharded(), is(false));
-            if (!isSharded()) {
-                failPointDocument.append("mode", new BsonString("off"));
-                try {
-                    new CommandWriteOperation<BsonDocument>("admin", failPointDocument, new BsonDocumentCodec())
-                            .execute(getBinding());
-                } catch (MongoCommandException e) {
-                    // ignore
-                }
+    public static void disableFailPoint(final String failPoint) {
+        if (!isSharded()) {
+            BsonDocument failPointDocument = new BsonDocument("configureFailPoint", new BsonString(failPoint))
+                    .append("mode", new BsonString("off"));
+            try {
+                new CommandWriteOperation<BsonDocument>("admin", failPointDocument, new BsonDocumentCodec()).execute(getBinding());
+            } catch (MongoCommandException e) {
+                // ignore
             }
         }
     }
