@@ -16,9 +16,12 @@
 
 package com.mongodb.operation;
 
+import com.mongodb.MongoException;
 import com.mongodb.MongoWriteConcernException;
 import com.mongodb.ServerAddress;
 import com.mongodb.WriteConcernResult;
+import com.mongodb.internal.connection.MongoWriteConcernWithResponseException;
+import com.mongodb.internal.connection.ProtocolHelper;
 import com.mongodb.operation.CommandOperationHelper.CommandTransformer;
 import org.bson.BsonBoolean;
 import org.bson.BsonDocument;
@@ -26,7 +29,6 @@ import org.bson.BsonInt32;
 
 import static com.mongodb.internal.operation.WriteConcernHelper.createWriteConcernError;
 import static com.mongodb.internal.operation.WriteConcernHelper.hasWriteConcernError;
-import static com.mongodb.internal.operation.WriteConcernHelper.throwOnSpecialException;
 
 final class FindAndModifyHelper {
 
@@ -36,11 +38,15 @@ final class FindAndModifyHelper {
             @Override
             public T apply(final BsonDocument result, final ServerAddress serverAddress) {
                 if (hasWriteConcernError(result)) {
-                    throwOnSpecialException(result, serverAddress);
-                    throw new MongoWriteConcernException(createWriteConcernError(result.getDocument("writeConcernError")),
-                                                         createWriteConcernResult(result.getDocument("lastErrorObject",
-                                                                                                     new BsonDocument())),
-                                                         serverAddress);
+                    MongoWriteConcernException mongoWriteConcernException = new MongoWriteConcernException(
+                            createWriteConcernError(result.getDocument("writeConcernError")),
+                            createWriteConcernResult(result.getDocument("lastErrorObject", new BsonDocument())), serverAddress);
+
+                    MongoException specialException = ProtocolHelper.createSpecialException(result, serverAddress, "errmsg");
+                    if (specialException != null) {
+                        throw new MongoWriteConcernWithResponseException(specialException, mongoWriteConcernException);
+                    }
+                    throw mongoWriteConcernException;
                 }
 
                 if (!result.isDocument("value")) {

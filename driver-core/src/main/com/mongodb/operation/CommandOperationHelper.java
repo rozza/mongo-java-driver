@@ -35,6 +35,7 @@ import com.mongodb.connection.AsyncConnection;
 import com.mongodb.connection.Connection;
 import com.mongodb.connection.ConnectionDescription;
 import com.mongodb.connection.ServerDescription;
+import com.mongodb.internal.connection.MongoWriteConcernWithResponseException;
 import com.mongodb.internal.operation.WriteConcernHelper;
 import com.mongodb.internal.validator.NoOpFieldNameValidator;
 import com.mongodb.lang.Nullable;
@@ -454,7 +455,7 @@ final class CommandOperationHelper {
                 } catch (MongoException e) {
                     exception = e;
                     if (!shouldAttemptToRetry(command, exception, binding.getSessionContext())) {
-                        throw exception;
+                        checkAndThrowException(exception);
                     }
                 } finally {
                     connection.release();
@@ -467,7 +468,7 @@ final class CommandOperationHelper {
                     public R call(final ConnectionSource source, final Connection connection) {
                         try {
                             if (!canRetryWrite(source.getServerDescription(), connection.getDescription())) {
-                                throw originalException;
+                                checkAndThrowException(originalException);
                             }
                             return transformer.apply(connection.command(database, originalCommand, fieldNameValidator,
                                     readPreference, commandResultDecoder, binding.getSessionContext()),
@@ -477,6 +478,14 @@ final class CommandOperationHelper {
                         }
                     }
                 });
+            }
+
+            private void checkAndThrowException(final MongoException exception) {
+                if (exception instanceof MongoWriteConcernWithResponseException
+                        && ((MongoWriteConcernWithResponseException) exception).getResponse() instanceof MongoException) {
+                    throw (MongoException) ((MongoWriteConcernWithResponseException) exception).getResponse();
+                }
+                throw exception;
             }
         });
     }
@@ -542,12 +551,18 @@ final class CommandOperationHelper {
             }
 
             private void checkRetryableException(final Throwable originalError, final SingleResultCallback<R> releasingCallback) {
+                Throwable exception = originalError;
+                if (exception instanceof MongoWriteConcernWithResponseException
+                        && ((MongoWriteConcernWithResponseException) exception).getResponse() instanceof MongoException) {
+                    exception = (MongoException) ((MongoWriteConcernWithResponseException) exception).getResponse();
+                }
+
                 if (!shouldAttemptToRetry(command, originalError, binding.getSessionContext())) {
-                    releasingCallback.onResult(null, originalError);
+                    releasingCallback.onResult(null, exception);
                 } else {
                     oldConnection.release();
                     oldSource.release();
-                    retryableCommand(originalError);
+                    retryableCommand(exception);
                 }
             }
 
@@ -605,17 +620,24 @@ final class CommandOperationHelper {
         if (!(t instanceof MongoException)) {
             return false;
         }
-        if (t instanceof MongoSocketException || t instanceof MongoNotPrimaryException || t instanceof MongoNodeIsRecoveringException) {
+
+        MongoException exception = (MongoException) t;
+        if (exception instanceof MongoWriteConcernWithResponseException) {
+            exception = ((MongoWriteConcernWithResponseException) exception).getCause();
+        }
+
+        if (exception instanceof MongoSocketException || exception instanceof MongoNotPrimaryException
+                || exception instanceof MongoNodeIsRecoveringException) {
             return true;
         }
-        String errorMessage = t.getMessage();
-        if (t instanceof MongoWriteConcernException) {
-            errorMessage = ((MongoWriteConcernException) t).getWriteConcernError().getMessage();
+        String errorMessage = exception.getMessage();
+        if (exception instanceof MongoWriteConcernException) {
+            errorMessage = ((MongoWriteConcernException) exception).getWriteConcernError().getMessage();
         }
         if (errorMessage.contains("not master") || errorMessage.contains("node is recovering")) {
             return true;
         }
-        return RETRYABLE_ERROR_CODES.contains(((MongoException) t).getCode());
+        return RETRYABLE_ERROR_CODES.contains(exception.getCode());
     }
 
     /* Misc operation helpers */
