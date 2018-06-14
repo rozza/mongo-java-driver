@@ -194,17 +194,11 @@ public class ChangeStreamsTest {
                 CommandEvent event = events.get(i);
                 if (expectedEvent instanceof CommandStartedEvent && event instanceof CommandStartedEvent) {
                     BsonDocument eventCommand = ((CommandStartedEvent) event).getCommand();
-                    eventCommand.remove("$clusterTime");
-                    eventCommand.remove("lsid");
 
-                    BsonDocument eventChangeStream = eventCommand.getArray("pipeline",
-                            new BsonArray(singletonList(new BsonDocument())))
-                            .get(0).asDocument().getDocument("$changeStream", new BsonDocument());
+                    BsonDocument eventChangeStream = eventCommand.getArray("pipeline").get(0).asDocument().getDocument("$changeStream");
 
-                    BsonDocument expectedChangeStream = ((CommandStartedEvent) expectedEvent).getCommand().getArray("pipeline",
-                            new BsonArray(singletonList(new BsonDocument())))
-                            .get(0)
-                            .asDocument().getDocument("$changeStream", new BsonDocument());
+                    BsonDocument expectedChangeStream = ((CommandStartedEvent) expectedEvent).getCommand().getArray("pipeline").get(0)
+                            .asDocument().getDocument("$changeStream");
 
                     if (expectedChangeStream.containsKey("startAtOperationTime") && eventChangeStream.containsKey("startAtOperationTime")) {
                         eventChangeStream.put("startAtOperationTime", expectedChangeStream.get("startAtOperationTime"));
