@@ -22,7 +22,6 @@ import com.mongodb.MongoClientException;
 import com.mongodb.MongoClientSettings;
 import com.mongodb.MongoCredential;
 import com.mongodb.MongoDriverInformation;
-import com.mongodb.MongoNamespace;
 import com.mongodb.ReadPreference;
 import com.mongodb.TransactionOptions;
 import com.mongodb.client.ChangeStreamIterable;
@@ -174,7 +173,7 @@ public final class MongoClientImpl implements MongoClient {
     private <TResult> ChangeStreamIterable<TResult> createChangeStreamIterable(@Nullable final ClientSession clientSession,
                                                                                final List<? extends Bson> pipeline,
                                                                                final Class<TResult> resultClass) {
-        return new ChangeStreamIterableImpl<TResult>(clientSession, new MongoNamespace("admin", "ignored"), settings.getCodecRegistry(),
+        return new ChangeStreamIterableImpl<TResult>(clientSession, "admin", settings.getCodecRegistry(),
                 settings.getReadPreference(), settings.getReadConcern(), delegate.getOperationExecutor(), pipeline, resultClass,
                 ChangeStreamLevel.CLIENT);
     }

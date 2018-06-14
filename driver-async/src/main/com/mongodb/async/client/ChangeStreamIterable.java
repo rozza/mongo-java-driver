@@ -97,7 +97,7 @@ public interface ChangeStreamIterable<TResult> extends MongoIterable<ChangeStrea
      * <p>The default value is an operation time obtained from the server before the change stream was created.</p>
      *
      * @param startAtOperationTime the start at operation time
-     * @since 4.0
+     * @since 3.8
      * @return this
      * @mongodb.server.release 4.0
      * @mongodb.driver.manual reference/method/db.runCommand/

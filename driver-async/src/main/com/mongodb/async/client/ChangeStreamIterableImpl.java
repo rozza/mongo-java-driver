@@ -55,6 +55,14 @@ final class ChangeStreamIterableImpl<TResult> extends MongoIterableImpl<ChangeSt
     private BsonTimestamp startAtOperationTime;
 
 
+    ChangeStreamIterableImpl(@Nullable final ClientSession clientSession, final String databaseName, final CodecRegistry codecRegistry,
+                             final ReadPreference readPreference, final ReadConcern readConcern, final OperationExecutor executor,
+                             final List<? extends Bson> pipeline, final Class<TResult> resultClass,
+                             final ChangeStreamLevel changeStreamLevel) {
+        this(clientSession, new MongoNamespace(databaseName, "ignored"), codecRegistry, readPreference, readConcern, executor, pipeline,
+                resultClass, changeStreamLevel);
+    }
+
     ChangeStreamIterableImpl(@Nullable final ClientSession clientSession, final MongoNamespace namespace, final CodecRegistry codecRegistry,
                              final ReadPreference readPreference, final ReadConcern readConcern, final OperationExecutor executor,
                              final List<? extends Bson> pipeline, final Class<TResult> resultClass,

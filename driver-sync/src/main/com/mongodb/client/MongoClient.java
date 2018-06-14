@@ -161,7 +161,7 @@ public interface MongoClient {
      * @param pipeline the aggregation pipeline to apply to the change stream.
      * @return the change stream iterable
      * @mongodb.driver.dochub core/changestreams Change Streams
-     * @since 4.0
+     * @since 3.8
      * @mongodb.server.release 4.0
      */
     ChangeStreamIterable<Document> watch(List<? extends Bson> pipeline);

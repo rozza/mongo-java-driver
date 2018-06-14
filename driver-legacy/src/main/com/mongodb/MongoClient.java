@@ -680,7 +680,7 @@ public class MongoClient extends Mongo implements Closeable {
                                                                                final List<? extends Bson> pipeline,
                                                                                final Class<TResult> resultClass) {
         MongoClientOptions clientOptions = getMongoClientOptions();
-        return new ChangeStreamIterableImpl<TResult>(clientSession, new MongoNamespace("admin", "ignored"),
+        return new ChangeStreamIterableImpl<TResult>(clientSession, "admin",
                 clientOptions.getCodecRegistry(), clientOptions.getReadPreference(), clientOptions.getReadConcern(),
                 createOperationExecutor(), pipeline, resultClass, ChangeStreamLevel.CLIENT);
     }
