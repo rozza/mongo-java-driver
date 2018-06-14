@@ -233,15 +233,10 @@ public class ChangeStreamsTest {
     }
 
     private void handleOperations() {
-        MongoClient localMongoClient = MongoClients.create(getMongoClientSettings());
-        try {
-            for (BsonValue operations : definition.getArray("operations")) {
-                BsonDocument op = operations.asDocument();
-                MongoNamespace opNamespace = new MongoNamespace(op.getString("database").getValue(), op.getString("collection").getValue());
-                createJsonPoweredCrudTestHelper(localMongoClient, opNamespace).getOperationResults(op);
-            }
-        } finally {
-            localMongoClient.close();
+        for (BsonValue operations : definition.getArray("operations")) {
+            BsonDocument op = operations.asDocument();
+            MongoNamespace opNamespace = new MongoNamespace(op.getString("database").getValue(), op.getString("collection").getValue());
+            createJsonPoweredCrudTestHelper(Fixture.getMongoClient(), opNamespace).getOperationResults(op);
         }
     }
 
