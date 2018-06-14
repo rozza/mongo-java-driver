@@ -29,7 +29,6 @@ import org.bson.BsonBoolean;
 import org.bson.BsonDocument;
 import org.bson.BsonInt32;
 import org.bson.BsonString;
-import org.bson.BsonTimestamp;
 import org.bson.BsonValue;
 import org.bson.types.ObjectId;
 
@@ -64,8 +63,7 @@ public final class DescriptionHelper {
                                                              final BsonDocument buildInfoResult) {
         return new ConnectionDescription(connectionId, getVersion(buildInfoResult), getServerType(isMasterResult),
                                          getMaxWriteBatchSize(isMasterResult), getMaxBsonObjectSize(isMasterResult),
-                                         getMaxMessageSizeBytes(isMasterResult), getCompressors(isMasterResult),
-                                         isMasterResult.getTimestamp("operationTime", new BsonTimestamp()));
+                                         getMaxMessageSizeBytes(isMasterResult), getCompressors(isMasterResult));
     }
 
     public static ServerDescription createServerDescription(final ServerAddress serverAddress, final BsonDocument isMasterResult,

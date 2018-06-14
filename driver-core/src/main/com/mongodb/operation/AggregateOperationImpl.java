@@ -37,6 +37,7 @@ import org.bson.BsonDocument;
 import org.bson.BsonInt32;
 import org.bson.BsonInt64;
 import org.bson.BsonString;
+import org.bson.BsonTimestamp;
 import org.bson.BsonValue;
 import org.bson.codecs.Decoder;
 
@@ -190,7 +191,7 @@ class AggregateOperationImpl<T> implements AsyncReadOperation<AsyncBatchCursor<T
             public BatchCursor<T> call(final ConnectionSource source, final Connection connection) {
                 validateReadConcernAndCollation(connection, binding.getSessionContext().getReadConcern(), collation);
                 return executeWrappedCommandProtocol(binding, namespace.getDatabaseName(),
-                        getCommand(connection.getDescription(), binding.getSessionContext(), aggregateTarget, pipelineCreator),
+                        getCommand(connection.getDescription(), binding.getSessionContext(), binding.getClusterTime()),
                         CommandResultDocumentCodec.create(decoder, FIELD_NAMES_WITH_RESULT),
                         connection, transformer(source, connection));
             }
@@ -217,7 +218,7 @@ class AggregateOperationImpl<T> implements AsyncReadOperation<AsyncBatchCursor<T
                                     } else {
                                         executeWrappedCommandProtocolAsync(binding, namespace.getDatabaseName(),
                                                 getCommand(connection.getDescription(), binding.getSessionContext(),
-                                                        aggregateTarget, pipelineCreator),
+                                                        binding.getClusterTime()),
                                                 CommandResultDocumentCodec.create(decoder, FIELD_NAMES_WITH_RESULT),
                                                 connection, asyncTransformer(source, connection), wrappedCallback);
                                     }
@@ -233,11 +234,11 @@ class AggregateOperationImpl<T> implements AsyncReadOperation<AsyncBatchCursor<T
     }
 
     private BsonDocument getCommand(final ConnectionDescription description, final SessionContext sessionContext,
-                                    final AggregateTarget aggregateTarget, final PipelineCreator pipelineCreator) {
+                                    final BsonTimestamp clusterTime) {
         BsonDocument commandDocument = new BsonDocument("aggregate", aggregateTarget.create());
 
         appendReadConcernToCommand(sessionContext, commandDocument);
-        commandDocument.put("pipeline", pipelineCreator.create(description, sessionContext));
+        commandDocument.put("pipeline", pipelineCreator.create(description, sessionContext, clusterTime));
         if (maxTimeMS > 0) {
             commandDocument.put("maxTimeMS", new BsonInt64(maxTimeMS));
         }
@@ -300,7 +301,7 @@ class AggregateOperationImpl<T> implements AsyncReadOperation<AsyncBatchCursor<T
     }
 
     interface PipelineCreator {
-        BsonArray create(ConnectionDescription connectionDescription, SessionContext sessionContext);
+        BsonArray create(ConnectionDescription connectionDescription, SessionContext sessionContext, BsonTimestamp clusterTime);
     }
 
     private static AggregateTarget defaultAggregateTarget(final String collectionName) {
@@ -315,7 +316,8 @@ class AggregateOperationImpl<T> implements AsyncReadOperation<AsyncBatchCursor<T
     private static PipelineCreator defaultPipelineCreator(final List<BsonDocument> pipeline) {
         return new PipelineCreator() {
             @Override
-            public BsonArray create(final ConnectionDescription connectionDescription, final SessionContext sessionContext) {
+            public BsonArray create(final ConnectionDescription connectionDescription, final SessionContext sessionContext,
+                                    final BsonTimestamp clusterTime) {
                 return new BsonArray(pipeline);
             }
         };

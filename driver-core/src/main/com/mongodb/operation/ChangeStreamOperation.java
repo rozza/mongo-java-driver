@@ -284,7 +284,8 @@ public class ChangeStreamOperation<T> implements AsyncReadOperation<AsyncBatchCu
     private AggregateOperationImpl.PipelineCreator getPipelineCreator() {
         return new AggregateOperationImpl.PipelineCreator() {
             @Override
-            public BsonArray create(final ConnectionDescription description, final SessionContext sessionContext) {
+            public BsonArray create(final ConnectionDescription description, final SessionContext sessionContext,
+                                    final BsonTimestamp clusterTime) {
                 List<BsonDocument> changeStreamPipeline = new ArrayList<BsonDocument>();
                 BsonDocument changeStream = new BsonDocument("fullDocument", new BsonString(fullDocument.getValue()));
 
@@ -298,12 +299,7 @@ public class ChangeStreamOperation<T> implements AsyncReadOperation<AsyncBatchCu
 
                 BsonTimestamp startAtTime = startAtOperationTime;
                 if (startAtTime == null && resumeToken == null && serverIsAtLeastVersionFourDotZero(description)) {
-                    if (sessionContext.getOperationTime() != null
-                            && sessionContext.getOperationTime().compareTo(description.getOperationTime()) > 0) {
-                        startAtTime = sessionContext.getOperationTime();
-                    } else {
-                        startAtTime = description.getOperationTime();
-                    }
+                    startAtTime = clusterTime;
                 }
 
                 if (startAtTime != null) {

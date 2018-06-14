@@ -18,7 +18,6 @@ package com.mongodb.connection;
 
 import com.mongodb.ServerAddress;
 import com.mongodb.annotations.Immutable;
-import org.bson.BsonTimestamp;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -41,7 +40,6 @@ public class ConnectionDescription {
     private final int maxDocumentSize;
     private final int maxMessageSize;
     private final List<String> compressors;
-    private final BsonTimestamp operationTime;
 
     private static final int DEFAULT_MAX_MESSAGE_SIZE = 0x2000000;   // 32MB
     private static final int DEFAULT_MAX_WRITE_BATCH_SIZE = 512;
@@ -69,6 +67,7 @@ public class ConnectionDescription {
     public ConnectionDescription(final ConnectionId connectionId, final ServerVersion serverVersion,
                                  final ServerType serverType, final int maxBatchCount, final int maxDocumentSize,
                                  final int maxMessageSize) {
+
         this(connectionId, serverVersion, serverType, maxBatchCount, maxDocumentSize, maxMessageSize, Collections.<String>emptyList());
     }
 
@@ -87,25 +86,6 @@ public class ConnectionDescription {
     public ConnectionDescription(final ConnectionId connectionId, final ServerVersion serverVersion,
                                  final ServerType serverType, final int maxBatchCount, final int maxDocumentSize,
                                  final int maxMessageSize, final List<String> compressors) {
-        this(connectionId, serverVersion, serverType, maxBatchCount, maxDocumentSize, maxMessageSize, compressors, new BsonTimestamp());
-    }
-
-    /**
-     * Construct an instance.
-     *
-     * @param connectionId    the connection id
-     * @param serverVersion   the server version
-     * @param serverType      the server type
-     * @param maxBatchCount   the max batch count
-     * @param maxDocumentSize the max document size in bytes
-     * @param maxMessageSize  the max message size in bytes
-     * @param compressors     the available compressors on the connection
-     * @param operationTime   the last operation time
-     * @since 3.8
-     */
-    public ConnectionDescription(final ConnectionId connectionId, final ServerVersion serverVersion,
-                                 final ServerType serverType, final int maxBatchCount, final int maxDocumentSize,
-                                 final int maxMessageSize, final List<String> compressors, final BsonTimestamp operationTime) {
         this.connectionId = connectionId;
         this.serverType = serverType;
         this.maxBatchCount = maxBatchCount;
@@ -113,8 +93,8 @@ public class ConnectionDescription {
         this.maxMessageSize = maxMessageSize;
         this.serverVersion = serverVersion;
         this.compressors = notNull("compressors", Collections.unmodifiableList(new ArrayList<String>(compressors)));
-        this.operationTime = operationTime;
     }
+
 
     /**
      * Creates a new connection description with the set connection id
@@ -126,33 +106,7 @@ public class ConnectionDescription {
     public ConnectionDescription withConnectionId(final ConnectionId connectionId) {
         notNull("connectionId", connectionId);
         return new ConnectionDescription(connectionId, serverVersion, serverType, maxBatchCount, maxDocumentSize, maxMessageSize,
-                compressors, operationTime);
-    }
-
-    /**
-     * Creates a new connection description with the new operation time if its greater than the current operation time
-     *
-     * @param operationTime the operation time
-     * @return the new connection description
-     * @since 3.8
-     */
-    public ConnectionDescription withOperationTime(final BsonTimestamp operationTime) {
-        notNull("operationTime", operationTime);
-        if (operationTime.compareTo(this.operationTime) > 0) {
-            return new ConnectionDescription(connectionId, serverVersion, serverType, maxBatchCount, maxDocumentSize, maxMessageSize,
-                    compressors, operationTime);
-        }
-        return this;
-    }
-
-    /**
-     * Gets the last seen operation Time
-     *
-     * @return the last seen operation Time
-     * @since 3.8
-     */
-    public BsonTimestamp getOperationTime() {
-        return operationTime;
+                                                compressors);
     }
 
     /**
