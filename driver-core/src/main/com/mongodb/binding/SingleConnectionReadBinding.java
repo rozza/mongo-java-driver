@@ -67,7 +67,7 @@ public class SingleConnectionReadBinding extends AbstractReferenceCounted implem
 
     @Override
     public BsonTimestamp getClusterTime() {
-        return null;
+        throw new UnsupportedOperationException();
     }
 
     @Override

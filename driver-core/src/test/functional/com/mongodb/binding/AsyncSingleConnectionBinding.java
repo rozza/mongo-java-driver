@@ -158,7 +158,7 @@ public class AsyncSingleConnectionBinding extends AbstractReferenceCounted imple
 
     @Override
     public BsonTimestamp getClusterTime() {
-        return null;
+        throw new UnsupportedOperationException();
     }
 
     @Override

@@ -28,7 +28,7 @@ public class ClusterClock {
     }
 
     public synchronized BsonTimestamp getClusterTime() {
-        return clusterTime.getTimestamp(CLUSTER_TIME_KEY);
+        return clusterTime != null ? clusterTime.getTimestamp(CLUSTER_TIME_KEY) : null;
     }
 
     public synchronized void advance(final BsonDocument other) {

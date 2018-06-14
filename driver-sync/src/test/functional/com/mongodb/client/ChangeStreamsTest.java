@@ -53,7 +53,6 @@ import static com.mongodb.ClusterFixture.isDiscoverableReplicaSet;
 import static com.mongodb.ClusterFixture.isSharded;
 import static com.mongodb.ClusterFixture.isStandalone;
 import static com.mongodb.client.CommandMonitoringTestHelper.getExpectedEvents;
-import static com.mongodb.client.Fixture.getMongoClientSettings;
 import static com.mongodb.client.Fixture.getMongoClientSettingsBuilder;
 import static java.lang.String.format;
 import static java.util.Collections.singletonList;

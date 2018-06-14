@@ -112,7 +112,7 @@ public class SingleConnectionBinding implements ReadWriteBinding {
 
     @Override
     public BsonTimestamp getClusterTime() {
-        return null;
+        throw new UnsupportedOperationException();
     }
 
     @Override
