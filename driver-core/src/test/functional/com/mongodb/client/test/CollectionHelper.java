@@ -28,6 +28,7 @@ import com.mongodb.bulk.IndexRequest;
 import com.mongodb.bulk.InsertRequest;
 import com.mongodb.bulk.UpdateRequest;
 import com.mongodb.bulk.WriteRequest;
+import com.mongodb.client.model.CountStrategy;
 import com.mongodb.client.model.CreateCollectionOptions;
 import com.mongodb.client.model.IndexOptionDefaults;
 import com.mongodb.client.model.ValidationOptions;
@@ -320,7 +321,7 @@ public final class CollectionHelper<T> {
     }
 
     public long count(final ReadBinding binding) {
-        return new CountOperation(namespace).execute(binding);
+        return new CountOperation(namespace, CountStrategy.AGGREGATE).execute(binding);
     }
 
     public long count(final AsyncReadWriteBinding binding) throws Throwable {

@@ -33,6 +33,7 @@ import com.mongodb.client.model.CountOptions;
 import com.mongodb.client.model.DeleteManyModel;
 import com.mongodb.client.model.DeleteOneModel;
 import com.mongodb.client.model.DeleteOptions;
+import com.mongodb.client.model.DocumentCountOptions;
 import com.mongodb.client.model.FindOneAndDeleteOptions;
 import com.mongodb.client.model.FindOneAndReplaceOptions;
 import com.mongodb.client.model.FindOneAndUpdateOptions;
@@ -214,6 +215,7 @@ public class JsonPoweredCrudTestHelper {
         return toResult(iterable);
     }
 
+    @SuppressWarnings("deprecation")
     BsonDocument getCountResult(final BsonDocument collectionOptions, final BsonDocument arguments,
                                 @Nullable final ClientSession clientSession) {
         CountOptions options = new CountOptions();
@@ -226,12 +228,43 @@ public class JsonPoweredCrudTestHelper {
         if (arguments.containsKey("collation")) {
             options.collation(getCollation(arguments.getDocument("collation")));
         }
+
+        BsonDocument filter = arguments.getDocument("filter", new BsonDocument());
         int count;
         if (clientSession == null) {
-            count = (int) getCollection(collectionOptions).count(arguments.getDocument("filter", new BsonDocument()), options);
+            count = (int) getCollection(collectionOptions).count(filter, options);
         } else {
-            count = (int) getCollection(collectionOptions).count(clientSession, arguments.getDocument("filter", new BsonDocument()),
-                    options);
+            count = (int) getCollection(collectionOptions).count(clientSession, filter, options);
+        }
+        return toResult(count);
+    }
+
+    BsonDocument getEstimatedDocumentCountResult(final BsonDocument collectionOptions, final BsonDocument arguments,
+                                                 @Nullable final ClientSession clientSession) {
+        if (!arguments.isEmpty()) {
+            throw new UnsupportedOperationException("Unexpected arguments: " + arguments);
+        }
+        return toResult((int) getCollection(collectionOptions).estimatedDocumentCount());
+    }
+
+    BsonDocument getCountDocumentsResult(final BsonDocument collectionOptions, final BsonDocument arguments,
+                                         @Nullable final ClientSession clientSession) {
+        DocumentCountOptions options = new DocumentCountOptions();
+        if (arguments.containsKey("skip")) {
+            options.skip(arguments.getNumber("skip").intValue());
+        }
+        if (arguments.containsKey("limit")) {
+            options.limit(arguments.getNumber("limit").intValue());
+        }
+        if (arguments.containsKey("collation")) {
+            options.collation(getCollation(arguments.getDocument("collation")));
+        }
+        BsonDocument filter = arguments.getDocument("filter", new BsonDocument());
+        int count;
+        if (clientSession == null) {
+            count = (int) getCollection(collectionOptions).countDocuments(filter, options);
+        } else {
+            count = (int) getCollection(collectionOptions).countDocuments(clientSession, filter, options);
         }
         return toResult(count);
     }

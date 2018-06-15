@@ -261,6 +261,7 @@ class AggregateOperationImpl<T> implements AsyncReadOperation<AsyncBatchCursor<T
         if (hint != null) {
             commandDocument.put("hint", hint);
         }
+
         return commandDocument;
     }
 
