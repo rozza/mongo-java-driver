@@ -17,6 +17,7 @@
 package com.mongodb.operation;
 
 import com.mongodb.ExplainVerbosity;
+import com.mongodb.MongoException;
 import com.mongodb.MongoNamespace;
 import com.mongodb.ServerAddress;
 import com.mongodb.async.AsyncBatchCursor;
@@ -24,6 +25,7 @@ import com.mongodb.async.SingleResultCallback;
 import com.mongodb.binding.AsyncReadBinding;
 import com.mongodb.binding.ReadBinding;
 import com.mongodb.client.model.Collation;
+import com.mongodb.internal.client.model.CountStrategy;
 import com.mongodb.connection.AsyncConnection;
 import com.mongodb.connection.Connection;
 import com.mongodb.internal.client.model.CountStrategy;
