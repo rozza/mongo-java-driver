@@ -36,12 +36,10 @@ import com.mongodb.client.ImmutableDocumentCodecProvider
 import com.mongodb.client.model.BulkWriteOptions
 import com.mongodb.client.model.Collation
 import com.mongodb.client.model.CountOptions
-import com.mongodb.client.model.CountStrategy
 import com.mongodb.client.model.CreateIndexOptions
 import com.mongodb.client.model.DeleteManyModel
 import com.mongodb.client.model.DeleteOneModel
 import com.mongodb.client.model.DeleteOptions
-import com.mongodb.client.model.DocumentCountOptions
 import com.mongodb.client.model.DropIndexOptions
 import com.mongodb.client.model.EstimatedDocumentCountOptions
 import com.mongodb.client.model.FindOneAndDeleteOptions
@@ -62,6 +60,7 @@ import com.mongodb.client.model.changestream.ChangeStreamLevel
 import com.mongodb.client.result.DeleteResult
 import com.mongodb.client.result.UpdateResult
 import com.mongodb.client.test.Worker
+import com.mongodb.internal.client.model.CountStrategy
 import com.mongodb.operation.BatchCursor
 import com.mongodb.operation.CountOperation
 import com.mongodb.operation.CreateIndexesOperation
@@ -270,7 +269,7 @@ class MongoCollectionSpecification extends Specification {
 
         when:
         def hint = new BsonDocument('hint', new BsonInt32(1))
-        execute(countMethod, session, filter, new DocumentCountOptions().hint(hint).skip(10).limit(100)
+        execute(countMethod, session, filter, new CountOptions().hint(hint).skip(10).limit(100)
                 .maxTime(100, MILLISECONDS).collation(collation))
         operation = executor.getReadOperation() as CountOperation
 

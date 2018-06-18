@@ -34,7 +34,6 @@ import com.mongodb.client.model.CollationStrength;
 import com.mongodb.client.model.CountOptions;
 import com.mongodb.client.model.DeleteOneModel;
 import com.mongodb.client.model.DeleteOptions;
-import com.mongodb.client.model.DocumentCountOptions;
 import com.mongodb.client.model.FindOneAndDeleteOptions;
 import com.mongodb.client.model.FindOneAndReplaceOptions;
 import com.mongodb.client.model.FindOneAndUpdateOptions;
@@ -185,7 +184,7 @@ public class JsonPoweredCrudTestHelper {
     }
 
     BsonDocument getCountDocumentsResult(final BsonDocument arguments) {
-        DocumentCountOptions options = new DocumentCountOptions();
+        CountOptions options = new CountOptions();
         if (arguments.containsKey("skip")) {
             options.skip(arguments.getNumber("skip").intValue());
         }

@@ -76,7 +76,7 @@ class AggregateOperationImpl<T> implements AsyncReadOperation<AsyncBatchCursor<T
     private Integer batchSize;
     private Collation collation;
     private String comment;
-    private BsonDocument hint;
+    private BsonValue hint;
     private long maxAwaitTimeMS;
     private long maxTimeMS;
     private Boolean useCursor;
@@ -175,11 +175,12 @@ class AggregateOperationImpl<T> implements AsyncReadOperation<AsyncBatchCursor<T
         return this;
     }
 
-    BsonDocument getHint() {
+    BsonValue getHint() {
         return hint;
     }
 
-    AggregateOperationImpl<T> hint(final BsonDocument hint) {
+    AggregateOperationImpl<T> hint(final BsonValue hint) {
+        isTrueArgument("BsonString or BsonDocument", hint == null || hint.isDocument() || hint.isString());
         this.hint = hint;
         return this;
     }

@@ -31,10 +31,9 @@ import com.mongodb.bulk.BulkWriteResult;
 import com.mongodb.bulk.WriteRequest;
 import com.mongodb.client.model.BulkWriteOptions;
 import com.mongodb.client.model.CountOptions;
-import com.mongodb.client.model.CountStrategy;
+import com.mongodb.internal.client.model.CountStrategy;
 import com.mongodb.client.model.CreateIndexOptions;
 import com.mongodb.client.model.DeleteOptions;
-import com.mongodb.client.model.DocumentCountOptions;
 import com.mongodb.client.model.DropIndexOptions;
 import com.mongodb.client.model.EstimatedDocumentCountOptions;
 import com.mongodb.client.model.FindOneAndDeleteOptions;
@@ -70,7 +69,6 @@ import static com.mongodb.bulk.WriteRequest.Type.INSERT;
 import static com.mongodb.bulk.WriteRequest.Type.REPLACE;
 import static com.mongodb.bulk.WriteRequest.Type.UPDATE;
 import static com.mongodb.client.model.ReplaceOptions.createReplaceOptions;
-import static com.mongodb.internal.client.model.CountOptionsHelper.fromDocumentCountOptions;
 import static com.mongodb.internal.client.model.CountOptionsHelper.fromEstimatedDocumentCountOptions;
 import static java.util.Collections.singletonList;
 
@@ -206,12 +204,12 @@ class MongoCollectionImpl<TDocument> implements MongoCollection<TDocument> {
 
     @Override
     public void countDocuments(final Bson filter, final SingleResultCallback<Long> callback) {
-        countDocuments(filter, new DocumentCountOptions(), callback);
+        countDocuments(filter, new CountOptions(), callback);
     }
 
     @Override
-    public void countDocuments(final Bson filter, final DocumentCountOptions options, final SingleResultCallback<Long> callback) {
-        executeCount(null, filter, fromDocumentCountOptions(options), CountStrategy.AGGREGATE, callback);
+    public void countDocuments(final Bson filter, final CountOptions options, final SingleResultCallback<Long> callback) {
+        executeCount(null, filter, options, CountStrategy.AGGREGATE, callback);
     }
 
     @Override
@@ -221,14 +219,14 @@ class MongoCollectionImpl<TDocument> implements MongoCollection<TDocument> {
 
     @Override
     public void countDocuments(final ClientSession clientSession, final Bson filter, final SingleResultCallback<Long> callback) {
-        countDocuments(clientSession, filter, new DocumentCountOptions(), callback);
+        countDocuments(clientSession, filter, new CountOptions(), callback);
     }
 
     @Override
-    public void countDocuments(final ClientSession clientSession, final Bson filter, final DocumentCountOptions options,
+    public void countDocuments(final ClientSession clientSession, final Bson filter, final CountOptions options,
                                final SingleResultCallback<Long> callback) {
         notNull("clientSession", clientSession);
-        executeCount(clientSession, filter, fromDocumentCountOptions(options), CountStrategy.AGGREGATE, callback);
+        executeCount(clientSession, filter, options, CountStrategy.AGGREGATE, callback);
     }
 
     @Override

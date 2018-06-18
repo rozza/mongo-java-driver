@@ -17,7 +17,6 @@
 package com.mongodb.internal.client.model;
 
 import com.mongodb.client.model.CountOptions;
-import com.mongodb.client.model.DocumentCountOptions;
 import com.mongodb.client.model.EstimatedDocumentCountOptions;
 
 import java.util.concurrent.TimeUnit;
@@ -26,16 +25,6 @@ import java.util.concurrent.TimeUnit;
  * Not part of the public API
  */
 public final class CountOptionsHelper {
-
-    @SuppressWarnings("deprecation")
-    public static CountOptions fromDocumentCountOptions(final DocumentCountOptions options) {
-        return new CountOptions()
-                .collation(options.getCollation())
-                .hint(options.getHint())
-                .limit(options.getLimit())
-                .maxTime(options.getMaxTime(TimeUnit.MILLISECONDS), TimeUnit.MILLISECONDS)
-                .skip(options.getSkip());
-    }
 
     public static CountOptions fromEstimatedDocumentCountOptions(final EstimatedDocumentCountOptions options) {
         return new CountOptions().maxTime(options.getMaxTime(TimeUnit.MILLISECONDS), TimeUnit.MILLISECONDS);

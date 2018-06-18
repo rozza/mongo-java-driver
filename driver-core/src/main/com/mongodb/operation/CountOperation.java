@@ -25,7 +25,7 @@ import com.mongodb.async.SingleResultCallback;
 import com.mongodb.binding.AsyncReadBinding;
 import com.mongodb.binding.ReadBinding;
 import com.mongodb.client.model.Collation;
-import com.mongodb.client.model.CountStrategy;
+import com.mongodb.internal.client.model.CountStrategy;
 import com.mongodb.connection.AsyncConnection;
 import com.mongodb.connection.Connection;
 import com.mongodb.internal.connection.NoOpSessionContext;

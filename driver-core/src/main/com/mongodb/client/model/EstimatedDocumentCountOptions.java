@@ -21,7 +21,7 @@ import java.util.concurrent.TimeUnit;
 import static com.mongodb.assertions.Assertions.notNull;
 
 /**
- * The options for a count operation.
+ * The options an estimated count operation.
  *
  * @since 3.8
  * @mongodb.driver.manual reference/command/count/ Count

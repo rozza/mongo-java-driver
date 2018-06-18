@@ -29,7 +29,7 @@ import com.mongodb.binding.AsyncReadBinding
 import com.mongodb.binding.ConnectionSource
 import com.mongodb.binding.ReadBinding
 import com.mongodb.bulk.IndexRequest
-import com.mongodb.client.model.CountStrategy
+import com.mongodb.internal.client.model.CountStrategy
 import com.mongodb.connection.AsyncConnection
 import com.mongodb.connection.ClusterId
 import com.mongodb.connection.Connection

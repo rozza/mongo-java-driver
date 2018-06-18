@@ -38,10 +38,9 @@ import com.mongodb.client.MapReduceIterable;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.model.BulkWriteOptions;
 import com.mongodb.client.model.CountOptions;
-import com.mongodb.client.model.CountStrategy;
+import com.mongodb.internal.client.model.CountStrategy;
 import com.mongodb.client.model.CreateIndexOptions;
 import com.mongodb.client.model.DeleteOptions;
-import com.mongodb.client.model.DocumentCountOptions;
 import com.mongodb.client.model.DropIndexOptions;
 import com.mongodb.client.model.EstimatedDocumentCountOptions;
 import com.mongodb.client.model.FindOneAndDeleteOptions;
@@ -78,7 +77,6 @@ import static com.mongodb.bulk.WriteRequest.Type.INSERT;
 import static com.mongodb.bulk.WriteRequest.Type.REPLACE;
 import static com.mongodb.bulk.WriteRequest.Type.UPDATE;
 import static com.mongodb.client.model.ReplaceOptions.createReplaceOptions;
-import static com.mongodb.internal.client.model.CountOptionsHelper.fromDocumentCountOptions;
 import static com.mongodb.internal.client.model.CountOptionsHelper.fromEstimatedDocumentCountOptions;
 import static java.util.Collections.singletonList;
 
@@ -211,12 +209,12 @@ class MongoCollectionImpl<TDocument> implements MongoCollection<TDocument> {
 
     @Override
     public long countDocuments(final Bson filter) {
-        return countDocuments(filter, new DocumentCountOptions());
+        return countDocuments(filter, new CountOptions());
     }
 
     @Override
-    public long countDocuments(final Bson filter, final DocumentCountOptions options) {
-        return executeCount(null, filter, fromDocumentCountOptions(options), CountStrategy.AGGREGATE);
+    public long countDocuments(final Bson filter, final CountOptions options) {
+        return executeCount(null, filter, options, CountStrategy.AGGREGATE);
     }
 
     @Override
@@ -226,13 +224,13 @@ class MongoCollectionImpl<TDocument> implements MongoCollection<TDocument> {
 
     @Override
     public long countDocuments(final ClientSession clientSession, final Bson filter) {
-        return countDocuments(clientSession, filter, new DocumentCountOptions());
+        return countDocuments(clientSession, filter, new CountOptions());
     }
 
     @Override
-    public long countDocuments(final ClientSession clientSession, final Bson filter, final DocumentCountOptions options) {
+    public long countDocuments(final ClientSession clientSession, final Bson filter, final CountOptions options) {
         notNull("clientSession", clientSession);
-        return executeCount(clientSession, filter, fromDocumentCountOptions(options), CountStrategy.AGGREGATE);
+        return executeCount(clientSession, filter, options, CountStrategy.AGGREGATE);
     }
 
     @Override

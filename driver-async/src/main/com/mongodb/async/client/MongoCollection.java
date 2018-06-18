@@ -27,7 +27,6 @@ import com.mongodb.client.model.BulkWriteOptions;
 import com.mongodb.client.model.CountOptions;
 import com.mongodb.client.model.CreateIndexOptions;
 import com.mongodb.client.model.DeleteOptions;
-import com.mongodb.client.model.DocumentCountOptions;
 import com.mongodb.client.model.DropIndexOptions;
 import com.mongodb.client.model.EstimatedDocumentCountOptions;
 import com.mongodb.client.model.FindOneAndDeleteOptions;
@@ -179,7 +178,7 @@ public interface MongoCollection<TDocument> {
      * @param filter   the query filter
      * @param options  the options describing the count
      * @param callback the callback passed the number of documents in the collection
-     * @deprecated use {@link #countDocuments(Bson, DocumentCountOptions, SingleResultCallback)} instead
+     * @deprecated use {@link #countDocuments(Bson, CountOptions, SingleResultCallback)} instead
      */
     @Deprecated
     void count(Bson filter, CountOptions options, SingleResultCallback<Long> callback);
@@ -219,7 +218,7 @@ public interface MongoCollection<TDocument> {
      * @param callback the callback passed the number of documents in the collection
      * @since 3.6
      * @mongodb.server.release 3.6
-     * @deprecated use {@link #countDocuments(ClientSession, Bson, DocumentCountOptions, SingleResultCallback)} instead
+     * @deprecated use {@link #countDocuments(ClientSession, Bson, CountOptions, SingleResultCallback)} instead
      */
     @Deprecated
     void count(ClientSession clientSession, Bson filter, CountOptions options, SingleResultCallback<Long> callback);
@@ -249,7 +248,7 @@ public interface MongoCollection<TDocument> {
      * @param callback the callback passed the number of documents in the collection
      * @since 3.8
      */
-    void countDocuments(Bson filter, DocumentCountOptions options, SingleResultCallback<Long> callback);
+    void countDocuments(Bson filter, CountOptions options, SingleResultCallback<Long> callback);
 
     /**
      * Counts the number of documents in the collection.
@@ -282,7 +281,7 @@ public interface MongoCollection<TDocument> {
      * @since 3.8
      * @mongodb.server.release 3.6
      */
-    void countDocuments(ClientSession clientSession, Bson filter, DocumentCountOptions options, SingleResultCallback<Long> callback);
+    void countDocuments(ClientSession clientSession, Bson filter, CountOptions options, SingleResultCallback<Long> callback);
 
     /**
      * Gets an estimate of the count of documents in a collection using collection metadata.

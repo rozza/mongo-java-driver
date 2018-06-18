@@ -23,7 +23,6 @@ import com.mongodb.WriteConcern;
 import com.mongodb.annotations.ThreadSafe;
 import com.mongodb.bulk.BulkWriteResult;
 import com.mongodb.client.model.BulkWriteOptions;
-import com.mongodb.client.model.DocumentCountOptions;
 import com.mongodb.client.model.CountOptions;
 import com.mongodb.client.model.CreateIndexOptions;
 import com.mongodb.client.model.DeleteOptions;
@@ -177,7 +176,7 @@ public interface MongoCollection<TDocument> {
      * @param filter  the query filter
      * @param options the options describing the count
      * @return the number of documents in the collection
-     * @deprecated use {@link #countDocuments(Bson, DocumentCountOptions)} instead
+     * @deprecated use {@link #countDocuments(Bson, CountOptions)} instead
      */
     @Deprecated
     long count(Bson filter, CountOptions options);
@@ -216,7 +215,7 @@ public interface MongoCollection<TDocument> {
      * @return the number of documents in the collection
      * @since 3.6
      * @mongodb.server.release 3.6
-     * @deprecated use {@link #countDocuments(ClientSession, Bson, DocumentCountOptions)} instead
+     * @deprecated use {@link #countDocuments(ClientSession, Bson, CountOptions)} instead
      */
     @Deprecated
     long count(ClientSession clientSession, Bson filter, CountOptions options);
@@ -246,7 +245,7 @@ public interface MongoCollection<TDocument> {
      * @return the number of documents in the collection
      * @since 3.8
      */
-    long countDocuments(Bson filter, DocumentCountOptions options);
+    long countDocuments(Bson filter, CountOptions options);
 
     /**
      * Counts the number of documents in the collection.
@@ -279,7 +278,7 @@ public interface MongoCollection<TDocument> {
      * @since 3.8
      * @mongodb.server.release 3.6
      */
-    long countDocuments(ClientSession clientSession, Bson filter, DocumentCountOptions options);
+    long countDocuments(ClientSession clientSession, Bson filter, CountOptions options);
 
     /**
      * Gets an estimate of the count of documents in a collection using collection metadata.

@@ -14,12 +14,10 @@
  * limitations under the License.
  */
 
-package com.mongodb.client.model;
+package com.mongodb.internal.client.model;
 
 /**
- * The strategy to use for calculating the count value.
- *
- * @since 3.8
+ * Not part of the public API
  */
 public enum CountStrategy {
 
