@@ -356,12 +356,9 @@ public class CountOperation implements AsyncReadOperation<Long>, ReadOperation<L
     }
 
     private AggregateOperation<BsonDocument> getAggregateOperation() {
-        if (hint != null && !hint.isDocument()) {
-            throw new MongoException("Unsupported hint for aggregation: " + hint);
-        }
         return new AggregateOperation<BsonDocument>(namespace, getPipeline(), DECODER)
                 .collation(collation)
-                .hint(hint != null ? hint.asDocument() : null)
+                .hint(hint)
                 .maxTime(maxTimeMS, TimeUnit.MILLISECONDS);
     }
 

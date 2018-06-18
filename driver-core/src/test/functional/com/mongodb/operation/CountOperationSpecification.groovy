@@ -211,6 +211,14 @@ class CountOperationSpecification extends OperationFunctionalSpecification {
         [async, strategy] << [[true, false], [CountStrategy.AGGREGATE, CountStrategy.COMMAND]].combinations()
     }
 
+    def 'should support hints that are bson documents or strings'() {
+        expect:
+        execute(new CountOperation(getNamespace(), strategy).hint(hint), async) == 5
+
+        where:
+        [async, strategy, hint] << [[true, false], [CountStrategy.AGGREGATE, CountStrategy.COMMAND],
+                                    [new BsonString('_id_'), BsonDocument.parse('{_id: 1}')]].combinations()
+    }
 
     @IgnoreIf({ !serverVersionAtLeast(3, 0) || isSharded() })
     def 'should explain'() {
@@ -273,7 +281,6 @@ class CountOperationSpecification extends OperationFunctionalSpecification {
     def 'should create the expected aggregation command'() {
         when:
         def filter = new BsonDocument('filter', new BsonInt32(1))
-        def hint = new BsonDocument('hint', new BsonInt32(1))
         def operation = new CountOperation(helper.namespace, CountStrategy.AGGREGATE)
         def pipeline = [BsonDocument.parse('{ $match: {}}'), BsonDocument.parse('{$group: {_id: null, n: {$sum: 1}}}')]
         def expectedCommand = new BsonDocument('aggregate', new BsonString(helper.namespace.getCollectionName()))
@@ -304,7 +311,7 @@ class CountOperationSpecification extends OperationFunctionalSpecification {
         testOperation(operation, [3, 4, 0], expectedCommand, async, helper.cursorResult)
 
         where:
-        async << [true, false]
+        [async, hint] << [[true, false], [new BsonString('hint_1'), BsonDocument.parse('{hint: 1}')]].combinations()
     }
 
     def 'should throw an exception when using an unsupported ReadConcern'() {
