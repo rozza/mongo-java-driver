@@ -450,7 +450,7 @@ class ChangeStreamOperationSpecification extends OperationFunctionalSpecificatio
         waitForLastRelease(getCluster())
     }
 
-    def 'should set the startAtOperationTime on the cursor if not set'() {
+    def 'should set the startAtOperationTime on the sync cursor'() {
         given:
         def binding = Stub(ReadBinding) {
             getSessionContext() >> Stub(SessionContext) {
@@ -465,16 +465,23 @@ class ChangeStreamOperationSpecification extends OperationFunctionalSpecificatio
                 }
             }
         }
-        def operation = new ChangeStreamOperation<BsonDocument>(helper.getNamespace(), FullDocument.DEFAULT, [], CODEC)
 
-        when:
+        when: 'Resume token'
+        def operation = new ChangeStreamOperation<BsonDocument>(helper.getNamespace(), FullDocument.DEFAULT, [], CODEC)
+                .resumeAfter(new BsonDocument())
+        operation.execute(binding)
+
+        then:
+        operation.getStartAtOperationTime() == null
+
+        when: 'No token or time'
+        operation = new ChangeStreamOperation<BsonDocument>(helper.getNamespace(), FullDocument.DEFAULT, [], CODEC)
         operation.execute(binding)
 
         then:
         operation.getStartAtOperationTime() == new BsonTimestamp()
 
-
-        when:
+        when: 'Set time'
         def startAtTime = new BsonTimestamp(42)
         operation = operation.startAtOperationTime(startAtTime)
         operation.execute(binding)
@@ -483,7 +490,7 @@ class ChangeStreamOperationSpecification extends OperationFunctionalSpecificatio
         operation.getStartAtOperationTime() == startAtTime
     }
 
-    def 'should set the startAtOperationTime on the cursor if not set async'() {
+    def 'should set the startAtOperationTime on the async cursor'() {
         given:
         def binding = Stub(AsyncReadBinding) {
             getSessionContext() >> Stub(SessionContext) {
@@ -504,16 +511,24 @@ class ChangeStreamOperationSpecification extends OperationFunctionalSpecificatio
                 }, null)
             }
         }
-        def operation = new ChangeStreamOperation<BsonDocument>(helper.getNamespace(), FullDocument.DEFAULT, [], CODEC)
 
-        when:
+        when: 'Resume Token'
+        def operation = new ChangeStreamOperation<BsonDocument>(helper.getNamespace(), FullDocument.DEFAULT, [], CODEC)
+                .resumeAfter(new BsonDocument())
+
+        operation.executeAsync(binding, Stub(SingleResultCallback))
+
+        then:
+        operation.getStartAtOperationTime() == null
+
+        when: 'No token or time'
+        operation = new ChangeStreamOperation<BsonDocument>(helper.getNamespace(), FullDocument.DEFAULT, [], CODEC)
         operation.executeAsync(binding, Stub(SingleResultCallback))
 
         then:
         operation.getStartAtOperationTime() == new BsonTimestamp()
 
-
-        when:
+        when: 'set time'
         def startAtTime = new BsonTimestamp(42)
         operation = operation.startAtOperationTime(startAtTime)
         operation.executeAsync(binding, Stub(SingleResultCallback))
