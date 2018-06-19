@@ -126,7 +126,6 @@ class ChangeStreamOperationSpecification extends OperationFunctionalSpecificatio
 
         def pipeline = [BsonDocument.parse('{$match: {operationType: "insert"}}')]
         def operation = new ChangeStreamOperation<BsonDocument>(helper.getNamespace(), FullDocument.DEFAULT, pipeline, CODEC)
-        addStartAtTime(operation)
 
         when:
         def cursor = execute(operation, async)
@@ -167,7 +166,6 @@ class ChangeStreamOperationSpecification extends OperationFunctionalSpecificatio
         def pipeline = [BsonDocument.parse('{$match: {operationType: "insert"}}')]
         def operation = new ChangeStreamOperation<BsonDocument>(helper.getNamespace(), FullDocument.DEFAULT, pipeline,
                 ChangeStreamDocument.createCodec(BsonDocument, fromProviders(new BsonValueCodecProvider(), new ValueCodecProvider())))
-        addStartAtTime(operation)
 
         when:
         def cursor = execute(operation, false)
@@ -194,7 +192,6 @@ class ChangeStreamOperationSpecification extends OperationFunctionalSpecificatio
         def pipeline = [BsonDocument.parse('{$match: {operationType: "update"}}')]
         def operation = new ChangeStreamOperation<BsonDocument>(helper.getNamespace(), FullDocument.UPDATE_LOOKUP, pipeline,
                 ChangeStreamDocument.createCodec(BsonDocument, fromProviders(new BsonValueCodecProvider(), new ValueCodecProvider())))
-        addStartAtTime(operation)
         helper.insertDocuments(BsonDocument.parse('{ _id : 2, x : 2, y : 3 }'))
 
         when:
@@ -222,7 +219,6 @@ class ChangeStreamOperationSpecification extends OperationFunctionalSpecificatio
         def pipeline = [BsonDocument.parse('{$match: {operationType: "replace"}}')]
         def operation = new ChangeStreamOperation<BsonDocument>(helper.getNamespace(), FullDocument.UPDATE_LOOKUP, pipeline,
                 ChangeStreamDocument.createCodec(BsonDocument, fromProviders(new BsonValueCodecProvider(), new ValueCodecProvider())))
-        addStartAtTime(operation)
         helper.insertDocuments(BsonDocument.parse('{ _id : 2, x : 2, y : 3 }'))
 
         when:
@@ -250,7 +246,6 @@ class ChangeStreamOperationSpecification extends OperationFunctionalSpecificatio
         def pipeline = [BsonDocument.parse('{$match: {operationType: "delete"}}')]
         def operation = new ChangeStreamOperation<BsonDocument>(helper.getNamespace(), FullDocument.UPDATE_LOOKUP, pipeline,
                 ChangeStreamDocument.createCodec(BsonDocument, fromProviders(new BsonValueCodecProvider(), new ValueCodecProvider())))
-        addStartAtTime(operation)
         helper.insertDocuments(BsonDocument.parse('{ _id : 2, x : 2, y : 3 }'))
 
         when:
@@ -278,7 +273,6 @@ class ChangeStreamOperationSpecification extends OperationFunctionalSpecificatio
         def pipeline = [BsonDocument.parse('{$match: {operationType: "invalidate"}}')]
         def operation = new ChangeStreamOperation<BsonDocument>(helper.getNamespace(), FullDocument.UPDATE_LOOKUP, pipeline,
                 ChangeStreamDocument.createCodec(BsonDocument, fromProviders(new BsonValueCodecProvider(), new ValueCodecProvider())))
-        addStartAtTime(operation)
         helper.insertDocuments(BsonDocument.parse('{ _id : 2, x : 2, y : 3 }'))
 
         when:
@@ -304,7 +298,6 @@ class ChangeStreamOperationSpecification extends OperationFunctionalSpecificatio
         def helper = getHelper()
         def pipeline = [BsonDocument.parse('{$project: {"_id": 0}}')]
         def operation = new ChangeStreamOperation<BsonDocument>(helper.getNamespace(), FullDocument.DEFAULT, pipeline, CODEC)
-        addStartAtTime(operation)
 
         when:
         def cursor = execute(operation, async)
@@ -328,7 +321,6 @@ class ChangeStreamOperationSpecification extends OperationFunctionalSpecificatio
 
         def pipeline = [BsonDocument.parse('{$match: {operationType: "insert"}}')]
         def operation = new ChangeStreamOperation<BsonDocument>(helper.getNamespace(), FullDocument.DEFAULT, pipeline, CODEC)
-        addStartAtTime(operation)
 
         when:
         def cursor = execute(operation, async)
@@ -365,7 +357,6 @@ class ChangeStreamOperationSpecification extends OperationFunctionalSpecificatio
 
         def pipeline = [BsonDocument.parse('{$match: {operationType: "insert"}}')]
         def operation = new ChangeStreamOperation<BsonDocument>(helper.getNamespace(), FullDocument.DEFAULT, pipeline, CODEC)
-        addStartAtTime(operation)
 
         when:
         def cursor = execute(operation, async)
@@ -405,7 +396,6 @@ class ChangeStreamOperationSpecification extends OperationFunctionalSpecificatio
 
         def pipeline = [BsonDocument.parse('{$match: {operationType: "insert"}}')]
         def operation = new ChangeStreamOperation<BsonDocument>(helper.getNamespace(), FullDocument.DEFAULT, pipeline, CODEC)
-        addStartAtTime(operation)
 
         def cursor = execute(operation, async)
 
@@ -439,7 +429,6 @@ class ChangeStreamOperationSpecification extends OperationFunctionalSpecificatio
         given:
         def helper = getHelper()
         def operation = new ChangeStreamOperation<BsonDocument>(helper.getNamespace(), FullDocument.DEFAULT, [], CODEC)
-        addStartAtTime(operation)
 
         when:
         def cursor = execute(operation, false)
@@ -470,12 +459,6 @@ class ChangeStreamOperationSpecification extends OperationFunctionalSpecificatio
                 "ns": {"db": "${helper.getNamespace().getDatabaseName()}", "coll": "${helper.getNamespace().getCollectionName()}"},
                 "documentKey": {"_id": $it}
             }""")
-        }
-    }
-
-    def addStartAtTime(operation) {
-        if (serverVersionAtLeast(4, 0)) {
-            operation.startAtOperationTime(helper.isMaster().get('operationTime'))
         }
     }
 
