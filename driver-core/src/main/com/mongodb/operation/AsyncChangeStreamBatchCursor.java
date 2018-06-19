@@ -40,7 +40,10 @@ final class AsyncChangeStreamBatchCursor<T> implements AsyncBatchCursor<T> {
     AsyncChangeStreamBatchCursor(final ChangeStreamOperation<T> changeStreamOperation,
                                  final AsyncBatchCursor<RawBsonDocument> wrapped,
                                  final AsyncReadBinding binding) {
-        this.changeStreamOperation = changeStreamOperation.startAtOperationTime(binding.getSessionContext().getOperationTime());
+        if (changeStreamOperation.getStartAtOperationTime() == null) {
+            changeStreamOperation.startAtOperationTime(binding.getSessionContext().getOperationTime());
+        }
+        this.changeStreamOperation = changeStreamOperation;
         this.resumeToken = changeStreamOperation.getResumeToken();
         this.wrapped = wrapped;
         this.binding = binding;

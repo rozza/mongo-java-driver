@@ -20,6 +20,11 @@ import com.mongodb.MongoChangeStreamException
 import com.mongodb.OperationFunctionalSpecification
 import com.mongodb.ReadConcern
 import com.mongodb.WriteConcern
+import com.mongodb.async.SingleResultCallback
+import com.mongodb.binding.AsyncConnectionSource
+import com.mongodb.binding.AsyncReadBinding
+import com.mongodb.binding.ConnectionSource
+import com.mongodb.binding.ReadBinding
 import com.mongodb.client.model.CreateCollectionOptions
 import com.mongodb.client.model.changestream.ChangeStreamDocument
 import com.mongodb.client.model.changestream.ChangeStreamLevel
@@ -27,6 +32,9 @@ import com.mongodb.client.model.changestream.FullDocument
 import com.mongodb.client.model.changestream.OperationType
 import com.mongodb.client.model.changestream.UpdateDescription
 import com.mongodb.client.test.CollectionHelper
+import com.mongodb.connection.AsyncConnection
+import com.mongodb.connection.Connection
+import com.mongodb.session.SessionContext
 import org.bson.BsonArray
 import org.bson.BsonBoolean
 import org.bson.BsonDocument
@@ -440,6 +448,78 @@ class ChangeStreamOperationSpecification extends OperationFunctionalSpecificatio
         cleanup:
         cursor?.close()
         waitForLastRelease(getCluster())
+    }
+
+    def 'should set the startAtOperationTime on the cursor if not set'() {
+        given:
+        def binding = Stub(ReadBinding) {
+            getSessionContext() >> Stub(SessionContext) {
+                getReadConcern() >> ReadConcern.DEFAULT
+                getOperationTime() >> new BsonTimestamp()
+            }
+            getReadConnectionSource() >> Stub(ConnectionSource) {
+                getConnection() >> Stub(Connection) {
+                    command(*_) >>  new BsonDocument('cursor', new BsonDocument('id', new BsonInt64(1))
+                            .append('ns', new BsonString(getNamespace().getFullName()))
+                            .append('firstBatch', new BsonArrayWrapper([])))
+                }
+            }
+        }
+        def operation = new ChangeStreamOperation<BsonDocument>(helper.getNamespace(), FullDocument.DEFAULT, [], CODEC)
+
+        when:
+        operation.execute(binding)
+
+        then:
+        operation.getStartAtOperationTime() == new BsonTimestamp()
+
+
+        when:
+        def startAtTime = new BsonTimestamp(42)
+        operation = operation.startAtOperationTime(startAtTime)
+        operation.execute(binding)
+
+        then:
+        operation.getStartAtOperationTime() == startAtTime
+    }
+
+    def 'should set the startAtOperationTime on the cursor if not set async'() {
+        given:
+        def binding = Stub(AsyncReadBinding) {
+            getSessionContext() >> Stub(SessionContext) {
+                getReadConcern() >> ReadConcern.DEFAULT
+                getOperationTime() >> new BsonTimestamp()
+            }
+            getReadConnectionSource(_) >> {
+                it.last().onResult(Stub(AsyncConnectionSource) {
+                    getConnection(_) >> {
+                        it.last().onResult(Stub(AsyncConnection) {
+                            commandAsync(*_) >> {
+                                it.last().onResult(new BsonDocument('cursor', new BsonDocument('id', new BsonInt64(1))
+                                        .append('ns', new BsonString(getNamespace().getFullName()))
+                                        .append('firstBatch', new BsonArrayWrapper([]))), null)
+                            }
+                        }, null)
+                    }
+                }, null)
+            }
+        }
+        def operation = new ChangeStreamOperation<BsonDocument>(helper.getNamespace(), FullDocument.DEFAULT, [], CODEC)
+
+        when:
+        operation.executeAsync(binding, Stub(SingleResultCallback))
+
+        then:
+        operation.getStartAtOperationTime() == new BsonTimestamp()
+
+
+        when:
+        def startAtTime = new BsonTimestamp(42)
+        operation = operation.startAtOperationTime(startAtTime)
+        operation.executeAsync(binding, Stub(SingleResultCallback))
+
+        then:
+        operation.getStartAtOperationTime() == startAtTime
     }
 
     private final static CODEC = new BsonDocumentCodec()
