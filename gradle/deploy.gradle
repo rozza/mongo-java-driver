@@ -70,7 +70,11 @@ configure(subprojects - [project(':util'), project(':driver-legacy')]) {
     task publishArchives(dependsOn: uploadArchives) {
         String gitVersion = getGitVersion()
         if (gitVersion != version) {
-            def cause = """
+           dependsOn = []
+        }
+        doFirst {
+            if (gitVersion != version) {
+                def cause = """
                 | Version mismatch:
                 | =================
                 |
@@ -78,9 +82,10 @@ configure(subprojects - [project(':util'), project(':driver-legacy')]) {
                 |
                 | The project version does not match the ClientMetaData version.
                 |""".stripMargin()
-                throw new StopExecutionException(cause);
+                throw new IllegalStateException(cause)
+            }
+            println("Publishing: ${project.name} : $gitVersion")
         }
-        println("Publishing: ${project.name} : $gitVersion")
     }
 
 }
