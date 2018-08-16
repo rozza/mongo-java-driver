@@ -80,7 +80,7 @@ configure(subprojects - [project(':util'), project(':driver-legacy')]) {
                 |
                 | $version != $gitVersion 
                 |
-                | The project version does not match the ClientMetaData version.
+                | The project version does not match the git tag.
                 |""".stripMargin()
                 throw new IllegalStateException(cause)
             }
