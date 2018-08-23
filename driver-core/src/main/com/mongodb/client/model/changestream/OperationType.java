@@ -16,8 +16,6 @@
 
 package com.mongodb.client.model.changestream;
 
-import static java.lang.String.format;
-
 /**
  * The {@code $changeStream} operation type.
  *
@@ -48,7 +46,21 @@ public enum OperationType {
     /**
      * The invalidate operation type
      */
-    INVALIDATE("invalidate");
+    INVALIDATE("invalidate"),
+
+    /**
+     * The drop operation type
+     *
+     * @since 3.8.2
+     */
+    DROP("drop"),
+
+    /**
+     * An unknown operation type.
+     *
+     * @since 3.8.2
+     */
+    UNKNOWN("unknown");
 
     private final String value;
     OperationType(final String operationTypeName) {
@@ -76,7 +88,7 @@ public enum OperationType {
                 }
             }
         }
-        throw new IllegalArgumentException(format("'%s' is not a valid OperationType", operationTypeName));
+        return UNKNOWN;
     }
 
     @Override
