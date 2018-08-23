@@ -56,11 +56,14 @@ public enum OperationType {
     DROP("drop"),
 
     /**
-     * An unknown operation type.
+     * The other operation type.
+     *
+     * <p>A placeholder for newer operation types issued by the server.
+     * Users encountering OTHER operation types are advised to update the driver to get the actual operation type.</p>
      *
      * @since 3.8.2
      */
-    UNKNOWN("unknown");
+    OTHER("other");
 
     private final String value;
     OperationType(final String operationTypeName) {
@@ -88,7 +91,7 @@ public enum OperationType {
                 }
             }
         }
-        return UNKNOWN;
+        return OTHER;
     }
 
     @Override

@@ -30,8 +30,8 @@ class OperationTypeSpecification extends Specification {
         OperationType.DROP       | 'drop'
         OperationType.INSERT     | 'insert'
         OperationType.INVALIDATE | 'invalidate'
+        OperationType.OTHER      | 'other'
         OperationType.REPLACE    | 'replace'
-        OperationType.UNKNOWN    | 'unknown'
         OperationType.UPDATE     | 'update'
     }
 
@@ -45,14 +45,14 @@ class OperationTypeSpecification extends Specification {
         OperationType.DROP       | 'drop'
         OperationType.INSERT     | 'insert'
         OperationType.INVALIDATE | 'invalidate'
+        OperationType.OTHER      | 'other'
         OperationType.REPLACE    | 'replace'
-        OperationType.UNKNOWN    | 'unknown'
         OperationType.UPDATE     | 'update'
     }
 
     def 'should return UNKNOWN for new / unknown values'() {
         expect:
-        OperationType.fromString(stringValue) == OperationType.UNKNOWN
+        OperationType.fromString(stringValue) == OperationType.OTHER
 
         where:
         stringValue << [null, 'info', 'reIndex']
