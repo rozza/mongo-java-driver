@@ -22,6 +22,7 @@ import org.bson.BsonDocument;
 import org.bson.BsonReader;
 import org.bson.BsonType;
 import org.bson.ByteBuf;
+import org.bson.ByteBufNIO;
 import org.bson.RawBsonDocument;
 import org.bson.codecs.BsonDocumentCodec;
 import org.bson.codecs.DecoderContext;
@@ -51,9 +52,11 @@ class ByteBufBsonDocument extends AbstractByteBufBsonDocument {
             documentsBuffer.position(documentsBuffer.position() - 4);
             ByteBuf documentBuffer = documentsBuffer.duplicate();
             documentBuffer.limit(documentBuffer.position() + documentSizeInBytes);
-            documents.add(new ByteBufBsonDocument(documentBuffer));
+            documents.add(new ByteBufBsonDocument(new ByteBufNIO(documentBuffer.asNIO())));
+            documentBuffer.release();
             documentsBuffer.position(documentsBuffer.position() + documentSizeInBytes);
         }
+        documentsBuffer.release();
         return documents;
     }
 
