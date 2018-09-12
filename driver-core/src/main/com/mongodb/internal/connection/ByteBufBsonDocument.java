@@ -56,7 +56,7 @@ class ByteBufBsonDocument extends AbstractByteBufBsonDocument {
             documentBuffer.release();
             documentsBuffer.position(documentsBuffer.position() + documentSizeInBytes);
         }
-        documentsBuffer.release();
+        //documentsBuffer.release();
         return documents;
     }
 
