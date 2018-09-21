@@ -16,6 +16,7 @@
 
 package com.mongodb.embedded.client
 
+import com.mongodb.embedded.capi.LogLevel
 import spock.lang.Specification
 
 import static com.mongodb.CustomMatchers.isTheSameAs
@@ -30,14 +31,14 @@ class MongoEmbeddedSettingsSpecification extends Specification {
 
         expect:
         settings.getLibraryPath() == null
-        settings.getLogLevel() == MongoEmbeddedSettings.LogLevel.LOGGER
+        settings.getLogLevel() == LogLevel.LOGGER
         settings.getYamlConfig() == null
     }
 
     def 'should set the correct settings'() {
         given:
         def libraryPath = '/mongo/lib/'
-        def logLevel = MongoEmbeddedSettings.LogLevel.NONE
+        def logLevel = LogLevel.NONE
         def yamlConfig = '{systemLog: {verbosity: 5} }'
 
         when:

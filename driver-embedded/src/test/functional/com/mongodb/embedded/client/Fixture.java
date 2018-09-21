@@ -21,6 +21,7 @@ import com.mongodb.ConnectionString;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.connection.ServerVersion;
+import com.mongodb.embedded.capi.LogLevel;
 import org.bson.BsonDocument;
 import org.bson.BsonValue;
 import org.bson.Document;
@@ -126,7 +127,7 @@ public final class Fixture {
         if (mongoEmbeddedSettings == null) {
             mongoEmbeddedSettings = MongoEmbeddedSettings.builder()
                     .libraryPath(System.getProperty(EMBEDDED_PATH_PROPERTY_NAME))
-                    .logLevel(MongoEmbeddedSettings.LogLevel.LOGGER)
+                    .logLevel(LogLevel.LOGGER)
                     .build();
         }
         return mongoEmbeddedSettings;
