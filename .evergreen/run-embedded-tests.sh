@@ -22,5 +22,3 @@ mkdir -p ${EMBEDDED_PATH}
 echo "Running tests with ${JDK}"
 ./gradlew -version
 ./gradlew -PjdkHome=/opt/java/${JDK} --stacktrace --info :driver-embedded:test -Dorg.mongodb.test.embedded.path=${EMBEDDED_PATH}
-
-rm -rf ${EMBEDDED_PATH}
