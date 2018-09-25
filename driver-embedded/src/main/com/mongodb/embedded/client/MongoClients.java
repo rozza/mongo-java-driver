@@ -42,8 +42,8 @@ public final class MongoClients {
         if (mongoEmbeddedLibrary != null) {
             throw new MongoClientEmbeddedException("The mongo embedded library has already been initialized");
         }
-        mongoEmbeddedLibrary = MongoEmbeddedCAPI.create(mongoEmbeddedSettings.getYamlConfig(), mongoEmbeddedSettings.getLogLevel(),
-                mongoEmbeddedSettings.getLibraryPath());
+        mongoEmbeddedLibrary = MongoEmbeddedCAPI.create(mongoEmbeddedSettings.getYamlConfig(),
+                mongoEmbeddedSettings.getLogLevel().toCapiLogLevel(), mongoEmbeddedSettings.getLibraryPath());
     }
 
     /**

@@ -19,7 +19,6 @@ package com.mongodb.embedded.client;
 
 import com.mongodb.annotations.Immutable;
 import com.mongodb.annotations.NotThreadSafe;
-import com.mongodb.embedded.capi.LogLevel;
 
 import static com.mongodb.assertions.Assertions.notNull;
 
@@ -32,7 +31,7 @@ import static com.mongodb.assertions.Assertions.notNull;
 public final class MongoEmbeddedSettings {
     private final String libraryPath;
     private final String yamlConfig;
-    private final LogLevel logLevel;
+    private final MongoEmbeddedLogLevel logLevel;
 
     /**
      * Convenience method to create a Builder.
@@ -61,7 +60,7 @@ public final class MongoEmbeddedSettings {
     public static final class Builder {
         private String libraryPath;
         private String yamlConfig;
-        private LogLevel logLevel = LogLevel.LOGGER;
+        private MongoEmbeddedLogLevel logLevel = MongoEmbeddedLogLevel.LOGGER;
 
         private Builder() {
         }
@@ -102,7 +101,7 @@ public final class MongoEmbeddedSettings {
          * @param logLevel the library path for mongod
          * @return this
          */
-        public Builder logLevel(final LogLevel logLevel) {
+        public Builder logLevel(final MongoEmbeddedLogLevel logLevel) {
             this.logLevel = logLevel;
             return this;
         }
@@ -141,7 +140,7 @@ public final class MongoEmbeddedSettings {
      *
      * @return the logging level
      */
-    public LogLevel getLogLevel() {
+    public MongoEmbeddedLogLevel getLogLevel() {
         return logLevel;
     }
 
