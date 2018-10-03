@@ -91,7 +91,7 @@ configure(javaMainProjects) { project ->
                 artifact sourcesJar
                 artifact javadocJar
 
-                configurePom(project)
+                pom configurePom(project)
             }
         }
 
