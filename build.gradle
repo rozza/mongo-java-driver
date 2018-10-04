@@ -90,8 +90,6 @@ configure(javaMainProjects) {
 
     /* Compiling */
     tasks.withType(AbstractCompile) {
-        onlyIf { JavaVersion.current().isJava7Compatible() }
-
         options.encoding = 'ISO-8859-1'
         options.fork = true
         options.debug = true
@@ -262,7 +260,7 @@ task wrapper(type: Wrapper) {
 
 if (!JavaVersion.current().isJava9Compatible()) {
     throw new GradleException("""
-        | WARNING: 
+        | ERROR:
         | JDK ${JavaVersion.VERSION_1_9} is required to build the driver: You are using JDK ${JavaVersion.current()}.
         |""".stripMargin()
     )

@@ -57,15 +57,6 @@ ext {
             }
         }
     }
-    configureSigning = { project ->
-        { ->
-            def isReleaseVersion = !project.version.endsWith('SNAPSHOT')
-            signing {
-                required { isReleaseVersion && gradle.taskGraph.hasTask('uploadArchives') }
-                sign project.configurations.archives
-            }
-        }
-    }
 }
 
 def javaMainProjects = subprojects.findAll { !['util', 'driver-benchmarks', 'driver-embedded-android'].contains(it.name) }
@@ -98,7 +89,11 @@ configure(javaMainProjects) { project ->
         repositories configureMavenRepositories(project)
     }
 
-    configureSigning(project)
+    afterEvaluate {
+        signing {
+            sign publishing.publications.mavenJava
+        }
+    }
 }
 
 /*

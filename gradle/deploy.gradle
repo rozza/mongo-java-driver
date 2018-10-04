@@ -19,7 +19,7 @@ configure(deployedProjects) {
     
     task publishSnapshots {
         group = 'publishing'
-        description = 'Publishes all snapshots.'
+        description = 'Publishes snapshots to Sonatype'
         if (version.endsWith('-SNAPSHOT')) {
             dependsOn tasks.withType(PublishToMavenRepository)
         }
@@ -27,7 +27,7 @@ configure(deployedProjects) {
 
     task publishArchives {
         group = 'publishing'
-        description = 'Publishes all the main archives.'
+        description = 'Publishes a release and uploads to Sonatype / Maven Central'
         doFirst { 
             if (project.gitVersion != version) {
                 def cause = """

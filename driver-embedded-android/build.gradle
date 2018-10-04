@@ -63,11 +63,6 @@ android {
             java.srcDir "$rootDir/driver-embedded/src/main"
         }
     }
-
-    packagingOptions {
-        exclude 'META-INF/INDEX.LIST'
-        exclude 'META-INF/io.netty.versions.properties'
-    }
 }
 
 task sourcesJar(type: Jar) {
@@ -80,14 +75,15 @@ task javadoc(type: Javadoc) {
     classpath += project.files(android.getBootClasspath().join(File.pathSeparator))
     classpath += configurations.compile
     destinationDir = new File(project.buildDir, 'docs')
-    rootProject.tasks.withType(Javadoc).each { javadocTask ->
-        source += javadocTask.source
-        classpath += javadocTask.classpath
-        excludes += javadocTask.excludes
-        includes += javadocTask.includes
-        dependsOn += javadocTask.dependsOn
+    [project(':bson'), project(':driver-core'), project(':driver-sync'), project(':driver-embedded')].each { project ->
+        project.tasks.withType(Javadoc).each { javadocTask ->
+            source += javadocTask.source
+            classpath += javadocTask.classpath
+            excludes += javadocTask.excludes
+            includes += javadocTask.includes
+            dependsOn += javadocTask.dependsOn
+        }
     }
-    exclude "**/com/mongodb/**/benchmark/**"
     exclude "**/com/mongodb/async/**"
     exclude "**/com/mongodb/**/netty/**"
     exclude "**/com/mongodb/**/jndi/**"
@@ -114,4 +110,6 @@ publishing {
     repositories configureMavenRepositories(project)
 }
 
-configureSigning(project)
+signing {
+    sign publishing.publications.mavenAar
+}
