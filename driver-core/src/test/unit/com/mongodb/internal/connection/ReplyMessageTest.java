@@ -30,7 +30,6 @@ import static com.mongodb.connection.ConnectionDescription.getDefaultMaxMessageS
 
 public class ReplyMessageTest {
 
-    @Ignore // Todo - return once embedded ReplyMessage check re-enabled.
     @Test(expected = MongoInternalException.class)
     public void shouldThrowExceptionIfRequestIdDoesNotMatchResponseTo() {
         int badResponseTo = 34565;
