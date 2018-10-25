@@ -19,7 +19,6 @@ package com.mongodb.internal.connection;
 import com.mongodb.MongoInternalException;
 import org.bson.ByteBufNIO;
 import org.bson.Document;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.nio.Buffer;
