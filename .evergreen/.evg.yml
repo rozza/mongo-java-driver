@@ -250,7 +250,7 @@ functions:
       working_dir: "src"
       script: |
         ${PREPARE_SHELL}
-        JDK="jdk8" .evergreen/run-embedded-tests-android.sh
+        .evergreen/run-embedded-tests-android.sh
 
   "run plain auth test":
     - command: shell.exec

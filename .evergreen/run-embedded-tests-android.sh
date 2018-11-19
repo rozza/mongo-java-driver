@@ -76,7 +76,7 @@ function shutdownEmulators {
 
 trap shutdownEmulators EXIT
 
-echo "Running tests with ${JDK}"
+echo "Running android tests"
 ./gradlew -version
 ./gradlew --stacktrace --info :driver-embedded-android:connectedAndroidTest -DANDROID_HOME=$SDK_HOME
 
