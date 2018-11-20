@@ -1119,6 +1119,7 @@ public final class Filters {
     }
 
     private static class NotFilter implements Bson {
+        private static final List<String> DBREF_KEYS = asList("$ref", "$id");
         private final Bson filter;
 
         NotFilter(final Bson filter) {
@@ -1140,10 +1141,14 @@ public final class Filters {
             }
         }
 
+        private boolean isDBRef(final BsonValue value) {
+            return value.asDocument().keySet().containsAll(DBREF_KEYS);
+        }
+
         private BsonDocument createFilter(final String fieldName, final BsonValue value) {
             if (fieldName.startsWith("$")) {
                 return new BsonDocument("$not", new BsonDocument(fieldName, value));
-            } else if (value.isDocument() || value.isRegularExpression()) {
+            } else if ((value.isDocument() && !isDBRef(value)) || value.isRegularExpression()) {
                 return new BsonDocument(fieldName, new BsonDocument("$not", value));
             }
             return new BsonDocument(fieldName, new BsonDocument("$not", new BsonDocument("$eq", value)));
