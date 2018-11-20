@@ -94,6 +94,13 @@ class FiltersFunctionalSpecification extends OperationFunctionalSpecification {
         find(not(regex('y', 'a.*'))) == [b, c]
 
         when:
+        def dbref = Document.parse('{$ref: "1", $id: "1"}')
+        getCollectionHelper().insertDocuments(new Document('dbref', dbref))
+
+        then:
+        find(not(eq('dbref', dbref))) == [a, b, c]
+
+        when:
         find(not(and(eq('x', 1), eq('x', 1)))) == [b, c]
 
         then:
