@@ -107,6 +107,7 @@ class FiltersSpecification extends Specification {
 
         toBson(not(parse('{$in: [1]}'))) == parse('{$not: {$in: [1]}}')
 
+        toBson(not(eq('x', parse('{a: 1, b: 1}')))) == parse('{x: {$not: {$eq: {"a": 1, "b": 1}}}}')
         toBson(not(eq('x', parse('{$ref: "1", $id: "1"}')))) == parse('{x: {$not: {$eq: {"$ref": "1", "$id": "1"}}}}')
         toBson(not(eq('x', parse('{$ref: "1", $id: "1", $db: "db"}')))) == parse('{x: {$not: {$eq: {"$ref": "1", "$id": "1", $db: "db"}}}}')
     }
