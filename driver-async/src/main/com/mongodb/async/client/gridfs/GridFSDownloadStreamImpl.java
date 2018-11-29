@@ -240,11 +240,11 @@ final class GridFSDownloadStreamImpl implements GridFSDownloadStream {
             while (currentPosition < fileInfo.getLength() && amountToCopy > 0) {
 
                 if (getBufferFromResultsQueue()) {
-                    if (buffer == null) {
-                        buffer = getBufferFromChunk(resultsQueue.poll(), chunkIndex);
-                    } else if (bufferOffset == buffer.length) {
-                        chunkIndex += 1;
-                        buffer = getBufferFromChunk(resultsQueue.poll(), chunkIndex);
+
+                    boolean wasEndOfBuffer = (buffer != null && bufferOffset == buffer.length);
+                    buffer = getBufferFromChunk(resultsQueue.poll(), chunkIndex);
+                    chunkIndex += 1;
+                    if (wasEndOfBuffer) {
                         bufferOffset = 0;
                     }
                 }
