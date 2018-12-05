@@ -195,6 +195,9 @@ functions:
     - command: attach.xunit_results
       params:
         file: ./src/*/build/test-results/test/TEST-*.xml
+    - command: attach.xunit_results
+      params:
+        file: ./src/*/build/outputs/androidTest-results/connected/TEST-*.xml
 
   "bootstrap mongo-orchestration":
     - command: shell.exec
@@ -497,8 +500,8 @@ axes:
         display_name: "Linux"
         run_on: *hosts
       - id: "ubuntu"
-        display_name: "Ubuntu 16.04"
-        run_on: ubuntu1604-test
+        display_name: "Ubuntu 18.04"
+        run_on: ubuntu1804-test
 
   - id: topology
     display_name: Topology
@@ -666,7 +669,7 @@ buildvariants:
 
 - name: embedded-test-android
   display_name: "Embedded: Android"
-  run_on: ubuntu1604-test
+  run_on: ubuntu1804-test
   tasks:
   - name: "embedded-test-android"
 
@@ -684,6 +687,6 @@ buildvariants:
 
 - name: publish-snapshot
   display_name: "Publish Snapshot"
-  run_on: ubuntu1604-test
+  run_on: ubuntu1804-test
   tasks:
     - name: "publish-snapshot"

@@ -24,14 +24,16 @@ if [ ! -e  $SDK_HOME ]; then
         unzip $SDK_PACKAGE
         yes | $SDK_HOME/tools/bin/sdkmanager --channel=0 \
             "platforms;android-28"  \
-            "platform-tools"  \
-            "build-tools;28.0.2" \
             "emulator" \
+            "patcher;v4" \
+            "platform-tools"  \
+            "build-tools;28.0.0" \
             "system-images;android-21;google_apis;x86_64"
 
+        $SDK_HOME/tools/bin/sdkmanager --update
         PLATFORM_TOOLS=platform-tools-latest-linux.zip
         curl -O https://dl.google.com/android/repository/$PLATFORM_TOOLS
-        unzip $PLATFORM_TOOLS
+        unzip -o $PLATFORM_TOOLS
     )
 fi
 
@@ -43,7 +45,7 @@ fi
     export ANDROID_SDK_HOME=${SDK_HOME}
 
     echo no | $SDK_HOME/tools/bin/avdmanager create avd -n embeddedTest_x86_64 -c 1000M -k "system-images;android-21;google_apis;x86_64" -f
-    $SDK_HOME/emulator/emulator64-x86 -avd embeddedTest_x86_64 -no-audio -no-window -no-snapshot -wipe-data &
+    $SDK_HOME/tools/emulator -avd embeddedTest_x86_64 -no-audio -no-window -no-snapshot -wipe-data -no-accel -gpu off &
     $SDK_HOME/platform-tools/adb wait-for-device
 
     # Belt and braces waiting for the device
@@ -62,7 +64,7 @@ fi
           exit 1
         fi
       fi
-      sleep 1
+      sleep 5
     done
     echo "Emulator is ready"
 )
