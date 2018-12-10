@@ -50,6 +50,7 @@ import org.bson.codecs.pojo.entities.SelfReferentialGenericModel;
 import org.bson.codecs.pojo.entities.ShapeModelCircle;
 import org.bson.codecs.pojo.entities.ShapeModelRectangle;
 import org.bson.codecs.pojo.entities.SimpleEnum;
+import org.bson.codecs.pojo.entities.SimpleEnumMapModel;
 import org.bson.codecs.pojo.entities.SimpleGenericsModel;
 import org.bson.codecs.pojo.entities.SimpleModel;
 import org.bson.codecs.pojo.entities.SimpleNestedPojoModel;
@@ -374,6 +375,13 @@ abstract class PojoTestCase {
         map.put(1, 1);
         map.put(2, 2);
         return new InvalidMapModel(map);
+    }
+
+    static SimpleEnumMapModel getSimpleEnumMapModel() {
+        Map<SimpleEnum, String> map = new HashMap<SimpleEnum, String>();
+        map.put(SimpleEnum.ALPHA, "alpha");
+        map.put(SimpleEnum.CHARLIE, "charlie");
+        return new SimpleEnumMapModel(map);
     }
 
     static final String SIMPLE_MODEL_JSON = "{'integerField': 42, 'stringField': 'myString'}";

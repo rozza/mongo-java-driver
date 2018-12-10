@@ -57,6 +57,7 @@ import org.bson.codecs.pojo.entities.ShapeModelAbstract;
 import org.bson.codecs.pojo.entities.ShapeModelCircle;
 import org.bson.codecs.pojo.entities.ShapeModelRectangle;
 import org.bson.codecs.pojo.entities.SimpleEnum;
+import org.bson.codecs.pojo.entities.SimpleEnumMapModel;
 import org.bson.codecs.pojo.entities.SimpleEnumModel;
 import org.bson.codecs.pojo.entities.SimpleGenericsModel;
 import org.bson.codecs.pojo.entities.SimpleModel;
@@ -385,6 +386,11 @@ public final class PojoRoundTripTest extends PojoTestCase {
                 new ShapeHolderCircleModel(getShapeModelCircle()),
                 getPojoCodecProviderBuilder(ShapeModelCircle.class, ShapeHolderCircleModel.class),
                 "{'shape': {'_t': 'org.bson.codecs.pojo.entities.ShapeModelCircle', 'color': 'orange', 'radius': 4.2}}"));
+
+        data.add(new TestData("SimpleEnumMapModel",
+                getSimpleEnumMapModel(),
+                getPojoCodecProviderBuilder(SimpleEnumMapModel.class, SimpleEnum.class),
+                "{'simpleEnumStringMap': {'ALPHA': 'alpha', 'CHARLIE': 'charlie'}}"));
         return data;
     }
 

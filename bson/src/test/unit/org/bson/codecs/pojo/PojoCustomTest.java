@@ -46,6 +46,7 @@ import org.bson.codecs.pojo.entities.OptionalPropertyCodecProvider;
 import org.bson.codecs.pojo.entities.PrimitivesModel;
 import org.bson.codecs.pojo.entities.PrivateSetterFieldModel;
 import org.bson.codecs.pojo.entities.SimpleEnum;
+import org.bson.codecs.pojo.entities.SimpleEnumMapModel;
 import org.bson.codecs.pojo.entities.SimpleEnumModel;
 import org.bson.codecs.pojo.entities.SimpleModel;
 import org.bson.codecs.pojo.entities.SimpleNestedPojoModel;
@@ -516,6 +517,17 @@ public final class PojoCustomTest extends PojoTestCase {
     @Test(expected = CodecConfigurationException.class)
     public void testInvalidGetterAndSetterModelDecoding() {
         decodingShouldFail(getCodec(InvalidGetterAndSetterModel.class), "{'integerField': 42, 'stringField': 'myString'}");
+    }
+
+    @Test(expected = CodecConfigurationException.class)
+    public void testInvalidEnumValue() {
+        roundTrip(getCodec(SimpleEnumModel.class), "{ 'myEnum': 1 }");
+    }
+
+    @Test(expected = CodecConfigurationException.class)
+    public void testInvalidEnumValueForMapKey() {
+        decodingShouldFail(getCodecRegistry(getPojoCodecProviderBuilder(SimpleEnumMapModel.class, SimpleEnum.class))
+                        .get(SimpleEnumMapModel.class), "{'simpleEnumStringMap': {'A': '1'}}");
     }
 
     private List<Convention> getDefaultAndUseGettersConvention() {

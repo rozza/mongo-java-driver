@@ -36,12 +36,14 @@ final class MapPropertyCodecProvider implements PropertyCodecProvider {
     public <T> Codec<T> get(final TypeWithTypeParameters<T> type, final PropertyCodecRegistry registry) {
         if (Map.class.isAssignableFrom(type.getType()) && type.getTypeParameters().size() == 2) {
             Class<?> keyType = type.getTypeParameters().get(0).getType();
-            if (!keyType.equals(String.class)) {
-                throw new CodecConfigurationException(format("Invalid Map type. Maps MUST have string keys, found %s instead.", keyType));
+            if (!keyType.equals(String.class) && !keyType.isEnum()) {
+                throw new CodecConfigurationException(format("Invalid Map type. Maps MUST have String or Enum keys,"
+                        + " found %s instead.", keyType));
             }
 
             try {
-                return new MapCodec(type.getType(), registry.get(type.getTypeParameters().get(1)));
+                return new MapCodec(type.getType(), type.getTypeParameters().get(0).getType(),
+                        registry.get(type.getTypeParameters().get(1)));
             } catch (CodecConfigurationException e) {
                 if (type.getTypeParameters().get(1).getType() == Object.class) {
                     try {
@@ -57,39 +59,44 @@ final class MapPropertyCodecProvider implements PropertyCodecProvider {
         }
     }
 
-    private static class MapCodec<T> implements Codec<Map<String, T>> {
-        private final Class<Map<String, T>> encoderClass;
-        private final Codec<T> codec;
+    private static class MapCodec<K, V> implements Codec<Map<K, V>> {
+        private final Class<Map<K, V>> encoderClass;
+        private final Class<K> keyClazz;
+        private final Codec<V> valueCodec;
+        private final boolean isEnum;
 
-        MapCodec(final Class<Map<String, T>> encoderClass, final Codec<T> codec) {
+        MapCodec(final Class<Map<K, V>> encoderClass, final Class<K> keyClazz, final Codec<V> valueCodec) {
             this.encoderClass = encoderClass;
-            this.codec = codec;
+            this.keyClazz = keyClazz;
+            this.valueCodec = valueCodec;
+            this.isEnum = keyClazz.isEnum();
         }
 
         @Override
-        public void encode(final BsonWriter writer, final Map<String, T> map, final EncoderContext encoderContext) {
+        public void encode(final BsonWriter writer, final Map<K, V> map, final EncoderContext encoderContext) {
             writer.writeStartDocument();
-            for (final Entry<String, T> entry : map.entrySet()) {
-                writer.writeName(entry.getKey());
+            for (final Entry<K, V> entry : map.entrySet()) {
+                String keyValue = isEnum ? ((Enum<?>) entry.getKey()).name() : (String) entry.getKey();
+                writer.writeName(keyValue);
                 if (entry.getValue() == null) {
                     writer.writeNull();
                 } else {
-                    codec.encode(writer, entry.getValue(), encoderContext);
+                    valueCodec.encode(writer, entry.getValue(), encoderContext);
                 }
             }
             writer.writeEndDocument();
         }
 
         @Override
-        public Map<String, T> decode(final BsonReader reader, final DecoderContext context) {
+        public Map<K, V> decode(final BsonReader reader, final DecoderContext context) {
             reader.readStartDocument();
-            Map<String, T> map = getInstance();
+            Map<K, V> map = getInstance();
             while (reader.readBsonType() != BsonType.END_OF_DOCUMENT) {
                 if (reader.getCurrentBsonType() == BsonType.NULL) {
-                    map.put(reader.readName(), null);
+                    map.put(getKey(reader.readName()), null);
                     reader.readNull();
                 } else {
-                    map.put(reader.readName(), codec.decode(reader, context));
+                    map.put(getKey(reader.readName()), valueCodec.decode(reader, context));
                 }
             }
             reader.readEndDocument();
@@ -97,13 +104,27 @@ final class MapPropertyCodecProvider implements PropertyCodecProvider {
         }
 
         @Override
-        public Class<Map<String, T>> getEncoderClass() {
+        public Class<Map<K, V>> getEncoderClass() {
             return encoderClass;
         }
 
-        private Map<String, T> getInstance() {
+        @SuppressWarnings({"unchecked", "rawtypes"})
+        private K getKey(final String keyName) {
+            if (isEnum) {
+                try {
+                    return (K) Enum.valueOf((Class<Enum>) keyClazz, keyName);
+                } catch (Exception e) {
+                    throw new CodecConfigurationException(format("Invalid Map key value. The map has an Enum keys and value %s does not"
+                            + " match any value for '%s'.", keyClazz, keyName));
+                }
+            } else {
+                return (K) keyName;
+            }
+        }
+
+        private Map<K, V> getInstance() {
             if (encoderClass.isInterface()) {
-                return new HashMap<String, T>();
+                return new HashMap<K, V>();
             }
             try {
                 return encoderClass.getDeclaredConstructor().newInstance();
