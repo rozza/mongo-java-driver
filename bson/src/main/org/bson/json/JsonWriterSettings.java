@@ -17,6 +17,7 @@
 package org.bson.json;
 
 import org.bson.BsonBinary;
+import org.bson.BsonDbPointer;
 import org.bson.BsonMaxKey;
 import org.bson.BsonMinKey;
 import org.bson.BsonNull;
@@ -77,6 +78,9 @@ public class JsonWriterSettings extends BsonWriterSettings {
     private static final LegacyExtendedJsonRegularExpressionConverter LEGACY_EXTENDED_JSON_REGULAR_EXPRESSION_CONVERTER =
             new LegacyExtendedJsonRegularExpressionConverter();
     private static final ShellRegularExpressionConverter SHELL_REGULAR_EXPRESSION_CONVERTER = new ShellRegularExpressionConverter();
+    private static final ExtendedJsonBsonDbPointerConverter EXTENDED_JSON_BSON_DB_POINTER_CONVERTER =
+            new ExtendedJsonBsonDbPointerConverter();
+    private static final ShellBsonDbPointerConverter SHELL_BSON_DB_POINTER_CONVERTER = new ShellBsonDbPointerConverter();
 
     private final boolean indent;
     private final String newLineCharacters;
@@ -100,6 +104,7 @@ public class JsonWriterSettings extends BsonWriterSettings {
     private final Converter<BsonMinKey> minKeyConverter;
     private final Converter<BsonMaxKey> maxKeyConverter;
     private final Converter<String> javaScriptConverter;
+    private final Converter<BsonDbPointer> bsonDbPointerConverter;
 
     /**
      * Create a builder for JsonWriterSettings, which are immutable.
@@ -333,6 +338,12 @@ public class JsonWriterSettings extends BsonWriterSettings {
         } else {
             regularExpressionConverter = SHELL_REGULAR_EXPRESSION_CONVERTER;
         }
+
+        if (outputMode == JsonMode.SHELL) {
+            bsonDbPointerConverter = SHELL_BSON_DB_POINTER_CONVERTER;
+        } else {
+            bsonDbPointerConverter = EXTENDED_JSON_BSON_DB_POINTER_CONVERTER;
+        }
     }
 
     /**
@@ -550,6 +561,10 @@ public class JsonWriterSettings extends BsonWriterSettings {
      */
     public Converter<String> getJavaScriptConverter() {
         return javaScriptConverter;
+    }
+
+    Converter<BsonDbPointer> getBsonDbPointerConverter() {
+        return bsonDbPointerConverter;
     }
 
     /**

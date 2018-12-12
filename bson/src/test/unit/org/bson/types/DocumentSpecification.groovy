@@ -18,23 +18,28 @@
 
 package org.bson.types
 
-import org.bson.BsonRegularExpression
+
 import org.bson.Document
-import org.bson.codecs.DocumentCodec
+import org.bson.json.JsonMode
 import org.bson.json.JsonParseException
+import org.bson.json.JsonWriterSettings
 import spock.lang.Specification
+import spock.lang.Unroll
+
+import static org.bson.BsonHelper.documentWithValuesOfEveryType
+import static org.bson.BsonHelper.documentWithValuesOfEveryTypeRelaxed
 
 class DocumentSpecification extends Specification {
 
     def 'should return correct type for each typed method'() {
         given:
-        Date date = new Date();
-        ObjectId objectId = new ObjectId();
+        Date date = new Date()
+        ObjectId objectId = new ObjectId()
 
         when:
         Document doc = new Document()
                 .append('int', 1).append('long', 2L).append('double', 3.0 as double).append('string', 'hi').append('boolean', true)
-                .append('objectId', objectId).append('date', date);
+                .append('objectId', objectId).append('date', date)
 
         then:
         doc.getInteger('int') == 1
@@ -65,42 +70,22 @@ class DocumentSpecification extends Specification {
         doc.get('noVal', objectId) == objectId
     }
 
-    def 'should parse a valid JSON string to a Document'() {
-        when:
-        Document document = Document.parse("{ 'int' : 1, 'string' : 'abc' }");
+    @Unroll
+    def 'should roundtrip each JsonMode: #outputMode'() {
+        given:
+        def original = Document.parse(documentWithValuesOfEveryType().toJson())
+        def expected = outputMode == JsonMode.RELAXED ? Document.parse(documentWithValuesOfEveryTypeRelaxed().toJson()) : original
+        def json = original.toJson(JsonWriterSettings.builder().outputMode(outputMode).build())
 
-        then:
-        document != null;
-        document.keySet().size() == 2;
-        document.getInteger('int') == 1;
-        document.getString('string') == 'abc';
+        expect:
+        expected == Document.parse(json)
 
-        when:
-        document = Document.parse("{ 'int' : 1, 'string' : 'abc' }", new DocumentCodec());
-
-        then:
-        document != null;
-        document.keySet().size() == 2;
-        document.getInteger('int') == 1;
-        document.getString('string') == 'abc';
+        where:
+        outputMode << JsonMode.values()
     }
-
-    def 'test parse method with mode'() {
-        when:
-        Document document = Document.parse("{'regex' : /abc/im }");
-
-        then:
-        document != null;
-        document.keySet().size() == 1;
-
-        BsonRegularExpression regularExpression = (BsonRegularExpression) document.get('regex');
-        regularExpression.options == 'im'
-        regularExpression.pattern == 'abc'
-    }
-
     def 'should throw an exception when parsing an invalid JSON String'() {
         when:
-        Document.parse("{ 'int' : 1, 'string' : }");
+        Document.parse("{ 'int' : 1, 'string' : }")
 
         then:
         thrown(JsonParseException)

@@ -67,6 +67,39 @@ public final class BsonHelper {
                 new BsonDocument("a", new BsonInt32(1)));
     }
 
+    private static List<BsonValue> getRelaxedBsonValues() {
+        return asList(
+                new BsonNull(),
+                new BsonInt32(42),
+                new BsonInt32(52),
+                new BsonDecimal128(Decimal128.parse("4.00")),
+                new BsonBoolean(true),
+                new BsonDateTime(DATE.getTime()),
+                new BsonDouble(62.0),
+                new BsonString("the fox ..."),
+                new BsonMinKey(),
+                new BsonMaxKey(),
+                new BsonDbPointer("test.test", OBJECT_ID),
+                new BsonJavaScript("int i = 0;"),
+                new BsonJavaScriptWithScope("x", new BsonDocument("x", new BsonInt32(1))),
+                new BsonObjectId(OBJECT_ID),
+                new BsonRegularExpression("^test.*regex.*xyz$", "i"),
+                new BsonSymbol("ruby stuff"),
+                new BsonTimestamp(0x12345678, 5),
+                new BsonUndefined(),
+                new BsonBinary((byte) 80, new byte[]{5, 4, 3, 2, 1}),
+                new BsonArray(asList(
+                        new BsonInt32(1),
+                        new BsonInt32(2),
+                        new BsonBoolean(true),
+                        new BsonArray(asList(
+                                new BsonInt32(1),
+                                new BsonInt32(2),
+                                new BsonInt32(3),
+                                new BsonDocument("a", new BsonInt32(2)))))),
+                new BsonDocument("a", new BsonInt32(1)));
+    }
+
     // fail class loading if any BSON types are not represented in BSON_VALUES.
     static {
         for (BsonType curBsonType : BsonType.values()) {
@@ -95,6 +128,15 @@ public final class BsonHelper {
     public static BsonDocument documentWithValuesOfEveryType() {
         BsonDocument document = new BsonDocument();
         List<BsonValue> bsonValues = getBsonValues();
+        for (int i = 0; i < bsonValues.size(); i++) {
+            document.append(Integer.toString(i), bsonValues.get(i));
+        }
+        return document;
+    }
+
+    public static BsonDocument documentWithValuesOfEveryTypeRelaxed() {
+        BsonDocument document = new BsonDocument();
+        List<BsonValue> bsonValues = getRelaxedBsonValues();
         for (int i = 0; i < bsonValues.size(); i++) {
             document.append(Integer.toString(i), bsonValues.get(i));
         }

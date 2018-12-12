@@ -18,11 +18,15 @@ package org.bson
 
 import org.bson.codecs.BsonDocumentCodec
 import org.bson.codecs.DecoderContext
+import org.bson.json.JsonMode
+import org.bson.json.JsonWriterSettings
 import org.bson.types.Decimal128
 import org.bson.types.ObjectId
 import spock.lang.Specification
+import spock.lang.Unroll
 
 import static org.bson.BsonHelper.documentWithValuesOfEveryType
+import static org.bson.BsonHelper.documentWithValuesOfEveryTypeRelaxed
 
 class BsonDocumentSpecification extends Specification {
 
@@ -359,6 +363,20 @@ class BsonDocumentSpecification extends Specification {
 
         cleanup:
         reader.close()
+    }
+
+    @Unroll
+    def 'should roundtrip each JsonMode: #outputMode'() {
+        given:
+        def original = documentWithValuesOfEveryType()
+        def expected = outputMode == JsonMode.RELAXED ? documentWithValuesOfEveryTypeRelaxed() : original
+        def json = original.toJson(JsonWriterSettings.builder().outputMode(outputMode).build())
+
+        expect:
+        expected == BsonDocument.parse(json)
+
+        where:
+        outputMode << JsonMode.values()
     }
 
     def 'should serialize and deserialize'() {

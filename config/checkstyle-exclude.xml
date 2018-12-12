@@ -25,6 +25,7 @@
     <suppress checks="Regexp" files="QuickTour"/>
 
     <suppress checks="MethodLength" files="PojoRoundTripTest"/>
+    <suppress checks="MethodLength" files="JsonWriterSettings"/>
 
     <suppress checks="JavadocPackage" files="com[\\/]mongodb[\\/][^\\/]*\.java"/>
     <suppress checks="JavadocPackage" files="com[\\/]mongodb[\\/]client[\\/][^\\/]*\.java"/>

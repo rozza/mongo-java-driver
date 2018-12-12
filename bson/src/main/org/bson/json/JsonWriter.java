@@ -132,31 +132,7 @@ public class JsonWriter extends AbstractBsonWriter {
 
     @Override
     protected void doWriteDBPointer(final BsonDbPointer value) {
-        if (settings.getOutputMode() == JsonMode.EXTENDED) {
-            new Converter<BsonDbPointer>() {
-                @Override
-                public void convert(final BsonDbPointer value1, final StrictJsonWriter writer) {
-                    writer.writeStartObject();
-                    writer.writeStartObject("$dbPointer");
-                    writer.writeString("$ref", value1.getNamespace());
-                    writer.writeName("$id");
-                    doWriteObjectId(value1.getId());
-                    writer.writeEndObject();
-                    writer.writeEndObject();
-                }
-            }.convert(value, strictJsonWriter);
-        } else {
-            new Converter<BsonDbPointer>() {
-                @Override
-                public void convert(final BsonDbPointer value1, final StrictJsonWriter writer) {
-                    writer.writeStartObject();
-                    writer.writeString("$ref", value1.getNamespace());
-                    writer.writeName("$id");
-                    doWriteObjectId(value1.getId());
-                    writer.writeEndObject();
-                }
-            }.convert(value, strictJsonWriter);
-        }
+        settings.getBsonDbPointerConverter().convert(value, strictJsonWriter);
     }
 
     @Override
@@ -242,11 +218,11 @@ public class JsonWriter extends AbstractBsonWriter {
     }
 
     /**
-     * Return true if the output has been truncated due to exceeding the length specified in {@link JsonWriterSettings#maxLength}.
+     * Return true if the output has been truncated due to exceeding the length specified in {@link JsonWriterSettings#getMaxLength}.
      *
      * @return true if the output has been truncated
      * @since 3.7
-     * @see JsonWriterSettings#maxLength
+     * @see JsonWriterSettings#getMaxLength
      */
     public boolean isTruncated() {
         return strictJsonWriter.isTruncated();

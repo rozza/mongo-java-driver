@@ -758,7 +758,15 @@ public class JsonReader extends AbstractBsonReader {
         verifyToken(JsonTokenType.LEFT_PAREN);
         String namespace = readStringFromExtendedJson();
         verifyToken(JsonTokenType.COMMA);
-        ObjectId id = new ObjectId(readStringFromExtendedJson());
+        JsonToken token = popToken();
+        pushToken(token);
+        verifyToken(JsonTokenType.UNQUOTED_STRING);
+        String value = token.getValue(String.class);
+        if (!value.equals("new")) {
+            pushToken(token);
+        }
+        verifyToken(JsonTokenType.UNQUOTED_STRING, "ObjectId");
+        ObjectId id = visitObjectIdConstructor();
         verifyToken(JsonTokenType.RIGHT_PAREN);
         return new BsonDbPointer(namespace, id);
     }

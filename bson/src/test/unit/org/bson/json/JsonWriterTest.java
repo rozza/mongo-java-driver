@@ -661,7 +661,8 @@ public class JsonWriterTest {
         writer.writeStartDocument();
         writer.writeDBPointer("dbPointer", new BsonDbPointer("my.test", new ObjectId("4d0ce088e447ad08b4721a37")));
         writer.writeEndDocument();
-        String expected = "{ \"dbPointer\" : { \"$ref\" : \"my.test\", \"$id\" : { \"$oid\" : \"4d0ce088e447ad08b4721a37\" } } }";
+        String expected = "{ \"dbPointer\" : { \"$dbPointer\" : { \"$ref\" : \"my.test\", \"$id\" : "
+            + "{ \"$oid\" : \"4d0ce088e447ad08b4721a37\" } } } }";
         assertEquals(expected, stringWriter.toString());
     }
 }

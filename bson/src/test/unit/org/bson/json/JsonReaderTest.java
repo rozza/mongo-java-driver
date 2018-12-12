@@ -979,7 +979,7 @@ public class JsonReaderTest {
 
     @Test
     public void testDBPointer() {
-        String json = "DBPointer(\"b\",\"5209296cd6c4e38cf96fffdc\")";
+        String json = "DBPointer(\"b\",ObjectId(\"5209296cd6c4e38cf96fffdc\"))";
         bsonReader = new JsonReader(json);
         assertEquals(BsonType.DB_POINTER, bsonReader.readBsonType());
         BsonDbPointer dbPointer = bsonReader.readDBPointer();
@@ -989,7 +989,7 @@ public class JsonReaderTest {
 
     @Test
     public void testDBPointerWithNew() {
-        String json = "new DBPointer(\"b\",\"5209296cd6c4e38cf96fffdc\")";
+        String json = "new DBPointer(\"b\", new ObjectId(\"5209296cd6c4e38cf96fffdc\"))";
         bsonReader = new JsonReader(json);
         assertEquals(BsonType.DB_POINTER, bsonReader.readBsonType());
         BsonDbPointer dbPointer = bsonReader.readDBPointer();
