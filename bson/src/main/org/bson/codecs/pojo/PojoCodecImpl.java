@@ -278,7 +278,7 @@ final class PojoCodecImpl<T> extends PojoCodec<T> {
         boolean discriminatorEnabled = changeTheDiscriminator ? propertyModel.useDiscriminator() : clazzModel.useDiscriminator();
         return new ClassModel<S>(clazzModel.getType(), clazzModel.getPropertyNameToTypeParameterMap(),
                 clazzModel.getInstanceCreatorFactory(), discriminatorEnabled, clazzModel.getDiscriminatorKey(),
-                clazzModel.getDiscriminator(), concreteIdProperty, concretePropertyModels);
+                clazzModel.getDiscriminator(), IdPropertyModelHolder.create(clazzModel, concreteIdProperty), concretePropertyModels);
     }
 
     @SuppressWarnings("unchecked")

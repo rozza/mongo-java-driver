@@ -47,6 +47,8 @@ import org.bson.codecs.pojo.entities.PrimitivesModel;
 import org.bson.codecs.pojo.entities.PrivateSetterFieldModel;
 import org.bson.codecs.pojo.entities.SimpleEnum;
 import org.bson.codecs.pojo.entities.SimpleEnumModel;
+import org.bson.codecs.pojo.entities.SimpleIdImmutableModel;
+import org.bson.codecs.pojo.entities.SimpleIdModel;
 import org.bson.codecs.pojo.entities.SimpleModel;
 import org.bson.codecs.pojo.entities.SimpleNestedPojoModel;
 import org.bson.codecs.pojo.entities.UpperBoundsModel;
@@ -81,6 +83,8 @@ import static org.bson.codecs.pojo.Conventions.DEFAULT_CONVENTIONS;
 import static org.bson.codecs.pojo.Conventions.NO_CONVENTIONS;
 import static org.bson.codecs.pojo.Conventions.SET_PRIVATE_FIELDS_CONVENTION;
 import static org.bson.codecs.pojo.Conventions.USE_GETTERS_FOR_SETTERS;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 public final class PojoCustomTest extends PojoTestCase {
@@ -174,6 +178,28 @@ public final class PojoCustomTest extends PojoTestCase {
                 "{ '_id': 'id', '_cls': 'convention_model', 'my_final_field': 10, 'my_int_field': 10,"
                         + "'child': { '_id': 'child', 'my_final_field': 10, 'my_int_field': 10, "
                         + "           'simple_model': {'integer_field': 42, 'string_field': 'myString' } } }");
+    }
+
+    @Test
+    public void testIdGeneratorMutable() {
+        SimpleIdModel simpleIdModel = new SimpleIdModel(42, "myString");
+        assertNull(simpleIdModel.getId());
+        ClassModelBuilder<SimpleIdModel> builder = ClassModel.builder(SimpleIdModel.class).idGenerator(new ObjectIdGenerator());
+
+        roundTrip(getPojoCodecProviderBuilder(builder), simpleIdModel,
+                "{'_id': {'$oid': '123412341234123412341234'}, 'integerField': 42, 'stringField': 'myString'}");
+        assertEquals(new ObjectId("123412341234123412341234"), simpleIdModel.getId());
+    }
+
+    @Test
+    public void testIdGeneratorImmutable() {
+        SimpleIdImmutableModel simpleIdModel = new SimpleIdImmutableModel(42, "myString");
+        ClassModelBuilder<SimpleIdImmutableModel> builder = ClassModel.builder(SimpleIdImmutableModel.class)
+                .idGenerator(new ObjectIdGenerator());
+
+        roundTrip(getPojoCodecProviderBuilder(builder), simpleIdModel,
+                "{'_id': {'$oid': '123412341234123412341234'}, 'integerField': 42, 'stringField': 'myString'}");
+        assertNull(simpleIdModel.getId());
     }
 
     @Test
@@ -537,6 +563,18 @@ public final class PojoCustomTest extends PojoTestCase {
         @Override
         public Class<Object> getEncoderClass() {
             return Object.class;
+        }
+    }
+
+    class ObjectIdGenerator implements IdGenerator<ObjectId> {
+        @Override
+        public ObjectId generate() {
+            return new ObjectId("123412341234123412341234");
+        }
+
+        @Override
+        public Class<ObjectId> getType() {
+            return ObjectId.class;
         }
     }
 }

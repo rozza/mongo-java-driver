@@ -75,22 +75,32 @@ public final class PojoCodecProvider implements CodecProvider {
     @SuppressWarnings("unchecked")
     private <T> PojoCodec<T> getPojoCodec(final Class<T> clazz, final CodecRegistry registry) {
         ClassModel<T> classModel = (ClassModel<T>) classModels.get(clazz);
+        PojoCodec<T> pojoCodec = null;
         if (classModel != null) {
-            return new PojoCodecImpl<T>(classModel, registry, propertyCodecProviders, discriminatorLookup);
+            pojoCodec = new PojoCodecImpl<T>(classModel, registry, propertyCodecProviders, discriminatorLookup);
         } else if (automatic || (clazz.getPackage() != null && packages.contains(clazz.getPackage().getName()))) {
             try {
                 classModel = createClassModel(clazz, conventions);
-                if (!clazz.isInterface() && classModel.getPropertyModels().isEmpty()) {
-                    return null;
+                if (clazz.isInterface() || !classModel.getPropertyModels().isEmpty()) {
+                    discriminatorLookup.addClassModel(classModel);
+                    pojoCodec = new AutomaticPojoCodec<T>(new PojoCodecImpl<T>(classModel, registry, propertyCodecProviders,
+                            discriminatorLookup));
                 }
-                discriminatorLookup.addClassModel(classModel);
-                return new AutomaticPojoCodec<T>(new PojoCodecImpl<T>(classModel, registry, propertyCodecProviders, discriminatorLookup));
             } catch (Exception e) {
                 LOGGER.warn(format("Cannot use '%s' with the PojoCodec.", clazz.getSimpleName()), e);
                 return null;
             }
         }
-        return null;
+
+        if (pojoCodec != null && classModel.getIdPropertyModelHolder() != null && classModel.getIdPropertyModelHolder().isCollectible()) {
+            return createCollectibleCodec(pojoCodec, classModel.getIdPropertyModelHolder(), registry);
+        }
+        return pojoCodec;
+    }
+
+    private <T, I> PojoCodec<T> createCollectibleCodec(final PojoCodec<T> pojoCodec, final IdPropertyModelHolder<I> idPropertyModelHolder,
+                                                       final CodecRegistry registry) {
+        return new CollectiblePojoCodec<T, I>(pojoCodec, idPropertyModelHolder, registry);
     }
 
     /**
