@@ -25,7 +25,6 @@ import org.bson.ByteBufNIO;
 import org.bson.codecs.BsonDocumentCodec;
 import org.bson.codecs.BsonValueCodecProvider;
 import org.bson.codecs.Codec;
-import org.bson.codecs.CollectibleCodec;
 import org.bson.codecs.DecoderContext;
 import org.bson.codecs.EncoderContext;
 import org.bson.codecs.ValueCodecProvider;
@@ -87,14 +86,8 @@ abstract class PojoTestCase {
 
     @SuppressWarnings("unchecked")
     <T> void roundTrip(final PojoCodecProvider.Builder builder, final T value, final String json) {
-        CodecRegistry registry = getCodecRegistry(builder);
-        Codec<?> codec = registry.get(value.getClass());
-        T encodeValue = value;
-        if (codec instanceof CollectibleCodec) {
-            encodeValue = ((CollectibleCodec<T>) codec).generateIdIfAbsentFromDocument(value);
-        }
-        encodesTo(getCodecRegistry(builder), encodeValue, json);
-        decodesTo(getCodecRegistry(builder), json, encodeValue);
+        encodesTo(getCodecRegistry(builder), value, json);
+        decodesTo(getCodecRegistry(builder), json, value);
     }
 
     @SuppressWarnings("unchecked")

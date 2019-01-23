@@ -193,13 +193,14 @@ public final class PojoCustomTest extends PojoTestCase {
 
     @Test
     public void testIdGeneratorImmutable() {
-        SimpleIdImmutableModel simpleIdModel = new SimpleIdImmutableModel(42, "myString");
+        SimpleIdImmutableModel simpleIdModelNoId = new SimpleIdImmutableModel(42, "myString");
+        SimpleIdImmutableModel simpleIdModelWithId = new SimpleIdImmutableModel(new ObjectId("123412341234123412341234"), 42, "myString");
         ClassModelBuilder<SimpleIdImmutableModel> builder = ClassModel.builder(SimpleIdImmutableModel.class)
                 .idGenerator(new ObjectIdGenerator());
+        String json = "{'_id': {'$oid': '123412341234123412341234'}, 'integerField': 42, 'stringField': 'myString'}";
 
-        roundTrip(getPojoCodecProviderBuilder(builder), simpleIdModel,
-                "{'_id': {'$oid': '123412341234123412341234'}, 'integerField': 42, 'stringField': 'myString'}");
-        assertNull(simpleIdModel.getId());
+        encodesTo(getPojoCodecProviderBuilder(builder), simpleIdModelNoId, json);
+        decodesTo(getPojoCodecProviderBuilder(builder), json, simpleIdModelWithId);
     }
 
     @Test

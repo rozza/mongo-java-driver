@@ -93,14 +93,15 @@ public final class PojoCodecProvider implements CodecProvider {
         }
 
         if (pojoCodec != null && classModel.getIdPropertyModelHolder() != null && classModel.getIdPropertyModelHolder().isCollectible()) {
-            return createCollectibleCodec(pojoCodec, classModel.getIdPropertyModelHolder(), registry);
+            return createPojoIdExtendingCodec(pojoCodec, classModel.getIdPropertyModelHolder(), registry);
         }
         return pojoCodec;
     }
 
-    private <T, I> PojoCodec<T> createCollectibleCodec(final PojoCodec<T> pojoCodec, final IdPropertyModelHolder<I> idPropertyModelHolder,
-                                                       final CodecRegistry registry) {
-        return new CollectiblePojoCodec<T, I>(pojoCodec, idPropertyModelHolder, registry);
+    private <T, I> PojoCodec<T> createPojoIdExtendingCodec(final PojoCodec<T> pojoCodec,
+                                                           final IdPropertyModelHolder<I> idPropertyModelHolder,
+                                                           final CodecRegistry registry) {
+        return new PojoIdGeneratingCodec<T, I>(pojoCodec, idPropertyModelHolder, registry);
     }
 
     /**
