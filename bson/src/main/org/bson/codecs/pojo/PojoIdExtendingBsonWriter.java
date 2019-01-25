@@ -37,6 +37,7 @@ class PojoIdExtendingBsonWriter implements BsonWriter {
     private static final String ID_NAME = "_id";
     private final BsonValue id;
     private final BsonWriter writer;
+    private boolean idWritten;
 
 
     PojoIdExtendingBsonWriter(final BsonValue id, final BsonWriter writer) {
@@ -47,8 +48,11 @@ class PojoIdExtendingBsonWriter implements BsonWriter {
     @Override
     public void writeStartDocument() {
         writer.writeStartDocument();
-        writer.writeName(ID_NAME);
-        REGISTRY.get(BsonValue.class).encode(writer, id, ENCODER_CONTEXT);
+        if (!idWritten) {
+            idWritten = true;
+            writer.writeName(ID_NAME);
+            REGISTRY.get(BsonValue.class).encode(writer, id, ENCODER_CONTEXT);
+        }
     }
 
     @Override

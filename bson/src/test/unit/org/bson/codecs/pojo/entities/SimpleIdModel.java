@@ -27,6 +27,11 @@ public class SimpleIdModel {
     }
 
     public SimpleIdModel(final Integer integerField, final String stringField) {
+        this(null, integerField, stringField);
+    }
+
+    public SimpleIdModel(final ObjectId objectId, final Integer integerField, final String stringField) {
+        this.id = objectId;
         this.integerField = integerField;
         this.stringField = stringField;
     }

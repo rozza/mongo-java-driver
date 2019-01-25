@@ -41,6 +41,7 @@ import org.bson.codecs.pojo.entities.InvalidMapModel;
 import org.bson.codecs.pojo.entities.InvalidMapPropertyCodecProvider;
 import org.bson.codecs.pojo.entities.InvalidSetterArgsModel;
 import org.bson.codecs.pojo.entities.MapStringObjectModel;
+import org.bson.codecs.pojo.entities.NestedSimpleIdModel;
 import org.bson.codecs.pojo.entities.Optional;
 import org.bson.codecs.pojo.entities.OptionalPropertyCodecProvider;
 import org.bson.codecs.pojo.entities.PrimitivesModel;
@@ -201,6 +202,28 @@ public final class PojoCustomTest extends PojoTestCase {
 
         encodesTo(getPojoCodecProviderBuilder(builder), simpleIdModelNoId, json);
         decodesTo(getPojoCodecProviderBuilder(builder), json, simpleIdModelWithId);
+    }
+
+    @Test
+    public void testIdGeneratorNonObjectId() {
+        NestedSimpleIdModel nestedSimpleIdModel = new NestedSimpleIdModel(new SimpleIdModel(42, "myString"));
+        assertNull(nestedSimpleIdModel.getId());
+        ClassModelBuilder<NestedSimpleIdModel> builder = ClassModel.builder(NestedSimpleIdModel.class)
+                .idGenerator(new IdGenerator<String>() {
+                    @Override
+                    public String generate() {
+                        return "a";
+                    }
+
+                    @Override
+                    public Class<String> getType() {
+                        return String.class;
+                    }
+                });
+
+        roundTrip(getPojoCodecProviderBuilder(builder, ClassModel.builder(SimpleIdModel.class)), nestedSimpleIdModel,
+                "{'_id': 'a', 'nestedSimpleIdModel': {'integerField': 42, 'stringField': 'myString'}}");
+        assertEquals("a", nestedSimpleIdModel.getId());
     }
 
     @Test
