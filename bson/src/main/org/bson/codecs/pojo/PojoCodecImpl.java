@@ -27,6 +27,7 @@ import org.bson.codecs.configuration.CodecConfigurationException;
 import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.diagnostics.Logger;
 import org.bson.diagnostics.Loggers;
+import org.bson.LevelCountingBsonWriter;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -88,26 +89,26 @@ final class PojoCodecImpl<T> extends PojoCodec<T> {
             throw new CodecConfigurationException(format("%s contains generic types that have not been specialised.%n"
                             + "Top level classes with generic types are not supported by the PojoCodec.", classModel.getName()));
         }
+
+        LevelCountingBsonWriter levelCountingWriter = wrapBsonWriter(writer);
         if (areEquivalentTypes(value.getClass(), classModel.getType())) {
-            writer.writeStartDocument();
-            PropertyModel<?> idPropertyModel = classModel.getIdPropertyModel();
-            if (idPropertyModel != null) {
-                encodeProperty(writer, value, encoderContext, idPropertyModel);
-            }
+            levelCountingWriter.writeStartDocument();
+
+            encodeIdProperty(levelCountingWriter, value, encoderContext, classModel.getIdPropertyModelHolder());
 
             if (classModel.useDiscriminator()) {
-                writer.writeString(classModel.getDiscriminatorKey(), classModel.getDiscriminator());
+                levelCountingWriter.writeString(classModel.getDiscriminatorKey(), classModel.getDiscriminator());
             }
 
             for (PropertyModel<?> propertyModel : classModel.getPropertyModels()) {
                 if (propertyModel.equals(classModel.getIdPropertyModel())) {
                     continue;
                 }
-                encodeProperty(writer, value, encoderContext, propertyModel);
+                encodeProperty(levelCountingWriter, value, encoderContext, propertyModel);
             }
-            writer.writeEndDocument();
+            levelCountingWriter.writeEndDocument();
         } else {
-            ((Codec<T>) registry.get(value.getClass())).encode(writer, value, encoderContext);
+            ((Codec<T>) registry.get(value.getClass())).encode(levelCountingWriter, value, encoderContext);
         }
     }
 
@@ -141,22 +142,53 @@ final class PojoCodecImpl<T> extends PojoCodec<T> {
         return classModel;
     }
 
+
+    private LevelCountingBsonWriter wrapBsonWriter(final BsonWriter writer) {
+        if (writer instanceof LevelCountingBsonWriter) {
+            return (LevelCountingBsonWriter) writer;
+        }
+        return new LevelCountingBsonWriter(writer);
+    }
+
+    private <S> void encodeIdProperty(final LevelCountingBsonWriter writer, final T instance, final EncoderContext encoderContext,
+                                      final IdPropertyModelHolder<S> propertyModelHolder) {
+        if (propertyModelHolder.getPropertyModel() == null || propertyModelHolder.getIdGenerator() == null) {
+            encodeProperty(writer, instance, encoderContext, propertyModelHolder.getPropertyModel());
+        } else {
+                S id = propertyModelHolder.getPropertyModel().getPropertyAccessor().get(instance);
+                if (writer.getCurrentLevel() == 0 && id == null) {
+                    id = propertyModelHolder.getIdGenerator().generate();
+                    try {
+                        propertyModelHolder.getPropertyModel().getPropertyAccessor().set(instance, id);
+                    } catch (Exception e) {
+                        // ignore
+                    }
+                }
+            encodeValue(writer, encoderContext, propertyModelHolder.getPropertyModel(), id);
+        }
+    }
+
     @SuppressWarnings("unchecked")
     private <S> void encodeProperty(final BsonWriter writer, final T instance, final EncoderContext encoderContext,
                                     final PropertyModel<S> propertyModel) {
-        if (propertyModel.isReadable()) {
+        if (propertyModel != null && propertyModel.isReadable()) {
             S propertyValue = propertyModel.getPropertyAccessor().get(instance);
-            if (propertyModel.shouldSerialize(propertyValue)) {
-                writer.writeName(propertyModel.getReadName());
-                if (propertyValue == null) {
-                    writer.writeNull();
-                } else {
-                    try {
-                        propertyModel.getCachedCodec().encode(writer, propertyValue, encoderContext);
-                    } catch (CodecConfigurationException e) {
-                        throw new CodecConfigurationException(format("Failed to encode '%s'. Encoding '%s' errored with: %s",
-                                classModel.getName(), propertyModel.getReadName(), e.getMessage()), e);
-                    }
+            encodeValue(writer, encoderContext, propertyModel, propertyValue);
+        }
+    }
+
+    private <S> void encodeValue(final BsonWriter writer,  final EncoderContext encoderContext, final PropertyModel<S> propertyModel,
+                                 final S propertyValue) {
+        if (propertyModel.shouldSerialize(propertyValue)) {
+            writer.writeName(propertyModel.getReadName());
+            if (propertyValue == null) {
+                writer.writeNull();
+            } else {
+                try {
+                    propertyModel.getCachedCodec().encode(writer, propertyValue, encoderContext);
+                } catch (CodecConfigurationException e) {
+                    throw new CodecConfigurationException(format("Failed to encode '%s'. Encoding '%s' errored with: %s",
+                            classModel.getName(), propertyModel.getReadName(), e.getMessage()), e);
                 }
             }
         }

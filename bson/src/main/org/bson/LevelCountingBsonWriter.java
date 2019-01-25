@@ -14,45 +14,54 @@
  *  limitations under the License.
  */
 
-package org.bson.codecs.pojo;
+package org.bson;
 
-import org.bson.BsonBinary;
-import org.bson.BsonDbPointer;
-import org.bson.BsonReader;
-import org.bson.BsonRegularExpression;
-import org.bson.BsonTimestamp;
-import org.bson.BsonValue;
-import org.bson.BsonWriter;
-import org.bson.codecs.BsonValueCodecProvider;
-import org.bson.codecs.EncoderContext;
-import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.types.Decimal128;
 import org.bson.types.ObjectId;
 
-import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
+import static org.bson.assertions.Assertions.notNull;
 
-class PojoIdExtendingBsonWriter implements BsonWriter {
-    private static final CodecRegistry REGISTRY = fromProviders(new BsonValueCodecProvider());
-    private static final EncoderContext ENCODER_CONTEXT = EncoderContext.builder().build();
-    private static final String ID_NAME = "_id";
-    private final BsonValue id;
+/**
+ * A BsonWriter implementation that wraps a BsonWriter and provides information on the current document level.
+ *
+ * @since 3.10
+ */
+public class LevelCountingBsonWriter implements BsonWriter {
     private final BsonWriter writer;
-    private boolean idWritten;
+    private int level = -1;
 
+    /**
+     * Construct an instance
+     *
+     * @param writer the BsonWriter to wrap.
+     */
+    public LevelCountingBsonWriter(final BsonWriter writer) {
+        this.writer = notNull("writer", writer);
+    }
 
-    PojoIdExtendingBsonWriter(final BsonValue id, final BsonWriter writer) {
-        this.id = id;
-        this.writer = writer;
+    /**
+     * @return the current document level
+     */
+    public int getCurrentLevel() {
+        return level;
     }
 
     @Override
     public void writeStartDocument() {
+        level++;
         writer.writeStartDocument();
-        if (!idWritten) {
-            idWritten = true;
-            writer.writeName(ID_NAME);
-            REGISTRY.get(BsonValue.class).encode(writer, id, ENCODER_CONTEXT);
-        }
+    }
+
+    @Override
+    public void writeStartDocument(final String name) {
+        level++;
+        writer.writeStartDocument(name);
+    }
+
+    @Override
+    public void writeEndDocument() {
+        level--;
+        writer.writeEndDocument();
     }
 
     @Override
@@ -113,11 +122,6 @@ class PojoIdExtendingBsonWriter implements BsonWriter {
     @Override
     public void writeEndArray() {
         writer.writeEndArray();
-    }
-
-    @Override
-    public void writeEndDocument() {
-        writer.writeEndDocument();
     }
 
     @Override
@@ -233,11 +237,6 @@ class PojoIdExtendingBsonWriter implements BsonWriter {
     @Override
     public void writeStartArray(final String name) {
         writer.writeStartArray(name);
-    }
-
-    @Override
-    public void writeStartDocument(final String name) {
-        writer.writeStartDocument(name);
     }
 
     @Override

@@ -413,7 +413,6 @@ public final class PojoRoundTripTest extends PojoTestCase {
                 getPojoCodecProviderBuilder(NestedSimpleIdModel.class, SimpleIdModel.class).conventions(Conventions.DEFAULT_CONVENTIONS),
                 "{'nestedSimpleIdModel': {'integerField': 42, 'stringField': 'myString'}}"));
 
-        data = new ArrayList<TestData>();
         data.add(new TestData("TreeWithIdModel",
                 new TreeWithIdModel(new ObjectId("123412341234123412341234"), "top",
                         new TreeWithIdModel("left-1", new TreeWithIdModel("left-2"), null), new TreeWithIdModel("right-1")),

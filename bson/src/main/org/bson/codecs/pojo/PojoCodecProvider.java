@@ -75,15 +75,14 @@ public final class PojoCodecProvider implements CodecProvider {
     @SuppressWarnings("unchecked")
     private <T> PojoCodec<T> getPojoCodec(final Class<T> clazz, final CodecRegistry registry) {
         ClassModel<T> classModel = (ClassModel<T>) classModels.get(clazz);
-        PojoCodec<T> pojoCodec = null;
         if (classModel != null) {
-            pojoCodec = new PojoCodecImpl<T>(classModel, registry, propertyCodecProviders, discriminatorLookup);
+            return new PojoCodecImpl<T>(classModel, registry, propertyCodecProviders, discriminatorLookup);
         } else if (automatic || (clazz.getPackage() != null && packages.contains(clazz.getPackage().getName()))) {
             try {
                 classModel = createClassModel(clazz, conventions);
                 if (clazz.isInterface() || !classModel.getPropertyModels().isEmpty()) {
                     discriminatorLookup.addClassModel(classModel);
-                    pojoCodec = new AutomaticPojoCodec<T>(new PojoCodecImpl<T>(classModel, registry, propertyCodecProviders,
+                    return new AutomaticPojoCodec<T>(new PojoCodecImpl<T>(classModel, registry, propertyCodecProviders,
                             discriminatorLookup));
                 }
             } catch (Exception e) {
@@ -91,17 +90,7 @@ public final class PojoCodecProvider implements CodecProvider {
                 return null;
             }
         }
-
-        if (pojoCodec != null && classModel.getIdPropertyModelHolder() != null && classModel.getIdPropertyModelHolder().isCollectible()) {
-            return createPojoIdExtendingCodec(pojoCodec, classModel.getIdPropertyModelHolder(), registry);
-        }
-        return pojoCodec;
-    }
-
-    private <T, I> PojoCodec<T> createPojoIdExtendingCodec(final PojoCodec<T> pojoCodec,
-                                                           final IdPropertyModelHolder<I> idPropertyModelHolder,
-                                                           final CodecRegistry registry) {
-        return new PojoIdGeneratingCodec<T, I>(pojoCodec, idPropertyModelHolder, registry);
+        return null;
     }
 
     /**
@@ -134,12 +123,12 @@ public final class PojoCodecProvider implements CodecProvider {
         }
 
         /**
-         * Sets whether the provider should automatically try to create a {@link ClassModel} for any class that is requested.
+         * Sets whether the provider should automatically try to wrap a {@link ClassModel} for any class that is requested.
          *
          * <p>Note: As Java Beans are convention based, when using automatic settings the provider should be the last provider in the
          * registry.</p>
          *
-         * @param automatic whether to automatically create {@code ClassModels} or not.
+         * @param automatic whether to automatically wrap {@code ClassModels} or not.
          * @return this
          */
         public Builder automatic(final boolean automatic) {

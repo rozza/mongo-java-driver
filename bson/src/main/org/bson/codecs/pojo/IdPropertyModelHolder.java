@@ -45,10 +45,6 @@ final class IdPropertyModelHolder<I> {
         this.idGenerator = idGenerator;
     }
 
-    boolean isCollectible() {
-        return propertyModel != null && idGenerator != null;
-    }
-
     PropertyModel<I> getPropertyModel() {
         return propertyModel;
     }
