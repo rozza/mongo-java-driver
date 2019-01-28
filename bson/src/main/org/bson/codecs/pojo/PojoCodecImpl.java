@@ -155,15 +155,15 @@ final class PojoCodecImpl<T> extends PojoCodec<T> {
         if (propertyModelHolder.getPropertyModel() == null || propertyModelHolder.getIdGenerator() == null) {
             encodeProperty(writer, instance, encoderContext, propertyModelHolder.getPropertyModel());
         } else {
-                S id = propertyModelHolder.getPropertyModel().getPropertyAccessor().get(instance);
-                if (writer.getCurrentLevel() == 0 && id == null) {
-                    id = propertyModelHolder.getIdGenerator().generate();
-                    try {
-                        propertyModelHolder.getPropertyModel().getPropertyAccessor().set(instance, id);
-                    } catch (Exception e) {
-                        // ignore
-                    }
+            S id = propertyModelHolder.getPropertyModel().getPropertyAccessor().get(instance);
+            if (id == null && writer.getCurrentLevel() == 0 && encoderContext.isEncodingCollectibleDocument()) {
+                id = propertyModelHolder.getIdGenerator().generate();
+                try {
+                    propertyModelHolder.getPropertyModel().getPropertyAccessor().set(instance, id);
+                } catch (Exception e) {
+                    // ignore
                 }
+            }
             encodeValue(writer, encoderContext, propertyModelHolder.getPropertyModel(), id);
         }
     }

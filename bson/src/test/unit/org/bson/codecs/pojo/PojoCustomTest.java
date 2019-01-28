@@ -187,8 +187,11 @@ public final class PojoCustomTest extends PojoTestCase {
         assertNull(simpleIdModel.getId());
         ClassModelBuilder<SimpleIdModel> builder = ClassModel.builder(SimpleIdModel.class).idGenerator(new ObjectIdGenerator());
 
-        roundTrip(getPojoCodecProviderBuilder(builder), simpleIdModel,
-                "{'_id': {'$oid': '123412341234123412341234'}, 'integerField': 42, 'stringField': 'myString'}");
+        roundTrip(getPojoCodecProviderBuilder(builder), simpleIdModel, "{'integerField': 42, 'stringField': 'myString'}");
+        assertNull(simpleIdModel.getId());
+
+        encodesTo(getPojoCodecProviderBuilder(builder), simpleIdModel,
+                "{'_id': {'$oid': '123412341234123412341234'}, 'integerField': 42, 'stringField': 'myString'}", true);
         assertEquals(new ObjectId("123412341234123412341234"), simpleIdModel.getId());
     }
 
@@ -200,7 +203,7 @@ public final class PojoCustomTest extends PojoTestCase {
                 .idGenerator(new ObjectIdGenerator());
         String json = "{'_id': {'$oid': '123412341234123412341234'}, 'integerField': 42, 'stringField': 'myString'}";
 
-        encodesTo(getPojoCodecProviderBuilder(builder), simpleIdModelNoId, json);
+        encodesTo(getPojoCodecProviderBuilder(builder), simpleIdModelNoId, json, true);
         decodesTo(getPojoCodecProviderBuilder(builder), json, simpleIdModelWithId);
     }
 
@@ -222,7 +225,11 @@ public final class PojoCustomTest extends PojoTestCase {
                 });
 
         roundTrip(getPojoCodecProviderBuilder(builder, ClassModel.builder(SimpleIdModel.class)), nestedSimpleIdModel,
-                "{'_id': 'a', 'nestedSimpleIdModel': {'integerField': 42, 'stringField': 'myString'}}");
+                "{'nestedSimpleIdModel': {'integerField': 42, 'stringField': 'myString'}}");
+        assertNull(nestedSimpleIdModel.getId());
+
+        encodesTo(getPojoCodecProviderBuilder(builder, ClassModel.builder(SimpleIdModel.class)), nestedSimpleIdModel,
+                "{'_id': 'a', 'nestedSimpleIdModel': {'integerField': 42, 'stringField': 'myString'}}", true);
         assertEquals("a", nestedSimpleIdModel.getId());
     }
 
@@ -523,7 +530,7 @@ public final class PojoCustomTest extends PojoTestCase {
     @Test(expected = CodecConfigurationException.class)
     public void testCannotEncodeUnspecializedClasses() {
         CodecRegistry registry = fromProviders(getPojoCodecProviderBuilder(GenericTreeModel.class).build());
-        encode(registry.get(GenericTreeModel.class), getGenericTreeModel());
+        encode(registry.get(GenericTreeModel.class), getGenericTreeModel(), false);
     }
 
     @Test(expected = CodecConfigurationException.class)
