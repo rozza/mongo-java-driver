@@ -27,7 +27,6 @@ import org.bson.codecs.configuration.CodecConfigurationException;
 import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.diagnostics.Logger;
 import org.bson.diagnostics.Loggers;
-import org.bson.LevelCountingBsonWriter;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -90,25 +89,24 @@ final class PojoCodecImpl<T> extends PojoCodec<T> {
                             + "Top level classes with generic types are not supported by the PojoCodec.", classModel.getName()));
         }
 
-        LevelCountingBsonWriter levelCountingWriter = wrapBsonWriter(writer);
         if (areEquivalentTypes(value.getClass(), classModel.getType())) {
-            levelCountingWriter.writeStartDocument();
+            writer.writeStartDocument();
 
-            encodeIdProperty(levelCountingWriter, value, encoderContext, classModel.getIdPropertyModelHolder());
+            encodeIdProperty(writer, value, encoderContext, classModel.getIdPropertyModelHolder());
 
             if (classModel.useDiscriminator()) {
-                levelCountingWriter.writeString(classModel.getDiscriminatorKey(), classModel.getDiscriminator());
+                writer.writeString(classModel.getDiscriminatorKey(), classModel.getDiscriminator());
             }
 
             for (PropertyModel<?> propertyModel : classModel.getPropertyModels()) {
                 if (propertyModel.equals(classModel.getIdPropertyModel())) {
                     continue;
                 }
-                encodeProperty(levelCountingWriter, value, encoderContext, propertyModel);
+                encodeProperty(writer, value, encoderContext, propertyModel);
             }
-            levelCountingWriter.writeEndDocument();
+            writer.writeEndDocument();
         } else {
-            ((Codec<T>) registry.get(value.getClass())).encode(levelCountingWriter, value, encoderContext);
+            ((Codec<T>) registry.get(value.getClass())).encode(writer, value, encoderContext);
         }
     }
 
@@ -142,29 +140,23 @@ final class PojoCodecImpl<T> extends PojoCodec<T> {
         return classModel;
     }
 
-
-    private LevelCountingBsonWriter wrapBsonWriter(final BsonWriter writer) {
-        if (writer instanceof LevelCountingBsonWriter) {
-            return (LevelCountingBsonWriter) writer;
-        }
-        return new LevelCountingBsonWriter(writer);
-    }
-
-    private <S> void encodeIdProperty(final LevelCountingBsonWriter writer, final T instance, final EncoderContext encoderContext,
+    private <S> void encodeIdProperty(final BsonWriter writer, final T instance, final EncoderContext encoderContext,
                                       final IdPropertyModelHolder<S> propertyModelHolder) {
-        if (propertyModelHolder.getPropertyModel() == null || propertyModelHolder.getIdGenerator() == null) {
-            encodeProperty(writer, instance, encoderContext, propertyModelHolder.getPropertyModel());
-        } else {
-            S id = propertyModelHolder.getPropertyModel().getPropertyAccessor().get(instance);
-            if (id == null && writer.getCurrentLevel() == 0 && encoderContext.isEncodingCollectibleDocument()) {
-                id = propertyModelHolder.getIdGenerator().generate();
-                try {
-                    propertyModelHolder.getPropertyModel().getPropertyAccessor().set(instance, id);
-                } catch (Exception e) {
-                    // ignore
+        if (propertyModelHolder.getPropertyModel() != null) {
+            if (propertyModelHolder.getIdGenerator() == null) {
+                encodeProperty(writer, instance, encoderContext, propertyModelHolder.getPropertyModel());
+            } else {
+                S id = propertyModelHolder.getPropertyModel().getPropertyAccessor().get(instance);
+                if (id == null && encoderContext.isEncodingCollectibleDocument()) {
+                    id = propertyModelHolder.getIdGenerator().generate();
+                    try {
+                        propertyModelHolder.getPropertyModel().getPropertyAccessor().set(instance, id);
+                    } catch (Exception e) {
+                        // ignore
+                    }
                 }
+                encodeValue(writer, encoderContext, propertyModelHolder.getPropertyModel(), id);
             }
-            encodeValue(writer, encoderContext, propertyModelHolder.getPropertyModel(), id);
         }
     }
 
@@ -185,7 +177,7 @@ final class PojoCodecImpl<T> extends PojoCodec<T> {
                 writer.writeNull();
             } else {
                 try {
-                    propertyModel.getCachedCodec().encode(writer, propertyValue, encoderContext);
+                    encoderContext.encodeWithChildContext(propertyModel.getCachedCodec(), writer, propertyValue);
                 } catch (CodecConfigurationException e) {
                     throw new CodecConfigurationException(format("Failed to encode '%s'. Encoding '%s' errored with: %s",
                             classModel.getName(), propertyModel.getReadName(), e.getMessage()), e);

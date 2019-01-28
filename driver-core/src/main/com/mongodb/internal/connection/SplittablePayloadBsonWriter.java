@@ -19,7 +19,6 @@ package com.mongodb.internal.connection;
 import com.mongodb.connection.SplittablePayload;
 import org.bson.BsonBinaryWriter;
 import org.bson.BsonWriter;
-import org.bson.LevelCountingBsonWriter;
 import org.bson.io.BsonOutput;
 
 import static com.mongodb.internal.connection.BsonWriterHelper.writePayloadArray;
