@@ -16,6 +16,7 @@
 
 package com.mongodb.operation;
 
+import com.mongodb.Function;
 import com.mongodb.MongoException;
 import com.mongodb.MongoNodeIsRecoveringException;
 import com.mongodb.MongoNotPrimaryException;
@@ -26,8 +27,10 @@ import com.mongodb.WriteConcern;
 import com.mongodb.async.SingleResultCallback;
 import com.mongodb.binding.AsyncWriteBinding;
 import com.mongodb.binding.WriteBinding;
+import org.bson.BsonDocument;
 
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import static com.mongodb.MongoException.UNKNOWN_TRANSACTION_COMMIT_RESULT_LABEL;
 import static java.util.Arrays.asList;
@@ -103,5 +106,21 @@ public class CommitTransactionOperation extends TransactionOperation {
     @Override
     protected String getCommandName() {
         return "commitTransaction";
+    }
+
+    @Override
+    protected Function<BsonDocument, BsonDocument> getRetryCommandModifier() {
+        return new Function<BsonDocument, BsonDocument>() {
+            @Override
+            public BsonDocument apply(final BsonDocument command) {
+                BsonDocument retryCommand = command.clone();
+                WriteConcern retryWriteConcern = getWriteConcern().withW("majority");
+                if (retryWriteConcern.getWTimeout(TimeUnit.MILLISECONDS) == null) {
+                    retryWriteConcern = retryWriteConcern.withWTimeout(10000, TimeUnit.MILLISECONDS);
+                }
+                retryCommand.put("writeConcern", retryWriteConcern.asDocument());
+                return retryCommand;
+            }
+        };
     }
 }
