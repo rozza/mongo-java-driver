@@ -106,12 +106,12 @@ class OperationUnitSpecification extends Specification {
 
         if (checkCommand) {
             1 * connection.command(*_) >> {
-                it[1] == expectedCommand
+                assert(it[1] == expectedCommand)
                 result
             }
         } else if (checkSlaveOk) {
             1 * connection.command(*_) >> {
-                it[4] == readPreference
+                assert(it[3] == readPreference)
                 result
             }
         }
@@ -157,12 +157,12 @@ class OperationUnitSpecification extends Specification {
 
         if (checkCommand) {
             1 * connection.commandAsync(*_) >> {
-                it[1] == expectedCommand
+                assert(it[1] == expectedCommand)
                 it.last().onResult(result, null)
             }
         } else if (checkSlaveOk) {
             1 * connection.commandAsync(*_) >> {
-                it[4] == readPreference
+                assert(it[3] == readPreference)
                 it.last().onResult(result, null)
             }
         }
