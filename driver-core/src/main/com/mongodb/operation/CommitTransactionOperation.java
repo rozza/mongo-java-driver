@@ -144,13 +144,12 @@ public class CommitTransactionOperation extends TransactionOperation {
         return new Function<BsonDocument, BsonDocument>() {
             @Override
             public BsonDocument apply(final BsonDocument command) {
-                BsonDocument retryCommand = command.clone();
                 WriteConcern retryWriteConcern = getWriteConcern().withW("majority");
                 if (retryWriteConcern.getWTimeout(TimeUnit.MILLISECONDS) == null) {
                     retryWriteConcern = retryWriteConcern.withWTimeout(10000, TimeUnit.MILLISECONDS);
                 }
-                retryCommand.put("writeConcern", retryWriteConcern.asDocument());
-                return retryCommand;
+                command.put("writeConcern", retryWriteConcern.asDocument());
+                return command;
             }
         };
     }
