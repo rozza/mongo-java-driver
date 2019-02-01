@@ -116,8 +116,10 @@ final class ClientSessionImpl extends BaseClientSessionImpl implements ClientSes
                 if (readConcern == null) {
                     throw new MongoInternalException("Invariant violated.  Transaction options read concern can not be null");
                 }
+                boolean alreadyCommitted = commitInProgress || transactionState == TransactionState.COMMITTED;
                 commitInProgress = true;
-                delegate.getOperationExecutor().execute(new CommitTransactionOperation(transactionOptions.getWriteConcern()),
+                delegate.getOperationExecutor().execute(
+                        new CommitTransactionOperation(transactionOptions.getWriteConcern(), alreadyCommitted),
                         readConcern, this);
             }
         } finally {
@@ -125,7 +127,6 @@ final class ClientSessionImpl extends BaseClientSessionImpl implements ClientSes
             transactionState = TransactionState.COMMITTED;
         }
     }
-
 
     @Override
     public void abortTransaction() {

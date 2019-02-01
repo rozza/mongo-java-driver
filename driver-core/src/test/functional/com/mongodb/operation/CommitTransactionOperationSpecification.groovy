@@ -80,4 +80,19 @@ class CommitTransactionOperationSpecification extends OperationFunctionalSpecifi
         where:
         async << [true, false]
     }
+
+    def 'should set writeconcern on second commit'() {
+        given:
+        def cannedResult = BsonDocument.parse('{value: {}}')
+        def expectedCommand = BsonDocument.parse('{commitTransaction: 1, writeConcern: {w: "majority", wtimeout: 10000}}')
+
+        when:
+        def operation = new CommitTransactionOperation(ACKNOWLEDGED, true)
+
+        then:
+        testOperationInTransaction(operation, [4, 0, 0], expectedCommand, async, cannedResult, true)
+
+        where:
+        async << [true, false]
+    }
 }

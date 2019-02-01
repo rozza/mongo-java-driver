@@ -27,6 +27,9 @@ import com.mongodb.WriteConcern;
 import com.mongodb.async.SingleResultCallback;
 import com.mongodb.binding.AsyncWriteBinding;
 import com.mongodb.binding.WriteBinding;
+import com.mongodb.connection.ConnectionDescription;
+import com.mongodb.connection.ServerDescription;
+import com.mongodb.operation.CommandOperationHelper.CommandCreator;
 import org.bson.BsonDocument;
 
 import java.util.List;
@@ -42,6 +45,7 @@ import static java.util.Arrays.asList;
  */
 @Deprecated
 public class CommitTransactionOperation extends TransactionOperation {
+    private final boolean alreadyCommitted;
 
     /**
      * Construct an instance.
@@ -49,7 +53,19 @@ public class CommitTransactionOperation extends TransactionOperation {
      * @param writeConcern the write concern
      */
     public CommitTransactionOperation(final WriteConcern writeConcern) {
+        this(writeConcern, false);
+    }
+
+    /**
+     * Construct an instance.
+     *
+     * @param writeConcern the write concern
+     * @param alreadyCommitted if the transaction has already been committed.
+     * @since 3.11
+     */
+    public CommitTransactionOperation(final WriteConcern writeConcern, final boolean alreadyCommitted) {
         super(writeConcern);
+        this.alreadyCommitted = alreadyCommitted;
     }
 
     @Override
@@ -106,6 +122,21 @@ public class CommitTransactionOperation extends TransactionOperation {
     @Override
     protected String getCommandName() {
         return "commitTransaction";
+    }
+
+    @Override
+    CommandCreator getCommandCreator() {
+        final CommandCreator creator = super.getCommandCreator();
+        if (alreadyCommitted) {
+            return new CommandCreator() {
+                @Override
+                public BsonDocument create(final ServerDescription serverDescription, final ConnectionDescription connectionDescription) {
+                    return getRetryCommandModifier().apply(creator.create(serverDescription, connectionDescription));
+                }
+            };
+        } else {
+            return creator;
+        }
     }
 
     @Override

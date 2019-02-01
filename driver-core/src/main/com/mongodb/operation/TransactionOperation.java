@@ -78,7 +78,7 @@ public abstract class TransactionOperation implements WriteOperation<Void>, Asyn
                 errorHandlingCallback(callback, LOGGER));
     }
 
-    private CommandCreator getCommandCreator() {
+    CommandCreator getCommandCreator() {
         return new CommandCreator() {
             @Override
             public BsonDocument create(final ServerDescription serverDescription, final ConnectionDescription connectionDescription) {
