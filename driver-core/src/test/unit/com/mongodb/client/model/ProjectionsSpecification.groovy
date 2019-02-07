@@ -16,12 +16,9 @@
 
 package com.mongodb.client.model
 
-import org.bson.BsonDocument
-import org.bson.codecs.BsonValueCodecProvider
-import org.bson.codecs.ValueCodecProvider
-import org.bson.conversions.Bson
 import spock.lang.Specification
 
+import static com.mongodb.client.model.BsonTestHelper.toBson
 import static com.mongodb.client.model.Filters.and
 import static com.mongodb.client.model.Filters.eq
 import static com.mongodb.client.model.Projections.computed
@@ -33,62 +30,87 @@ import static com.mongodb.client.model.Projections.include
 import static com.mongodb.client.model.Projections.metaTextScore
 import static com.mongodb.client.model.Projections.slice
 import static org.bson.BsonDocument.parse
-import static org.bson.codecs.configuration.CodecRegistries.fromProviders
 
 class ProjectionsSpecification extends Specification {
-    def registry = fromProviders([new BsonValueCodecProvider(), new ValueCodecProvider()])
 
     def 'include'() {
         expect:
-        toBson(include('x')) == parse('{x : 1}')
-        toBson(include('x', 'y')) == parse('{x : 1, y : 1}')
-        toBson(include(['x', 'y'])) == parse('{x : 1, y : 1}')
-        toBson(include(['x', 'y', 'x'])) == parse('{y : 1, x : 1}')
+        toBson(include('x'), direct) == parse('{x : 1}')
+        toBson(include('x', 'y'), direct) == parse('{x : 1, y : 1}')
+        toBson(include(['x', 'y']), direct) == parse('{x : 1, y : 1}')
+        toBson(include(['x', 'y', 'x']), direct) == parse('{y : 1, x : 1}')
+
+        where:
+        direct << [true, false]
     }
 
     def 'exclude'() {
         expect:
-        toBson(exclude('x')) == parse('{x : 0}')
-        toBson(exclude('x', 'y')) == parse('{x : 0, y : 0}')
-        toBson(exclude(['x', 'y'])) == parse('{x : 0, y : 0}')
+        toBson(exclude('x'), direct) == parse('{x : 0}')
+        toBson(exclude('x', 'y'), direct) == parse('{x : 0, y : 0}')
+        toBson(exclude(['x', 'y']), direct) == parse('{x : 0, y : 0}')
+
+        where:
+        direct << [true, false]
     }
 
     def 'excludeId'() {
         expect:
-        toBson(excludeId()) == parse('{_id : 0}')
+        toBson(excludeId(), direct) == parse('{_id : 0}')
+
+        where:
+        direct << [true, false]
     }
 
     def 'firstElem'() {
         expect:
-        toBson(elemMatch('x')) == parse('{"x.$" : 1}')
+        toBson(elemMatch('x'), direct) == parse('{"x.$" : 1}')
+
+        where:
+        direct << [true, false]
     }
 
     def 'elemMatch'() {
         expect:
-        toBson(elemMatch('x', and(eq('y', 1), eq('z', 2)))) == parse('{x : {$elemMatch : {y : 1, z : 2}}}')
+        toBson(elemMatch('x', and(eq('y', 1), eq('z', 2))), direct) == parse('{x : {$elemMatch : {y : 1, z : 2}}}')
+
+        where:
+        direct << [true, false]
     }
 
     def 'slice'() {
         expect:
-        toBson(slice('x', 5)) == parse('{x : {$slice : 5}}')
-        toBson(slice('x', 5, 10)) == parse('{x : {$slice : [5, 10]}}')
+        toBson(slice('x', 5), direct) == parse('{x : {$slice : 5}}')
+        toBson(slice('x', 5, 10), direct) == parse('{x : {$slice : [5, 10]}}')
+
+        where:
+        direct << [true, false]
     }
 
     def 'metaTextScore'() {
         expect:
-        toBson(metaTextScore('x')) == parse('{x : {$meta : "textScore"}}')
+        toBson(metaTextScore('x'), direct) == parse('{x : {$meta : "textScore"}}')
+
+        where:
+        direct << [true, false]
     }
 
     def 'computed'() {
         expect:
-        toBson(computed('c', '$y')) == parse('{c : "$y"}')
+        toBson(computed('c', '$y'), direct) == parse('{c : "$y"}')
+
+        where:
+        direct << [true, false]
     }
 
     def 'combine fields'() {
         expect:
-        toBson(fields(include('x', 'y'), exclude('_id'))) == parse('{x : 1, y : 1, _id : 0}')
-        toBson(fields([include('x', 'y'), exclude('_id')])) == parse('{x : 1, y : 1, _id : 0}')
-        toBson(fields(include('x', 'y'), exclude('x'))) == parse('{y : 1, x : 0}')
+        toBson(fields(include('x', 'y'), exclude('_id')), direct) == parse('{x : 1, y : 1, _id : 0}')
+        toBson(fields([include('x', 'y'), exclude('_id')]), direct) == parse('{x : 1, y : 1, _id : 0}')
+        toBson(fields(include('x', 'y'), exclude('x')), direct) == parse('{y : 1, x : 0}')
+
+        where:
+        direct << [true, false]
     }
 
     def 'should create string representation for include and exclude'() {
@@ -113,9 +135,5 @@ class ProjectionsSpecification extends Specification {
     def 'should create string representation for fields'() {
         expect:
         fields(include('x', 'y'), exclude('_id')).toString() == 'Projections{projections=[{"x": 1, "y": 1}, {"_id": 0}]}'
-    }
-
-    def toBson(Bson bson) {
-        bson.toBsonDocument(BsonDocument, registry)
     }
 }
