@@ -19,7 +19,7 @@ package com.mongodb.client.model
 
 import spock.lang.Specification
 
-import static com.mongodb.client.model.BsonTestHelper.toBson
+import static com.mongodb.client.model.BsonHelper.toBson
 import static com.mongodb.client.model.Indexes.ascending
 import static com.mongodb.client.model.Indexes.compoundIndex
 import static com.mongodb.client.model.Indexes.descending
@@ -34,75 +34,51 @@ class IndexesSpecification extends Specification {
 
     def 'ascending'() {
         expect:
-        toBson(ascending('x'), direct) == parse('{x : 1}')
-        toBson(ascending('x', 'y'), direct) == parse('{x : 1, y : 1}')
-        toBson(ascending(['x', 'y']), direct) == parse('{x : 1, y : 1}')
-
-        where:
-        direct << [true, false]
+        toBson(ascending('x')) == parse('{x : 1}')
+        toBson(ascending('x', 'y')) == parse('{x : 1, y : 1}')
+        toBson(ascending(['x', 'y'])) == parse('{x : 1, y : 1}')
     }
 
     def 'descending'() {
         expect:
-        toBson(descending('x'), direct) == parse('{x : -1}')
-        toBson(descending('x', 'y'), direct) == parse('{x : -1, y : -1}')
-        toBson(descending(['x', 'y']), direct) == parse('{x : -1, y : -1}')
-
-        where:
-        direct << [true, false]
+        toBson(descending('x')) == parse('{x : -1}')
+        toBson(descending('x', 'y')) == parse('{x : -1, y : -1}')
+        toBson(descending(['x', 'y'])) == parse('{x : -1, y : -1}')
     }
 
     def 'geo2dsphere'() {
         expect:
-        toBson(geo2dsphere('x'), direct) == parse('{x : "2dsphere"}')
-        toBson(geo2dsphere('x', 'y'), direct) == parse('{x : "2dsphere", y : "2dsphere"}')
-        toBson(geo2dsphere(['x', 'y']), direct) == parse('{x : "2dsphere", y : "2dsphere"}')
-
-        where:
-        direct << [true, false]
+        toBson(geo2dsphere('x')) == parse('{x : "2dsphere"}')
+        toBson(geo2dsphere('x', 'y')) == parse('{x : "2dsphere", y : "2dsphere"}')
+        toBson(geo2dsphere(['x', 'y'])) == parse('{x : "2dsphere", y : "2dsphere"}')
     }
 
     def 'geo2d'() {
         expect:
-        toBson(geo2d('x'), direct) == parse('{x : "2d"}')
-
-        where:
-        direct << [true, false]
+        toBson(geo2d('x')) == parse('{x : "2d"}')
     }
 
     def 'geoHaystack'() {
         expect:
-        toBson(geoHaystack('x', descending('b')), direct) == parse('{x : "geoHaystack", b: -1}')
-
-        where:
-        direct << [true, false]
+        toBson(geoHaystack('x', descending('b'))) == parse('{x : "geoHaystack", b: -1}')
     }
 
     def 'text'() {
         expect:
-        toBson(text('x'), direct) == parse('{x : "text"}')
-        toBson(text(), direct) == parse('{ "$**" : "text"}')
-
-        where:
-        direct << [true, false]
+        toBson(text('x')) == parse('{x : "text"}')
+        toBson(text()) == parse('{ "$**" : "text"}')
     }
 
     def 'hashed'() {
         expect:
-        toBson(hashed('x'), direct) == parse('{x : "hashed"}')
-
-        where:
-        direct << [true, false]
+        toBson(hashed('x')) == parse('{x : "hashed"}')
     }
 
     def 'compoundIndex'() {
         expect:
-        toBson(compoundIndex([ascending('x'), descending('y')]), direct) == parse('{x : 1, y : -1}')
-        toBson(compoundIndex(ascending('x'), descending('y')), direct) == parse('{x : 1, y : -1}')
-        toBson(compoundIndex(ascending('x'), descending('y'), descending('x')), direct) == parse('{y : -1, x : -1}')
-        toBson(compoundIndex(ascending('x', 'y'), descending('a', 'b')), direct) == parse('{x : 1, y : 1, a : -1, b : -1}')
-
-        where:
-        direct << [true, false]
+        toBson(compoundIndex([ascending('x'), descending('y')])) == parse('{x : 1, y : -1}')
+        toBson(compoundIndex(ascending('x'), descending('y'))) == parse('{x : 1, y : -1}')
+        toBson(compoundIndex(ascending('x'), descending('y'), descending('x'))) == parse('{y : -1, x : -1}')
+        toBson(compoundIndex(ascending('x', 'y'), descending('a', 'b'))) == parse('{x : 1, y : 1, a : -1, b : -1}')
     }
 }

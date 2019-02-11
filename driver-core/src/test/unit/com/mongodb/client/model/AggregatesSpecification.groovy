@@ -16,13 +16,16 @@
 
 package com.mongodb.client.model
 
+
 import org.bson.BsonDocument
 import org.bson.BsonInt32
 import org.bson.Document
 import org.bson.conversions.Bson
+import spock.lang.IgnoreIf
 import spock.lang.Specification
 
 import static BucketGranularity.R5
+import static com.mongodb.ClusterFixture.serverVersionAtLeast
 import static com.mongodb.client.model.Accumulators.addToSet
 import static com.mongodb.client.model.Accumulators.avg
 import static com.mongodb.client.model.Accumulators.first
@@ -54,7 +57,7 @@ import static com.mongodb.client.model.Aggregates.skip
 import static com.mongodb.client.model.Aggregates.sort
 import static com.mongodb.client.model.Aggregates.sortByCount
 import static com.mongodb.client.model.Aggregates.unwind
-import static com.mongodb.client.model.BsonTestHelper.toBson
+import static com.mongodb.client.model.BsonHelper.toBson
 import static com.mongodb.client.model.Filters.eq
 import static com.mongodb.client.model.Filters.expr
 import static com.mongodb.client.model.Projections.computed
@@ -66,25 +69,24 @@ import static java.util.Arrays.asList
 import static org.bson.BsonDocument.parse
 
 class AggregatesSpecification extends Specification {
+
+    @IgnoreIf({ !serverVersionAtLeast(3, 4) })
     def 'should render $addFields'() {
         expect:
-        toBson(addFields(new Field('newField', null)), direct) == parse('{$addFields: {newField: null}}')
-        toBson(addFields(new Field('newField', 'hello')), direct) == parse('{$addFields: {newField: "hello"}}')
-        toBson(addFields(new Field('this', '$$CURRENT')), direct) == parse('{$addFields: {this: "$$CURRENT"}}')
+        toBson(addFields(new Field('newField', null))) == parse('{$addFields: {newField: null}}')
+        toBson(addFields(new Field('newField', 'hello'))) == parse('{$addFields: {newField: "hello"}}')
+        toBson(addFields(new Field('this', '$$CURRENT'))) == parse('{$addFields: {this: "$$CURRENT"}}')
         toBson(addFields(new Field('myNewField', new Document('c', 3)
-                .append('d', 4))), direct) == parse('{$addFields: {myNewField: {c: 3, d: 4}}}')
-        toBson(addFields(new Field('alt3', new Document('$lt', asList('$a', 3)))), direct) == parse(
+                .append('d', 4)))) == parse('{$addFields: {myNewField: {c: 3, d: 4}}}')
+        toBson(addFields(new Field('alt3', new Document('$lt', asList('$a', 3))))) == parse(
                 '{$addFields: {alt3: {$lt: ["$a", 3]}}}')
-        toBson(addFields(new Field('b', 3), new Field('c', 5)), direct) == parse('{$addFields: {b: 3, c: 5}}')
-        toBson(addFields(asList(new Field('b', 3), new Field('c', 5))), direct) == parse('{$addFields: {b: 3, c: 5}}')
-
-        where:
-        direct << [true, false]
+        toBson(addFields(new Field('b', 3), new Field('c', 5))) == parse('{$addFields: {b: 3, c: 5}}')
+        toBson(addFields(asList(new Field('b', 3), new Field('c', 5)))) == parse('{$addFields: {b: 3, c: 5}}')
     }
 
     def 'should render $bucket'() {
         expect:
-        toBson(bucket('$screenSize', [0, 24, 32, 50, 100000]), direct) == parse('''{
+        toBson(bucket('$screenSize', [0, 24, 32, 50, 100000])) == parse('''{
             $bucket: {
               groupBy: "$screenSize",
               boundaries: [0, 24, 32, 50, 100000]
@@ -92,7 +94,7 @@ class AggregatesSpecification extends Specification {
           }''')
         toBson(bucket('$screenSize', [0, 24, 32, 50, 100000],
                       new BucketOptions()
-                              .defaultBucket('other')), direct) == parse('''{
+                              .defaultBucket('other'))) == parse('''{
             $bucket: {
               groupBy: "$screenSize",
               boundaries: [0, 24, 32, 50, 100000],
@@ -102,7 +104,7 @@ class AggregatesSpecification extends Specification {
         toBson(bucket('$screenSize', [0, 24, 32, 50, 100000],
                       new BucketOptions()
                               .defaultBucket('other')
-                              .output(sum('count', 1), push('matches', '$screenSize'))), direct) == parse('''{
+                              .output(sum('count', 1), push('matches', '$screenSize')))) == parse('''{
             $bucket: {
                 groupBy: "$screenSize",
                 boundaries: [0, 24, 32, 50, 100000],
@@ -113,14 +115,11 @@ class AggregatesSpecification extends Specification {
                 }
             }
         }''')
-
-        where:
-        direct << [true, false]
     }
 
     def 'should render $bucketAuto'() {
         expect:
-        toBson(bucketAuto('$price', 4), direct) == parse('''{
+        toBson(bucketAuto('$price', 4)) == parse('''{
             $bucketAuto: {
               groupBy: "$price",
               buckets: 4
@@ -128,7 +127,7 @@ class AggregatesSpecification extends Specification {
           }''')
         toBson(bucketAuto('$price', 4, new BucketAutoOptions()
                 .output(sum('count', 1),
-                        avg('avgPrice', '$price'))), direct) == parse('''{
+                        avg('avgPrice', '$price')))) == parse('''{
                                               $bucketAuto: {
                                                 groupBy: "$price",
                                                 buckets: 4,
@@ -141,7 +140,7 @@ class AggregatesSpecification extends Specification {
         toBson(bucketAuto('$price', 4, new BucketAutoOptions()
                 .granularity(R5)
                 .output(sum('count', 1),
-                        avg('avgPrice', '$price'))), direct) == parse('''{
+                        avg('avgPrice', '$price')))) == parse('''{
                                               $bucketAuto: {
                                                 groupBy: "$price",
                                                 buckets: 4,
@@ -152,93 +151,67 @@ class AggregatesSpecification extends Specification {
                                                 granularity: "R5"
                                               }
                                             }''')
-
-        where:
-        direct << [true, false]
     }
 
     def 'should render $count'() {
         expect:
-        toBson(count(), direct) == parse('{$count: "count"}')
-        toBson(count('count'), direct) == parse('{$count: "count"}')
-        toBson(count('total'), direct) == parse('{$count: "total"}')
-
-        where:
-        direct << [true, false]
+        toBson(count()) == parse('{$count: "count"}')
+        toBson(count('count')) == parse('{$count: "count"}')
+        toBson(count('total')) == parse('{$count: "total"}')
     }
 
     def 'should render $match'() {
         expect:
-        toBson(match(eq('author', 'dave')), direct) == parse('{ $match : { author : "dave" } }')
-
-        where:
-        direct << [true, false]
+        toBson(match(eq('author', 'dave'))) == parse('{ $match : { author : "dave" } }')
     }
 
     def 'should render $project'() {
         expect:
-        toBson(project(fields(include('title', 'author'), computed('lastName', '$author.last'))), direct) ==
+        toBson(project(fields(include('title', 'author'), computed('lastName', '$author.last')))) ==
         parse('{ $project : { title : 1 , author : 1, lastName : "$author.last" } }')
-
-        where:
-        direct << [true, false]
     }
 
+    @IgnoreIf({ !serverVersionAtLeast(3, 4) })
     def 'should render $replaceRoot'() {
         expect:
-        toBson(replaceRoot('$a1'), direct) == parse('{$replaceRoot: {newRoot: "$a1"}}')
-        toBson(replaceRoot('$a1.b'), direct) == parse('{$replaceRoot: {newRoot: "$a1.b"}}')
-        toBson(replaceRoot('$a1'), direct) == parse('{$replaceRoot: {newRoot: "$a1"}}')
-
-        where:
-        direct << [true, false]
+        toBson(replaceRoot('$a1')) == parse('{$replaceRoot: {newRoot: "$a1"}}')
+        toBson(replaceRoot('$a1.b')) == parse('{$replaceRoot: {newRoot: "$a1.b"}}')
+        toBson(replaceRoot('$a1')) == parse('{$replaceRoot: {newRoot: "$a1"}}')
     }
 
     def 'should render $sort'() {
         expect:
-        toBson(sort(ascending('title', 'author')), direct) == parse('{ $sort : { title : 1 , author : 1 } }')
-
-        where:
-        direct << [true, false]
+        toBson(sort(ascending('title', 'author'))) == parse('{ $sort : { title : 1 , author : 1 } }')
     }
 
     def 'should render $sortByCount'() {
         expect:
-        toBson(sortByCount('someField'), direct) == parse('{$sortByCount: "someField"}')
-        toBson(sortByCount(new Document('$floor', '$x')), direct) == parse('{$sortByCount: {$floor: "$x"}}')
-
-        where:
-        direct << [true, false]
+        toBson(sortByCount('someField')) == parse('{$sortByCount: "someField"}')
+        toBson(sortByCount(new Document('$floor', '$x'))) == parse('{$sortByCount: {$floor: "$x"}}')
     }
 
     def 'should render $limit'() {
         expect:
-        toBson(limit(5), direct) == parse('{ $limit : 5 }')
-
-        where:
-        direct << [true, false]
+        toBson(limit(5)) == parse('{ $limit : 5 }')
     }
 
     def 'should render $lookup'() {
         expect:
-        toBson(lookup('from', 'localField', 'foreignField', 'as'), direct) == parse('''{ $lookup : { from: "from", localField: "localField",
+        toBson(lookup('from', 'localField', 'foreignField', 'as')) == parse('''{ $lookup : { from: "from", localField: "localField",
             foreignField: "foreignField", as: "as" } }''')
 
         List<Bson> pipeline = asList(match(expr(new Document('$eq', asList('x', '1')))))
-        toBson(lookup('from', asList(new Variable('var1', 'expression1')), pipeline, 'as'), direct) ==
+        toBson(lookup('from', asList(new Variable('var1', 'expression1')), pipeline, 'as')) ==
                 parse('''{ $lookup : { from: "from",
                                             let: { var1: "expression1" },
                                             pipeline : [{ $match : { $expr: { $eq : [ "x" , "1" ]}}}],
                                             as: "as" }}''')
 
         // without variables
-        toBson(lookup('from', pipeline, 'as'), direct) ==
+        toBson(lookup('from', pipeline, 'as')) ==
                 parse('''{ $lookup : { from: "from",
                                             pipeline : [{ $match : { $expr: { $eq : [ "x" , "1" ]}}}],
                                             as: "as" }}''')
-
-        where:
-        direct << [true, false]
     }
 
     def 'should render $facet'() {
@@ -252,7 +225,7 @@ class AggregatesSpecification extends Specification {
                           match(eq('attributes.name', 'manufacturer')),
                           group('$attributes.value', sum('count', 1)),
                           sort(descending('count')),
-                          limit(5))), direct) ==
+                          limit(5)))) ==
         parse('''{$facet: {
           "Screen Sizes": [
              {$unwind: "$attributes"},
@@ -270,100 +243,84 @@ class AggregatesSpecification extends Specification {
              {$limit: 5}
            ]
         }} ''')
-
-        where:
-        direct << [true, false]
     }
 
     def 'should render $graphLookup'() {
         expect:
         //without options
-        toBson(graphLookup('contacts', '$friends', 'friends', 'name', 'socialNetwork'), direct) ==
+        toBson(graphLookup('contacts', '$friends', 'friends', 'name', 'socialNetwork')) ==
         parse('''{ $graphLookup: { from: "contacts", startWith: "$friends", connectFromField: "friends", connectToField: "name",
             as: "socialNetwork" } }''')
 
         //with maxDepth
-        toBson(graphLookup('contacts', '$friends', 'friends', 'name', 'socialNetwork', new GraphLookupOptions().maxDepth(1)), direct) ==
+        toBson(graphLookup('contacts', '$friends', 'friends', 'name', 'socialNetwork', new GraphLookupOptions().maxDepth(1))) ==
         parse('''{ $graphLookup: { from: "contacts", startWith: "$friends", connectFromField: "friends", connectToField: "name",
             as: "socialNetwork", maxDepth: 1 } }''')
 
         // with depthField
-        toBson(graphLookup('contacts', '$friends', 'friends', 'name', 'socialNetwork',
-                new GraphLookupOptions().depthField('master')), direct) ==
+        toBson(graphLookup('contacts', '$friends', 'friends', 'name', 'socialNetwork', new GraphLookupOptions().depthField('master'))) ==
                 parse('''{ $graphLookup: { from: "contacts", startWith: "$friends", connectFromField: "friends", connectToField: "name",
             as: "socialNetwork", depthField: "master" } }''')
 
         // with restrictSearchWithMatch
         toBson(graphLookup('contacts', '$friends', 'friends', 'name', 'socialNetwork', new GraphLookupOptions()
-                .restrictSearchWithMatch(eq('hobbies', 'golf'))), direct) ==
+                .restrictSearchWithMatch(eq('hobbies', 'golf')))) ==
                 parse('''{ $graphLookup: { from: "contacts", startWith: "$friends", connectFromField: "friends", connectToField: "name",
             as: "socialNetwork", restrictSearchWithMatch : { "hobbies" : "golf" } } }''')
 
         // with maxDepth and depthField
         toBson(graphLookup('contacts', '$friends', 'friends', 'name', 'socialNetwork', new GraphLookupOptions()
-                .maxDepth(1).depthField('master')), direct) ==
+                .maxDepth(1).depthField('master'))) ==
         parse('''{ $graphLookup: { from: "contacts", startWith: "$friends", connectFromField: "friends", connectToField: "name",
             as: "socialNetwork", maxDepth: 1, depthField: "master" } }''')
 
         // with all options
         toBson(graphLookup('contacts', '$friends', 'friends', 'name', 'socialNetwork', new GraphLookupOptions()
-                .maxDepth(1).depthField('master').restrictSearchWithMatch(eq('hobbies', 'golf'))), direct) ==
+                .maxDepth(1).depthField('master').restrictSearchWithMatch(eq('hobbies', 'golf')))) ==
                 parse('''{ $graphLookup: { from: "contacts", startWith: "$friends", connectFromField: "friends", connectToField: "name",
             as: "socialNetwork", maxDepth: 1, depthField: "master", restrictSearchWithMatch : { "hobbies" : "golf" } } }''')
-
-        where:
-        direct << [true, false]
     }
 
     def 'should render $skip'() {
         expect:
-        toBson(skip(5), direct) == parse('{ $skip : 5 }')
-
-        where:
-        direct << [true, false]
+        toBson(skip(5)) == parse('{ $skip : 5 }')
     }
 
     def 'should render $unwind'() {
         expect:
-        toBson(unwind('$sizes'), direct) == parse('{ $unwind : "$sizes" }')
-        toBson(unwind('$sizes', new UnwindOptions().preserveNullAndEmptyArrays(null)), direct) == parse('{ $unwind : { path : "$sizes" } }')
-        toBson(unwind('$sizes', new UnwindOptions().preserveNullAndEmptyArrays(false)), direct) == parse('''
+        toBson(unwind('$sizes')) == parse('{ $unwind : "$sizes" }')
+        toBson(unwind('$sizes', new UnwindOptions().preserveNullAndEmptyArrays(null))) == parse('{ $unwind : { path : "$sizes" } }')
+        toBson(unwind('$sizes', new UnwindOptions().preserveNullAndEmptyArrays(false))) == parse('''
             { $unwind : { path : "$sizes", preserveNullAndEmptyArrays : false } }''')
-        toBson(unwind('$sizes', new UnwindOptions().preserveNullAndEmptyArrays(true)), direct) == parse('''
+        toBson(unwind('$sizes', new UnwindOptions().preserveNullAndEmptyArrays(true))) == parse('''
             { $unwind : { path : "$sizes", preserveNullAndEmptyArrays : true } }''')
-        toBson(unwind('$sizes', new UnwindOptions().includeArrayIndex(null)), direct) == parse('{ $unwind : { path : "$sizes" } }')
-        toBson(unwind('$sizes', new UnwindOptions().includeArrayIndex('$a')), direct) == parse('''
+        toBson(unwind('$sizes', new UnwindOptions().includeArrayIndex(null))) == parse('{ $unwind : { path : "$sizes" } }')
+        toBson(unwind('$sizes', new UnwindOptions().includeArrayIndex('$a'))) == parse('''
             { $unwind : { path : "$sizes", includeArrayIndex : "$a" } }''')
-        toBson(unwind('$sizes', new UnwindOptions().preserveNullAndEmptyArrays(true).includeArrayIndex('$a')), direct) == parse('''
+        toBson(unwind('$sizes', new UnwindOptions().preserveNullAndEmptyArrays(true).includeArrayIndex('$a'))) == parse('''
             { $unwind : { path : "$sizes", preserveNullAndEmptyArrays : true, includeArrayIndex : "$a" } }''')
-
-        where:
-        direct << [true, false]
     }
 
     def 'should render $out'() {
         expect:
-        toBson(out('authors'), direct) == parse('{ $out : "authors" }')
-        toBson(out('authors', new AggregateOutStageOptions().mode(REPLACE_COLLECTION)), direct) == parse('{ $out : "authors" }')
-        toBson(out('authors', new AggregateOutStageOptions().mode(REPLACE_DOCUMENTS)), direct) ==
+        toBson(out('authors')) == parse('{ $out : "authors" }')
+        toBson(out('authors', new AggregateOutStageOptions().mode(REPLACE_COLLECTION))) == parse('{ $out : "authors" }')
+        toBson(out('authors', new AggregateOutStageOptions().mode(REPLACE_DOCUMENTS))) ==
                 parse('{ $out : {mode : "replaceDocuments", to : "authors" } }')
-        toBson(out('authors', new AggregateOutStageOptions().mode(INSERT_DOCUMENTS)), direct) ==
+        toBson(out('authors', new AggregateOutStageOptions().mode(INSERT_DOCUMENTS))) ==
                 parse('{ $out : {mode : "insertDocuments", to : "authors" } }')
-        toBson(out('authors', new AggregateOutStageOptions().databaseName('db1')), direct) ==
+        toBson(out('authors', new AggregateOutStageOptions().databaseName('db1'))) ==
                 parse('{ $out : {mode : "replaceCollection", to : "authors", db : "db1" } }')
-        toBson(out('authors', new AggregateOutStageOptions().uniqueKey(new BsonDocument('x', new BsonInt32(1)))), direct) ==
+        toBson(out('authors', new AggregateOutStageOptions().uniqueKey(new BsonDocument('x', new BsonInt32(1))))) ==
                 parse('{ $out : {mode : "replaceCollection", to : "authors", uniqueKey : {x : 1 } } }')
-
-        where:
-        direct << [true, false]
     }
 
     def 'should render $group'() {
         expect:
-        toBson(group('$customerId'), direct) == parse('{ $group : { _id : "$customerId" } }')
-        toBson(group(null), direct) == parse('{ $group : { _id : null } }')
+        toBson(group('$customerId')) == parse('{ $group : { _id : "$customerId" } }')
+        toBson(group(null)) == parse('{ $group : { _id : null } }')
 
-        toBson(group(parse('{ month: { $month: "$date" }, day: { $dayOfMonth: "$date" }, year: { $year: "$date" } }')), direct) ==
+        toBson(group(parse('{ month: { $month: "$date" }, day: { $dayOfMonth: "$date" }, year: { $year: "$date" } }'))) ==
         parse('{ $group : { _id : { month: { $month: "$date" }, day: { $dayOfMonth: "$date" }, year: { $year: "$date" } } } }')
 
 
@@ -393,18 +350,7 @@ class AggregatesSpecification extends Specification {
                      addToSet('unique', '$quantity'),
                      stdDevPop('stdDevPop', '$quantity'),
                      stdDevSamp('stdDevSamp', '$quantity')
-        ), direct) == groupDocument
-
-        where:
-        direct << [true, false]
-    }
-
-    def 'should render $sample'() {
-        expect:
-        toBson(sample(5), direct) == parse('{ $sample : { size: 5} }')
-
-        where:
-        direct << [true, false]
+        )) == groupDocument
     }
 
     def 'should create string representation for simple stages'() {
@@ -422,5 +368,10 @@ class AggregatesSpecification extends Specification {
                 'Stage{name=\'$group\', id=null, ' +
                 'fieldAccumulators=[' +
                 'BsonField{name=\'avg\', value=Expression{name=\'$avg\', expression=$quantity}}]}'
+    }
+
+    def 'should render $sample'() {
+        expect:
+        toBson(sample(5)) == parse('{ $sample : { size: 5} }')
     }
 }

@@ -16,9 +16,10 @@
 
 package com.mongodb.client.model
 
+
 import spock.lang.Specification
 
-import static com.mongodb.client.model.BsonTestHelper.toBson
+import static com.mongodb.client.model.BsonHelper.toBson
 import static com.mongodb.client.model.Filters.and
 import static com.mongodb.client.model.Filters.eq
 import static com.mongodb.client.model.Projections.computed
@@ -35,82 +36,55 @@ class ProjectionsSpecification extends Specification {
 
     def 'include'() {
         expect:
-        toBson(include('x'), direct) == parse('{x : 1}')
-        toBson(include('x', 'y'), direct) == parse('{x : 1, y : 1}')
-        toBson(include(['x', 'y']), direct) == parse('{x : 1, y : 1}')
-        toBson(include(['x', 'y', 'x']), direct) == parse('{y : 1, x : 1}')
-
-        where:
-        direct << [true, false]
+        toBson(include('x')) == parse('{x : 1}')
+        toBson(include('x', 'y')) == parse('{x : 1, y : 1}')
+        toBson(include(['x', 'y'])) == parse('{x : 1, y : 1}')
+        toBson(include(['x', 'y', 'x'])) == parse('{y : 1, x : 1}')
     }
 
     def 'exclude'() {
         expect:
-        toBson(exclude('x'), direct) == parse('{x : 0}')
-        toBson(exclude('x', 'y'), direct) == parse('{x : 0, y : 0}')
-        toBson(exclude(['x', 'y']), direct) == parse('{x : 0, y : 0}')
-
-        where:
-        direct << [true, false]
+        toBson(exclude('x')) == parse('{x : 0}')
+        toBson(exclude('x', 'y')) == parse('{x : 0, y : 0}')
+        toBson(exclude(['x', 'y'])) == parse('{x : 0, y : 0}')
     }
 
     def 'excludeId'() {
         expect:
-        toBson(excludeId(), direct) == parse('{_id : 0}')
-
-        where:
-        direct << [true, false]
+        toBson(excludeId()) == parse('{_id : 0}')
     }
 
     def 'firstElem'() {
         expect:
-        toBson(elemMatch('x'), direct) == parse('{"x.$" : 1}')
-
-        where:
-        direct << [true, false]
+        toBson(elemMatch('x')) == parse('{"x.$" : 1}')
     }
 
     def 'elemMatch'() {
         expect:
-        toBson(elemMatch('x', and(eq('y', 1), eq('z', 2))), direct) == parse('{x : {$elemMatch : {y : 1, z : 2}}}')
-
-        where:
-        direct << [true, false]
+        toBson(elemMatch('x', and(eq('y', 1), eq('z', 2)))) == parse('{x : {$elemMatch : {y : 1, z : 2}}}')
     }
 
     def 'slice'() {
         expect:
-        toBson(slice('x', 5), direct) == parse('{x : {$slice : 5}}')
-        toBson(slice('x', 5, 10), direct) == parse('{x : {$slice : [5, 10]}}')
-
-        where:
-        direct << [true, false]
+        toBson(slice('x', 5)) == parse('{x : {$slice : 5}}')
+        toBson(slice('x', 5, 10)) == parse('{x : {$slice : [5, 10]}}')
     }
 
     def 'metaTextScore'() {
         expect:
-        toBson(metaTextScore('x'), direct) == parse('{x : {$meta : "textScore"}}')
-
-        where:
-        direct << [true, false]
+        toBson(metaTextScore('x')) == parse('{x : {$meta : "textScore"}}')
     }
 
     def 'computed'() {
         expect:
-        toBson(computed('c', '$y'), direct) == parse('{c : "$y"}')
-
-        where:
-        direct << [true, false]
+        toBson(computed('c', '$y')) == parse('{c : "$y"}')
     }
 
     def 'combine fields'() {
         expect:
-        toBson(fields(include('x', 'y'), exclude('_id')), direct) == parse('{x : 1, y : 1, _id : 0}')
-        toBson(fields([include('x', 'y'), exclude('_id')]), direct) == parse('{x : 1, y : 1, _id : 0}')
-        toBson(fields(include('x', 'y'), exclude('x')), direct) == parse('{y : 1, x : 0}')
-
-        where:
-        direct << [true, false]
+        toBson(fields(include('x', 'y'), exclude('_id'))) == parse('{x : 1, y : 1, _id : 0}')
+        toBson(fields([include('x', 'y'), exclude('_id')])) == parse('{x : 1, y : 1, _id : 0}')
+        toBson(fields(include('x', 'y'), exclude('x'))) == parse('{y : 1, x : 0}')
     }
 
     def 'should create string representation for include and exclude'() {

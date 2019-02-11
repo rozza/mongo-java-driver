@@ -17,59 +17,42 @@
 package com.mongodb.client.model
 
 
-import org.bson.codecs.BsonCodecProvider
-import org.bson.codecs.BsonValueCodecProvider
-import org.bson.codecs.ValueCodecProvider
 import spock.lang.Specification
 
-import static com.mongodb.client.model.BsonTestHelper.toBson
+import static com.mongodb.client.model.BsonHelper.toBson
 import static com.mongodb.client.model.Sorts.ascending
 import static com.mongodb.client.model.Sorts.descending
 import static com.mongodb.client.model.Sorts.metaTextScore
 import static com.mongodb.client.model.Sorts.orderBy
 import static org.bson.BsonDocument.parse
-import static org.bson.codecs.configuration.CodecRegistries.fromProviders
 
 class SortsSpecification extends Specification {
-    def registry = fromProviders([new BsonValueCodecProvider(), new ValueCodecProvider(), new BsonCodecProvider()])
 
     def 'ascending'() {
         expect:
-        toBson(ascending('x'), direct) == parse('{x : 1}')
-        toBson(ascending('x', 'y'), direct) == parse('{x : 1, y : 1}')
-        toBson(ascending(['x', 'y']), direct) == parse('{x : 1, y : 1}')
-
-        where:
-        direct << [true, false]
+        toBson(ascending('x')) == parse('{x : 1}')
+        toBson(ascending('x', 'y')) == parse('{x : 1, y : 1}')
+        toBson(ascending(['x', 'y'])) == parse('{x : 1, y : 1}')
     }
 
     def 'descending'() {
         expect:
-        toBson(descending('x'), direct) == parse('{x : -1}')
-        toBson(descending('x', 'y'), direct) == parse('{x : -1, y : -1}')
-        toBson(descending(['x', 'y']), direct) == parse('{x : -1, y : -1}')
-
-        where:
-        direct << [true, false]
+        toBson(descending('x')) == parse('{x : -1}')
+        toBson(descending('x', 'y')) == parse('{x : -1, y : -1}')
+        toBson(descending(['x', 'y'])) == parse('{x : -1, y : -1}')
     }
 
     def 'metaTextScore'() {
         expect:
-        toBson(metaTextScore('x'), direct) == parse('{x : {$meta : "textScore"}}')
-
-        where:
-        direct << [true, false]
+        toBson(metaTextScore('x')) == parse('{x : {$meta : "textScore"}}')
     }
 
     def 'orderBy'() {
         expect:
-        toBson(orderBy([ascending('x'), descending('y')]), direct) == parse('{x : 1, y : -1}')
-        toBson(orderBy(ascending('x'), descending('y')), direct) == parse('{x : 1, y : -1}')
-        toBson(orderBy(ascending('x'), descending('y'), descending('x')), direct) == parse('{y : -1, x : -1}')
-        toBson(orderBy(ascending('x', 'y'), descending('a', 'b')), direct) == parse('{x : 1, y : 1, a : -1, b : -1}')
-
-        where:
-        direct << [true, false]
+        toBson(orderBy([ascending('x'), descending('y')])) == parse('{x : 1, y : -1}')
+        toBson(orderBy(ascending('x'), descending('y'))) == parse('{x : 1, y : -1}')
+        toBson(orderBy(ascending('x'), descending('y'), descending('x'))) == parse('{y : -1, x : -1}')
+        toBson(orderBy(ascending('x', 'y'), descending('a', 'b'))) == parse('{x : 1, y : 1, a : -1, b : -1}')
     }
 
     def 'should create string representation for simple sorts'() {

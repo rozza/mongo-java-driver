@@ -16,41 +16,26 @@
 
 package com.mongodb.client.model;
 
-import org.bson.BsonBinaryReader;
-import org.bson.BsonBinaryWriter;
 import org.bson.BsonDocument;
-import org.bson.ByteBufNIO;
-import org.bson.codecs.BsonDocumentCodec;
+import org.bson.BsonDocumentWriter;
 import org.bson.codecs.Codec;
-import org.bson.codecs.DecoderContext;
 import org.bson.codecs.EncoderContext;
 import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.conversions.Bson;
-import org.bson.io.BasicOutputBuffer;
-import org.bson.io.ByteBufferBsonInput;
-import org.bson.io.OutputBuffer;
-
-import java.nio.ByteBuffer;
 
 import static com.mongodb.MongoClientSettings.getDefaultCodecRegistry;
 
-final class BsonTestHelper {
+final class BsonHelper {
     private static final CodecRegistry CODEC_REGISTRY = getDefaultCodecRegistry();
 
     @SuppressWarnings("unchecked")
-    static BsonDocument toBson(final Bson bson, final boolean direct) {
-        if (direct) {
-            return bson.toBsonDocument(BsonDocument.class, CODEC_REGISTRY);
-        } else {
-            Codec<Bson> codec = (Codec<Bson>) CODEC_REGISTRY.get(bson.getClass());
-            OutputBuffer buffer = new BasicOutputBuffer();
-            codec.encode(new BsonBinaryWriter(buffer), bson, EncoderContext.builder().build());
-            return new BsonDocumentCodec().decode(new BsonBinaryReader(new ByteBufferBsonInput(
-                    new ByteBufNIO(ByteBuffer.wrap(buffer.toByteArray())))), DecoderContext.builder().build());
-        }
+    static BsonDocument toBson(final Bson bson) {
+        BsonDocumentWriter writer = new BsonDocumentWriter(new BsonDocument());
+        ((Codec<Bson>) CODEC_REGISTRY.get(bson.getClass())).encode(writer, bson, EncoderContext.builder().build());
+        return writer.getDocument();
     }
 
-    private BsonTestHelper() {
+    private BsonHelper() {
     }
 
 }

@@ -48,7 +48,7 @@ class BsonCodecSpecification extends Specification {
         BsonDocument.parse('{a: 1, b:2}') == writer.getDocument().get('customBson')
     }
 
-    def 'should throw CodecConfiguration exception if cannot encode  Bson'() {
+    def 'should throw CodecConfiguration exception if cannot encode Bson'() {
         given:
         def codec = new BsonCodec()
         def customBson = new ExceptionRaisingBson()
