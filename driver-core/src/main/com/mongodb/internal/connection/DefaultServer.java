@@ -16,6 +16,7 @@
 
 package com.mongodb.internal.connection;
 
+import com.mongodb.MongoCommandException;
 import com.mongodb.MongoException;
 import com.mongodb.MongoNodeIsRecoveringException;
 import com.mongodb.MongoNotPrimaryException;
@@ -28,6 +29,7 @@ import com.mongodb.connection.ClusterConnectionMode;
 import com.mongodb.connection.Connection;
 import com.mongodb.connection.ServerDescription;
 import com.mongodb.connection.ServerId;
+import com.mongodb.connection.ServerType;
 import com.mongodb.diagnostics.logging.Logger;
 import com.mongodb.diagnostics.logging.Loggers;
 import com.mongodb.event.CommandListener;
@@ -37,10 +39,15 @@ import com.mongodb.event.ServerListener;
 import com.mongodb.event.ServerOpeningEvent;
 import com.mongodb.session.SessionContext;
 
+import java.util.List;
+
 import static com.mongodb.assertions.Assertions.isTrue;
 import static com.mongodb.assertions.Assertions.notNull;
+import static com.mongodb.connection.ServerConnectionState.CONNECTED;
 import static com.mongodb.connection.ServerConnectionState.CONNECTING;
 import static com.mongodb.internal.async.ErrorHandlingResultCallback.errorHandlingCallback;
+import static com.mongodb.internal.operation.ServerVersionHelper.FOUR_DOT_TWO_WIRE_VERSION;
+import static java.util.Arrays.asList;
 
 class DefaultServer implements ClusterableServer {
     private static final Logger LOGGER = Loggers.getLogger("connection");
@@ -116,7 +123,6 @@ class DefaultServer implements ClusterableServer {
     @Override
     public ServerDescription getDescription() {
         isTrue("open", !isClosed());
-
         return description;
     }
 
@@ -156,11 +162,19 @@ class DefaultServer implements ClusterableServer {
         return connectionPool;
     }
 
+    private static final List<Integer> SHUTDOWN_CODES = asList(91, 11600);
     private void handleThrowable(final Throwable t) {
-        if ((t instanceof MongoSocketException && !(t instanceof MongoSocketReadTimeoutException))
-            || t instanceof MongoNotPrimaryException
-            || t instanceof MongoNodeIsRecoveringException) {
+        if ((t instanceof MongoSocketException && !(t instanceof MongoSocketReadTimeoutException))) {
             invalidate();
+        } else if (t instanceof MongoNotPrimaryException || t instanceof MongoNodeIsRecoveringException) {
+            if (description.getMaxWireVersion() < FOUR_DOT_TWO_WIRE_VERSION) {
+                invalidate();
+            } else if (SHUTDOWN_CODES.contains(((MongoCommandException) t).getErrorCode())) {
+                invalidate();
+            } else {
+                serverStateListener.stateChanged(new ChangeEvent<ServerDescription>(description, ServerDescription.builder()
+                        .state(CONNECTED).type(ServerType.UNKNOWN).address(serverId.getAddress()).exception(t).build()));
+            }
         }
     }
 
