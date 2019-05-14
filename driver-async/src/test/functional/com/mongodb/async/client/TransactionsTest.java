@@ -64,9 +64,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+import static com.mongodb.ClusterFixture.canRunTests;
 import static com.mongodb.ClusterFixture.getMultiMongosConnectionString;
-import static com.mongodb.ClusterFixture.isDiscoverableReplicaSet;
-import static com.mongodb.ClusterFixture.serverVersionAtLeast;
 import static com.mongodb.async.client.Fixture.getConnectionString;
 import static com.mongodb.async.client.Fixture.getDefaultDatabaseName;
 import static com.mongodb.async.client.Fixture.isSharded;
@@ -83,10 +82,12 @@ import static org.junit.Assume.assumeTrue;
 // See https://github.com/mongodb/specifications/tree/master/source/transactions/tests
 @RunWith(Parameterized.class)
 public class TransactionsTest {
+
     private final String filename;
     private final String description;
     private final String databaseName;
     private final BsonArray data;
+    private final BsonArray runOn;
     private final BsonDocument definition;
     private JsonPoweredCrudTestHelper helper;
     private final TestCommandListener commandListener;
@@ -100,8 +101,10 @@ public class TransactionsTest {
 
     private static final long MIN_HEARTBEAT_FREQUENCY_MS = 50L;
 
-    public TransactionsTest(final String filename, final String description, final BsonArray data, final BsonDocument definition) {
+    public TransactionsTest(final String filename, final BsonArray runOn, final String description, final BsonArray data,
+                            final BsonDocument definition) {
         this.filename = filename;
+        this.runOn = runOn;
         this.description = description;
         this.databaseName = getDefaultDatabaseName();
         this.data = data;
@@ -111,9 +114,9 @@ public class TransactionsTest {
 
     @Before
     public void setUp() {
-        assumeTrue(canRunTests());
         assumeTrue("Skipping test: " + definition.getString("skipReason", new BsonString("")).getValue(),
                 !definition.containsKey("skipReason"));
+        assumeTrue("Topology for this test not found.", canRunTests(runOn));
 
         collectionHelper = new CollectionHelper<Document>(new DocumentCodec(), new MongoNamespace(databaseName, collectionName));
 
@@ -339,7 +342,6 @@ public class TransactionsTest {
 
     private void executeOperations(final BsonArray operations, final boolean throwExceptions) {
         TargetedFailPoint failPoint = null;
-
         try {
             for (BsonValue cur : operations) {
                 final BsonDocument operation = cur.asDocument();
@@ -535,21 +537,11 @@ public class TransactionsTest {
         for (File file : JsonPoweredTestHelper.getTestFiles("/transactions")) {
             BsonDocument testDocument = JsonPoweredTestHelper.getTestDocument(file);
             for (BsonValue test : testDocument.getArray("tests")) {
-                data.add(new Object[]{file.getName(), test.asDocument().getString("description").getValue(),
-                        testDocument.getArray("data"), test.asDocument()});
+                data.add(new Object[]{file.getName(), testDocument.getArray("runOn"),
+                        test.asDocument().getString("description").getValue(), testDocument.getArray("data"), test.asDocument()});
             }
         }
         return data;
-    }
-
-    private boolean canRunTests() {
-        if (isSharded()) {
-            return serverVersionAtLeast(4, 1);
-        } else if (isDiscoverableReplicaSet()) {
-            return serverVersionAtLeast(4, 0);
-        } else {
-            return false;
-        }
     }
 
     private class TargetedFailPoint {

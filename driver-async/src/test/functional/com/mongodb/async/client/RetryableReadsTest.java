@@ -17,7 +17,6 @@
 package com.mongodb.async.client;
 
 import com.mongodb.Block;
-import com.mongodb.ClusterFixture;
 import com.mongodb.ConnectionString;
 import com.mongodb.MongoException;
 import com.mongodb.MongoNamespace;
@@ -30,7 +29,6 @@ import com.mongodb.async.client.gridfs.GridFSBuckets;
 import com.mongodb.client.model.CreateCollectionOptions;
 import com.mongodb.client.test.CollectionHelper;
 import com.mongodb.connection.ServerSettings;
-import com.mongodb.connection.ServerVersion;
 import com.mongodb.connection.SocketSettings;
 import com.mongodb.connection.SslSettings;
 import com.mongodb.event.CommandEvent;
@@ -61,9 +59,8 @@ import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import static com.mongodb.ClusterFixture.canRunTests;
 import static com.mongodb.ClusterFixture.getMultiMongosConnectionString;
-import static com.mongodb.ClusterFixture.isDiscoverableReplicaSet;
-import static com.mongodb.ClusterFixture.isStandalone;
 import static com.mongodb.ClusterFixture.serverVersionLessThan;
 import static com.mongodb.async.client.Fixture.getConnectionString;
 import static com.mongodb.async.client.Fixture.getDefaultDatabaseName;
@@ -73,7 +70,6 @@ import static com.mongodb.client.CommandMonitoringTestHelper.getExpectedEvents;
 import static java.util.Collections.singletonList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assume.assumeFalse;
 import static org.junit.Assume.assumeTrue;
 
 // See https://github.com/mongodb/specifications/tree/master/source/transactions/tests
@@ -120,40 +116,7 @@ public class RetryableReadsTest {
         assumeTrue("Skipping test: " + definition.getString("skipReason", new BsonString("")).getValue(),
                 !definition.containsKey("skipReason"));
 
-        boolean topologyFound = false;
-        for (BsonValue info : runOn) {
-            final BsonDocument document = info.asDocument();
-            ServerVersion serverVersion = ClusterFixture.getServerVersion();
-
-            if (document.containsKey("minServerVersion")) {
-                assumeFalse(serverVersion.compareTo(getServerVersion("minServerVersion", document)) < 0);
-            }
-            if (document.containsKey("maxServerVersion")) {
-                assumeFalse(serverVersion.compareTo(getServerVersion("maxServerVersion", document)) > 0);
-            }
-            if (document.containsKey("topology")) {
-                BsonArray topologyTypes = document.getArray("topology");
-                for (BsonValue type : topologyTypes) {
-                    String typeString = type.asString().getValue();
-                    if (typeString.equals("sharded")) {
-                        topologyFound = isSharded();
-                    } else if (typeString.equals("replicaset")) {
-                        topologyFound = isDiscoverableReplicaSet();
-                    } else if (typeString.equals("single")) {
-                        topologyFound = isStandalone();
-                    }
-                    if (topologyFound) {
-                        break;
-                    }
-                }
-                if (topologyFound) {
-                    break;
-                }
-            } else {
-                topologyFound = true;
-            }
-        }
-        assumeTrue("Topology for this test not found.", topologyFound);
+        assumeTrue("Topology for this test not found.", canRunTests(runOn));
 
         collectionHelper = new CollectionHelper<Document>(new DocumentCodec(), new MongoNamespace(databaseName, collectionName));
 
@@ -367,11 +330,6 @@ public class RetryableReadsTest {
             }
         }
         return data;
-    }
-
-    private ServerVersion getServerVersion(final String fieldName, final BsonDocument document) {
-        String[] versionStringArray = document.getString(fieldName).getValue().split("\\.");
-        return new ServerVersion(Integer.parseInt(versionStringArray[0]), Integer.parseInt(versionStringArray[1]));
     }
 
     private List<BsonDocument> processFiles(final BsonArray bsonArray, final List<BsonDocument> documents) {

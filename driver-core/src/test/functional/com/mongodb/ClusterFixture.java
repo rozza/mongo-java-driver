@@ -58,6 +58,7 @@ import com.mongodb.operation.DropDatabaseOperation;
 import com.mongodb.operation.ReadOperation;
 import com.mongodb.operation.WriteOperation;
 import com.mongodb.selector.ServerSelector;
+import org.bson.BsonArray;
 import org.bson.BsonDocument;
 import org.bson.BsonInt32;
 import org.bson.BsonString;
@@ -141,6 +142,47 @@ public final class ClusterFixture {
 
     public static boolean serverVersionGreaterThan(final String versionString) {
         return getServerVersion().compareTo(new ServerVersion(getVersionList(versionString).subList(0, 3))) > 0;
+    }
+
+    public static boolean canRunTests(final BsonArray runOn) {
+        boolean topologyFound = false;
+        ServerVersion serverVersion = getServerVersion();
+        for (BsonValue info : runOn) {
+            final BsonDocument document = info.asDocument();
+
+            if (document.containsKey("minServerVersion") && serverVersion.compareTo(getServerVersion("minServerVersion", document)) < 0) {
+                continue;
+            }
+            if (document.containsKey("maxServerVersion") && serverVersion.compareTo(getServerVersion("maxServerVersion", document)) < 0) {
+                continue;
+            }
+            if (document.containsKey("topology")) {
+                BsonArray topologyTypes = document.getArray("topology");
+                for (BsonValue type : topologyTypes) {
+                    String typeString = type.asString().getValue();
+                    if (typeString.equals("sharded")) {
+                        topologyFound = isSharded();
+                    } else if (typeString.equals("replicaset")) {
+                        topologyFound = isDiscoverableReplicaSet();
+                    } else if (typeString.equals("single")) {
+                        topologyFound = isStandalone();
+                    }
+                    if (topologyFound) {
+                        break;
+                    }
+                }
+                if (topologyFound) {
+                    break;
+                }
+            } else {
+                topologyFound = true;
+            }
+        }
+        return topologyFound;
+    }
+
+    private static ServerVersion getServerVersion(final String fieldName, final BsonDocument document) {
+        return new ServerVersion(getVersionList(document.getString(fieldName).getValue()));
     }
 
     private static List<Integer> getVersionList(final String versionString) {
