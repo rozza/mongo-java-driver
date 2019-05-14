@@ -43,7 +43,6 @@ import java.util.List;
 
 import static com.mongodb.assertions.Assertions.isTrue;
 import static com.mongodb.assertions.Assertions.notNull;
-import static com.mongodb.connection.ServerConnectionState.CONNECTED;
 import static com.mongodb.connection.ServerConnectionState.CONNECTING;
 import static com.mongodb.internal.async.ErrorHandlingResultCallback.errorHandlingCallback;
 import static com.mongodb.internal.operation.ServerVersionHelper.FOUR_DOT_TWO_WIRE_VERSION;
@@ -51,6 +50,7 @@ import static java.util.Arrays.asList;
 
 class DefaultServer implements ClusterableServer {
     private static final Logger LOGGER = Loggers.getLogger("connection");
+    private static final List<Integer> SHUTDOWN_CODES = asList(91, 11600);
     private final ServerId serverId;
     private final ConnectionPool connectionPool;
     private final ClusterConnectionMode clusterConnectionMode;
@@ -139,6 +139,24 @@ class DefaultServer implements ClusterableServer {
     }
 
     @Override
+    public void invalidate(final Throwable t) {
+        if ((t instanceof MongoSocketException && !(t instanceof MongoSocketReadTimeoutException))) {
+            invalidate();
+        } else if (t instanceof MongoNotPrimaryException || t instanceof MongoNodeIsRecoveringException) {
+            if (description.getMaxWireVersion() < FOUR_DOT_TWO_WIRE_VERSION) {
+                invalidate();
+            } else if (SHUTDOWN_CODES.contains(((MongoCommandException) t).getErrorCode())) {
+                invalidate();
+            } else {
+                ChangeEvent<ServerDescription> event = new ChangeEvent<ServerDescription>(description, ServerDescription.builder()
+                        .state(CONNECTING).type(ServerType.UNKNOWN).address(serverId.getAddress()).exception(t).build());
+                serverStateListener.stateChanged(event);
+                connect();
+            }
+        }
+    }
+
+    @Override
     public void close() {
         if (!isClosed()) {
             connectionPool.close();
@@ -162,22 +180,6 @@ class DefaultServer implements ClusterableServer {
         return connectionPool;
     }
 
-    private static final List<Integer> SHUTDOWN_CODES = asList(91, 11600);
-    private void handleThrowable(final Throwable t) {
-        if ((t instanceof MongoSocketException && !(t instanceof MongoSocketReadTimeoutException))) {
-            invalidate();
-        } else if (t instanceof MongoNotPrimaryException || t instanceof MongoNodeIsRecoveringException) {
-            if (description.getMaxWireVersion() < FOUR_DOT_TWO_WIRE_VERSION) {
-                invalidate();
-            } else if (SHUTDOWN_CODES.contains(((MongoCommandException) t).getErrorCode())) {
-                invalidate();
-            } else {
-                serverStateListener.stateChanged(new ChangeEvent<ServerDescription>(description, ServerDescription.builder()
-                        .state(CONNECTED).type(ServerType.UNKNOWN).address(serverId.getAddress()).exception(t).build()));
-            }
-        }
-    }
-
     private class DefaultServerProtocolExecutor implements ProtocolExecutor {
         @Override
         public <T> T execute(final LegacyProtocol<T> protocol, final InternalConnection connection) {
@@ -185,7 +187,7 @@ class DefaultServer implements ClusterableServer {
                 protocol.setCommandListener(commandListener);
                 return protocol.execute(connection);
             } catch (MongoException e) {
-                handleThrowable(e);
+                invalidate(e);
                 throw e;
             }
         }
@@ -198,7 +200,7 @@ class DefaultServer implements ClusterableServer {
                 @Override
                 public void onResult(final T result, final Throwable t) {
                     if (t != null) {
-                        handleThrowable(t);
+                        invalidate(t);
                     }
                     callback.onResult(result, t);
                 }
@@ -216,7 +218,7 @@ class DefaultServer implements ClusterableServer {
                 invalidate();
                 return (T) e.getResponse();
             } catch (MongoException e) {
-                handleThrowable(e);
+                invalidate(e);
                 throw e;
             }
         }
@@ -234,7 +236,7 @@ class DefaultServer implements ClusterableServer {
                             invalidate();
                             callback.onResult((T) ((MongoWriteConcernWithResponseException) t).getResponse(), null);
                         } else {
-                            handleThrowable(t);
+                            invalidate(t);
                             callback.onResult(null, t);
                         }
                     } else {
