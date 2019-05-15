@@ -16,7 +16,6 @@
 
 package com.mongodb.async.client;
 
-import com.mongodb.ClusterFixture;
 import com.mongodb.MongoException;
 import com.mongodb.MongoNamespace;
 import com.mongodb.WriteConcern;
@@ -26,7 +25,6 @@ import com.mongodb.client.CommandMonitoringTestHelper;
 import com.mongodb.client.model.changestream.ChangeStreamDocument;
 import com.mongodb.client.model.changestream.OperationType;
 import com.mongodb.client.test.CollectionHelper;
-import com.mongodb.connection.ServerVersion;
 import com.mongodb.event.CommandEvent;
 import com.mongodb.internal.connection.TestCommandListener;
 import com.mongodb.lang.Nullable;
@@ -54,9 +52,7 @@ import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.TimeUnit;
 
-import static com.mongodb.ClusterFixture.isDiscoverableReplicaSet;
-import static com.mongodb.ClusterFixture.isSharded;
-import static com.mongodb.ClusterFixture.isStandalone;
+import static com.mongodb.JsonTestServerVersionChecker.canRunTests;
 import static com.mongodb.async.client.Fixture.getMongoClientBuilderFromConnectionString;
 import static com.mongodb.client.CommandMonitoringTestHelper.getExpectedEvents;
 import static java.lang.String.format;
@@ -64,7 +60,6 @@ import static java.util.Collections.singletonList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assume.assumeNotNull;
-import static org.junit.Assume.assumeTrue;
 
 // See https://github.com/mongodb/specifications/tree/master/source/retryable-writes/tests
 @RunWith(Parameterized.class)
@@ -97,27 +92,6 @@ public class ChangeStreamsTest extends DatabaseTestCase {
 
     @Before
     public void setUp() {
-        ServerVersion serverVersion = ClusterFixture.getServerVersion();
-        if (definition.containsKey("minServerVersion")) {
-            assumeTrue(serverVersion.compareTo(getServerVersion("minServerVersion")) > 0);
-        }
-        if (definition.containsKey("maxServerVersion")) {
-            assumeTrue(serverVersion.compareTo(getServerVersion("maxServerVersion")) < 0);
-        }
-        if (definition.containsKey("topology")) {
-            BsonArray topologyTypes = definition.getArray("topology");
-            for (BsonValue type : topologyTypes) {
-                String typeString = type.asString().getValue();
-                if (typeString.equals("sharded")) {
-                    assumeTrue(isSharded());
-                } else if (typeString.equals("replicaset")) {
-                    assumeTrue(isDiscoverableReplicaSet());
-                } else if (typeString.equals("single")) {
-                    assumeTrue(isStandalone());
-                }
-            }
-        }
-
         CollectionHelper.dropDatabase(namespace.getDatabaseName(), WriteConcern.MAJORITY);
         CollectionHelper<BsonDocument> collectionHelper = new CollectionHelper<BsonDocument>(new BsonDocumentCodec(), namespace);
         collectionHelper.drop();
@@ -285,6 +259,9 @@ public class ChangeStreamsTest extends DatabaseTestCase {
         List<Object[]> data = new ArrayList<Object[]>();
         for (File file : JsonPoweredTestHelper.getTestFiles("/change-streams")) {
             BsonDocument testDocument = JsonPoweredTestHelper.getTestDocument(file);
+            if (!canRunTests(testDocument)) {
+                continue;
+            }
             MongoNamespace namespace = new MongoNamespace(testDocument.getString("database_name").getValue(),
                     testDocument.getString("collection_name").getValue());
             MongoNamespace namespace2 = new MongoNamespace(testDocument.getString("database2_name").getValue(),
@@ -297,10 +274,6 @@ public class ChangeStreamsTest extends DatabaseTestCase {
         return data;
     }
 
-    private ServerVersion getServerVersion(final String fieldName) {
-        String[] versionStringArray = definition.getString(fieldName).getValue().split("\\.");
-        return new ServerVersion(Integer.parseInt(versionStringArray[0]), Integer.parseInt(versionStringArray[1]));
-    }
     <T> T futureResult(final FutureResultCallback<T> callback) {
         try {
             return callback.get(5, TimeUnit.SECONDS);

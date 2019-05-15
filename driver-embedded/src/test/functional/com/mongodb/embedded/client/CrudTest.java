@@ -37,10 +37,9 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
+import static com.mongodb.JsonTestServerVersionChecker.canRunTests;
 import static com.mongodb.client.Fixture.getDefaultDatabaseName;
 import static com.mongodb.embedded.client.Fixture.getMongoClient;
-import static com.mongodb.embedded.client.Fixture.serverVersionGreaterThan;
-import static com.mongodb.embedded.client.Fixture.serverVersionLessThan;
 import static org.junit.Assert.assertEquals;
 
 // See https://github.com/mongodb/specifications/tree/master/source/crud/tests
@@ -126,12 +125,7 @@ public class CrudTest extends DatabaseTestCase {
 
         for (File file : JsonPoweredTestHelper.getTestFiles("/crud")) {
             BsonDocument testDocument = JsonPoweredTestHelper.getTestDocument(file);
-            if (testDocument.containsKey("minServerVersion")
-                    && serverVersionLessThan(testDocument.getString("minServerVersion").getValue())) {
-                continue;
-            }
-            if (testDocument.containsKey("maxServerVersion")
-                    && serverVersionGreaterThan(testDocument.getString("maxServerVersion").getValue())) {
+            if (!canRunTests(testDocument)) {
                 continue;
             }
             for (BsonValue test: testDocument.getArray("tests")) {

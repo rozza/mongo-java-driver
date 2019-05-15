@@ -28,7 +28,6 @@ import com.mongodb.WriteConcern;
 import com.mongodb.client.gridfs.GridFSBucket;
 import com.mongodb.client.gridfs.GridFSBuckets;
 import com.mongodb.client.test.CollectionHelper;
-import com.mongodb.connection.ServerVersion;
 import com.mongodb.connection.SocketSettings;
 import com.mongodb.event.CommandEvent;
 import com.mongodb.internal.connection.TestCommandListener;
@@ -280,11 +279,6 @@ public class RetryableReadsTest {
             }
         }
         return data;
-    }
-
-    private ServerVersion getServerVersion(final String fieldName, final BsonDocument document) {
-        String[] versionStringArray = document.getString(fieldName).getValue().split("\\.");
-        return new ServerVersion(Integer.parseInt(versionStringArray[0]), Integer.parseInt(versionStringArray[1]));
     }
 
     private List<BsonDocument> processFiles(final BsonArray bsonArray, final List<BsonDocument> documents) {

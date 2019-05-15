@@ -18,7 +18,6 @@ package com.mongodb.async.client;
 
 import com.mongodb.Block;
 import com.mongodb.ConnectionString;
-import com.mongodb.JsonTestServerVersionChecker;
 import com.mongodb.MongoException;
 import com.mongodb.MongoNamespace;
 import com.mongodb.ReadConcern;
@@ -61,6 +60,7 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import static com.mongodb.ClusterFixture.getMultiMongosConnectionString;
+import static com.mongodb.JsonTestServerVersionChecker.canRunTests;
 import static com.mongodb.async.client.Fixture.getConnectionString;
 import static com.mongodb.async.client.Fixture.getDefaultDatabaseName;
 import static com.mongodb.async.client.Fixture.isSharded;
@@ -308,12 +308,11 @@ public class RetryableReadsTest {
         List<Object[]> data = new ArrayList<Object[]>();
         for (File file : JsonPoweredTestHelper.getTestFiles("/retryable-reads")) {
             BsonDocument testDocument = JsonPoweredTestHelper.getTestDocument(file);
-            if (!JsonTestServerVersionChecker.canRunTests(testDocument)) {
+            if (!canRunTests(testDocument)) {
                 continue;
             }
             for (BsonValue test : testDocument.getArray("tests")) {
-                data.add(new Object[]{file.getName(), testDocument.getArray("runOn"),
-                        test.asDocument().getString("description").getValue(),
+                data.add(new Object[]{file.getName(), test.asDocument().getString("description").getValue(),
                         testDocument.getString("database_name", new BsonString(getDefaultDatabaseName())).getValue(),
                         testDocument.getString("collection_name",
                                 new BsonString(file.getName().substring(0, file.getName().lastIndexOf(".")))).getValue(),

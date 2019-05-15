@@ -20,7 +20,10 @@ import org.bson.BsonArray;
 import org.bson.BsonDocument;
 import org.bson.BsonValue;
 
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static com.mongodb.ClusterFixture.getVersionList;
 import static com.mongodb.ClusterFixture.isDiscoverableReplicaSet;
@@ -32,6 +35,12 @@ import static java.util.Arrays.asList;
 public final class JsonTestServerVersionChecker {
 
     private static final List<String> TOPOLOGY_TYPES = asList("sharded", "replicaset", "single");
+    private static final Map<String, String> IGNORE_IF_MATCHES_FIELDS = new HashMap<String, String>() {{
+        put("ignore_if_server_version_less_than", "minServerVersion");
+        put("ignore_if_server_version_greater_than", "maxServerVersion");
+        put("ignore_if_topology_type", "topology");
+    }};
+
     private static ServerVersion serverVersion;
 
     public static boolean canRunTests(final BsonDocument document) {
@@ -64,10 +73,25 @@ public final class JsonTestServerVersionChecker {
         if (document.containsKey("runOn")) {
             return canRunTests(document.getArray("runOn"));
         }
+
         return true;
     }
 
-    public static boolean canRunTests(final BsonArray runOn) {
+    public static boolean ignoreTest(final BsonDocument document) {
+        // Ignore certain matching types
+        if (!Collections.disjoint(document.keySet(), IGNORE_IF_MATCHES_FIELDS.keySet())) {
+            BsonDocument ignoreDocument = new BsonDocument();
+            for (Map.Entry<String, String> entry : IGNORE_IF_MATCHES_FIELDS.entrySet()) {
+                if (document.containsKey(entry.getKey())) {
+                    ignoreDocument.put(entry.getValue(), document.get(entry.getKey()));
+                }
+            }
+            return !canRunTests(ignoreDocument);
+        }
+        return false;
+    }
+
+    private static boolean canRunTests(final BsonArray runOn) {
         boolean topologyFound = false;
         for (BsonValue info : runOn) {
             topologyFound = canRunTests(info.asDocument());

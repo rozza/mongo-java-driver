@@ -19,7 +19,6 @@ package com.mongodb.async.client;
 import com.mongodb.Block;
 import com.mongodb.ClientSessionOptions;
 import com.mongodb.ConnectionString;
-import com.mongodb.JsonTestServerVersionChecker;
 import com.mongodb.MongoCommandException;
 import com.mongodb.MongoException;
 import com.mongodb.MongoNamespace;
@@ -66,6 +65,7 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import static com.mongodb.ClusterFixture.getMultiMongosConnectionString;
+import static com.mongodb.JsonTestServerVersionChecker.canRunTests;
 import static com.mongodb.async.client.Fixture.getConnectionString;
 import static com.mongodb.async.client.Fixture.getDefaultDatabaseName;
 import static com.mongodb.async.client.Fixture.isSharded;
@@ -531,7 +531,7 @@ public class TransactionsTest {
         List<Object[]> data = new ArrayList<Object[]>();
         for (File file : JsonPoweredTestHelper.getTestFiles("/transactions")) {
             BsonDocument testDocument = JsonPoweredTestHelper.getTestDocument(file);
-            if (!JsonTestServerVersionChecker.canRunTests(testDocument)) {
+            if (!canRunTests(testDocument)) {
                 continue;
             }
             for (BsonValue test : testDocument.getArray("tests")) {

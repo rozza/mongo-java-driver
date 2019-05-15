@@ -33,8 +33,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-import static com.mongodb.ClusterFixture.serverVersionGreaterThan;
-import static com.mongodb.ClusterFixture.serverVersionLessThan;
+import static com.mongodb.JsonTestServerVersionChecker.canRunTests;
 import static com.mongodb.client.Fixture.getDefaultDatabaseName;
 import static org.junit.Assert.assertEquals;
 
@@ -110,12 +109,7 @@ public class LegacyCrudTest extends LegacyDatabaseTestCase {
         List<Object[]> data = new ArrayList<Object[]>();
         for (File file : JsonPoweredTestHelper.getTestFiles("/crud")) {
             BsonDocument testDocument = util.JsonPoweredTestHelper.getTestDocument(file);
-            if (testDocument.containsKey("minServerVersion")
-                    && serverVersionLessThan(testDocument.getString("minServerVersion").getValue())) {
-                continue;
-            }
-            if (testDocument.containsKey("maxServerVersion")
-                        && serverVersionGreaterThan(testDocument.getString("maxServerVersion").getValue())) {
+            if (!canRunTests(testDocument)) {
                 continue;
             }
             for (BsonValue test: testDocument.getArray("tests")) {
