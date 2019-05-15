@@ -18,6 +18,7 @@ package com.mongodb.async.client;
 
 import com.mongodb.Block;
 import com.mongodb.ConnectionString;
+import com.mongodb.JsonTestServerVersionChecker;
 import com.mongodb.MongoException;
 import com.mongodb.MongoNamespace;
 import com.mongodb.ReadConcern;
@@ -59,9 +60,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-import static com.mongodb.ClusterFixture.canRunTests;
 import static com.mongodb.ClusterFixture.getMultiMongosConnectionString;
-import static com.mongodb.ClusterFixture.serverVersionLessThan;
 import static com.mongodb.async.client.Fixture.getConnectionString;
 import static com.mongodb.async.client.Fixture.getDefaultDatabaseName;
 import static com.mongodb.async.client.Fixture.isSharded;
@@ -83,7 +82,6 @@ public class RetryableReadsTest {
     private final BsonDocument gridFSData;
     private final BsonArray data;
     private final BsonDocument definition;
-    private final BsonArray runOn;
     private JsonPoweredCrudTestHelper helper;
     private final TestCommandListener commandListener;
     private MongoClient mongoClient;
@@ -96,11 +94,10 @@ public class RetryableReadsTest {
 
     private static final long MIN_HEARTBEAT_FREQUENCY_MS = 50L;
 
-    public RetryableReadsTest(final String filename, final BsonArray runOn, final String description, final String databaseName,
+    public RetryableReadsTest(final String filename, final String description, final String databaseName,
                               final String collectionName, final BsonArray data, final BsonString bucketName,
                               final BsonDocument definition) {
         this.filename = filename;
-        this.runOn = runOn;
         this.description = description;
         this.databaseName = databaseName;
         this.collectionName = collectionName;
@@ -115,9 +112,6 @@ public class RetryableReadsTest {
     public void setUp() {
         assumeTrue("Skipping test: " + definition.getString("skipReason", new BsonString("")).getValue(),
                 !definition.containsKey("skipReason"));
-
-        assumeTrue("Topology for this test not found.", canRunTests(runOn));
-
         collectionHelper = new CollectionHelper<Document>(new DocumentCodec(), new MongoNamespace(databaseName, collectionName));
 
         collectionHelper.killAllSessions();
@@ -314,8 +308,7 @@ public class RetryableReadsTest {
         List<Object[]> data = new ArrayList<Object[]>();
         for (File file : JsonPoweredTestHelper.getTestFiles("/retryable-reads")) {
             BsonDocument testDocument = JsonPoweredTestHelper.getTestDocument(file);
-            if (testDocument.containsKey("minServerVersion")
-                    && serverVersionLessThan(testDocument.getString("minServerVersion").getValue())) {
+            if (!JsonTestServerVersionChecker.canRunTests(testDocument)) {
                 continue;
             }
             for (BsonValue test : testDocument.getArray("tests")) {

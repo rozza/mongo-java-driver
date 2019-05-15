@@ -30,12 +30,13 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
+import static com.mongodb.JsonTestServerVersionChecker.canRunTests;
+
 // See https://github.com/mongodb/specifications/tree/master/source/transactions/tests
 @RunWith(Parameterized.class)
 public class MainTransactionsTest extends AbstractTransactionsTest {
-    public MainTransactionsTest(final String filename, final BsonArray runOn, final String description, final BsonArray data,
-                                final BsonDocument definition) {
-        super(filename, runOn, description, data, definition);
+    public MainTransactionsTest(final String filename, final String description, final BsonArray data, final BsonDocument definition) {
+        super(filename, description, data, definition);
     }
 
     @Parameterized.Parameters(name = "{0}: {1}")
@@ -43,9 +44,12 @@ public class MainTransactionsTest extends AbstractTransactionsTest {
         List<Object[]> data = new ArrayList<Object[]>();
         for (File file : JsonPoweredTestHelper.getTestFiles("/transactions")) {
             BsonDocument testDocument = JsonPoweredTestHelper.getTestDocument(file);
+            if (!canRunTests(testDocument)) {
+                continue;
+            }
             for (BsonValue test : testDocument.getArray("tests")) {
-                data.add(new Object[]{file.getName(), testDocument.getArray("runOn"),
-                        test.asDocument().getString("description").getValue(), testDocument.getArray("data"), test.asDocument()});
+                data.add(new Object[]{file.getName(), test.asDocument().getString("description").getValue(),
+                        testDocument.getArray("data"), test.asDocument()});
             }
         }
         return data;

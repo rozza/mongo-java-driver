@@ -19,6 +19,7 @@ package com.mongodb.async.client;
 import com.mongodb.Block;
 import com.mongodb.ClientSessionOptions;
 import com.mongodb.ConnectionString;
+import com.mongodb.JsonTestServerVersionChecker;
 import com.mongodb.MongoCommandException;
 import com.mongodb.MongoException;
 import com.mongodb.MongoNamespace;
@@ -64,7 +65,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-import static com.mongodb.ClusterFixture.canRunTests;
 import static com.mongodb.ClusterFixture.getMultiMongosConnectionString;
 import static com.mongodb.async.client.Fixture.getConnectionString;
 import static com.mongodb.async.client.Fixture.getDefaultDatabaseName;
@@ -87,7 +87,6 @@ public class TransactionsTest {
     private final String description;
     private final String databaseName;
     private final BsonArray data;
-    private final BsonArray runOn;
     private final BsonDocument definition;
     private JsonPoweredCrudTestHelper helper;
     private final TestCommandListener commandListener;
@@ -101,10 +100,8 @@ public class TransactionsTest {
 
     private static final long MIN_HEARTBEAT_FREQUENCY_MS = 50L;
 
-    public TransactionsTest(final String filename, final BsonArray runOn, final String description, final BsonArray data,
-                            final BsonDocument definition) {
+    public TransactionsTest(final String filename, final String description, final BsonArray data, final BsonDocument definition) {
         this.filename = filename;
-        this.runOn = runOn;
         this.description = description;
         this.databaseName = getDefaultDatabaseName();
         this.data = data;
@@ -116,8 +113,6 @@ public class TransactionsTest {
     public void setUp() {
         assumeTrue("Skipping test: " + definition.getString("skipReason", new BsonString("")).getValue(),
                 !definition.containsKey("skipReason"));
-        assumeTrue("Topology for this test not found.", canRunTests(runOn));
-
         collectionHelper = new CollectionHelper<Document>(new DocumentCodec(), new MongoNamespace(databaseName, collectionName));
 
         collectionHelper.killAllSessions();
@@ -536,9 +531,12 @@ public class TransactionsTest {
         List<Object[]> data = new ArrayList<Object[]>();
         for (File file : JsonPoweredTestHelper.getTestFiles("/transactions")) {
             BsonDocument testDocument = JsonPoweredTestHelper.getTestDocument(file);
+            if (!JsonTestServerVersionChecker.canRunTests(testDocument)) {
+                continue;
+            }
             for (BsonValue test : testDocument.getArray("tests")) {
-                data.add(new Object[]{file.getName(), testDocument.getArray("runOn"),
-                        test.asDocument().getString("description").getValue(), testDocument.getArray("data"), test.asDocument()});
+                data.add(new Object[]{file.getName(), test.asDocument().getString("description").getValue(),
+                        testDocument.getArray("data"), test.asDocument()});
             }
         }
         return data;

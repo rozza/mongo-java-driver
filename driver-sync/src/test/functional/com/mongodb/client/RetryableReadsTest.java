@@ -17,7 +17,6 @@
 package com.mongodb.client;
 
 import com.mongodb.Block;
-import com.mongodb.ClusterFixture;
 import com.mongodb.ConnectionString;
 import com.mongodb.MongoClientSettings;
 import com.mongodb.MongoException;
@@ -61,10 +60,8 @@ import java.util.concurrent.TimeUnit;
 
 import static com.mongodb.ClusterFixture.getConnectionString;
 import static com.mongodb.ClusterFixture.getMultiMongosConnectionString;
-import static com.mongodb.ClusterFixture.isDiscoverableReplicaSet;
 import static com.mongodb.ClusterFixture.isSharded;
-import static com.mongodb.ClusterFixture.isStandalone;
-import static com.mongodb.ClusterFixture.serverVersionLessThan;
+import static com.mongodb.JsonTestServerVersionChecker.canRunTests;
 import static com.mongodb.client.CommandMonitoringTestHelper.assertEventsEquality;
 import static com.mongodb.client.CommandMonitoringTestHelper.getExpectedEvents;
 import static com.mongodb.client.Fixture.getDefaultDatabaseName;
@@ -72,7 +69,6 @@ import static com.mongodb.client.Fixture.getMongoClientSettingsBuilder;
 import static java.util.Collections.singletonList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assume.assumeFalse;
 import static org.junit.Assume.assumeTrue;
 
 // See https://github.com/mongodb/specifications/tree/master/source/retryable-writes/tests
@@ -86,7 +82,6 @@ public class RetryableReadsTest {
     private final BsonDocument gridFSData;
     private final BsonArray data;
     private final BsonDocument definition;
-    private final BsonArray runOn;
     private MongoClient mongoClient;
     private CollectionHelper<Document> collectionHelper;
     private MongoCollection<BsonDocument> collection;
@@ -97,11 +92,10 @@ public class RetryableReadsTest {
     private MongoCollection<BsonDocument> chunksCollection;
     private boolean useMultipleMongoses = false;
 
-    public RetryableReadsTest(final String filename, final BsonArray runOn, final String description, final String databaseName,
+    public RetryableReadsTest(final String filename, final String description, final String databaseName,
                               final String collectionName, final BsonArray data, final BsonString bucketName,
                               final BsonDocument definition) {
         this.filename = filename;
-        this.runOn = runOn;
         this.description = description;
         this.databaseName = databaseName;
         this.collectionName = collectionName;
@@ -116,41 +110,6 @@ public class RetryableReadsTest {
     public void setUp() {
         assumeTrue("Skipping test: " + definition.getString("skipReason", new BsonString("")).getValue(),
                 !definition.containsKey("skipReason"));
-
-        boolean topologyFound = false;
-        for (BsonValue info : runOn) {
-            final BsonDocument document = info.asDocument();
-            ServerVersion serverVersion = ClusterFixture.getServerVersion();
-
-            if (document.containsKey("minServerVersion")) {
-                assumeFalse(serverVersion.compareTo(getServerVersion("minServerVersion", document)) < 0);
-            }
-            if (document.containsKey("maxServerVersion")) {
-                assumeFalse(serverVersion.compareTo(getServerVersion("maxServerVersion", document)) > 0);
-            }
-            if (document.containsKey("topology")) {
-                BsonArray topologyTypes = document.getArray("topology");
-                for (BsonValue type : topologyTypes) {
-                    String typeString = type.asString().getValue();
-                    if (typeString.equals("sharded")) {
-                        topologyFound = isSharded();
-                    } else if (typeString.equals("replicaset")) {
-                        topologyFound = isDiscoverableReplicaSet();
-                    } else if (typeString.equals("single")) {
-                        topologyFound = isStandalone();
-                    }
-                    if (topologyFound) {
-                        break;
-                    }
-                }
-                if (topologyFound) {
-                    break;
-                }
-            } else {
-                topologyFound = true; // If no topologies are specified, then all topologies are valid.
-            }
-        }
-        assumeTrue("Topology for this test not found.", topologyFound);
 
         collectionHelper = new CollectionHelper<Document>(new DocumentCodec(), new MongoNamespace(databaseName, collectionName));
         final BsonDocument clientOptions = definition.getDocument("clientOptions", new BsonDocument());
@@ -307,13 +266,11 @@ public class RetryableReadsTest {
         List<Object[]> data = new ArrayList<Object[]>();
         for (File file : JsonPoweredTestHelper.getTestFiles("/retryable-reads")) {
             BsonDocument testDocument = JsonPoweredTestHelper.getTestDocument(file);
-            if (testDocument.containsKey("minServerVersion")
-                    && serverVersionLessThan(testDocument.getString("minServerVersion").getValue())) {
+            if (!canRunTests(testDocument)) {
                 continue;
             }
             for (BsonValue test : testDocument.getArray("tests")) {
-                data.add(new Object[]{file.getName(), testDocument.getArray("runOn", null),
-                        test.asDocument().getString("description").getValue(),
+                data.add(new Object[]{file.getName(), test.asDocument().getString("description").getValue(),
                         testDocument.getString("database_name", new BsonString(getDefaultDatabaseName())).getValue(),
                         testDocument.getString("collection_name",
                                 new BsonString(file.getName().substring(0, file.getName().lastIndexOf(".")))).getValue(),

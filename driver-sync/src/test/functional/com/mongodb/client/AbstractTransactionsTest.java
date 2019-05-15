@@ -58,7 +58,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-import static com.mongodb.ClusterFixture.canRunTests;
 import static com.mongodb.ClusterFixture.getConnectionString;
 import static com.mongodb.ClusterFixture.getMultiMongosConnectionString;
 import static com.mongodb.ClusterFixture.isSharded;
@@ -80,7 +79,6 @@ public abstract class AbstractTransactionsTest {
     private final String description;
     private final String databaseName;
     private final BsonArray data;
-    private final BsonArray runOn;
     private final BsonDocument definition;
     private JsonPoweredCrudTestHelper helper;
     private final TestCommandListener commandListener;
@@ -94,13 +92,11 @@ public abstract class AbstractTransactionsTest {
 
     private static final long MIN_HEARTBEAT_FREQUENCY_MS = 50L;
 
-    public AbstractTransactionsTest(final String filename, final BsonArray runOn, final String description, final BsonArray data,
-                                    final BsonDocument definition) {
+    public AbstractTransactionsTest(final String filename, final String description, final BsonArray data, final BsonDocument definition) {
         this.filename = filename;
         this.description = description;
         this.databaseName = getDefaultDatabaseName();
         this.data = data;
-        this.runOn = runOn;
         this.definition = definition;
         this.commandListener = new TestCommandListener();
     }
@@ -109,7 +105,6 @@ public abstract class AbstractTransactionsTest {
     public void setUp() {
         assumeTrue("Skipping test: " + definition.getString("skipReason", new BsonString("")).getValue(),
                 !definition.containsKey("skipReason"));
-        assumeTrue("Topology for this test not found.", canRunTests(runOn));
 
         collectionHelper = new CollectionHelper<Document>(new DocumentCodec(), new MongoNamespace(databaseName, collectionName));
 
