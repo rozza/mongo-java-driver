@@ -43,11 +43,11 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-import static com.mongodb.JsonTestServerVersionChecker.canRunTests;
-import static com.mongodb.JsonTestServerVersionChecker.ignoreTest;
+import static com.mongodb.JsonTestServerVersionChecker.skipTest;
 import static com.mongodb.client.CommandMonitoringTestHelper.getExpectedEvents;
 import static com.mongodb.client.Fixture.getDefaultDatabaseName;
 import static com.mongodb.client.Fixture.getMongoClientSettingsBuilder;
+import static org.junit.Assume.assumeFalse;
 
 // See https://github.com/mongodb/specifications/tree/master/source/command-monitoring/tests
 @RunWith(Parameterized.class)
@@ -61,17 +61,19 @@ public class CommandMonitoringTest {
     private final String collectionName;
     private final BsonArray data;
     private final BsonDocument definition;
+    private final boolean skipTest;
     private MongoCollection<BsonDocument> collection;
     private JsonPoweredCrudTestHelper helper;
 
     public CommandMonitoringTest(final String filename, final String description, final String databaseName, final String collectionName,
-                                 final BsonArray data, final BsonDocument definition) {
+                                 final BsonArray data, final BsonDocument definition, final boolean skipTest) {
         this.filename = filename;
         this.description = description;
         this.databaseName = databaseName;
         this.collectionName = collectionName;
         this.data = data;
         this.definition = definition;
+        this.skipTest = skipTest;
     }
 
     @BeforeClass
@@ -91,6 +93,7 @@ public class CommandMonitoringTest {
 
     @Before
     public void setUp() {
+        assumeFalse(skipTest);
         List<BsonDocument> documents = new ArrayList<BsonDocument>();
         for (BsonValue document : data) {
             documents.add(document.asDocument());
@@ -136,16 +139,12 @@ public class CommandMonitoringTest {
         List<Object[]> data = new ArrayList<Object[]>();
         for (File file : JsonPoweredTestHelper.getTestFiles("/command-monitoring")) {
             BsonDocument testDocument = JsonPoweredTestHelper.getTestDocument(file);
-            if (!canRunTests(testDocument)) {
-                continue;
-            }
             for (BsonValue test : testDocument.getArray("tests")) {
-                if (ignoreTest(test.asDocument())) {
-                    continue;
-                }
                 data.add(new Object[]{file.getName(), test.asDocument().getString("description").getValue(),
                         testDocument.getString("database_name", new BsonString(getDefaultDatabaseName())).getValue(),
-                        testDocument.getString("collection_name").getValue(), testDocument.getArray("data"), test.asDocument()});
+                        testDocument.getString("collection_name").getValue(), testDocument.getArray("data"), test.asDocument(),
+                        skipTest(testDocument, test.asDocument())
+                });
             }
         }
         return data;

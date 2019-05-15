@@ -65,7 +65,7 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import static com.mongodb.ClusterFixture.getMultiMongosConnectionString;
-import static com.mongodb.JsonTestServerVersionChecker.canRunTests;
+import static com.mongodb.JsonTestServerVersionChecker.skipTest;
 import static com.mongodb.async.client.Fixture.getConnectionString;
 import static com.mongodb.async.client.Fixture.getDefaultDatabaseName;
 import static com.mongodb.async.client.Fixture.isSharded;
@@ -77,6 +77,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assume.assumeFalse;
 import static org.junit.Assume.assumeTrue;
 
 // See https://github.com/mongodb/specifications/tree/master/source/transactions/tests
@@ -88,6 +89,7 @@ public class TransactionsTest {
     private final String databaseName;
     private final BsonArray data;
     private final BsonDocument definition;
+    private final boolean skipTest;
     private JsonPoweredCrudTestHelper helper;
     private final TestCommandListener commandListener;
     private MongoClient mongoClient;
@@ -100,17 +102,20 @@ public class TransactionsTest {
 
     private static final long MIN_HEARTBEAT_FREQUENCY_MS = 50L;
 
-    public TransactionsTest(final String filename, final String description, final BsonArray data, final BsonDocument definition) {
+    public TransactionsTest(final String filename, final String description, final BsonArray data, final BsonDocument definition,
+                            final boolean skipTest) {
         this.filename = filename;
         this.description = description;
         this.databaseName = getDefaultDatabaseName();
         this.data = data;
         this.definition = definition;
         this.commandListener = new TestCommandListener();
+        this.skipTest = skipTest;
     }
 
     @Before
     public void setUp() {
+        assumeFalse(skipTest);
         assumeTrue("Skipping test: " + definition.getString("skipReason", new BsonString("")).getValue(),
                 !definition.containsKey("skipReason"));
         collectionHelper = new CollectionHelper<Document>(new DocumentCodec(), new MongoNamespace(databaseName, collectionName));
@@ -531,12 +536,9 @@ public class TransactionsTest {
         List<Object[]> data = new ArrayList<Object[]>();
         for (File file : JsonPoweredTestHelper.getTestFiles("/transactions")) {
             BsonDocument testDocument = JsonPoweredTestHelper.getTestDocument(file);
-            if (!canRunTests(testDocument)) {
-                continue;
-            }
             for (BsonValue test : testDocument.getArray("tests")) {
                 data.add(new Object[]{file.getName(), test.asDocument().getString("description").getValue(),
-                        testDocument.getArray("data"), test.asDocument()});
+                        testDocument.getArray("data"), test.asDocument(), skipTest(testDocument, test.asDocument())});
             }
         }
         return data;

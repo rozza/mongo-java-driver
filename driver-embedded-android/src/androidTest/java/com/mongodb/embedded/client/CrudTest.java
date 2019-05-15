@@ -45,10 +45,11 @@ public class CrudTest {
     private MongoCollection<BsonDocument> collection;
     private JsonPoweredCrudTestHelper helper;
 
-    public CrudTest(final String description, final BsonArray data, final BsonDocument definition) {
+    public CrudTest(final String description, final BsonArray data, final BsonDocument definition, final boolean skipTest) {
         this.description = description;
         this.data = data;
         this.definition = definition;
+        this.skipTest = skipTest;
     }
 
     @Before

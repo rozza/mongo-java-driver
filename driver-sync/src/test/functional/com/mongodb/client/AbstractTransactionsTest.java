@@ -71,6 +71,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assume.assumeFalse;
 import static org.junit.Assume.assumeTrue;
 
 @RunWith(Parameterized.class)
@@ -80,6 +81,7 @@ public abstract class AbstractTransactionsTest {
     private final String databaseName;
     private final BsonArray data;
     private final BsonDocument definition;
+    private final boolean skipTest;
     private JsonPoweredCrudTestHelper helper;
     private final TestCommandListener commandListener;
     private MongoClient mongoClient;
@@ -92,17 +94,20 @@ public abstract class AbstractTransactionsTest {
 
     private static final long MIN_HEARTBEAT_FREQUENCY_MS = 50L;
 
-    public AbstractTransactionsTest(final String filename, final String description, final BsonArray data, final BsonDocument definition) {
+    public AbstractTransactionsTest(final String filename, final String description, final BsonArray data, final BsonDocument definition,
+                                    final boolean skipTest) {
         this.filename = filename;
         this.description = description;
         this.databaseName = getDefaultDatabaseName();
         this.data = data;
         this.definition = definition;
         this.commandListener = new TestCommandListener();
+        this.skipTest = skipTest;
     }
 
     @Before
     public void setUp() {
+        assumeFalse(skipTest);
         assumeTrue("Skipping test: " + definition.getString("skipReason", new BsonString("")).getValue(),
                 !definition.containsKey("skipReason"));
 

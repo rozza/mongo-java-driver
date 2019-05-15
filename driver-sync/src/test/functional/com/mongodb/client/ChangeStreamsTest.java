@@ -46,12 +46,13 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-import static com.mongodb.JsonTestServerVersionChecker.canRunTests;
+import static com.mongodb.JsonTestServerVersionChecker.skipTest;
 import static com.mongodb.client.CommandMonitoringTestHelper.getExpectedEvents;
 import static com.mongodb.client.Fixture.getMongoClientSettingsBuilder;
 import static java.lang.String.format;
 import static java.util.Collections.singletonList;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assume.assumeFalse;
 
 // See https://github.com/mongodb/specifications/tree/master/source/change-streams/tests
 @RunWith(Parameterized.class)
@@ -61,17 +62,19 @@ public class ChangeStreamsTest {
     private final MongoNamespace namespace;
     private final MongoNamespace namespace2;
     private final BsonDocument definition;
+    private final boolean skipTest;
 
-    private MongoClient mongoClient;
+private MongoClient mongoClient;
     private TestCommandListener commandListener;
 
     public ChangeStreamsTest(final String filename, final String description, final MongoNamespace namespace,
-                             final MongoNamespace namespace2, final BsonDocument definition) {
+                             final MongoNamespace namespace2, final BsonDocument definition, final boolean skipTest) {
         this.filename = filename;
         this.description = description;
         this.namespace = namespace;
         this.namespace2 = namespace2;
         this.definition = definition;
+        this.skipTest = skipTest;
     }
 
     @BeforeClass
@@ -84,6 +87,7 @@ public class ChangeStreamsTest {
 
     @Before
     public void setUp() {
+        assumeFalse(skipTest);
         CollectionHelper.dropDatabase(namespace.getDatabaseName(), WriteConcern.MAJORITY);
         CollectionHelper<BsonDocument> collectionHelper = new CollectionHelper<BsonDocument>(new BsonDocumentCodec(), namespace);
         collectionHelper.drop();
@@ -227,9 +231,6 @@ public class ChangeStreamsTest {
         List<Object[]> data = new ArrayList<Object[]>();
         for (File file : JsonPoweredTestHelper.getTestFiles("/change-streams")) {
             BsonDocument testDocument = JsonPoweredTestHelper.getTestDocument(file);
-            if (!canRunTests(testDocument)) {
-                continue;
-            }
             MongoNamespace namespace = new MongoNamespace(testDocument.getString("database_name").getValue(),
                     testDocument.getString("collection_name").getValue());
             MongoNamespace namespace2 = new MongoNamespace(testDocument.getString("database2_name").getValue(),
@@ -237,7 +238,7 @@ public class ChangeStreamsTest {
 
             for (BsonValue test : testDocument.getArray("tests")) {
                 data.add(new Object[]{file.getName(), test.asDocument().getString("description").getValue(),
-                        namespace, namespace2, test.asDocument()});
+                        namespace, namespace2, test.asDocument(), skipTest(testDocument, test.asDocument())});
             }
         }
         return data;
