@@ -1,16 +1,16 @@
 +++
 date = "2019-06-13T09:00:01+01:00"
-title = "Field Level Encryption"
+title = "Client Site Encryption"
 [menu.main]
-  parent = "Sync Reference"
-  identifier = "Sync Field Level Encryption"
-  weight = 30
-  pre = "<i class='fa'></i>"
+  parent = "Sync Tutorials"
+  identifier = "Sync Client Side Encryption"
+  weight = 16
+  pre = "<i class='fa fa-lock'></i>"
 +++
 
-# Field Level Encryption
+# Client Site Encryption
 
-New in MongoDB 4.2 field level encryption allows administrators and developers to encrypt specific data fields in addition to other 
+New in MongoDB 4.2 client side encryption allows administrators and developers to encrypt specific data fields in addition to other
 MongoDB encryption features.
 
 With field level encryption, developers can encrypt fields client side without any server-side 
@@ -34,36 +34,33 @@ There is a separate jar file containing`libmongocrypt` bindings.
 If the jar fails to run there are separate jar files for specific architectures:
 
 #### RHEL 7.0*
-{{< install artifactId="mongodb-mongocrypt" version="1.0.0-SNAPSHOT" classifier="linux64-rhel70">}}
+{{< install artifactId="mongodb-crypt" version="1.0.0-SNAPSHOT" classifier="linux64-rhel70">}}
 
 #### OSX*
-{{< install artifactId="mongodb-mongocrypt" version="1.0.0-SNAPSHOT" classifier="osx">}}
+{{< install artifactId="mongodb-crypt" version="1.0.0-SNAPSHOT" classifier="osx">}}
 
 #### Windows*
-{{< install artifactId="mongodb-mongocrypt" version="1.0.0-SNAPSHOT" classifier="win64">}}
+{{< install artifactId="mongodb-crypt" version="1.0.0-SNAPSHOT" classifier="win64">}}
 
 #### Ubuntu 16.04
-{{< install artifactId="mongodb-mongocrypt" version="1.0.0-SNAPSHOT" classifier="linux64-ubuntu1604">}}
+{{< install artifactId="mongodb-crypt" version="1.0.0-SNAPSHOT" classifier="linux64-ubuntu1604">}}
 
 
-* Distribution is included in the main `mongodb-mongocrypt` jar file.
+* Distribution is included in the main `mongodb-crypt` jar file.
 
 ### mongocryptd configuration
 
 `libmongocrypt` requires the `mongocryptd` daemon / process to be running. A specific daemon / process uri can be configured in the 
 `AutoEncryptionSettings` class by setting `mongocryptdURI` in the `extraOptions`.
 
-{{% note class="important" %}}
-If not configured the driver will automatically try to start the daemon / process in: `/tmp/mongocryptd.sock`. This requires
-the `jnr.unixsocket` library to be installed.
-{{% /note %}}
-
 More information about libmongocrypt will soon be available from the official documentation.
 
 
 ### Examples
 
-The following is a sample app that assumes key and schema have already been created in MongoDB and the `encryptedField` field is encrypted:
+The following is a sample app that assumes key and schema have already been created in MongoDB. The example uses a local key,
+however using AWS Key Management Service is also an option. The data in the `encryptedField` field is automatically encrypted on the
+insert and decrypted when using find on the client side:
 
 ```java
 import com.mongodb.AutoEncryptionSettings;
@@ -109,18 +106,18 @@ public class ClientSideEncryptionSimpleTest {
 Auto encryption is an **enterprise** only feature.
 {{% /note %}}
 
-The following example shows how to configure the `AutoEncryptionSettings` instance and set the json schema map to be used:
+The following example shows how to configure the `AutoEncryptionSettings` instance to create a new key and setting the json schema map:
 
 ```java
 import com.mongodb.ConnectionString;
-import com.mongodb.KeyVaultEncryptionSettings;
-import com.mongodb.client.vault.KeyVaults;
+import com.mongodb.ClientEncryptionSettings;
+import com.mongodb.client.vault.ClientEncryptions;
 
 ...
 
 
 var keyVaultNamespace = "admin.datakeys";
-var keyVaultSettings = KeyVaultEncryptionSettings.builder()
+var clientEncryptionSettings = ClientEncryptionSettings.builder()
         .keyVaultMongoClientSettings(MongoClientSettings.builder()
                 .applyConnectionString(new ConnectionString("mongodb://localhost"))
                 .build())
@@ -128,7 +125,7 @@ var keyVaultSettings = KeyVaultEncryptionSettings.builder()
         .kmsProviders(kmsProviders)
         .build();
 
-var keyVault = KeyVaults.create(keyVaultSettings);
+var clientEncryption = ClientEncryptions.create(clientEncryptionSettings);
 var dataKeyId = keyVault.createDataKey("local", new DataKeyOptions());
 var base64DataKeyId = Base64.getEncoder().encodeToString(dataKeyId.getData());
 
