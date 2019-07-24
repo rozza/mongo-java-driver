@@ -110,7 +110,7 @@ class CommandMarker implements Closeable {
                 }
             }
         } catch (IOException e) {
-            throw new MongoClientException("Exception starting mongocryptd process", e);
+            throw new MongoClientException("Exception starting mongocryptd process. Is `mongocrypt` on the system path?", e);
         }
     }
 
