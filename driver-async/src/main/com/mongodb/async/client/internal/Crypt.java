@@ -259,7 +259,7 @@ public class Crypt implements Closeable {
                 decryptKeys(cryptContext, databaseName, callback);
                 break;
             case READY:
-                callback.onResult((RawBsonDocument) cryptContext.finish(), null);
+                callback.onResult(cryptContext.finish(), null);
                 break;
             default:
                 callback.onResult(null, new MongoInternalException("Unsupported encryptor state + " + state));
