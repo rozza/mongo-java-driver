@@ -18,7 +18,6 @@ package com.mongodb.async.client.internal;
 
 import com.mongodb.ReadPreference;
 import com.mongodb.async.SingleResultCallback;
-import com.mongodb.binding.AsyncClusterBinding;
 import com.mongodb.binding.AsyncConnectionSource;
 import com.mongodb.binding.AsyncReadWriteBinding;
 import com.mongodb.connection.AsyncConnection;
@@ -30,10 +29,10 @@ import com.mongodb.session.SessionContext;
 
 @SuppressWarnings("deprecation")
 public class AsyncCryptBinding implements AsyncClusterAwareReadWriteBinding {
-    private final AsyncClusterBinding wrapped;
+    private final AsyncClusterAwareReadWriteBinding wrapped;
     private final Crypt crypt;
 
-    public AsyncCryptBinding(final AsyncClusterBinding wrapped, final Crypt crypt) {
+    public AsyncCryptBinding(final AsyncClusterAwareReadWriteBinding wrapped, final Crypt crypt) {
         this.wrapped = wrapped;
         this.crypt = crypt;
     }
