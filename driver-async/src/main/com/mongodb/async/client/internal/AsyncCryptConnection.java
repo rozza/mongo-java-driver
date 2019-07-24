@@ -127,7 +127,6 @@ class AsyncCryptConnection implements AsyncConnection {
                             if (t != null) {
                                 callback.onResult(null, t);
                             } else {
-                                // TODO hold onto local
                                 wrapped.commandAsync(database, encryptedCommand, commandFieldNameValidator, readPreference,
                                         new RawBsonDocumentCodec(), sessionContext, responseExpected, null, null,
                                         createCommandCallback());
@@ -154,8 +153,12 @@ class AsyncCryptConnection implements AsyncConnection {
                                     if (t != null) {
                                         callback.onResult(null, t);
                                     } else {
-                                        BsonBinaryReader reader = new BsonBinaryReader(decryptedResponse.getByteBuffer().asNIO());
-                                        callback.onResult(commandResultDecoder.decode(reader, DecoderContext.builder().build()), null);
+                                        try {
+                                            BsonBinaryReader reader = new BsonBinaryReader(decryptedResponse.getByteBuffer().asNIO());
+                                            callback.onResult(commandResultDecoder.decode(reader, DecoderContext.builder().build()), null);
+                                        } catch (Throwable t1) {
+                                            callback.onResult(null, t1);
+                                        }
                                     }
                                 }
                             };

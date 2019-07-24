@@ -109,6 +109,9 @@ class MongoClientImpl implements MongoClient {
 
     @Override
     public void close() {
+        if (crypt != null) {
+            crypt.close();
+        }
         serverSessionPool.close();
         cluster.close();
         if (externalResourceCloser != null) {

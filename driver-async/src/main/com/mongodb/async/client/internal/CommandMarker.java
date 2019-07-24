@@ -128,7 +128,7 @@ class CommandMarker implements Closeable {
             callback.onResult(null, null);
         } catch (Throwable t) {
             callback.onResult(null,
-                    new MongoClientException("Exception starting mongocryptd process. Is `mongocrypt` on the system path?", t));
+                    new MongoClientException("Exception starting mongocryptd process. Is `mongocryptd` on the system path?", t));
         }
     }
 

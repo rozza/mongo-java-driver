@@ -437,9 +437,9 @@ public final class MongoClientSettings {
         }
 
         /**
-         * Sets the key vault options.
+         * Sets the auto-encryption settings
          *
-         * @param autoEncryptionSettings key vault settings
+         * @param autoEncryptionSettings the auto-encryption settings
          * @return this
          * @since 3.11
          * @see #getAutoEncryptionSettings()

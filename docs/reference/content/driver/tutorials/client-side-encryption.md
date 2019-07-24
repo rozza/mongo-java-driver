@@ -36,7 +36,7 @@ There is a separate jar file containing`libmongocrypt` bindings.
 `libmongocrypt` requires the `mongocryptd` daemon / process to be running. A specific daemon / process uri can be configured in the 
 `AutoEncryptionSettings` class by setting `mongocryptdURI` in the `extraOptions`.
 
-More information about libmongocrypt will soon be available from the official documentation.
+More information about mongocryptd will soon be available from the official documentation.
 
 
 ### Examples
@@ -156,9 +156,5 @@ AutoEncryptionSettings autoEncryptionSettings = AutoEncryptionSettings.builder()
                             + "}"));
         }}).build();
 ```
-
-{{% note %}}
-Auto encryption is an **enterprise** only feature.
-{{% /note %}}
 
 **Coming soon:** An example using the community version and demonstrating explicit encryption/decryption.

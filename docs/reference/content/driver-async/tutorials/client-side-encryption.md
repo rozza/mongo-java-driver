@@ -17,6 +17,10 @@ With field level encryption, developers can encrypt fields client side without a
 configuration or directives. Client-side field level encryption supports workloads where applications must guarantee that 
 unauthorized parties, including server administrators, cannot read the encrypted data.
 
+{{% note class="important" %}}
+Java 8 is the minimum required version that supports Async client side encryption. 
+{{% /note %}}
+
 ## Installation
 
 The recommended way to get started using field level encryption in your project is with a dependency management system. 
@@ -36,7 +40,7 @@ There is a separate jar file containing`libmongocrypt` bindings.
 `libmongocrypt` requires the `mongocryptd` daemon / process to be running. A specific daemon / process uri can be configured in the 
 `AutoEncryptionSettings` class by setting `mongocryptdURI` in the `extraOptions`.
 
-More information about libmongocrypt will soon be available from the official documentation.
+More information about mongocryptd will soon be available from the official documentation.
 
 
 ### Examples
@@ -44,7 +48,7 @@ More information about libmongocrypt will soon be available from the official do
 The following is a sample app that assumes the **key** and **schema** have already been created in MongoDB. The example uses a local key,
 however using AWS Key Management Service is also an option. The data in the `encryptedField` field is automatically encrypted on the
 insert and decrypted when using find on the client side. The following code snippet comes from the 
-[`ClientSideEncryptionSimpleTour.java`]({{< srcref "driver-async/srcdriver-async/src/examples/tour/ClientSideEncryptionSimpleTour.java">}}) example code
+[`ClientSideEncryptionSimpleTour.java`]({{< srcref "driver-async/src/driver-async/src/examples/tour/ClientSideEncryptionSimpleTour.java">}}) example code
 that can be found with the driver source on github:
 
 ```java
@@ -192,9 +196,5 @@ AutoEncryptionSettings autoEncryptionSettings = AutoEncryptionSettings.builder()
                             + "}"));
         }}).build();
 ```
-
-{{% note %}}
-Auto encryption is an **enterprise** only feature.
-{{% /note %}}
 
 **Coming soon:** An example using the community version and demonstrating explicit encryption/decryption.
