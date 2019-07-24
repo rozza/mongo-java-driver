@@ -24,7 +24,6 @@ import com.mongodb.async.SingleResultCallback;
 import com.mongodb.connection.AsyncCompletionHandler;
 import com.mongodb.connection.SocketSettings;
 import com.mongodb.connection.SslSettings;
-import com.mongodb.connection.Stream;
 import com.mongodb.connection.StreamFactory;
 import com.mongodb.connection.TlsChannelStreamFactoryFactory;
 import com.mongodb.crypt.capi.MongoKeyDecryptor;
@@ -54,7 +53,8 @@ class KeyManagementService {
     }
 
     private void streamOpen(final MongoKeyDecryptor keyDecryptor, final SingleResultCallback<Void> callback) {
-        final Stream stream = streamFactory.create(new ServerAddress(keyDecryptor.getHostName(), port));
+        final KeyManagementAsynchronousChannelStream stream =
+                new KeyManagementAsynchronousChannelStream(streamFactory.create(new ServerAddress(keyDecryptor.getHostName(), port)));
         stream.openAsync(new AsyncCompletionHandler<Void>() {
             @Override
             public void completed(final Void aVoid) {
@@ -70,7 +70,8 @@ class KeyManagementService {
         });
     }
 
-    private void streamWrite(final Stream stream, final MongoKeyDecryptor keyDecryptor, final SingleResultCallback<Void> callback) {
+    private void streamWrite(final KeyManagementAsynchronousChannelStream stream, final MongoKeyDecryptor keyDecryptor,
+                             final SingleResultCallback<Void> callback) {
         List<ByteBuf> byteBufs = Collections.<ByteBuf>singletonList(new ByteBufNIO(keyDecryptor.getMessage()));
         stream.writeAsync(byteBufs, new AsyncCompletionHandler<Void>() {
             @Override
@@ -87,10 +88,10 @@ class KeyManagementService {
         });
     }
 
-    private void streamRead(final Stream stream, final MongoKeyDecryptor keyDecryptor, final SingleResultCallback<Void> callback) {
+    private void streamRead(final KeyManagementAsynchronousChannelStream stream, final MongoKeyDecryptor keyDecryptor,
+                            final SingleResultCallback<Void> callback) {
         int bytesNeeded = keyDecryptor.bytesNeeded();
         if (bytesNeeded > 0) {
-            bytesNeeded = bytesNeeded > 230 ? 230 : bytesNeeded; // TODO - why report 1024 needed and only supply 230?
             stream.readAsync(bytesNeeded, new AsyncCompletionHandler<ByteBuf>() {
                 @Override
                 public void completed(final ByteBuf byteBuf) {
