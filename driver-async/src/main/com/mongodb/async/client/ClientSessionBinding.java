@@ -19,9 +19,9 @@ package com.mongodb.async.client;
 import com.mongodb.ReadConcern;
 import com.mongodb.ReadPreference;
 import com.mongodb.async.SingleResultCallback;
-import com.mongodb.binding.AsyncClusterBinding;
 import com.mongodb.binding.AsyncConnectionSource;
 import com.mongodb.binding.AsyncReadWriteBinding;
+import com.mongodb.internal.binding.AsyncClusterAwareReadWriteBinding;
 import com.mongodb.binding.AsyncSingleServerBinding;
 import com.mongodb.connection.AsyncConnection;
 import com.mongodb.connection.ClusterType;
@@ -34,13 +34,13 @@ import com.mongodb.session.SessionContext;
 import static com.mongodb.assertions.Assertions.notNull;
 
 class ClientSessionBinding implements AsyncReadWriteBinding {
-    private final AsyncClusterBinding wrapped;
+    private final AsyncClusterAwareReadWriteBinding wrapped;
     private final ClientSession session;
     private final boolean ownsSession;
     private final ClientSessionContext sessionContext;
 
     ClientSessionBinding(final ClientSession session, final boolean ownsSession, final AsyncReadWriteBinding wrapped) {
-        this.wrapped = notNull("wrapped", ((AsyncClusterBinding) wrapped));
+        this.wrapped = notNull("wrapped", ((AsyncClusterAwareReadWriteBinding) wrapped));
         this.ownsSession = ownsSession;
         this.session = notNull("session", session);
         this.sessionContext = new AsyncClientSessionContext(session);
