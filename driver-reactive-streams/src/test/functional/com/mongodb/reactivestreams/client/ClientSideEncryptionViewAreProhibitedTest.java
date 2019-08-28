@@ -14,12 +14,13 @@
  * limitations under the License.
  */
 
-package com.mongodb.async.client;
+package com.mongodb.reactivestreams.client;
 
 import com.mongodb.AutoEncryptionSettings;
+import com.mongodb.ClusterFixture;
 import com.mongodb.MongoClientSettings;
 import com.mongodb.MongoException;
-import com.mongodb.async.FutureResultCallback;
+import com.mongodb.reactivestreams.client.Fixture.ObservableSubscriber;
 import org.bson.BsonDocument;
 import org.bson.BsonString;
 import org.junit.After;
@@ -30,20 +31,20 @@ import java.util.Base64;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import static com.mongodb.ClusterFixture.serverVersionAtLeast;
+import static com.mongodb.internal.async.client.Fixture.getMongoClientBuilderFromConnectionString;
+import static com.mongodb.reactivestreams.client.Fixture.getMongoClient;
 import static junit.framework.TestCase.assertTrue;
-import static com.mongodb.async.client.Fixture.getMongoClientBuilderFromConnectionString;
-import static com.mongodb.async.client.Fixture.getMongoClient;
-import static org.junit.Assume.assumeFalse;
-import static org.junit.Assume.assumeTrue;
 import static org.junit.Assert.fail;
+import static org.junit.Assume.assumeTrue;
 
 public class ClientSideEncryptionViewAreProhibitedTest {
     private MongoClient clientEncrypted;
 
     @Before
-    public void setUp() {
+    public void setUp() throws Throwable {
         assumeTrue(serverVersionAtLeast(4, 1));
         assumeTrue("Encryption test with external keyVault is disabled",
                 System.getProperty("org.mongodb.test.awsAccessKeyId") != null
@@ -52,13 +53,13 @@ public class ClientSideEncryptionViewAreProhibitedTest {
         MongoClient client = getMongoClient();
 
         MongoDatabase db = client.getDatabase("db");
-        FutureResultCallback<Void> voidCallback = new FutureResultCallback<Void>();
-        db.getCollection("view").drop(voidCallback);
-        voidCallback.get();
+        ObservableSubscriber<Success> subscriber = new ObservableSubscriber<>();
+        db.getCollection("view").drop().subscribe(subscriber);
+        subscriber.await(5, TimeUnit.SECONDS);
 
-        voidCallback = new FutureResultCallback<Void>();
-        db.createView("view", "coll", Collections.<BsonDocument>emptyList(), voidCallback);
-        voidCallback.get();
+        subscriber = new ObservableSubscriber<>();
+        db.createView("view", "coll", Collections.<BsonDocument>emptyList()).subscribe(subscriber);
+        subscriber.await(5, TimeUnit.SECONDS);
 
         Map<String, Map<String, Object>> kmsProviders = new HashMap<String, Map<String, Object>>();
         Map<String, Object> localMasterkey = new HashMap<String, Object>();
@@ -82,14 +83,14 @@ public class ClientSideEncryptionViewAreProhibitedTest {
     }
 
     @Test
-    public void shouldThrowError() {
+    public void shouldThrowError() throws Throwable {
         MongoCollection<BsonDocument> coll = clientEncrypted
                 .getDatabase("db")
                 .getCollection("view", BsonDocument.class);
         try {
-            FutureResultCallback<Void> voidCallback = new FutureResultCallback<Void>();
-            coll.insertOne(new BsonDocument().append("encrypted", new BsonString("test")), voidCallback);
-            voidCallback.get();
+            ObservableSubscriber<Success> subscriber = new ObservableSubscriber<>();
+            coll.insertOne(new BsonDocument().append("encrypted", new BsonString("test"))).subscribe(subscriber);
+            subscriber.await(ClusterFixture.TIMEOUT, TimeUnit.SECONDS);
             fail();
         } catch (MongoException me) {
             assertTrue(me.getMessage().contains("cannot auto encrypt a view"));

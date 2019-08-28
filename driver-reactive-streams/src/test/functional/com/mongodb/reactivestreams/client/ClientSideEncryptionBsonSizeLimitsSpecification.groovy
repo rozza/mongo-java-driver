@@ -14,26 +14,29 @@
  * limitations under the License.
  */
 
-package com.mongodb.async.client
+package com.mongodb.reactivestreams.client
 
 import com.mongodb.AutoEncryptionSettings
 import com.mongodb.ClientEncryptionSettings
 import com.mongodb.MongoNamespace
 import com.mongodb.MongoWriteException
 import com.mongodb.WriteConcern
-import com.mongodb.async.FutureResultCallback
-import com.mongodb.async.client.vault.ClientEncryption
-import com.mongodb.async.client.vault.ClientEncryptions
 import com.mongodb.client.test.CollectionHelper
 import com.mongodb.internal.connection.TestCommandListener
+import com.mongodb.reactivestreams.client.vault.ClientEncryption
+import com.mongodb.reactivestreams.client.vault.ClientEncryptions
 import org.bson.BsonDocument
 import org.bson.BsonString
 import org.bson.codecs.BsonDocumentCodec
 
+import java.util.concurrent.TimeUnit
+
+import static com.mongodb.ClusterFixture.TIMEOUT
 import static com.mongodb.ClusterFixture.serverVersionAtLeast
-import static com.mongodb.async.client.Fixture.getDefaultDatabaseName
-import static com.mongodb.async.client.Fixture.getMongoClientBuilderFromConnectionString
-import static com.mongodb.async.client.Fixture.getMongoClientSettings
+import static com.mongodb.internal.async.client.Fixture.getMongoClientBuilderFromConnectionString
+import static com.mongodb.reactivestreams.client.Fixture.ObservableSubscriber
+import static com.mongodb.reactivestreams.client.Fixture.drop
+import static com.mongodb.reactivestreams.client.Fixture.getDefaultDatabaseName
 import static java.util.Collections.singletonMap
 import static org.junit.Assume.assumeTrue
 import static util.JsonPoweredTestHelper.getTestDocument
@@ -54,8 +57,8 @@ class ClientSideEncryptionBsonSizeLimitsSpecification extends FunctionalSpecific
         assumeTrue('Key vault tests disabled',
                 System.getProperty('org.mongodb.test.awsAccessKeyId') != null
                         && !System.getProperty('org.mongodb.test.awsAccessKeyId').isEmpty())
-        Fixture.drop(keyVaultNamespace)
-        Fixture.drop(autoEncryptingCollectionNamespace)
+        drop(keyVaultNamespace)
+        drop(autoEncryptingCollectionNamespace)
 
         new CollectionHelper<>(new BsonDocumentCodec(), keyVaultNamespace).insertDocuments(
                 [getTestDocument('/client-side-encryption-limits/limits-key.json')],
@@ -80,7 +83,7 @@ class ClientSideEncryptionBsonSizeLimitsSpecification extends FunctionalSpecific
                 .getCollection(autoEncryptingCollectionNamespace.collectionName, BsonDocument)
 
         clientEncryption = ClientEncryptions.create(ClientEncryptionSettings.builder()
-                .keyVaultMongoClientSettings(getMongoClientSettings())
+                .keyVaultMongoClientSettings(getMongoClientBuilderFromConnectionString().build())
                 .keyVaultNamespace(keyVaultNamespace.fullName)
                 .kmsProviders(providerProperties)
                 .build())
@@ -88,36 +91,36 @@ class ClientSideEncryptionBsonSizeLimitsSpecification extends FunctionalSpecific
 
     def 'test BSON size limits'() {
         when:
-        def callback = new FutureResultCallback()
+        def subscriber = new ObservableSubscriber()
         autoEncryptingDataCollection.insertOne(
                 new BsonDocument('_id', new BsonString('over_2mib_under_16mib'))
-                        .append('unencrypted', new BsonString('a' * 2097152)), callback)
-        callback.get()
+                        .append('unencrypted', new BsonString('a' * 2097152))).subscribe(subscriber)
+        subscriber.await(TIMEOUT, TimeUnit.SECONDS)
 
         then:
         noExceptionThrown()
 
         when:
-        callback = new FutureResultCallback()
+        subscriber = new ObservableSubscriber()
         autoEncryptingDataCollection.insertOne(getTestDocument('/client-side-encryption-limits/limits-doc.json')
                 .append('_id', new BsonString('encryption_exceeds_2mib'))
-                .append('unencrypted', new BsonString('a' * (2097152 - 2000))), callback)
-        callback.get()
+                .append('unencrypted', new BsonString('a' * (2097152 - 2000)))).subscribe(subscriber)
+        subscriber.await(TIMEOUT, TimeUnit.SECONDS)
 
         then:
         noExceptionThrown()
 
         when:
         commandListener.reset()
-        callback = new FutureResultCallback()
+        subscriber = new ObservableSubscriber()
         autoEncryptingDataCollection.insertMany(
                 [
                         new BsonDocument('_id', new BsonString('over_2mib_1'))
                                 .append('unencrypted', new BsonString('a' * 2097152)),
                         new BsonDocument('_id', new BsonString('over_2mib_2'))
                                 .append('unencrypted', new BsonString('a' * 2097152))
-                ], callback)
-        callback.get()
+                ]).subscribe(subscriber)
+        subscriber.await(TIMEOUT, TimeUnit.SECONDS)
 
         then:
         noExceptionThrown()
@@ -125,7 +128,7 @@ class ClientSideEncryptionBsonSizeLimitsSpecification extends FunctionalSpecific
 
         when:
         commandListener.reset()
-        callback = new FutureResultCallback()
+        subscriber = new ObservableSubscriber()
         autoEncryptingDataCollection.insertMany(
                 [
                         getTestDocument('/client-side-encryption-limits/limits-doc.json')
@@ -134,29 +137,29 @@ class ClientSideEncryptionBsonSizeLimitsSpecification extends FunctionalSpecific
                         getTestDocument('/client-side-encryption-limits/limits-doc.json')
                                 .append('_id', new BsonString('encryption_exceeds_2mib_2'))
                                 .append('unencrypted', new BsonString('a' * (2097152 - 2000))),
-                ], callback)
-        callback.get()
+                ]).subscribe(subscriber)
+        subscriber.await(TIMEOUT, TimeUnit.SECONDS)
 
         then:
         noExceptionThrown()
         countStartedEvents('insert') == 2
 
         when:
-        callback = new FutureResultCallback()
+        subscriber = new ObservableSubscriber()
         autoEncryptingDataCollection.insertOne(
                 new BsonDocument('_id', new BsonString('under_16mib'))
-                        .append('unencrypted', new BsonString('a' * (16777216 - 2000))), callback)
-        callback.get()
+                        .append('unencrypted', new BsonString('a' * (16777216 - 2000)))).subscribe(subscriber)
+        subscriber.await(TIMEOUT, TimeUnit.SECONDS)
 
         then:
         noExceptionThrown()
 
         when:
-        callback = new FutureResultCallback()
+        subscriber = new ObservableSubscriber()
         autoEncryptingDataCollection.insertOne(getTestDocument('/client-side-encryption-limits/limits-doc.json')
                 .append('_id', new BsonString('encryption_exceeds_16mib'))
-                .append('unencrypted', new BsonString('a' * (16777216 - 2000))), callback)
-        callback.get()
+                .append('unencrypted', new BsonString('a' * (16777216 - 2000)))).subscribe(subscriber)
+        subscriber.await(TIMEOUT, TimeUnit.SECONDS)
 
         then:
         thrown(MongoWriteException)

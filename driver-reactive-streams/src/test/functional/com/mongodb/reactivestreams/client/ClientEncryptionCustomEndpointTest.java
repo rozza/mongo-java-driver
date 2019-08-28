@@ -14,16 +14,16 @@
  * limitations under the License.
  */
 
-package com.mongodb.async.client;
+package com.mongodb.reactivestreams.client;
 
 import com.mongodb.ClientEncryptionSettings;
 import com.mongodb.MongoClientException;
-import com.mongodb.async.FutureResultCallback;
-import com.mongodb.async.client.vault.ClientEncryption;
-import com.mongodb.async.client.vault.ClientEncryptions;
 import com.mongodb.client.model.vault.DataKeyOptions;
 import com.mongodb.client.model.vault.EncryptOptions;
 import com.mongodb.lang.Nullable;
+import com.mongodb.reactivestreams.client.Fixture.ObservableSubscriber;
+import com.mongodb.reactivestreams.client.vault.ClientEncryption;
+import com.mongodb.reactivestreams.client.vault.ClientEncryptions;
 import org.bson.BsonBinary;
 import org.bson.BsonDocument;
 import org.bson.BsonString;
@@ -42,6 +42,7 @@ import java.util.concurrent.TimeUnit;
 
 import static com.mongodb.ClusterFixture.TIMEOUT;
 import static com.mongodb.ClusterFixture.serverVersionAtLeast;
+import static com.mongodb.internal.async.client.Fixture.getMongoClientBuilderFromConnectionString;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -83,7 +84,7 @@ public class ClientEncryptionCustomEndpointTest {
         kmsProviders.put("aws", awsCreds);
 
         ClientEncryptionSettings.Builder clientEncryptionSettingsBuilder = ClientEncryptionSettings.builder().
-                keyVaultMongoClientSettings(Fixture.getMongoClientSettings())
+                keyVaultMongoClientSettings(getMongoClientBuilderFromConnectionString().build())
                 .kmsProviders(kmsProviders)
                 .keyVaultNamespace("admin.datakeys");
 
@@ -103,20 +104,19 @@ public class ClientEncryptionCustomEndpointTest {
     }
 
     @Test
-    public void testEndpoint() throws Exception {
+    public void testEndpoint() throws Throwable {
         try {
-            FutureResultCallback<BsonBinary> dataKeyCreationCallback = new FutureResultCallback<BsonBinary>();
-            clientEncryption.createDataKey("aws", new DataKeyOptions()
-                    .masterKey(masterKey), dataKeyCreationCallback);
+            ObservableSubscriber<BsonBinary> dataKeySubscriber = new ObservableSubscriber<>();
+            clientEncryption.createDataKey("aws", new DataKeyOptions().masterKey(masterKey)).subscribe(dataKeySubscriber);
 
-            BsonBinary dataKeyId = dataKeyCreationCallback.get(TIMEOUT, TimeUnit.SECONDS);
+            BsonBinary dataKeyId = dataKeySubscriber.get(TIMEOUT, TimeUnit.SECONDS).get(0);
 
             assertNull("Expected exception, but encryption succeeded", exceptionClass);
 
-            FutureResultCallback<BsonBinary> encryptCallback = new FutureResultCallback<BsonBinary>();
+            ObservableSubscriber<BsonBinary> encryptSubscriber = new ObservableSubscriber<>();
             clientEncryption.encrypt(new BsonString("test"), new EncryptOptions("AEAD_AES_256_CBC_HMAC_SHA_512-Deterministic")
-                    .keyId(dataKeyId), encryptCallback);
-            encryptCallback.get();
+                    .keyId(dataKeyId)).subscribe(encryptSubscriber);
+            encryptSubscriber.await(TIMEOUT, TimeUnit.SECONDS);
         } catch (Exception e) {
             if (exceptionClass == null) {
                 throw e;

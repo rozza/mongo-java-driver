@@ -14,18 +14,18 @@
  * limitations under the License.
  */
 
-package com.mongodb.async.client;
+package com.mongodb.reactivestreams.client;
 
-import com.mongodb.ClientEncryptionSettings;
 import com.mongodb.AutoEncryptionSettings;
+import com.mongodb.ClientEncryptionSettings;
 import com.mongodb.MongoClientSettings;
 import com.mongodb.MongoCredential;
 import com.mongodb.MongoSecurityException;
 import com.mongodb.WriteConcern;
-import com.mongodb.async.FutureResultCallback;
-import com.mongodb.async.client.vault.ClientEncryption;
-import com.mongodb.async.client.vault.ClientEncryptions;
 import com.mongodb.client.model.vault.EncryptOptions;
+import com.mongodb.reactivestreams.client.Fixture.ObservableSubscriber;
+import com.mongodb.reactivestreams.client.vault.ClientEncryption;
+import com.mongodb.reactivestreams.client.vault.ClientEncryptions;
 import org.bson.BsonBinary;
 import org.bson.BsonBinarySubType;
 import org.bson.BsonDocument;
@@ -44,18 +44,18 @@ import java.util.Base64;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import static com.mongodb.ClusterFixture.serverVersionAtLeast;
-import static com.mongodb.async.client.Fixture.getMongoClientBuilderFromConnectionString;
-import static com.mongodb.async.client.Fixture.getMongoClient;
+import static com.mongodb.internal.async.client.Fixture.getMongoClientBuilderFromConnectionString;
+import static com.mongodb.reactivestreams.client.Fixture.getMongoClient;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assume.assumeFalse;
 import static org.junit.Assume.assumeTrue;
 import static util.JsonPoweredTestHelper.getTestDocument;
 
 @RunWith(Parameterized.class)
 public class ClientSideEncryptionExternalKeyVaultTest {
-    private MongoClient client, clientEncrypted;
+    private MongoClient clientEncrypted;
     private ClientEncryption clientEncryption;
     private final boolean withExternalKeyVault;
 
@@ -64,29 +64,29 @@ public class ClientSideEncryptionExternalKeyVaultTest {
     }
 
     @Before
-    public void setUp() throws IOException, URISyntaxException {
+    public void setUp() throws Throwable {
         assumeTrue(serverVersionAtLeast(4, 1));
         assumeTrue("Encryption test with external keyVault is disabled",
                 System.getProperty("org.mongodb.test.awsAccessKeyId") != null
                         && !System.getProperty("org.mongodb.test.awsAccessKeyId").isEmpty());
 
         /* Step 1: get unencrypted client and recreate keys collection */
-        client = getMongoClient();
+        MongoClient client = getMongoClient();
         MongoDatabase admin = client.getDatabase("admin");
         MongoCollection<BsonDocument> datakeys = admin.getCollection("datakeys", BsonDocument.class)
                 .withWriteConcern(WriteConcern.MAJORITY);
-        FutureResultCallback<Void> voidCallback = new FutureResultCallback<Void>();
-        datakeys.drop(voidCallback);
-        voidCallback.get();
+        ObservableSubscriber<Success> subscriber = new ObservableSubscriber<>();
+        datakeys.drop().subscribe(subscriber);
+        subscriber.await(5, TimeUnit.SECONDS);
 
-        voidCallback = new FutureResultCallback<Void>();
-        datakeys.insertOne(bsonDocumentFromPath("external-key.json"), voidCallback);
-        voidCallback.get();
+        subscriber = new ObservableSubscriber<>();
+        datakeys.insertOne(bsonDocumentFromPath("external-key.json")).subscribe(subscriber);
+        subscriber.await(5, TimeUnit.SECONDS);
 
         /* Step 2: create encryption objects. */
-        Map<String, Map<String, Object>> kmsProviders = new HashMap<String, Map<String, Object>>();
-        Map<String, Object> localMasterkey = new HashMap<String, Object>();
-        Map<String, BsonDocument> schemaMap = new HashMap<String, BsonDocument>();
+        Map<String, Map<String, Object>> kmsProviders = new HashMap<>();
+        Map<String, Object> localMasterkey = new HashMap<>();
+        Map<String, BsonDocument> schemaMap = new HashMap<>();
 
         byte[] localMasterkeyBytes = Base64.getDecoder().decode("Mng0NCt4ZHVUYUJCa1kxNkVyNUR1QURhZ2h2UzR2d2RrZzh0cFBwM3R6NmdWMDFBM"
                 + "UN3YkQ5aXRRMkhGRGdQV09wOGVNYUMxT2k3NjZKelhaQmRCZGJkTXVyZG9uSjFk");
@@ -128,16 +128,15 @@ public class ClientSideEncryptionExternalKeyVaultTest {
     }
 
     @Test
-    public void testExternal() {
+    public void testExternal() throws Throwable {
         boolean authExceptionThrown = false;
         MongoCollection<BsonDocument> coll = clientEncrypted
                 .getDatabase("db")
                 .getCollection("coll", BsonDocument.class);
-        FutureResultCallback<Void> voidCallback;
         try {
-            voidCallback = new FutureResultCallback<Void>();
-            coll.insertOne(new BsonDocument().append("encrypted", new BsonString("test")), voidCallback);
-            voidCallback.get();
+            ObservableSubscriber<Success> subscriber = new ObservableSubscriber<>();
+            coll.insertOne(new BsonDocument().append("encrypted", new BsonString("test"))).subscribe(subscriber);
+            subscriber.await(5, TimeUnit.SECONDS);
         } catch (MongoSecurityException mse) {
             authExceptionThrown = true;
         }
@@ -147,9 +146,9 @@ public class ClientSideEncryptionExternalKeyVaultTest {
                 .keyId(new BsonBinary(BsonBinarySubType.UUID_STANDARD, Base64.getDecoder().decode("LOCALAAAAAAAAAAAAAAAAA==")));
         authExceptionThrown = false;
         try {
-            FutureResultCallback<BsonBinary> bsonBinaryCallback = new FutureResultCallback<BsonBinary>();
-            clientEncryption.encrypt(new BsonString("test"), encryptOptions, bsonBinaryCallback);
-            bsonBinaryCallback.get();
+            ObservableSubscriber<BsonBinary> subscriber = new ObservableSubscriber<>();
+            clientEncryption.encrypt(new BsonString("test"), encryptOptions).subscribe(subscriber);
+            subscriber.await(5, TimeUnit.SECONDS);
         } catch (MongoSecurityException mse) {
             authExceptionThrown = true;
         }
