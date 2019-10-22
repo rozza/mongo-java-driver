@@ -47,7 +47,6 @@ import com.mongodb.reactivestreams.client.MongoClient;
 import com.mongodb.reactivestreams.client.MongoClients;
 import com.mongodb.reactivestreams.client.MongoCollection;
 import com.mongodb.reactivestreams.client.MongoDatabase;
-import com.mongodb.reactivestreams.client.Success;
 
 import org.bson.Document;
 
@@ -189,7 +188,7 @@ Once you have the `MongoCollection` object, you can insert documents into the co
 To insert a single document into the collection, you can use the collection's [`insertOne()`]({{< apiref "com/mongodb/reactivestreams/client/MongoCollection.html#insertOne-TDocument-" >}}) method.
 
 ```java
-collection.insertOne(doc).subscribe(new OperationSubscriber<Success>());
+collection.insertOne(doc).subscribe(new OperationSubscriber<Void>());
 ```
 
 {{% note %}}
@@ -202,21 +201,20 @@ In the API all methods returning a `Publisher` are "cold" streams meaning that n
 The example below does nothing:
 
 ```java
-Publisher<Success> publisher = collection.insertOne(doc);
+Publisher<Void> publisher = collection.insertOne(doc);
 ```
 
 Only when a `Publisher` is subscribed to and data requested will the operation happen:
 
 ```java
-publisher.subscribe(new Subscriber<Success>() {
+publisher.subscribe(new Subscriber<Void>() {
     @Override
     public void onSubscribe(final Subscription s) {
         s.request(1);  // <--- Data requested and the insertion will now occur
     }
 
     @Override
-    public void onNext(final Success success) {
-        System.out.println("Inserted");
+    public void onNext(final Void success) {
     }
 
     @Override
@@ -226,7 +224,7 @@ publisher.subscribe(new Subscriber<Success>() {
 
     @Override
     public void onComplete() {
-        System.out.println("Completed");
+        System.out.println("Inserted");
     }
 });
 ```
@@ -261,7 +259,7 @@ To insert these documents to the collection, pass the list of documents to the
 [`insertMany()`]({{< apiref "com/mongodb/reactivestreams/client/MongoCollection.html#insertMany-java.util.List-" >}}) method.
 
 ```java
-subscriber = new ObservableSubscriber<Success>();
+subscriber = new ObservableSubscriber<Void>();
 collection.insertMany(documents).subscribe(subscriber);
 subscriber.await();
 ```
