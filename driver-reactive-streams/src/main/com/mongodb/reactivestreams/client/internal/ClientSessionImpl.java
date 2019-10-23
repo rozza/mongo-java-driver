@@ -63,12 +63,12 @@ class ClientSessionImpl implements ClientSession {
 
     @Override
     public Publisher<Void> commitTransaction() {
-        return new SingleResultObservableToPublisher<>(wrapped::commitTransaction);
+        return Publishers.publish(wrapped::commitTransaction);
     }
 
     @Override
     public Publisher<Void> abortTransaction() {
-        return new SingleResultObservableToPublisher<>(wrapped::abortTransaction);
+        return Publishers.publish(wrapped::abortTransaction);
     }
 
     @Override

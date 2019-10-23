@@ -21,7 +21,6 @@ import com.mongodb.ReadPreference;
 import com.mongodb.WriteConcern;
 import com.mongodb.client.model.CreateCollectionOptions;
 import com.mongodb.client.model.CreateViewOptions;
-import com.mongodb.internal.async.client.Observables;
 import com.mongodb.reactivestreams.client.AggregatePublisher;
 import com.mongodb.reactivestreams.client.ChangeStreamPublisher;
 import com.mongodb.reactivestreams.client.ClientSession;
@@ -119,14 +118,14 @@ public final class MongoDatabaseImpl implements MongoDatabase {
 
     @Override
     public <TResult> Publisher<TResult> runCommand(final Bson command, final Class<TResult> clazz) {
-        return new SingleResultObservableToPublisher<>(
+        return Publishers.publish(
                 callback -> wrapped.runCommand(command, clazz, callback));
     }
 
     @Override
     public <TResult> Publisher<TResult> runCommand(final Bson command, final ReadPreference readPreference,
                                                    final Class<TResult> clazz) {
-        return new SingleResultObservableToPublisher<>(
+        return Publishers.publish(
                 callback -> wrapped.runCommand(command, readPreference, clazz, callback));
     }
 
@@ -142,37 +141,35 @@ public final class MongoDatabaseImpl implements MongoDatabase {
 
     @Override
     public <TResult> Publisher<TResult> runCommand(final ClientSession clientSession, final Bson command, final Class<TResult> clazz) {
-        return new SingleResultObservableToPublisher<>(
+        return Publishers.publish(
                 callback -> wrapped.runCommand(clientSession.getWrapped(), command, clazz, callback));
     }
 
     @Override
     public <TResult> Publisher<TResult> runCommand(final ClientSession clientSession, final Bson command,
                                                    final ReadPreference readPreference, final Class<TResult> clazz) {
-        return new SingleResultObservableToPublisher<>(
+        return Publishers.publish(
                 callback -> wrapped.runCommand(clientSession.getWrapped(), command, readPreference, clazz, callback));
     }
 
     @Override
     public Publisher<Void> drop() {
-        return new SingleResultObservableToPublisher<>(wrapped::drop);
+        return Publishers.publish(wrapped::drop);
     }
 
     @Override
     public Publisher<Void> drop(final ClientSession clientSession) {
-        return new SingleResultObservableToPublisher<>(callback -> wrapped.drop(clientSession.getWrapped(), callback));
+        return Publishers.publish(callback -> wrapped.drop(clientSession.getWrapped(), callback));
     }
 
     @Override
     public Publisher<String> listCollectionNames() {
-        return new ObservableToPublisher<>(Observables.observe(wrapped.listCollectionNames()));
+        return Publishers.publish(wrapped.listCollectionNames());
     }
 
     @Override
     public Publisher<String> listCollectionNames(final ClientSession clientSession) {
-        return new ObservableToPublisher<>(Observables.observe(
-                wrapped.listCollectionNames(clientSession.getWrapped()))
-        );
+        return Publishers.publish(wrapped.listCollectionNames(clientSession.getWrapped()));
     }
 
     @Override
@@ -202,8 +199,7 @@ public final class MongoDatabaseImpl implements MongoDatabase {
 
     @Override
     public Publisher<Void> createCollection(final String collectionName, final CreateCollectionOptions options) {
-        return new SingleResultObservableToPublisher<>(
-                callback -> wrapped.createCollection(collectionName, options, callback));
+        return Publishers.publish(callback -> wrapped.createCollection(collectionName, options, callback));
     }
 
     @Override
@@ -214,8 +210,8 @@ public final class MongoDatabaseImpl implements MongoDatabase {
     @Override
     public Publisher<Void> createCollection(final ClientSession clientSession, final String collectionName,
                                                final CreateCollectionOptions options) {
-        return new SingleResultObservableToPublisher<>(
-                callback -> wrapped.createCollection(clientSession.getWrapped(), collectionName, options, callback));
+        return Publishers.publish(callback ->
+                wrapped.createCollection(clientSession.getWrapped(), collectionName, options, callback));
     }
 
     @Override
@@ -226,7 +222,7 @@ public final class MongoDatabaseImpl implements MongoDatabase {
     @Override
     public Publisher<Void> createView(final String viewName, final String viewOn, final List<? extends Bson> pipeline,
                                          final CreateViewOptions createViewOptions) {
-        return new SingleResultObservableToPublisher<>(
+        return Publishers.publish(
                 callback -> wrapped.createView(viewName, viewOn, pipeline, createViewOptions, callback));
     }
 
@@ -239,9 +235,8 @@ public final class MongoDatabaseImpl implements MongoDatabase {
     @Override
     public Publisher<Void> createView(final ClientSession clientSession, final String viewName, final String viewOn,
                                          final List<? extends Bson> pipeline, final CreateViewOptions createViewOptions) {
-        return new SingleResultObservableToPublisher<>(
-                callback -> wrapped.createView(clientSession.getWrapped(), viewName, viewOn, pipeline, createViewOptions,
-                        callback));
+        return Publishers.publish(callback -> wrapped.createView(clientSession.getWrapped(), viewName, viewOn, pipeline,
+                createViewOptions, callback));
     }
 
     @Override
@@ -283,7 +278,7 @@ public final class MongoDatabaseImpl implements MongoDatabase {
     public <TResult> ChangeStreamPublisher<TResult> watch(final ClientSession clientSession, final List<? extends Bson> pipeline,
                                                           final Class<TResult> resultClass) {
         notNull("clientSession", clientSession);
-        return new ChangeStreamPublisherImpl<TResult>(wrapped.watch(clientSession.getWrapped(), pipeline, resultClass));
+        return new ChangeStreamPublisherImpl<>(wrapped.watch(clientSession.getWrapped(), pipeline, resultClass));
     }
 
     @Override
@@ -293,7 +288,7 @@ public final class MongoDatabaseImpl implements MongoDatabase {
 
     @Override
     public <TResult> AggregatePublisher<TResult> aggregate(final List<? extends Bson> pipeline, final Class<TResult> resultClass) {
-        return new AggregatePublisherImpl<TResult>(wrapped.aggregate(pipeline, resultClass));
+        return new AggregatePublisherImpl<>(wrapped.aggregate(pipeline, resultClass));
     }
 
     @Override
