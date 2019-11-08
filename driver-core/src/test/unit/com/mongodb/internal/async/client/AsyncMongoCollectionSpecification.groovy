@@ -1374,7 +1374,7 @@ class AsyncMongoCollectionSpecification extends Specification {
 
     def 'should not expect to mutate the document when inserting'() {
         given:
-        def executor = new TestOperationExecutor([null])
+        def executor = new TestOperationExecutor([acknowledged(INSERT, 1, [])])
         def customCodecRegistry = fromRegistries(fromProviders(new ImmutableDocumentCodecProvider()), codecRegistry)
         def collection = new AsyncMongoCollectionImpl(namespace, ImmutableDocument, customCodecRegistry, readPreference, ACKNOWLEDGED,
                 true, true, readConcern, executor)

@@ -16,7 +16,9 @@
 
 package com.mongodb.internal.bulk;
 
+import com.mongodb.lang.Nullable;
 import org.bson.BsonDocument;
+import org.bson.BsonValue;
 
 import static com.mongodb.assertions.Assertions.notNull;
 
@@ -27,6 +29,7 @@ import static com.mongodb.assertions.Assertions.notNull;
  */
 public final class InsertRequest extends WriteRequest {
     private final BsonDocument document;
+    private BsonValue id;
 
     /**
      * Construct an instance with the given document.
@@ -49,6 +52,23 @@ public final class InsertRequest extends WriteRequest {
     @Override
     public Type getType() {
         return Type.INSERT;
+    }
+
+    /**
+     * Internal method
+     * @return the _id of the insert
+     */
+    @Nullable
+    public BsonValue getId() {
+        return id;
+    }
+
+    /**
+     * Internal method
+     * @param id the _id of the inserted document
+     */
+    public void setId(@Nullable final BsonValue id) {
+        this.id = id;
     }
 }
 

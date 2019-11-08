@@ -35,7 +35,7 @@ class BulkWriteBatchCombinerSpecification extends Specification {
     def 'should get unacknowledged result for an unacknowledged write'() {
         given:
         def combiner = new BulkWriteBatchCombiner(new ServerAddress(), true, UNACKNOWLEDGED)
-        combiner.addResult(BulkWriteResult.acknowledged(INSERT, 1, 0, []), new IndexMap.RangeBased(0, 1).add(0, 0))
+        combiner.addResult(BulkWriteResult.acknowledged(INSERT, 1, 0, []))
 
         when:
         def result = combiner.getResult()
@@ -47,7 +47,7 @@ class BulkWriteBatchCombinerSpecification extends Specification {
     def 'should get correct result for an insert'() {
         given:
         def combiner = new BulkWriteBatchCombiner(new ServerAddress(), true, ACKNOWLEDGED)
-        combiner.addResult(BulkWriteResult.acknowledged(INSERT, 1, 0, []), new IndexMap.RangeBased().add(0, 0))
+        combiner.addResult(BulkWriteResult.acknowledged(INSERT, 1, 0, []))
 
         when:
         def result = combiner.getResult()
@@ -59,10 +59,8 @@ class BulkWriteBatchCombinerSpecification extends Specification {
     def 'should sort upserts'() {
         given:
         def combiner = new BulkWriteBatchCombiner(new ServerAddress(), true, ACKNOWLEDGED)
-        combiner.addResult(BulkWriteResult.acknowledged(UPDATE, 1, 0, [new BulkWriteUpsert(0, new BsonString('id1'))]),
-                           new IndexMap.RangeBased().add(0, 6))
-        combiner.addResult(BulkWriteResult.acknowledged(UPDATE, 1, 0, [new BulkWriteUpsert(0, new BsonString('id2'))]),
-                           new IndexMap.RangeBased().add(0, 3))
+        combiner.addResult(BulkWriteResult.acknowledged(UPDATE, 1, 0, [new BulkWriteUpsert(6, new BsonString('id1'))]))
+        combiner.addResult(BulkWriteResult.acknowledged(UPDATE, 1, 0, [new BulkWriteUpsert(3, new BsonString('id2'))]))
 
         when:
         def result = combiner.getResult()
@@ -106,7 +104,7 @@ class BulkWriteBatchCombinerSpecification extends Specification {
     def 'should not stop run if no errors'() {
         given:
         def combiner = new BulkWriteBatchCombiner(new ServerAddress(), true, ACKNOWLEDGED)
-        combiner.addResult(BulkWriteResult.acknowledged(INSERT, 1, 0, []), new IndexMap.RangeBased().add(0, 0))
+        combiner.addResult(BulkWriteResult.acknowledged(INSERT, 1, 0, []))
 
         expect:
         !combiner.shouldStopSendingMoreBatches()

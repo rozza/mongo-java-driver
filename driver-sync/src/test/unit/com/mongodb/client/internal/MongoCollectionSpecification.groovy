@@ -1358,7 +1358,7 @@ class MongoCollectionSpecification extends Specification {
 
     def 'should not expect to mutate the document when inserting'() {
         given:
-        def executor = new TestOperationExecutor([null])
+        def executor = new TestOperationExecutor([acknowledged(INSERT, 1, [])])
         def customCodecRegistry = CodecRegistries.fromRegistries(fromProviders(new ImmutableDocumentCodecProvider()), codecRegistry)
         def collection = new MongoCollectionImpl(namespace, ImmutableDocument, customCodecRegistry, readPreference, ACKNOWLEDGED,
                 true, true, readConcern, executor)
