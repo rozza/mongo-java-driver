@@ -19,7 +19,6 @@ package com.mongodb.internal.connection
 import org.bson.BsonBinaryReader
 import org.bson.BsonBinaryWriter
 import org.bson.BsonDocument
-import org.bson.RawBsonDocument
 import org.bson.codecs.BsonDocumentCodec
 import org.bson.codecs.DecoderContext
 import org.bson.codecs.EncoderContext
