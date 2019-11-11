@@ -189,6 +189,15 @@ public interface FindIterable<TResult> extends MongoIterable<TResult> {
     FindIterable<TResult> hint(@Nullable Bson hint);
 
     /**
+     * Sets the hint to apply.
+     *
+     * @param hint the name of the index which should be used for the operation
+     * @return this
+     * @since 3.12
+     */
+    FindIterable<TResult> hintString(@Nullable String hint);
+
+    /**
      * Sets the exclusive upper bound for a specific index. A null value means no max is set.
      *
      * @param max the max
