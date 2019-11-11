@@ -148,6 +148,12 @@ class AsyncFindIterableImpl<TDocument, TResult> extends AsyncMongoIterableImpl<T
     }
 
     @Override
+    public AsyncFindIterable<TResult> hintString(@Nullable final String hint) {
+        findOptions.hintString(hint);
+        return this;
+    }
+
+    @Override
     public AsyncFindIterable<TResult> max(@Nullable final Bson max) {
         findOptions.max(max);
         return this;
