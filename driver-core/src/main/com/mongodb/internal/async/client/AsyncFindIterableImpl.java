@@ -148,7 +148,7 @@ class AsyncFindIterableImpl<TDocument, TResult> extends AsyncMongoIterableImpl<T
     }
 
     @Override
-    public FindIterable<TResult> hintString(@Nullable final String hint) {
+    public AsyncFindIterable<TResult> hintString(@Nullable final String hint) {
         findOptions.hintString(hint);
         return this;
     }
