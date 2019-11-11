@@ -41,6 +41,7 @@ import org.bson.BsonDocument;
 import org.bson.BsonInt32;
 import org.bson.BsonInt64;
 import org.bson.BsonString;
+import org.bson.BsonValue;
 import org.bson.codecs.BsonDocumentCodec;
 import org.bson.codecs.Decoder;
 
@@ -94,7 +95,7 @@ public class FindOperation<T> implements AsyncReadOperation<AsyncBatchCursor<T>>
     private boolean partial;
     private Collation collation;
     private String comment;
-    private BsonDocument hint;
+    private BsonValue hint;
     private BsonDocument max;
     private BsonDocument min;
     private boolean returnKey;
@@ -488,7 +489,7 @@ public class FindOperation<T> implements AsyncReadOperation<AsyncBatchCursor<T>>
      * @return the hint
      * @since 3.5
      */
-    public BsonDocument getHint() {
+    public BsonValue getHint() {
         return hint;
     }
 
@@ -499,7 +500,7 @@ public class FindOperation<T> implements AsyncReadOperation<AsyncBatchCursor<T>>
      * @return this
      * @since 3.5
      */
-    public FindOperation<T> hint(final BsonDocument hint) {
+    public FindOperation<T> hint(final BsonValue hint) {
         this.hint = hint;
         return this;
     }

@@ -34,6 +34,7 @@ import static com.mongodb.assertions.Assertions.notNull;
  */
 public class DBCollectionCountOptions {
     private DBObject hint;
+    private String hintString;
     private int limit;
     private int skip;
     private long maxTimeMS;
@@ -58,6 +59,16 @@ public class DBCollectionCountOptions {
     }
 
     /**
+     * Gets the hint string to apply.
+     *
+     * @return the hint string, which should be the name of an existing index
+     */
+    @Nullable
+    public String getHintString() {
+        return hintString;
+    }
+
+    /**
      * Sets the hint to apply.
      *
      * @param hint a document describing the index which should be used for this operation.
@@ -65,6 +76,17 @@ public class DBCollectionCountOptions {
      */
     public DBCollectionCountOptions hint(@Nullable final DBObject hint) {
         this.hint = hint;
+        return this;
+    }
+
+    /**
+     * Sets the hint to apply.
+     *
+     * @param hint the name of the index which should be used for the operation
+     * @return this
+     */
+    public DBCollectionCountOptions hintString(@Nullable final String hint) {
+        this.hintString = hint;
         return this;
     }
 

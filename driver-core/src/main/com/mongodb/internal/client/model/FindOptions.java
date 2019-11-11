@@ -47,6 +47,7 @@ public final class FindOptions {
     private Collation collation;
     private String comment;
     private Bson hint;
+    private String hintString;
     private Bson max;
     private Bson min;
     private boolean returnKey;
@@ -56,6 +57,33 @@ public final class FindOptions {
      * Construct a new instance.
      */
     public FindOptions() {
+    }
+
+    /**
+     * Construct a new instance by making a shallow copy of the given model.
+     * @param from model to copy
+     * @deprecated this constructor is unused
+     */
+    @Deprecated
+    public FindOptions(final FindOptions from) {
+        batchSize = from.batchSize;
+        limit = from.limit;
+        projection = from.projection;
+        maxTimeMS = from.maxTimeMS;
+        maxAwaitTimeMS = from.maxAwaitTimeMS;
+        skip = from.skip;
+        sort = from.sort;
+        cursorType = from.cursorType;
+        noCursorTimeout = from.noCursorTimeout;
+        oplogReplay = from.oplogReplay;
+        partial = from.partial;
+        comment = from.comment;
+        hint = from.hint;
+        hintString = from.hintString;
+        max = from.max;
+        min = from.min;
+        returnKey = from.returnKey;
+        showRecordId = from.showRecordId;
     }
 
     /**
@@ -389,6 +417,29 @@ public final class FindOptions {
      */
     public FindOptions hint(@Nullable final Bson hint) {
         this.hint = hint;
+        return this;
+    }
+
+    /**
+     * Gets the hint string to apply.
+     *
+     * @return the hint string, which should be the name of an existing index
+     * @since 3.12
+     */
+    @Nullable
+    public String getHintString() {
+        return hintString;
+    }
+
+    /**
+     * Sets the hint to apply.
+     *
+     * @param hint the name of the index which should be used for the operation
+     * @return this
+     * @since 3.12
+     */
+    public FindOptions hintString(@Nullable final String hint) {
+        this.hintString = hint;
         return this;
     }
 

@@ -176,6 +176,15 @@ public interface AsyncFindIterable<T> extends AsyncMongoIterable<T> {
     AsyncFindIterable<T> hint(@Nullable Bson hint);
 
     /**
+     * Sets the hint to apply.
+     *
+     * @param hint the name of the index which should be used for the operation
+     * @return this
+     * @since 3.12
+     */
+    AsyncFindIterable<T> hintString(@Nullable String hint);
+
+    /**
      * Sets the exclusive upper bound for a specific index. A null value means no max is set.
      *
      * @param max the max
