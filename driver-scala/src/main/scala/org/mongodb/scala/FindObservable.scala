@@ -225,6 +225,7 @@ case class FindObservable[TResult](private val wrapped: FindPublisher[TResult]) 
    *
    * @param hint the name of the index which should be used for the operation
    * @return this
+   * @note if [[hint]] is set that will be used instead of any hint string.
    * @since 2.8
    */
   def hintString(hint: String): FindObservable[TResult] = {

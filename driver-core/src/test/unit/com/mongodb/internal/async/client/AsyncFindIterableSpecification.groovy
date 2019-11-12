@@ -28,6 +28,7 @@ import com.mongodb.internal.async.SingleResultCallback
 import com.mongodb.internal.operation.FindOperation
 import org.bson.BsonDocument
 import org.bson.BsonInt32
+import org.bson.BsonString
 import org.bson.Document
 import org.bson.codecs.BsonValueCodecProvider
 import org.bson.codecs.DocumentCodec
@@ -74,7 +75,7 @@ class AsyncFindIterableSpecification extends Specification {
                 .partial(false)
                 .collation(null)
                 .comment('my comment')
-                .hint(new Document('hint', 1))
+                .hintString('a_1')
                 .min(new Document('min', 1))
                 .max(new Document('max', 1))
                 .returnKey(false)
@@ -99,7 +100,7 @@ class AsyncFindIterableSpecification extends Specification {
                 .cursorType(CursorType.NonTailable)
                 .slaveOk(true)
                 .comment('my comment')
-                .hint(new BsonDocument('hint', new BsonInt32(1)))
+                .hint(new BsonString('a_1'))
                 .min(new BsonDocument('min', new BsonInt32(1)))
                 .max(new BsonDocument('max', new BsonInt32(1)))
                 .returnKey(false)
