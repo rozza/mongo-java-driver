@@ -191,6 +191,8 @@ public interface FindIterable<TResult> extends MongoIterable<TResult> {
     /**
      * Sets the hint to apply.
      *
+     * <p>Note: If {@link FindIterable#hint(Bson)} is set that will be used instead of any hint string.</p>
+     *
      * @param hint the name of the index which should be used for the operation
      * @return this
      * @since 3.12
