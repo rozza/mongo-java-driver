@@ -245,7 +245,7 @@ final class BulkWriteBatch {
         if (payload.hasAnotherSplit()) {
             IndexMap nextIndexMap = IndexMap.create();
             int newIndex = 0;
-            for (int i = payload.getPosition(); i < payload.getPayload().size(); i++) {
+            for (int i = payload.getPosition(); i < payload.size(); i++) {
                 nextIndexMap = nextIndexMap.add(newIndex, indexMap.map(i));
                 newIndex++;
             }

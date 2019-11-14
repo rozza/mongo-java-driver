@@ -60,7 +60,6 @@ public final class SplittablePayload {
     private static final WriteRequestEncoder WRITE_REQUEST_ENCODER = new WriteRequestEncoder();
     private final Type payloadType;
     private final List<WriteRequestWithIndex> writeRequestWithIndexes;
-    private List<BsonDocument> payload;
     private int position = 0;
 
     /**
@@ -119,16 +118,21 @@ public final class SplittablePayload {
         }
     }
 
+    boolean hasPayload() {
+        return writeRequestWithIndexes.size() > 0;
+    }
+
+    public int size() {
+        return writeRequestWithIndexes.size();
+    }
+
     /**
      * @return the payload
      */
     public List<BsonDocument> getPayload() {
-        if (payload == null) {
-            payload = writeRequestWithIndexes.stream().map(wri ->
+        return writeRequestWithIndexes.stream().map(wri ->
                     new BsonDocumentWrapper<>(wri.getWriteRequest(), WRITE_REQUEST_ENCODER))
                     .collect(Collectors.toList());
-        }
-        return payload;
     }
 
     public List<WriteRequestWithIndex> getWriteRequestWithIndexes() {
