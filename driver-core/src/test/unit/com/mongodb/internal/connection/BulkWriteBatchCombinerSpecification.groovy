@@ -35,7 +35,7 @@ class BulkWriteBatchCombinerSpecification extends Specification {
     def 'should get unacknowledged result for an unacknowledged write'() {
         given:
         def combiner = new BulkWriteBatchCombiner(new ServerAddress(), true, UNACKNOWLEDGED)
-        combiner.addResult(BulkWriteResult.acknowledged(INSERT, 1, 0, []))
+        combiner.addResult(BulkWriteResult.acknowledged(INSERT, 1, 0, [], []))
 
         when:
         def result = combiner.getResult()
@@ -47,20 +47,20 @@ class BulkWriteBatchCombinerSpecification extends Specification {
     def 'should get correct result for an insert'() {
         given:
         def combiner = new BulkWriteBatchCombiner(new ServerAddress(), true, ACKNOWLEDGED)
-        combiner.addResult(BulkWriteResult.acknowledged(INSERT, 1, 0, []))
+        combiner.addResult(BulkWriteResult.acknowledged(INSERT, 1, 0, [], []))
 
         when:
         def result = combiner.getResult()
 
         then:
-        result == BulkWriteResult.acknowledged(INSERT, 1, 0, [])
+        result == BulkWriteResult.acknowledged(INSERT, 1, 0, [], [])
     }
 
     def 'should sort upserts'() {
         given:
         def combiner = new BulkWriteBatchCombiner(new ServerAddress(), true, ACKNOWLEDGED)
-        combiner.addResult(BulkWriteResult.acknowledged(UPDATE, 1, 0, [new BulkWriteUpsert(6, new BsonString('id1'))]))
-        combiner.addResult(BulkWriteResult.acknowledged(UPDATE, 1, 0, [new BulkWriteUpsert(3, new BsonString('id2'))]))
+        combiner.addResult(BulkWriteResult.acknowledged(UPDATE, 1, 0, [new BulkWriteUpsert(6, new BsonString('id1'))], []))
+        combiner.addResult(BulkWriteResult.acknowledged(UPDATE, 1, 0, [new BulkWriteUpsert(3, new BsonString('id2'))], []))
 
         when:
         def result = combiner.getResult()
@@ -68,7 +68,7 @@ class BulkWriteBatchCombinerSpecification extends Specification {
         then:
         result == BulkWriteResult.acknowledged(UPDATE, 2, 0,
                                                   [new BulkWriteUpsert(3, new BsonString('id2')),
-                                                   new BulkWriteUpsert(6, new BsonString('id1'))])
+                                                   new BulkWriteUpsert(6, new BsonString('id1'))], [])
     }
 
     def 'should throw exception on write error'() {
@@ -83,7 +83,7 @@ class BulkWriteBatchCombinerSpecification extends Specification {
 
         then:
         def e = thrown(MongoBulkWriteException)
-        e == new MongoBulkWriteException(BulkWriteResult.acknowledged(INSERT, 0, 0, []), [error], null, new ServerAddress())
+        e == new MongoBulkWriteException(BulkWriteResult.acknowledged(INSERT, 0, 0, [], []), [error], null, new ServerAddress())
     }
 
     def 'should throw last write concern error'() {
@@ -98,13 +98,13 @@ class BulkWriteBatchCombinerSpecification extends Specification {
 
         then:
         def e = thrown(MongoBulkWriteException)
-        e == new MongoBulkWriteException(BulkWriteResult.acknowledged(INSERT, 0, 0, []), [], writeConcernError, new ServerAddress())
+        e == new MongoBulkWriteException(BulkWriteResult.acknowledged(INSERT, 0, 0, [], []), [], writeConcernError, new ServerAddress())
     }
 
     def 'should not stop run if no errors'() {
         given:
         def combiner = new BulkWriteBatchCombiner(new ServerAddress(), true, ACKNOWLEDGED)
-        combiner.addResult(BulkWriteResult.acknowledged(INSERT, 1, 0, []))
+        combiner.addResult(BulkWriteResult.acknowledged(INSERT, 1, 0, [], []))
 
         expect:
         !combiner.shouldStopSendingMoreBatches()

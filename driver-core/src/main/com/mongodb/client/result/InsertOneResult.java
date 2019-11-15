@@ -43,7 +43,7 @@ public abstract class InsertOneResult {
      * @return if _id of the inserted document if available, otherwise null
      */
     @Nullable
-    public abstract BsonValue getInsertId();
+    public abstract BsonValue getInsertedId();
 
     /**
      * Create an acknowledged InsertOneResult
@@ -65,10 +65,10 @@ public abstract class InsertOneResult {
     }
 
     private static class AcknowledgedInsertOneResult extends InsertOneResult {
-        private final BsonValue insertId;
+        private final BsonValue insertedId;
 
         AcknowledgedInsertOneResult(@Nullable final BsonValue insertId) {
-            this.insertId = insertId;
+            this.insertedId = insertId;
         }
 
         @Override
@@ -78,8 +78,8 @@ public abstract class InsertOneResult {
 
         @Override
         @Nullable
-        public BsonValue getInsertId() {
-            return insertId;
+        public BsonValue getInsertedId() {
+            return insertedId;
         }
 
         @Override
@@ -91,18 +91,18 @@ public abstract class InsertOneResult {
                 return false;
             }
             AcknowledgedInsertOneResult that = (AcknowledgedInsertOneResult) o;
-            return Objects.equals(insertId, that.insertId);
+            return Objects.equals(insertedId, that.insertedId);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(insertId);
+            return Objects.hash(insertedId);
         }
 
         @Override
         public String toString() {
             return "AcknowledgedInsertOneResult{"
-                    + "insertId=" + insertId
+                    + "insertedId=" + insertedId
                     + '}';
         }
     }
@@ -115,7 +115,7 @@ public abstract class InsertOneResult {
 
         @Override
         @Nullable
-        public BsonValue getInsertId() {
+        public BsonValue getInsertedId() {
             throw new UnsupportedOperationException("Cannot get information about an unacknowledged insert");
         }
 

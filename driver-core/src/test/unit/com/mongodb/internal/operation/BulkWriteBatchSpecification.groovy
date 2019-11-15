@@ -248,7 +248,7 @@ class BulkWriteBatchSpecification extends Specification {
 
         then:
         !bulkWriteBatch.hasErrors()
-        bulkWriteBatch.getResult() == BulkWriteResult.acknowledged(0, 0, 0, 0, [new BulkWriteUpsert(0, new BsonInt32(2))])
+        bulkWriteBatch.getResult() == BulkWriteResult.acknowledged(0, 0, 0, 0, [new BulkWriteUpsert(0, new BsonInt32(2))], [])
         bulkWriteBatch.shouldProcessBatch()
     }
 

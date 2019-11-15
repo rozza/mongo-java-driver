@@ -677,7 +677,7 @@ public class JsonPoweredCrudTestHelper {
             result = getCollection(collectionOptions).insertOne(clientSession, document, options);
         }
 
-        return toResult(new BsonDocument("insertedId", result.getInsertId()));
+        return toResult(new BsonDocument("insertedId", result.getInsertedId()));
     }
 
     BsonDocument getInsertManyResult(final BsonDocument collectionOptions, final BsonDocument arguments,

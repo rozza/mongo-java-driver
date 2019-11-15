@@ -22,6 +22,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
+import static java.util.Collections.unmodifiableMap;
+
 /**
  * The result of an insert many operation.  If the insert many was unacknowledged, then {@code wasAcknowledged} will
  * return false and all other methods will throw {@code UnsupportedOperationException}.
@@ -39,7 +41,7 @@ public abstract class InsertManyResult {
     public abstract boolean wasAcknowledged();
 
     /**
-     * A map of the index of the inserted document to the id of the inserted document.
+     * An unmodifiable map of the index of the inserted document to the id of the inserted document.
      *
      * @return  A map of the index of the inserted document to the id of the inserted document.
      */
@@ -68,7 +70,7 @@ public abstract class InsertManyResult {
         private final Map<Integer, BsonValue> insertedIds;
 
         AcknowledgedInsertManyResult(final Map<Integer, BsonValue> insertedIds) {
-            this.insertedIds = new HashMap<>(insertedIds);
+            this.insertedIds = unmodifiableMap(new HashMap<>(insertedIds));
         }
 
         @Override

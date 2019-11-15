@@ -21,6 +21,7 @@ import com.mongodb.internal.bulk.WriteRequest;
 import java.util.List;
 
 import static java.util.Collections.emptyList;
+import static java.util.Collections.unmodifiableList;
 
 /**
  * The result of a successful bulk write operation.
@@ -82,6 +83,7 @@ public abstract class BulkWriteResult {
      * @return a list of inserted items, or the empty list if there were none.
      * @throws java.lang.UnsupportedOperationException if the write was unacknowledged.
      * @see com.mongodb.WriteConcern#UNACKNOWLEDGED
+     * @since 4.0
      */
     public abstract List<BulkWriteInsert> getInserts();
 
@@ -101,9 +103,11 @@ public abstract class BulkWriteResult {
      * @param count   the number of documents matched
      * @param upserts the list of upserts
      * @return an acknowledged BulkWriteResult
+     * @deprecated Prefer {@link BulkWriteResult#acknowledged(int, int, int, Integer, List, List)} instead
      */
+    @Deprecated
     public static BulkWriteResult acknowledged(final WriteRequest.Type type, final int count, final List<BulkWriteUpsert> upserts) {
-        return acknowledged(type, count, 0, upserts);
+        return acknowledged(type, count, 0, upserts, emptyList());
     }
 
     /**
@@ -114,7 +118,9 @@ public abstract class BulkWriteResult {
      * @param modifiedCount the number of documents modified, which may be null if the server was not able to provide the count
      * @param upserts       the list of upserts
      * @return an acknowledged BulkWriteResult
+     * @deprecated Prefer {@link BulkWriteResult#acknowledged(int, int, int, Integer, List, List)} instead
      */
+    @Deprecated
     public static BulkWriteResult acknowledged(final WriteRequest.Type type, final int count, final Integer modifiedCount,
                                                final List<BulkWriteUpsert> upserts) {
         return acknowledged(type, count, modifiedCount, upserts, emptyList());
@@ -129,6 +135,7 @@ public abstract class BulkWriteResult {
      * @param upserts       the list of upserts
      * @param inserts       the list of inserts
      * @return an acknowledged BulkWriteResult
+     * @since 4.0
      */
     public static BulkWriteResult acknowledged(final WriteRequest.Type type, final int count, final Integer modifiedCount,
                                                final List<BulkWriteUpsert> upserts, final List<BulkWriteInsert> inserts) {
@@ -147,7 +154,9 @@ public abstract class BulkWriteResult {
      * @param modifiedCount the number of documents modified, which may not be null
      * @param upserts       the list of upserts
      * @return an acknowledged BulkWriteResult
+     * @deprecated Prefer {@link BulkWriteResult#acknowledged(int, int, int, Integer, List, List)} instead
      */
+    @Deprecated
     public static BulkWriteResult acknowledged(final int insertedCount, final int matchedCount, final int removedCount,
                                                final Integer modifiedCount, final List<BulkWriteUpsert> upserts) {
         return acknowledged(insertedCount, matchedCount, removedCount, modifiedCount, upserts, emptyList());
@@ -163,6 +172,7 @@ public abstract class BulkWriteResult {
      * @param upserts       the list of upserts
      * @param inserts       the list of inserts
      * @return an acknowledged BulkWriteResult
+     * @since 4.0
      */
     public static BulkWriteResult acknowledged(final int insertedCount, final int matchedCount, final int removedCount,
                                                final Integer modifiedCount, final List<BulkWriteUpsert> upserts,
@@ -195,12 +205,12 @@ public abstract class BulkWriteResult {
 
             @Override
             public List<BulkWriteInsert> getInserts() {
-                return inserts;
+                return unmodifiableList(inserts);
             }
 
             @Override
             public List<BulkWriteUpsert> getUpserts() {
-                return upserts;
+                return unmodifiableList(upserts);
             }
 
             @Override
@@ -230,6 +240,9 @@ public abstract class BulkWriteResult {
                     return false;
                 }
                 if (!upserts.equals(that.getUpserts())) {
+                    return false;
+                }
+                if (!inserts.equals(that.getInserts())) {
                     return false;
                 }
 
