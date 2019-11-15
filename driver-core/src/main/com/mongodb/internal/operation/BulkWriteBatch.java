@@ -29,7 +29,6 @@ import com.mongodb.bulk.WriteConcernError;
 import com.mongodb.connection.ConnectionDescription;
 import com.mongodb.connection.ServerDescription;
 import com.mongodb.internal.bulk.DeleteRequest;
-import com.mongodb.internal.bulk.InsertRequest;
 import com.mongodb.internal.bulk.UpdateRequest;
 import com.mongodb.internal.bulk.WriteRequest;
 import com.mongodb.internal.bulk.WriteRequestWithIndex;
@@ -69,6 +68,7 @@ import static com.mongodb.internal.operation.OperationHelper.LOGGER;
 import static com.mongodb.internal.operation.OperationHelper.isRetryableWrite;
 import static com.mongodb.internal.operation.WriteConcernHelper.createWriteConcernError;
 import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
+
 
 final class BulkWriteBatch {
     private static final CodecRegistry REGISTRY = fromProviders(new BsonValueCodecProvider());
@@ -292,7 +292,7 @@ final class BulkWriteBatch {
                 writeRequests = writeRequests.filter(wr -> !writeErrors.contains(wr.getIndex()));
             }
             return writeRequests
-                    .map(wr -> new BulkWriteInsert(wr.getIndex(), ((InsertRequest) wr.getWriteRequest()).getId()))
+                    .map(wr -> new BulkWriteInsert(wr.getIndex(), payload.getInsertedIds().get(wr.getIndex())))
                     .collect(Collectors.toList());
         }
         return Collections.emptyList();

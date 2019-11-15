@@ -31,7 +31,9 @@ import org.bson.codecs.Encoder;
 import org.bson.codecs.EncoderContext;
 import org.bson.codecs.configuration.CodecRegistry;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import static com.mongodb.assertions.Assertions.isTrue;
@@ -57,9 +59,10 @@ import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
  */
 public final class SplittablePayload {
     private static final CodecRegistry REGISTRY = fromProviders(new BsonValueCodecProvider());
-    private static final WriteRequestEncoder WRITE_REQUEST_ENCODER = new WriteRequestEncoder();
+    private final WriteRequestEncoder writeRequestEncoder = new WriteRequestEncoder();
     private final Type payloadType;
     private final List<WriteRequestWithIndex> writeRequestWithIndexes;
+    private final Map<Integer, BsonValue> insertedIds = new HashMap<>();
     private int position = 0;
 
     /**
@@ -126,12 +129,16 @@ public final class SplittablePayload {
         return writeRequestWithIndexes.size();
     }
 
+    public Map<Integer, BsonValue> getInsertedIds() {
+        return insertedIds;
+    }
+
     /**
      * @return the payload
      */
     public List<BsonDocument> getPayload() {
         return writeRequestWithIndexes.stream().map(wri ->
-                    new BsonDocumentWrapper<>(wri.getWriteRequest(), WRITE_REQUEST_ENCODER))
+                    new BsonDocumentWrapper<>(wri, writeRequestEncoder))
                     .collect(Collectors.toList());
     }
 
@@ -177,23 +184,25 @@ public final class SplittablePayload {
         return writeRequestWithIndexes.isEmpty();
     }
 
-    static class WriteRequestEncoder implements Encoder<WriteRequest> {
+    class WriteRequestEncoder implements Encoder<WriteRequestWithIndex> {
 
         WriteRequestEncoder() {
         }
 
         @Override
-        public void encode(final BsonWriter writer, final WriteRequest writeRequest, final EncoderContext encoderContext) {
-            if (writeRequest.getType() == WriteRequest.Type.INSERT) {
-                InsertRequest insertRequest = (InsertRequest) writeRequest;
+        public void encode(final BsonWriter writer, final WriteRequestWithIndex writeRequestWithIndex,
+                           final EncoderContext encoderContext) {
+            if (writeRequestWithIndex.getType() == WriteRequest.Type.INSERT) {
+                InsertRequest insertRequest = (InsertRequest) writeRequestWithIndex.getWriteRequest();
                 BsonDocument document = insertRequest.getDocument();
 
                 IdHoldingBsonWriter idHoldingBsonWriter = new IdHoldingBsonWriter(writer);
                 getCodec(document).encode(idHoldingBsonWriter, document,
                         EncoderContext.builder().isEncodingCollectibleDocument(true).build());
-                insertRequest.setId(idHoldingBsonWriter.getId());
-            } else if (writeRequest.getType() == WriteRequest.Type.UPDATE || writeRequest.getType() == WriteRequest.Type.REPLACE) {
-                UpdateRequest update = (UpdateRequest) writeRequest;
+                insertedIds.put(writeRequestWithIndex.getIndex(), idHoldingBsonWriter.getId());
+            } else if (writeRequestWithIndex.getType() == WriteRequest.Type.UPDATE
+                    || writeRequestWithIndex.getType() == WriteRequest.Type.REPLACE) {
+                UpdateRequest update = (UpdateRequest) writeRequestWithIndex.getWriteRequest();
                 writer.writeStartDocument();
                 writer.writeName("q");
                 getCodec(update.getFilter()).encode(writer, update.getFilter(), EncoderContext.builder().build());
@@ -211,7 +220,7 @@ public final class SplittablePayload {
                     FieldTrackingBsonWriter fieldTrackingBsonWriter = new FieldTrackingBsonWriter(writer);
                     getCodec(updateValue.asDocument()).encode(fieldTrackingBsonWriter, updateValue.asDocument(),
                             EncoderContext.builder().build());
-                    if (writeRequest.getType() == WriteRequest.Type.UPDATE && !fieldTrackingBsonWriter.hasWrittenField()) {
+                    if (writeRequestWithIndex.getType() == WriteRequest.Type.UPDATE && !fieldTrackingBsonWriter.hasWrittenField()) {
                         throw new IllegalArgumentException("Invalid BSON document for an update. The document may not be empty.");
                     }
                 } else if (update.getType() == WriteRequest.Type.UPDATE && updateValue.isArray()) {
@@ -242,7 +251,7 @@ public final class SplittablePayload {
                 }
                 writer.writeEndDocument();
             } else {
-                DeleteRequest deleteRequest = (DeleteRequest) writeRequest;
+                DeleteRequest deleteRequest = (DeleteRequest) writeRequestWithIndex.getWriteRequest();
                 writer.writeStartDocument();
                 writer.writeName("q");
                 getCodec(deleteRequest.getFilter()).encode(writer, deleteRequest.getFilter(), EncoderContext.builder().build());
@@ -257,8 +266,8 @@ public final class SplittablePayload {
         }
 
         @Override
-        public Class<WriteRequest> getEncoderClass() {
-            return WriteRequest.class;
+        public Class<WriteRequestWithIndex> getEncoderClass() {
+            return WriteRequestWithIndex.class;
         }
     }
 
