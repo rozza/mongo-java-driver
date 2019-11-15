@@ -188,10 +188,10 @@ public final class SplittablePayload {
                 InsertRequest insertRequest = (InsertRequest) writeRequest;
                 BsonDocument document = insertRequest.getDocument();
 
-                IdTrackingBsonWriter idTrackingBsonWriter = new IdTrackingBsonWriter(writer);
-                getCodec(document).encode(idTrackingBsonWriter, document,
+                IdHoldingBsonWriter idHoldingBsonWriter = new IdHoldingBsonWriter(writer);
+                getCodec(document).encode(idHoldingBsonWriter, document,
                         EncoderContext.builder().isEncodingCollectibleDocument(true).build());
-                insertRequest.setId(idTrackingBsonWriter.getId());
+                insertRequest.setId(idHoldingBsonWriter.getId());
             } else if (writeRequest.getType() == WriteRequest.Type.UPDATE || writeRequest.getType() == WriteRequest.Type.REPLACE) {
                 UpdateRequest update = (UpdateRequest) writeRequest;
                 writer.writeStartDocument();

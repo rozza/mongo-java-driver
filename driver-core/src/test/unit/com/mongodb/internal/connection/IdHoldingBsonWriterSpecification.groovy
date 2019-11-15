@@ -29,12 +29,12 @@ import spock.lang.Specification
 import static org.bson.BsonHelper.documentWithValuesOfEveryType
 import static org.bson.BsonHelper.getBsonValues
 
-class IdTrackingBsonWriterSpecification extends Specification {
+class IdHoldingBsonWriterSpecification extends Specification {
 
     def 'should write all types'() {
         given:
         def bsonBinaryWriter = new BsonBinaryWriter(new BasicOutputBuffer())
-        def idTrackingBsonWriter = new IdTrackingBsonWriter(bsonBinaryWriter)
+        def idTrackingBsonWriter = new IdHoldingBsonWriter(bsonBinaryWriter)
         def document = documentWithValuesOfEveryType()
 
         when:
@@ -56,7 +56,7 @@ class IdTrackingBsonWriterSpecification extends Specification {
     def 'should support all types for _id value'() {
         given:
         def bsonBinaryWriter = new BsonBinaryWriter(new BasicOutputBuffer())
-        def idTrackingBsonWriter = new IdTrackingBsonWriter(bsonBinaryWriter)
+        def idTrackingBsonWriter = new IdHoldingBsonWriter(bsonBinaryWriter)
         def document = new BsonDocument()
         document.put('_id', id)
 
