@@ -40,6 +40,8 @@ public abstract class InsertOneResult {
     /**
      * If the _id of the inserted document if available, otherwise null
      *
+     * <p>Note: Inserting RawBsonDocuments does not generate an _id value.</p>
+     *
      * @return if _id of the inserted document if available, otherwise null
      */
     @Nullable

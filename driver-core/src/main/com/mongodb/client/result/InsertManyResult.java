@@ -43,6 +43,8 @@ public abstract class InsertManyResult {
     /**
      * An unmodifiable map of the index of the inserted document to the id of the inserted document.
      *
+     * <p>Note: Inserting RawBsonDocuments does not generate an _id value and it's corresponding value will be null.</p>
+     *
      * @return  A map of the index of the inserted document to the id of the inserted document.
      */
     public abstract Map<Integer, BsonValue> getInsertedIds();

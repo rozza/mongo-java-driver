@@ -18,6 +18,8 @@ package com.mongodb.bulk;
 
 import org.bson.BsonValue;
 
+import java.util.Objects;
+
 /**
  * Represents an item in the bulk write that was inserted.
  *
@@ -64,24 +66,13 @@ public class BulkWriteInsert {
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
-
         final BulkWriteInsert that = (BulkWriteInsert) o;
-
-        if (index != that.index) {
-            return false;
-        }
-        if (!id.equals(that.id)) {
-            return false;
-        }
-
-        return true;
+        return index == that.index && Objects.equals(id, that.id);
     }
 
     @Override
     public int hashCode() {
-        int result = index;
-        result = 31 * result + id.hashCode();
-        return result;
+        return Objects.hash(index, id);
     }
 
     @Override

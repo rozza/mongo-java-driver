@@ -25,6 +25,7 @@ import com.mongodb.MongoSocketReadException
 import com.mongodb.OperationFunctionalSpecification
 import com.mongodb.ServerAddress
 import com.mongodb.WriteConcern
+import com.mongodb.bulk.BulkWriteInsert
 import com.mongodb.bulk.BulkWriteResult
 import com.mongodb.bulk.BulkWriteUpsert
 import com.mongodb.client.model.CreateCollectionOptions
@@ -41,6 +42,7 @@ import org.bson.BsonInt64
 import org.bson.BsonObjectId
 import org.bson.BsonString
 import org.bson.Document
+import org.bson.RawBsonDocument
 import org.bson.codecs.BsonDocumentCodec
 import org.bson.codecs.DocumentCodec
 import org.bson.types.ObjectId
@@ -106,6 +108,7 @@ class MixedBulkWriteOperationSpecification extends OperationFunctionalSpecificat
 
         then:
         result.insertedCount == 1
+        result.inserts == [new BulkWriteInsert(0, new BsonInt32(1))]
         result.upserts == []
         getCollectionHelper().count() == 1
 
@@ -125,6 +128,24 @@ class MixedBulkWriteOperationSpecification extends OperationFunctionalSpecificat
         then:
         def ex = thrown(MongoBulkWriteException)
         ex.getWriteErrors().get(0).code == 11000
+
+        where:
+        [async, ordered] << [[true, false], [true, false]].combinations()
+    }
+
+    def 'RawBsonDocument should not generate an _id'() {
+        given:
+        def operation = new MixedBulkWriteOperation(getNamespace(), [new InsertRequest(RawBsonDocument.parse('{_id: 1}'))],
+                ordered, ACKNOWLEDGED, false)
+
+        when:
+        BulkWriteResult result = execute(operation, async)
+
+        then:
+        result.insertedCount == 1
+        result.inserts == [new BulkWriteInsert(0, null)]
+        result.upserts == []
+        getCollectionHelper().count() == 1
 
         where:
         [async, ordered] << [[true, false], [true, false]].combinations()
