@@ -292,7 +292,7 @@ final class BulkWriteBatch {
                 writeRequests = writeRequests.filter(wr -> !writeErrors.contains(wr.getIndex()));
             }
             if (payload.getPosition() < payload.size()) {
-                writeRequests = writeRequests.filter(wr -> wr.getIndex() <= payload.getPosition());
+                writeRequests = writeRequests.filter(wr -> wr.getIndex() < payload.getPosition());
             }
             return writeRequests
                     .map(wr -> new BulkWriteInsert(wr.getIndex(), payload.getInsertedIds().get(wr.getIndex())))
