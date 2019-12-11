@@ -16,19 +16,17 @@
 
 package org.mongodb.scala.gridfs
 
-import java.nio.ByteBuffer
-
-import com.mongodb.reactivestreams.client.gridfs.{ GridFSUploadStream => JGridFSUploadStream }
+import com.mongodb.reactivestreams.client.gridfs.GridFSUploadPublisher
 import org.mongodb.scala.BaseSpec
 import org.scalamock.scalatest.proxy.MockFactory
 
-class GridFSUploadStreamSpec extends BaseSpec with MockFactory {
-  val wrapper = mock[JGridFSUploadStream]
-  val gridFSUploadStream = GridFSUploadStream(wrapper)
+class GridFSUploadPublisherSpec extends BaseSpec with MockFactory {
+  val wrapper = mock[GridFSUploadPublisher[Void]]
+  val gridFSUploadObservable = GridFSUploadObservableImpl(wrapper)
 
   "GridFSBucket" should "have the same methods as the wrapped GridFSUploadStream" in {
-    val wrapped = classOf[JGridFSUploadStream].getMethods.map(_.getName).toSet
-    val local = classOf[GridFSUploadStream].getMethods.map(_.getName).toSet
+    val wrapped = classOf[GridFSUploadPublisher[Void]].getMethods.map(_.getName).toSet
+    val local = classOf[GridFSUploadObservable[Void]].getMethods.map(_.getName).toSet
 
     wrapped.foreach((name: String) => {
       val cleanedName = name.stripPrefix("get")
@@ -37,19 +35,12 @@ class GridFSUploadStreamSpec extends BaseSpec with MockFactory {
   }
 
   it should "call the underlying methods" in {
-    val src = ByteBuffer.allocate(2)
 
     wrapper.expects(Symbol("getObjectId"))().once()
     wrapper.expects(Symbol("getId"))().once()
-    wrapper.expects(Symbol("abort"))().once()
-    wrapper.expects(Symbol("write"))(src).once()
-    wrapper.expects(Symbol("close"))().once()
 
-    gridFSUploadStream.objectId
-    gridFSUploadStream.id
-    gridFSUploadStream.abort()
-    gridFSUploadStream.write(src)
-    gridFSUploadStream.close()
+    gridFSUploadObservable.objectId
+    gridFSUploadObservable.id
   }
 
 }

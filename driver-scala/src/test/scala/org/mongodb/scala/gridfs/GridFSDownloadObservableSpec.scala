@@ -16,19 +16,17 @@
 
 package org.mongodb.scala.gridfs
 
-import java.nio.ByteBuffer
-
-import com.mongodb.reactivestreams.client.gridfs.{ GridFSDownloadStream => JGridFSDownloadStream }
+import com.mongodb.reactivestreams.client.gridfs.GridFSDownloadPublisher
 import org.mongodb.scala.BaseSpec
 import org.scalamock.scalatest.proxy.MockFactory
 
-class GridFSDownloadStreamSpec extends BaseSpec with MockFactory {
-  val wrapper = mock[JGridFSDownloadStream]
-  val gridFSDownloadStream = GridFSDownloadStream(wrapper)
+class GridFSDownloadObservableSpec extends BaseSpec with MockFactory {
+  val wrapper = mock[GridFSDownloadPublisher]
+  val gridFSDownloadStream = GridFSDownloadObservable(wrapper)
 
   "GridFSDownloadStream" should "have the same methods as the wrapped GridFSDownloadStream" in {
-    val wrapped = classOf[JGridFSDownloadStream].getMethods.map(_.getName).toSet
-    val local = classOf[GridFSDownloadStream].getMethods.map(_.getName).toSet
+    val wrapped = classOf[GridFSDownloadPublisher].getMethods.map(_.getName).toSet
+    val local = classOf[GridFSDownloadObservable].getMethods.map(_.getName).toSet
 
     wrapped.foreach((name: String) => {
       val cleanedName = name.stripPrefix("get")
@@ -37,20 +35,13 @@ class GridFSDownloadStreamSpec extends BaseSpec with MockFactory {
   }
 
   it should "call the underlying methods" in {
-    val dst = ByteBuffer.allocate(2)
-    val batchSize = 10
+    val bufferSizeBytes = 1024
 
-    wrapper.expects(Symbol("batchSize"))(batchSize).once()
+    wrapper.expects(Symbol("bufferSizeBytes"))(bufferSizeBytes).once()
     wrapper.expects(Symbol("getGridFSFile"))().once()
-    wrapper.expects(Symbol("read"))(dst).once()
-    wrapper.expects(Symbol("skip"))(10L).once()
-    wrapper.expects(Symbol("close"))().once()
 
-    gridFSDownloadStream.batchSize(batchSize)
+    gridFSDownloadStream.bufferSizeBytes(bufferSizeBytes)
     gridFSDownloadStream.gridFSFile()
-    gridFSDownloadStream.read(dst)
-    gridFSDownloadStream.skip(10L)
-    gridFSDownloadStream.close()
   }
 
 }
