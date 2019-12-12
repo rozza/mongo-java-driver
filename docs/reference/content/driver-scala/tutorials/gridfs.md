@@ -79,7 +79,7 @@ GridFS will automatically create indexes on the `files` and `chunks` collections
 
 ## Upload to GridFS
 
-The [`GridFSBucket.uploadFromObservable`]({{< scapiref "org/mongodb/scala/gridfs/GridFSBucket.html#uploadFromObservable(id:org.mongodb.scala.bson.BsonValue,filename:String,source:org.mongo.scala.Observable,options:org.mongodb.scala.gridfs.GridFSUploadOptions):org.mongodb.scala.Observable[Void]" >}}) method reads the contents of a `Observable[ByteBuffer]` and saves it to the `GridFSBucket`.  
+The [`GridFSBucket.uploadFromObservable`]({{< scapiref "org/mongodb/scala/gridfs/GridFSBucket.html#uploadFromObservable(id:org.mongodb.scala.bson.BsonValue,filename:String,source:org.mongo.scala.Observable,options:org.mongodb.scala.gridfs.GridFSUploadOptions):org.mongodb.scala.Observable[Void]" >}}) methods read the contents of a `Observable[ByteBuffer]` and save it to the `GridFSBucket`.  
 
 You can use the [`GridFSUploadOptions`]({{< scapiref "org/mongodb/scala/gridfs/index.html#GridFSUploadOptions=com.mongodb.client.gridfs.model.GridFSUploadOptions" >}}) to configure the chunk size or include additional metadata.
 

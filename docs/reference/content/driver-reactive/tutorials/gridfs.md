@@ -86,7 +86,7 @@ GridFS will automatically create indexes on the `files` and `chunks` collections
 
 ## Upload to GridFS
 
-The [`GridFSBucket.uploadFromPublisher`]({{< apiref "com/mongodb/reactivestreams/client/gridfs/GridFSBucket.html#uploadFromPublisher(java.lang.String,org.reactivestreams.Publisher,com.mongodb.client.gridfs.model.GridFSUploadOptions)" >}}) methods all read the contents of `Publisher<ByteBuffer>` and save it to the `GridFSBucket`.  
+The [`GridFSBucket.uploadFromPublisher`]({{< apiref "com/mongodb/reactivestreams/client/gridfs/GridFSBucket.html#uploadFromPublisher(java.lang.String,org.reactivestreams.Publisher,com.mongodb.client.gridfs.model.GridFSUploadOptions)" >}}) methods read the contents of `Publisher<ByteBuffer>` and save it to the `GridFSBucket`.  
 
 You can use the [`GridFSUploadOptions`]({{< apiref "com/mongodb/client/gridfs/model/GridFSUploadOptions" >}}) to configure the chunk size or include additional metadata.
 
