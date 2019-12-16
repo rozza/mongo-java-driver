@@ -487,6 +487,7 @@ class ChangeStreamOperationSpecification extends OperationFunctionalSpecificatio
         when:
         expected = insertDocuments(helper, [5, 6])
         helper.killCursor(helper.getNamespace(), cursor.getWrapped().getServerCursor())
+        sleep(2000)
 
         then:
         nextAndClean(cursor, async) == expected
