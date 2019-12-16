@@ -1,7 +1,7 @@
 current = "3.12.0"
 
 [[versions]]
-  version = "4.0.0-beta"
+  version = "4.0.0-beta1"
   docs = "./4.0"
   api = "./4.0/javadoc"
 
@@ -22,10 +22,31 @@ current = "3.12.0"
   api = "./3.10/javadoc"
 
 [[versions]]
-  version = "2.14.2"
-  docs = "./2.14"
-  api = "http://api.mongodb.com/java/2.14"
+  version = "3.9.0"
+  docs = "./3.9"
+  api = "./3.9/javadoc"
 
+[[versions]]
+  version = "3.8.2"
+  docs = "./3.8"
+  api = "./3.8/javadoc"
 
+[[versions]]
+  version = "3.7.1"
+  docs = "./3.7"
+  api = "./3.7/javadoc"
 
+[[versions]]
+  version = "3.6.4"
+  docs = "./3.6"
+  api = "./3.6/javadoc"
 
+[[versions]]
+  version = "3.5.0"
+  docs = "./3.5"
+  api = "./3.5/javadoc"
+
+[[versions]]
+  version = "3.4.3"
+  docs = "./3.4"
+  api = "./3.4/javadoc"
