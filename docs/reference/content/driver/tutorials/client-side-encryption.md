@@ -214,9 +214,9 @@ Document doc = collection.find().first();
 System.out.println(doc.toJson());
 
 // Explicitly decrypt the field
-System.out.println(
-    clientEncryption.decrypt(new BsonBinary(doc.get("encryptedField", Binary.class).getData()))
-);
+BsonString decryptedFieldValue = clientEncryption.decrypt(
+    new BsonBinary(doc.get("encryptedField", Binary.class).getData())).asString();
+System.out.println(decryptedFieldValue.getValue());
 ```
 
 #### Explicit Encryption and Auto Decryption
@@ -244,6 +244,8 @@ BsonBinary encryptedFieldValue = clientEncryption.encrypt(new BsonString("123456
 collection.insertOne(new Document("encryptedField", encryptedFieldValue));
 
 // Automatically decrypts the encrypted field.
-System.out.println(collection.find().first().toJson());
+Document doc = collection.find().first();
+System.out.println(doc.toJson());
+System.out.println(doc.get("encryptedField"));
 
 ```

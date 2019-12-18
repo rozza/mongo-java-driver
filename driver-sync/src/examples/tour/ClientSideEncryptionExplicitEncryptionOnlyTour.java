@@ -105,7 +105,9 @@ public class ClientSideEncryptionExplicitEncryptionOnlyTour {
         collection.insertOne(new Document("encryptedField", encryptedFieldValue));
 
         // Automatically decrypts the encrypted field.
-        System.out.println(collection.find().first().toJson());
+        Document doc = collection.find().first();
+        System.out.println(doc.toJson());
+        System.out.println(doc.get("encryptedField"));
 
         // release resources
         clientEncryption.close();

@@ -34,62 +34,62 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+import static com.mongodb.assertions.Assertions.notNull;
 import static com.mongodb.internal.capi.MongoCryptOptionsHelper.createMongocryptdSpawnArgs;
 
 @SuppressWarnings("UseOfProcessBuilder")
 class CommandMarker implements Closeable {
-    private MongoClient client;
+    private final MongoClient client;
     private final ProcessBuilder processBuilder;
 
     CommandMarker(final boolean isBypassAutoEncryption, final Map<String, Object> options) {
         if (isBypassAutoEncryption) {
             processBuilder = null;
             client = null;
-        } else {
-            if (!options.containsKey("mongocryptdBypassSpawn") || !((Boolean) options.get("mongocryptdBypassSpawn"))) {
-                processBuilder = new ProcessBuilder(createMongocryptdSpawnArgs(options));
-                startProcess();
-            } else {
-                processBuilder = null;
-            }
-
-            String connectionString;
-
-            if (options.containsKey("mongocryptdURI")) {
-                connectionString = (String) options.get("mongocryptdURI");
-            } else {
-                connectionString = "mongodb://localhost:27020";
-            }
-
-            client = MongoClients.create(MongoClientSettings.builder()
-                    .applyConnectionString(new ConnectionString(connectionString))
-                    .applyToClusterSettings(new Block<ClusterSettings.Builder>() {
-                        @Override
-                        public void apply(final ClusterSettings.Builder builder) {
-                            builder.serverSelectionTimeout(1, TimeUnit.SECONDS);
-                        }
-                    })
-                    .build());
+            return;
         }
+
+        if (!options.containsKey("mongocryptdBypassSpawn") || !((Boolean) options.get("mongocryptdBypassSpawn"))) {
+            processBuilder = new ProcessBuilder(createMongocryptdSpawnArgs(options));
+            startProcess();
+        } else {
+            processBuilder = null;
+        }
+
+        String connectionString;
+
+        if (options.containsKey("mongocryptdURI")) {
+            connectionString = (String) options.get("mongocryptdURI");
+        } else {
+            connectionString = "mongodb://localhost:27020";
+        }
+
+        client = MongoClients.create(MongoClientSettings.builder()
+                .applyConnectionString(new ConnectionString(connectionString))
+                .applyToClusterSettings(new Block<ClusterSettings.Builder>() {
+                    @Override
+                    public void apply(final ClusterSettings.Builder builder) {
+                        builder.serverSelectionTimeout(1, TimeUnit.SECONDS);
+                    }
+                })
+                .build());
+
     }
 
     RawBsonDocument mark(final String databaseName, final RawBsonDocument command) {
-        if (client != null) {
+        notNull("client", client);
+        try {
             try {
-                try {
-                    return executeCommand(databaseName, command);
-                } catch (MongoTimeoutException e) {
-                    if (processBuilder == null) {  // mongocryptdBypassSpawn=true
-                        throw e;
-                    }
-                    startProcess();
-                    return executeCommand(databaseName, command);
+                return executeCommand(databaseName, command);
+            } catch (MongoTimeoutException e) {
+                if (processBuilder == null) {  // mongocryptdBypassSpawn=true
+                    throw e;
                 }
-            } catch (MongoException e) {
-                throw wrapInClientException(e);
+                startProcess();
+                return executeCommand(databaseName, command);
             }
-        } else {
-            return command;
+        } catch (MongoException e) {
+            throw wrapInClientException(e);
         }
     }
 

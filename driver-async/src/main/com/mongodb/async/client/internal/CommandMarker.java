@@ -33,82 +33,81 @@ import java.io.Closeable;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+import static com.mongodb.assertions.Assertions.notNull;
 import static com.mongodb.internal.capi.MongoCryptOptionsHelper.createMongocryptdSpawnArgs;
 
 @SuppressWarnings("UseOfProcessBuilder")
 class CommandMarker implements Closeable {
-    private MongoClient client;
+    private final MongoClient client;
     private final ProcessBuilder processBuilder;
 
     CommandMarker(final boolean isBypassAutoEncryption, final Map<String, Object> options) {
-
         if (isBypassAutoEncryption) {
             processBuilder = null;
             client = null;
-        } else {
-            if (!options.containsKey("mongocryptdBypassSpawn") || !((Boolean) options.get("mongocryptdBypassSpawn"))) {
-                processBuilder = new ProcessBuilder(createMongocryptdSpawnArgs(options));
-                startProcess();
-            } else {
-                processBuilder = null;
-            }
-
-            String connectionString;
-
-            if (options.containsKey("mongocryptdURI")) {
-                connectionString = (String) options.get("mongocryptdURI");
-            } else {
-                connectionString = "mongodb://localhost:27020";
-            }
-
-            client = MongoClients.create(MongoClientSettings.builder()
-                    .applyConnectionString(new ConnectionString(connectionString))
-                    .applyToClusterSettings(new Block<ClusterSettings.Builder>() {
-                        @Override
-                        public void apply(final ClusterSettings.Builder builder) {
-                            builder.serverSelectionTimeout(1, TimeUnit.SECONDS);
-                        }
-                    })
-                    .build());
+            return;
         }
+
+        if (!options.containsKey("mongocryptdBypassSpawn") || !((Boolean) options.get("mongocryptdBypassSpawn"))) {
+            processBuilder = new ProcessBuilder(createMongocryptdSpawnArgs(options));
+            startProcess();
+        } else {
+            processBuilder = null;
+        }
+
+        String connectionString;
+
+        if (options.containsKey("mongocryptdURI")) {
+            connectionString = (String) options.get("mongocryptdURI");
+        } else {
+            connectionString = "mongodb://localhost:27020";
+        }
+
+        client = MongoClients.create(MongoClientSettings.builder()
+                .applyConnectionString(new ConnectionString(connectionString))
+                .applyToClusterSettings(new Block<ClusterSettings.Builder>() {
+                    @Override
+                    public void apply(final ClusterSettings.Builder builder) {
+                        builder.serverSelectionTimeout(1, TimeUnit.SECONDS);
+                    }
+                })
+                .build());
     }
 
     void mark(final String databaseName, final RawBsonDocument command, final SingleResultCallback<RawBsonDocument> callback) {
-        if (client != null) {
-            final SingleResultCallback<RawBsonDocument> wrappedCallback = new SingleResultCallback<RawBsonDocument>() {
-                @Override
-                public void onResult(final RawBsonDocument result, final Throwable t) {
-                    if (t != null) {
-                        callback.onResult(null, new MongoClientException("Exception in encryption library: " + t.getMessage(), t));
-                    } else {
-                        callback.onResult(result, null);
-                    }
+        notNull("client", client, callback);
+
+        final SingleResultCallback<RawBsonDocument> wrappedCallback = new SingleResultCallback<RawBsonDocument>() {
+            @Override
+            public void onResult(final RawBsonDocument result, final Throwable t) {
+                if (t != null) {
+                    callback.onResult(null, new MongoClientException("Exception in encryption library: " + t.getMessage(), t));
+                } else {
+                    callback.onResult(result, null);
                 }
-            };
-            runCommand(databaseName, command, new SingleResultCallback<RawBsonDocument>() {
-                @Override
-                public void onResult(final RawBsonDocument result, final Throwable t) {
-                    if (t == null) {
-                        wrappedCallback.onResult(result, null);
-                    } else if (t instanceof MongoTimeoutException && processBuilder != null) {
-                        startProcessAndContinue(new SingleResultCallback<Void>() {
-                            @Override
-                            public void onResult(final Void result, final Throwable t) {
-                                if (t != null) {
-                                    callback.onResult(null, t);
-                                } else {
-                                    runCommand(databaseName, command, wrappedCallback);
-                                }
+            }
+        };
+        runCommand(databaseName, command, new SingleResultCallback<RawBsonDocument>() {
+            @Override
+            public void onResult(final RawBsonDocument result, final Throwable t) {
+                if (t == null) {
+                    wrappedCallback.onResult(result, null);
+                } else if (t instanceof MongoTimeoutException && processBuilder != null) {
+                    startProcessAndContinue(new SingleResultCallback<Void>() {
+                        @Override
+                        public void onResult(final Void result, final Throwable t) {
+                            if (t != null) {
+                                callback.onResult(null, t);
+                            } else {
+                                runCommand(databaseName, command, wrappedCallback);
                             }
-                        });
-                    } else {
-                        wrappedCallback.onResult(null, t);
-                    }
+                        }
+                    });
+                } else {
+                    wrappedCallback.onResult(null, t);
                 }
-            });
-        } else {
-            callback.onResult(command, null);
-        }
+            }
+        });
     }
 
     @Override

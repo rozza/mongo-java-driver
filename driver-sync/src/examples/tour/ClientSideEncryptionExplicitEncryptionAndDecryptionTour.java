@@ -102,7 +102,9 @@ public class ClientSideEncryptionExplicitEncryptionAndDecryptionTour {
         System.out.println(doc.toJson());
 
         // Explicitly decrypt the field
-        System.out.println(clientEncryption.decrypt(new BsonBinary(doc.get("encryptedField", Binary.class).getData())));
+        BsonString decryptedFieldValue = clientEncryption.decrypt(new BsonBinary(doc.get("encryptedField", Binary.class).getData()))
+                .asString();
+        System.out.println(decryptedFieldValue.getValue());
 
         // release resources
         clientEncryption.close();
