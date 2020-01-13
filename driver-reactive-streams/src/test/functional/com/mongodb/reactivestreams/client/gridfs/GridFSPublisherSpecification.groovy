@@ -167,7 +167,7 @@ class GridFSPublisherSpecification extends FunctionalSpecification {
                                            ByteBuffer.wrap(contentBytes)])
     }
 
-    def 'should upload multiple chunks when smaller than chunksize'() {
+    def 'should upload from the source publisher when it contains multiple parts and the total size is smaller than chunksize'() {
         given:
         def contentBytes = singleChunkString.getBytes()
 
