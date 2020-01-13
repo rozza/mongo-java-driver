@@ -79,6 +79,9 @@ public class GridFSUploadPublisherImpl implements GridFSUploadPublisher<Void> {
 
             @Override
             public void onNext(final ByteBuffer byteBuffer) {
+                synchronized (GridFSUploadSubscription.this) {
+                    currentAction = Action.IN_PROGRESS;
+                }
                 Publishers.publish((Block<SingleResultCallback<Integer>>) callback -> gridFSUploadStream.write(byteBuffer, callback))
                         .subscribe(new GridFSUploadStreamSubscriber(byteBuffer));
             }
@@ -97,6 +100,7 @@ public class GridFSUploadPublisherImpl implements GridFSUploadPublisher<Void> {
                     hasCompleted = true;
                     if (currentAction == Action.WAITING) {
                         currentAction = Action.COMPLETE;
+                        tryProcess();
                     }
                 }
             }
@@ -182,7 +186,7 @@ public class GridFSUploadPublisherImpl implements GridFSUploadPublisher<Void> {
                         } else {
                             nextStep = NextStep.WRITE;
                         }
-                        currentAction = Action.IN_PROGRESS;
+                        currentAction = Action.WAITING;
                         break;
                     case COMPLETE:
                         nextStep = NextStep.COMPLETE;
