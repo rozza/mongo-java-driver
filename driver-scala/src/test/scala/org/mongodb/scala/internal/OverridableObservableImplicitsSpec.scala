@@ -29,7 +29,7 @@ object ObservableImplicitOverride {
 
 }
 
-class OverridableObservableSpec extends BaseSpec {
+class OverridableObservableImplicitsSpec extends BaseSpec {
 
   "Observable implicits" should "be overrideable" in {
     import ObservableImplicitOverride._
