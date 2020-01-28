@@ -123,23 +123,6 @@ public class ByteBufferBsonInput implements BsonInput {
             throw new BsonSerializationException(format("While decoding a BSON string found a size that is not a positive number: %d",
                                                         size));
         }
-        return readString(size);
-    }
-
-    @Override
-    public String readCString() {
-        ensureOpen();
-
-        // TODO: potentially optimize this
-        int mark = buffer.position();
-        readUntilNullByte();
-        int size = buffer.position() - mark;
-        buffer.position(mark);
-
-        return readString(size);
-    }
-
-    private String readString(final int size) {
         if (size == 2) {
             byte asciiByte = readByte();               // if only one byte in the string, it must be ascii.
             byte nullByte = readByte();                // read null terminator
@@ -161,18 +144,59 @@ public class ByteBufferBsonInput implements BsonInput {
         }
     }
 
-    private void readUntilNullByte() {
-        //CHECKSTYLE:OFF
-        while (readByte() != 0) { //NOPMD
-            //do nothing - checkstyle & PMD hate this, not surprisingly
+    @Override
+    public String readCString() {
+        ensureOpen();
+
+        final int defaultCapacity = 512;
+        int count = 0;
+        int capacity = defaultCapacity;
+        byte[] bytes = new byte[capacity];
+
+        ensureAvailable(1);
+        byte nextByte = buffer.get();
+
+        while (nextByte != 0) {
+            if (count > bytes.length) {
+                capacity = capacity + defaultCapacity;
+                bytes = getBytes(bytes, capacity);
+            }
+            bytes[count++] = nextByte;
+
+            ensureAvailable(1);
+            nextByte = buffer.get();
         }
-        //CHECKSTYLE:ON
+
+        if (count < capacity) {
+            bytes = getBytes(bytes, count);
+        }
+
+        if (bytes.length == 1) {
+            if (bytes[0] < 0) {
+                return UTF8_CHARSET.newDecoder().replacement();
+            } else {
+                return ONE_BYTE_ASCII_STRINGS[bytes[0]];
+            }
+        } else {
+            return new String(bytes, UTF8_CHARSET);
+        }
+    }
+
+    private byte[] getBytes(final byte[] bytes, final int capicity) {
+        byte[] newBytes = new byte[capicity];
+        System.arraycopy(bytes, 0, newBytes, 0, capicity);
+        return newBytes;
     }
 
     @Override
     public void skipCString() {
         ensureOpen();
-        readUntilNullByte();
+        ensureAvailable(1);
+        //CHECKSTYLE:OFF
+        while (buffer.get() != 0) { //NOPMD
+            //do nothing - checkstyle & PMD hate this, not surprisingly
+        }
+        //CHECKSTYLE:ON
     }
 
     @Override
