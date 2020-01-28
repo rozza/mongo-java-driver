@@ -20,6 +20,7 @@ import org.bson.BsonSerializationException;
 import org.bson.ByteBuf;
 import org.bson.types.ObjectId;
 
+import java.nio.BufferUnderflowException;
 import java.nio.ByteOrder;
 import java.nio.charset.Charset;
 
@@ -147,24 +148,24 @@ public class ByteBufferBsonInput implements BsonInput {
     @Override
     public String readCString() {
         ensureOpen();
+        ensureAvailable(1);
 
         final int defaultCapacity = 512;
         int count = 0;
         int capacity = defaultCapacity;
         byte[] bytes = new byte[capacity];
-
-        ensureAvailable(1);
-        byte nextByte = buffer.get();
-
-        while (nextByte != 0) {
-            if (count > bytes.length) {
-                capacity = capacity + defaultCapacity;
-                bytes = getBytes(bytes, capacity);
+        try {
+            byte nextByte = buffer.get();
+            while (nextByte != 0) {
+                if (count > bytes.length) {
+                    capacity = capacity + defaultCapacity;
+                    bytes = getBytes(bytes, capacity);
+                }
+                bytes[count++] = nextByte;
+                nextByte = buffer.get();
             }
-            bytes[count++] = nextByte;
-
-            ensureAvailable(1);
-            nextByte = buffer.get();
+        } catch (BufferUnderflowException e) {
+            throw new BsonSerializationException("Found a BSON string that is not null-terminated");
         }
 
         if (count < capacity) {
@@ -192,11 +193,16 @@ public class ByteBufferBsonInput implements BsonInput {
     public void skipCString() {
         ensureOpen();
         ensureAvailable(1);
-        //CHECKSTYLE:OFF
-        while (buffer.get() != 0) { //NOPMD
-            //do nothing - checkstyle & PMD hate this, not surprisingly
+
+        try {
+            //CHECKSTYLE:OFF
+            while (buffer.get() != 0) { //NOPMD
+                //do nothing - checkstyle & PMD hate this, not surprisingly
+            }
+            //CHECKSTYLE:ON
+        } catch (BufferUnderflowException e) {
+            throw new BsonSerializationException("Found a BSON string that is not null-terminated");
         }
-        //CHECKSTYLE:ON
     }
 
     @Override
