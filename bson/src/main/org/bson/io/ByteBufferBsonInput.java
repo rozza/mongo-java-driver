@@ -20,7 +20,6 @@ import org.bson.BsonSerializationException;
 import org.bson.ByteBuf;
 import org.bson.types.ObjectId;
 
-import java.nio.BufferUnderflowException;
 import java.nio.ByteOrder;
 import java.nio.charset.Charset;
 
@@ -122,11 +121,25 @@ public class ByteBufferBsonInput implements BsonInput {
         int size = readInt32();
         if (size <= 0) {
             throw new BsonSerializationException(format("While decoding a BSON string found a size that is not a positive number: %d",
-                                                        size));
+                    size));
         }
+        ensureAvailable(size);
+        return readString(size);
+    }
+
+    @Override
+    public String readCString() {
+        int mark = buffer.position();
+        skipCString();
+        int size = buffer.position() - mark;
+        buffer.position(mark);
+        return readString(size);
+    }
+
+    private String readString(final int size) {
         if (size == 2) {
-            byte asciiByte = readByte();               // if only one byte in the string, it must be ascii.
-            byte nullByte = readByte();                // read null terminator
+            byte asciiByte = buffer.get();               // if only one byte in the string, it must be ascii.
+            byte nullByte = buffer.get();                // read null terminator
             if (nullByte != 0) {
                 throw new BsonSerializationException("Found a BSON string that is not null-terminated");
             }
@@ -136,8 +149,8 @@ public class ByteBufferBsonInput implements BsonInput {
             return ONE_BYTE_ASCII_STRINGS[asciiByte];  // this will throw if asciiByte is negative
         } else {
             byte[] bytes = new byte[size - 1];
-            readBytes(bytes);
-            byte nullByte = readByte();
+            buffer.get(bytes);
+            byte nullByte = buffer.get();
             if (nullByte != 0) {
                 throw new BsonSerializationException("Found a BSON string that is not null-terminated");
             }
@@ -146,62 +159,14 @@ public class ByteBufferBsonInput implements BsonInput {
     }
 
     @Override
-    public String readCString() {
-        ensureOpen();
-        ensureAvailable(1);
-
-        final int defaultCapacity = 512;
-        int count = 0;
-        int capacity = defaultCapacity;
-        byte[] bytes = new byte[capacity];
-        try {
-            byte nextByte = buffer.get();
-            while (nextByte != 0) {
-                if (count > bytes.length) {
-                    capacity = capacity + defaultCapacity;
-                    bytes = getBytes(bytes, capacity);
-                }
-                bytes[count++] = nextByte;
-                nextByte = buffer.get();
-            }
-        } catch (BufferUnderflowException e) {
-            throw new BsonSerializationException("Found a BSON string that is not null-terminated");
-        }
-
-        if (count < capacity) {
-            bytes = getBytes(bytes, count);
-        }
-
-        if (bytes.length == 1) {
-            if (bytes[0] < 0) {
-                return UTF8_CHARSET.newDecoder().replacement();
-            } else {
-                return ONE_BYTE_ASCII_STRINGS[bytes[0]];
-            }
-        } else {
-            return new String(bytes, UTF8_CHARSET);
-        }
-    }
-
-    private byte[] getBytes(final byte[] bytes, final int capicity) {
-        byte[] newBytes = new byte[capicity];
-        System.arraycopy(bytes, 0, newBytes, 0, capicity);
-        return newBytes;
-    }
-
-    @Override
     public void skipCString() {
         ensureOpen();
-        ensureAvailable(1);
-
-        try {
-            //CHECKSTYLE:OFF
-            while (buffer.get() != 0) { //NOPMD
-                //do nothing - checkstyle & PMD hate this, not surprisingly
+        boolean checkNext = true;
+        while (checkNext) {
+            if (!buffer.hasRemaining()) {
+                throw new BsonSerializationException("Found a BSON string that is not null-terminated");
             }
-            //CHECKSTYLE:ON
-        } catch (BufferUnderflowException e) {
-            throw new BsonSerializationException("Found a BSON string that is not null-terminated");
+            checkNext = buffer.get() != 0;
         }
     }
 
