@@ -12,10 +12,8 @@ title = "API Documentation"
 
 The following API documentation is available:
 
-  - [Bson]({{< apiref "bson" "index.html" >}})
-  - [MongoDB Driver Core]({{< apiref "mongodb-driver-core" "index.html" >}}) 
-  - [MongoDB Driver Sync]({{< apiref "mongodb-driver-sync" "index.html" >}})
-  - [MongoDB Legacy Driver]({{< apiref "mongodb-driver-legacy" "index.html" >}})
-  - [MongoDB Reactive Streams Driver]({{< apiref "mongodb-driver-reactivestreams" "index.html" >}})
-  - [MongoDB Scala Driver]({{< apiref "mongo-scala-driver" "index.html" >}})
-
+  - [Java Driver]({{< apiref "mongodb-driver-sync" "index.html" >}}) (modern API)
+  - [Java Driver]({{< apiref "mongodb-driver-legacy" "index.html" >}}) (legacy API)
+  - [Java Reactive Streams Driver]({{< apiref "mongodb-driver-reactivestreams" "index.html" >}})
+  - [Scala Driver]({{< apiref "mongo-scala-driver" "index.html" >}})
+  - [Bson]({{< apiref "bson" "index.html" >}}) (The bson layer)

@@ -27,8 +27,15 @@ task docs {
 def buildDocsUrl(String version, String packageName) {
     def docVersion = version.split('-').head()
     def versionList = docVersion.split('\\.')
-    def patch = (versionList[1] as int) - 1
-    docVersion = patch >= 0 ? "${versionList[0]}.${patch}" : '4.0'
+    def major = (versionList[0] as int)
+    def minor = (versionList[1] as int)
+
+    docVersion = "${major}.${minor}"
+    if (version.contains("-SNAPSHOT")) {
+        // If a snapshot set the version to the previous released version
+        docVersion = minor > 0 ? "${major}.${minor - 1}" : '4.0'
+    }
+
     ["http://mongodb.github.io/mongo-java-driver/${docVersion}/apidocs/${packageName}/", "${rootProject.buildDir.path}/docs/${packageName}"]
 }
 
