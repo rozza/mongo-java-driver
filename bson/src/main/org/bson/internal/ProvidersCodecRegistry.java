@@ -51,13 +51,12 @@ public final class ProvidersCodecRegistry implements CodecRegistry, CycleDetecti
     }
 
     @SuppressWarnings({"rawtypes" })
-    public synchronized <T> Codec<T> get(final ChildCodecRegistry<T> context) {
+    public <T> Codec<T> get(final ChildCodecRegistry<T> context) {
         if (!codecCache.containsKey(context.getCodecClass())) {
             for (CodecProvider provider : codecProviders) {
                 Codec<T> codec = provider.get(context.getCodecClass(), context);
                 if (codec != null) {
-                    codecCache.put(context.getCodecClass(), codec);
-                    return codec;
+                    return codecCache.putIfMissing(context.getCodecClass(), codec);
                 }
             }
             codecCache.put(context.getCodecClass(), null);
