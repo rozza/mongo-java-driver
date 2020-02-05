@@ -16,20 +16,18 @@
 
 package com.mongodb.client.internal
 
-
 import com.mongodb.Function
 import com.mongodb.MongoException
 import com.mongodb.MongoNamespace
 import com.mongodb.ReadConcern
 import com.mongodb.WriteConcern
 import com.mongodb.client.ClientSession
-import com.mongodb.internal.client.model.AggregationLevel
 import com.mongodb.client.model.Collation
+import com.mongodb.internal.client.model.AggregationLevel
 import com.mongodb.internal.operation.AggregateOperation
 import com.mongodb.internal.operation.AggregateToCollectionOperation
 import com.mongodb.internal.operation.BatchCursor
 import com.mongodb.internal.operation.FindOperation
-import org.bson.BsonBoolean
 import org.bson.BsonDocument
 import org.bson.BsonInt32
 import org.bson.BsonString
