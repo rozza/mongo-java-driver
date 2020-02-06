@@ -230,4 +230,18 @@ public interface FindPublisher<TResult> extends Publisher<TResult> {
      * @mongodb.driver.manual reference/method/cursor.batchSize/#cursor.batchSize Batch Size
      */
     FindPublisher<TResult> batchSize(int batchSize);
+
+    /**
+     * Enables writing to temporary files on the server. When set to true, the server
+     * can write temporary data to disk while executing the find operation.
+     *
+     * <p>This option is sent only if the caller explicitly provides a value. The default
+     * is to not send a value. For servers &lt; 3.2, this option is ignored and not sent
+     * as allowDiskUse does not exist in the OP_QUERY wire protocol.</p>
+     *
+     * @param allowDiskUse the allowDiskUse
+     * @return this
+     * @since 4.0
+     */
+    FindPublisher<TResult> allowDiskUse(boolean allowDiskUse);
 }

@@ -183,6 +183,12 @@ class FindIterableImpl<TDocument, TResult> extends MongoIterableImpl<TResult> im
         return this;
     }
 
+    @Override
+    public FindIterable<TResult> allowDiskUse(final boolean allowDiskUse) {
+        findOptions.allowDiskUse(allowDiskUse);
+        return this;
+    }
+
     @Nullable
     @Override
     public TResult first() {

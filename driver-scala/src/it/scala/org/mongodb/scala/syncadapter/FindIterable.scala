@@ -124,4 +124,9 @@ case class SyncFindIterable[T](wrapped: FindObservable[T]) extends SyncMongoIter
     wrapped.showRecordId(showRecordId)
     this
   }
+
+  override def allowDiskUse(allowDiskUse: Boolean): FindIterable[T] = {
+    wrapped.allowDiskUse(allowDiskUse)
+    this
+  }
 }

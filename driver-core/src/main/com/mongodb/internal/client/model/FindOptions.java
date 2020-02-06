@@ -52,6 +52,7 @@ public final class FindOptions {
     private Bson min;
     private boolean returnKey;
     private boolean showRecordId;
+    private boolean allowDiskUse;
 
     /**
      * Construct a new instance.
@@ -511,6 +512,32 @@ public final class FindOptions {
         return this;
     }
 
+    /**
+     * Returns the allowDiskUse value
+     *
+     * @return the allowDiskUse value
+     * @since 4.0
+     */
+    public boolean isAllowDiskUse() {
+        return allowDiskUse;
+    }
+
+    /**
+     * Enables writing to temporary files on the server. When set to true, the server
+     * can write temporary data to disk while executing the find operation.
+     *
+     * <p>This option is sent only if the caller explicitly provides a value. The default
+     * is to not send a value. For servers &lt; 3.2, this option is ignored and not sent
+     * as allowDiskUse does not exist in the OP_QUERY wire protocol.</p>
+     *
+     * @param allowDiskUse the allowDiskUse
+     * @since 4.0
+     */
+    public FindOptions allowDiskUse(final boolean allowDiskUse) {
+        this.allowDiskUse = allowDiskUse;
+        return this;
+    }
+
     @Override
     public String toString() {
         return "FindOptions{"
@@ -532,6 +559,7 @@ public final class FindOptions {
                 + ", min=" + min
                 + ", returnKey=" + returnKey
                 + ", showRecordId=" + showRecordId
+                + ", allowDiskUse=" + allowDiskUse
                 + "}";
     }
 }

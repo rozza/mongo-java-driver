@@ -163,6 +163,12 @@ final class FindPublisherImpl<TResult> implements FindPublisher<TResult> {
     }
 
     @Override
+    public FindPublisher<TResult> allowDiskUse(final boolean allowDiskUse) {
+        wrapped.allowDiskUse(allowDiskUse);
+        return this;
+    }
+
+    @Override
     public void subscribe(final Subscriber<? super TResult> s) {
         Publishers.publish(wrapped).subscribe(s);
     }

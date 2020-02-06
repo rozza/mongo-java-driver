@@ -293,5 +293,21 @@ case class FindObservable[TResult](private val wrapped: FindPublisher[TResult]) 
     this
   }
 
+  /**
+   * Enables writing to temporary files on the server. When set to true, the server
+   * can write temporary data to disk while executing the find operation.
+   *
+   * <p>This option is sent only if the caller explicitly provides a value. The default
+   * is to not send a value. For servers &lt; 3.2, this option is ignored and not sent
+   * as allowDiskUse does not exist in the OP_QUERY wire protocol.</p>
+   *
+   * @param allowDiskUse the allowDiskUse
+   * @since 4.0
+   */
+  def allowDiskUse(allowDiskUse: Boolean): FindObservable[TResult] = {
+    wrapped.allowDiskUse(allowDiskUse)
+    this
+  }
+
   override def subscribe(observer: Observer[_ >: TResult]): Unit = wrapped.subscribe(observer)
 }
