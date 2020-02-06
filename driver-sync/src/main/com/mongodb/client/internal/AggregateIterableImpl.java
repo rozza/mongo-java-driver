@@ -160,6 +160,9 @@ class AggregateIterableImpl<TDocument, TResult> extends MongoIterableImpl<TResul
             if (batchSize != null) {
                 findOptions.batchSize(batchSize);
             }
+            if (allowDiskUse != null) {
+                findOptions.allowDiskUse(allowDiskUse);
+            }
             return operations.find(outNamespace, new BsonDocument(), resultClass, findOptions);
         } else {
             return operations.aggregate(pipeline, resultClass, maxTimeMS, maxAwaitTimeMS, getBatchSize(), collation,

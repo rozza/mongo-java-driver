@@ -172,6 +172,7 @@ class AggregateIterableSpecification extends Specification {
         operation.getCollation() == collation
         operation.getMaxAwaitTime(MILLISECONDS) == 0
         operation.getMaxTime(MILLISECONDS) == 0
+        operation.isAllowDiskUse()
 
         when: 'toCollection should work as expected'
         new AggregateIterableImpl(null, namespace, Document, Document, codecRegistry, readPreference, readConcern, writeConcern, executor,
