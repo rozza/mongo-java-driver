@@ -157,9 +157,6 @@ class AsyncAggregateIterableImpl<TDocument, TResult> extends AsyncMongoIterableI
             if (batchSize != null) {
                 findOptions.batchSize(batchSize);
             }
-            if (allowDiskUse != null) {
-                findOptions.allowDiskUse(allowDiskUse);
-            }
             AsyncReadOperation<AsyncBatchCursor<TResult>> findOperation =
                     operations.find(outNamespace, new BsonDocument(), resultClass, findOptions);
 

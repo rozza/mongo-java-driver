@@ -302,7 +302,8 @@ case class FindObservable[TResult](private val wrapped: FindPublisher[TResult]) 
    * as allowDiskUse does not exist in the OP_QUERY wire protocol.</p>
    *
    * @param allowDiskUse the allowDiskUse
-   * @since 4.0
+   * @since 4.1
+   * @note Requires MongoDB 4.4 or greater
    */
   def allowDiskUse(allowDiskUse: Boolean): FindObservable[TResult] = {
     wrapped.allowDiskUse(allowDiskUse)

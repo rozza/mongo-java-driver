@@ -516,7 +516,6 @@ public final class FindOptions {
      * Returns the allowDiskUse value
      *
      * @return the allowDiskUse value
-     * @since 4.0
      */
     public boolean isAllowDiskUse() {
         return allowDiskUse;
@@ -526,12 +525,10 @@ public final class FindOptions {
      * Enables writing to temporary files on the server. When set to true, the server
      * can write temporary data to disk while executing the find operation.
      *
-     * <p>This option is sent only if the caller explicitly provides a value. The default
-     * is to not send a value. For servers &lt; 3.2, this option is ignored and not sent
-     * as allowDiskUse does not exist in the OP_QUERY wire protocol.</p>
+     * <p>This option is sent only if the caller explicitly sets it to true.</p>
      *
      * @param allowDiskUse the allowDiskUse
-     * @since 4.0
+     * @return this
      */
     public FindOptions allowDiskUse(final boolean allowDiskUse) {
         this.allowDiskUse = allowDiskUse;
