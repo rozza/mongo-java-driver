@@ -54,6 +54,12 @@ public class MongoBulkWriteException extends MongoServerException {
         this.errors = writeErrors;
         this.writeConcernError = writeConcernError;
         this.serverAddress = serverAddress;
+
+        if (writeConcernError != null) {
+            for (final String errorLabel : writeConcernError.getErrorLabels()) {
+                addLabel(errorLabel);
+            }
+        }
     }
 
     /**

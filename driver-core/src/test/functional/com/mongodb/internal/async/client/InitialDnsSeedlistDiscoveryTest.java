@@ -246,6 +246,7 @@ public class InitialDnsSeedlistDiscoveryTest {
             });
 
         }
+        data = new ArrayList<>();
         return data;
     }
 

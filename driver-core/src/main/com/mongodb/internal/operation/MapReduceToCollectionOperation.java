@@ -576,7 +576,8 @@ MapReduceToCollectionOperation implements AsyncWriteOperation<MapReduceStatistic
             @SuppressWarnings("unchecked")
             @Override
             public MapReduceStatistics apply(final BsonDocument result, final Connection connection) {
-                throwOnWriteConcernError(result, connection.getDescription().getServerAddress());
+                throwOnWriteConcernError(result, connection.getDescription().getServerAddress(),
+                        connection.getDescription().getMaxWireVersion());
                 return MapReduceHelper.createStatistics(result);
             }
         };
@@ -587,7 +588,8 @@ MapReduceToCollectionOperation implements AsyncWriteOperation<MapReduceStatistic
             @SuppressWarnings("unchecked")
             @Override
             public MapReduceStatistics apply(final BsonDocument result, final AsyncConnection connection) {
-                throwOnWriteConcernError(result, connection.getDescription().getServerAddress());
+                throwOnWriteConcernError(result, connection.getDescription().getServerAddress(),
+                        connection.getDescription().getMaxWireVersion());
                 return MapReduceHelper.createStatistics(result);
             }
         };
