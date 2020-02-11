@@ -233,6 +233,6 @@ public interface AsyncFindIterable<T> extends AsyncMongoIterable<T> {
      * @since 4.1
      * @mongodb.server.release 4.4
      */
-    AsyncFindIterable<T> allowDiskUse(boolean allowDiskUse);
+    AsyncFindIterable<T> allowDiskUse(@Nullable Boolean allowDiskUse);
 
 }

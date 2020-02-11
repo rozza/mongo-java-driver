@@ -235,6 +235,6 @@ public interface FindIterable<TResult> extends MongoIterable<TResult> {
      * @since 4.1
      * @mongodb.server.release 4.4
      */
-    FindIterable<TResult> allowDiskUse(boolean allowDiskUse);
+    FindIterable<TResult> allowDiskUse(@Nullable Boolean allowDiskUse);
 
 }

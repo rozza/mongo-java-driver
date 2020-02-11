@@ -154,7 +154,7 @@ class SyncFindIterable<T> extends SyncMongoIterable<T> implements FindIterable<T
     }
 
     @Override
-    public FindIterable<T> allowDiskUse(final boolean allowDiskUse) {
+    public FindIterable<T> allowDiskUse(@Nullable final java.lang.Boolean allowDiskUse) {
         wrapped.allowDiskUse(allowDiskUse);
         return this;
     }

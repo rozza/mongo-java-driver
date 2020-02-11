@@ -36,6 +36,7 @@ import com.mongodb.internal.connection.NoOpSessionContext;
 import com.mongodb.internal.connection.QueryResult;
 import com.mongodb.internal.operation.OperationHelper.CallableWithSource;
 import com.mongodb.internal.session.SessionContext;
+import com.mongodb.lang.Nullable;
 import org.bson.BsonBoolean;
 import org.bson.BsonDocument;
 import org.bson.BsonInt32;
@@ -100,7 +101,7 @@ public class FindOperation<T> implements AsyncReadOperation<AsyncBatchCursor<T>>
     private BsonDocument min;
     private boolean returnKey;
     private boolean showRecordId;
-    private boolean allowDiskUse;
+    private Boolean allowDiskUse;
 
     /**
      * Construct a new instance.
@@ -626,7 +627,7 @@ public class FindOperation<T> implements AsyncReadOperation<AsyncBatchCursor<T>>
      *
      * @return the allowDiskUse value
      */
-    public boolean isAllowDiskUse() {
+    public Boolean isAllowDiskUse() {
         return allowDiskUse;
     }
 
@@ -639,7 +640,7 @@ public class FindOperation<T> implements AsyncReadOperation<AsyncBatchCursor<T>>
      * @param allowDiskUse the allowDiskUse
      * @return this
      */
-    public FindOperation<T> allowDiskUse(final boolean allowDiskUse) {
+    public FindOperation<T> allowDiskUse(@Nullable final Boolean allowDiskUse) {
         this.allowDiskUse = allowDiskUse;
         return this;
     }
@@ -871,8 +872,8 @@ public class FindOperation<T> implements AsyncReadOperation<AsyncBatchCursor<T>>
         if (showRecordId) {
             commandDocument.put("showRecordId", BsonBoolean.TRUE);
         }
-        if (allowDiskUse && (description != null && serverIsAtLeastVersionThreeDotTwo(description))) {
-            commandDocument.put("allowDiskUse", BsonBoolean.TRUE);
+        if (allowDiskUse != null) {
+            commandDocument.put("allowDiskUse", BsonBoolean.valueOf(allowDiskUse));
         }
         return commandDocument;
     }

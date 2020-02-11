@@ -178,7 +178,7 @@ class AsyncFindIterableImpl<TDocument, TResult> extends AsyncMongoIterableImpl<T
     }
 
     @Override
-    public AsyncFindIterable<TResult> allowDiskUse(final boolean allowDiskUse) {
+    public AsyncFindIterable<TResult> allowDiskUse(final Boolean allowDiskUse) {
         findOptions.allowDiskUse(allowDiskUse);
         return this;
     }

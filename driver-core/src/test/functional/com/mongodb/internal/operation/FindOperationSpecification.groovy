@@ -95,7 +95,7 @@ class FindOperationSpecification extends OperationFunctionalSpecification {
         !operation.isOplogReplay()
         !operation.isPartial()
         !operation.isSlaveOk()
-        !operation.isAllowDiskUse()
+        operation.isAllowDiskUse() == null
     }
 
     def 'should set optional values correctly'() {

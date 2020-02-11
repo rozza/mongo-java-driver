@@ -52,7 +52,7 @@ public final class FindOptions {
     private Bson min;
     private boolean returnKey;
     private boolean showRecordId;
-    private boolean allowDiskUse;
+    private Boolean allowDiskUse;
 
     /**
      * Construct a new instance.
@@ -517,7 +517,7 @@ public final class FindOptions {
      *
      * @return the allowDiskUse value
      */
-    public boolean isAllowDiskUse() {
+    public Boolean isAllowDiskUse() {
         return allowDiskUse;
     }
 
@@ -530,7 +530,7 @@ public final class FindOptions {
      * @param allowDiskUse the allowDiskUse
      * @return this
      */
-    public FindOptions allowDiskUse(final boolean allowDiskUse) {
+    public FindOptions allowDiskUse(@Nullable final Boolean allowDiskUse) {
         this.allowDiskUse = allowDiskUse;
         return this;
     }

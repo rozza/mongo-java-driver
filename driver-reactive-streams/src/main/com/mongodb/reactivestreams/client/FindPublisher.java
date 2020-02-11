@@ -18,6 +18,7 @@ package com.mongodb.reactivestreams.client;
 
 import com.mongodb.CursorType;
 import com.mongodb.client.model.Collation;
+import com.mongodb.lang.Nullable;
 import org.bson.conversions.Bson;
 import org.reactivestreams.Publisher;
 
@@ -242,5 +243,5 @@ public interface FindPublisher<TResult> extends Publisher<TResult> {
      * @since 4.1
      * @mongodb.server.release 4.4
      */
-    FindPublisher<TResult> allowDiskUse(boolean allowDiskUse);
+    FindPublisher<TResult> allowDiskUse(@Nullable Boolean allowDiskUse);
 }

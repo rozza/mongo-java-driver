@@ -19,6 +19,7 @@ package com.mongodb.reactivestreams.client.internal;
 import com.mongodb.CursorType;
 import com.mongodb.client.model.Collation;
 import com.mongodb.internal.async.client.AsyncFindIterable;
+import com.mongodb.lang.Nullable;
 import com.mongodb.reactivestreams.client.FindPublisher;
 import org.bson.conversions.Bson;
 import org.reactivestreams.Publisher;
@@ -163,7 +164,7 @@ final class FindPublisherImpl<TResult> implements FindPublisher<TResult> {
     }
 
     @Override
-    public FindPublisher<TResult> allowDiskUse(final boolean allowDiskUse) {
+    public FindPublisher<TResult> allowDiskUse(@Nullable final Boolean allowDiskUse) {
         wrapped.allowDiskUse(allowDiskUse);
         return this;
     }
