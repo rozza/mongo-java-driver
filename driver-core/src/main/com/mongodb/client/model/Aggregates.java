@@ -429,7 +429,6 @@ public final class Aggregates {
      * @param destination the destination details
      * @return the $out pipeline stage
      * @mongodb.driver.manual reference/operator/aggregation/out/  $out
-     * @mongodb.server.release 4.4
      * @since 4.1
      */
     public static Bson out(final Bson destination) {

@@ -56,7 +56,6 @@ class AsyncAggregateIterableImpl<TDocument, TResult> extends AsyncMongoIterableI
     private Collation collation;
     private String comment;
     private Bson hint;
-    private BsonDocument lastPipelineStage;
 
     AsyncAggregateIterableImpl(@Nullable final AsyncClientSession clientSession, final String databaseName,
                                final Class<TDocument> documentClass, final Class<TResult> resultClass, final CodecRegistry codecRegistry,
@@ -85,7 +84,8 @@ class AsyncAggregateIterableImpl<TDocument, TResult> extends AsyncMongoIterableI
 
     @Override
     public void toCollection(final SingleResultCallback<Void> callback) {
-        if (!getLastPipelineStage().containsKey("$out") && !getLastPipelineStage().containsKey("$merge")) {
+        BsonDocument lastPipelineStage = getLastPipelineStage();
+        if (lastPipelineStage == null || !lastPipelineStage.containsKey("$out") && !lastPipelineStage.containsKey("$merge")) {
             throw new IllegalStateException("The last stage of the aggregation pipeline must be $out or $merge");
         }
 
@@ -168,29 +168,29 @@ class AsyncAggregateIterableImpl<TDocument, TResult> extends AsyncMongoIterableI
 
     }
 
+    @Nullable
     private BsonDocument getLastPipelineStage() {
-        if (lastPipelineStage == null) {
-            if (pipeline.isEmpty()) {
-                lastPipelineStage = new BsonDocument();
-            } else {
-                Bson lastStage = notNull("last pipeline stage", pipeline.get(pipeline.size() - 1));
-                lastPipelineStage = lastStage.toBsonDocument(documentClass, codecRegistry);
-            }
+        if (pipeline.isEmpty()) {
+            return null;
+        } else {
+            Bson lastStage = notNull("last pipeline stage", pipeline.get(pipeline.size() - 1));
+            return lastStage.toBsonDocument(documentClass, codecRegistry);
         }
-        return lastPipelineStage;
     }
 
     @Nullable
     private MongoNamespace getOutNamespace() {
-        BsonDocument lastStageDocument = getLastPipelineStage();
-
-        if (lastStageDocument.containsKey("$out")) {
-            if (!lastStageDocument.get("$out").isString()) {
+        BsonDocument lastPipelineStage = getLastPipelineStage();
+        if (lastPipelineStage == null) {
+            return null;
+        }
+        if (lastPipelineStage.containsKey("$out")) {
+            if (!lastPipelineStage.get("$out").isString()) {
                 throw new IllegalStateException("Cannot return a cursor when the value for $out stage is not a string");
             }
-            return new MongoNamespace(namespace.getDatabaseName(), lastStageDocument.getString("$out").getValue());
-        } else if (lastStageDocument.containsKey("$merge")) {
-            BsonDocument mergeDocument = lastStageDocument.getDocument("$merge");
+            return new MongoNamespace(namespace.getDatabaseName(), lastPipelineStage.getString("$out").getValue());
+        } else if (lastPipelineStage.containsKey("$merge")) {
+            BsonDocument mergeDocument = lastPipelineStage.getDocument("$merge");
             if (mergeDocument.isDocument("into")) {
                 BsonDocument intoDocument = mergeDocument.getDocument("into");
                 return new MongoNamespace(intoDocument.getString("db", new BsonString(namespace.getDatabaseName())).getValue(),
