@@ -165,7 +165,7 @@ public class BulkWriteBatchCombiner {
         }
         return new MongoBulkWriteException(createResult(), new ArrayList<>(writeErrors),
                 writeConcernErrors.isEmpty() ? null : writeConcernErrors.get(writeConcernErrors.size() - 1),
-                serverAddress);
+                serverAddress, errorLabels);
     }
 
     private void mergeWriteConcernError(final WriteConcernError writeConcernError) {

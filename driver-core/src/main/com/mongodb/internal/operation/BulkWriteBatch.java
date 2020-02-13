@@ -327,7 +327,8 @@ final class BulkWriteBatch {
         }
 
         return new MongoBulkWriteException(getBulkWriteResult(result), getWriteErrors(result),
-                getWriteConcernError(result), connectionDescription.getServerAddress());
+                getWriteConcernError(result), connectionDescription.getServerAddress(),
+                result.getArray("errorLabels", new BsonArray()).stream().map(i -> i.asString().getValue()).collect(Collectors.toSet()));
     }
 
     @SuppressWarnings("unchecked")
