@@ -104,12 +104,14 @@ final class MapReducePublisherImpl<TResult> implements MapReducePublisher<TResul
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     public MapReducePublisher<TResult> sharded(final boolean sharded) {
         wrapped.sharded(sharded);
         return this;
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     public MapReducePublisher<TResult> nonAtomic(final boolean nonAtomic) {
         wrapped.nonAtomic(nonAtomic);
         return this;

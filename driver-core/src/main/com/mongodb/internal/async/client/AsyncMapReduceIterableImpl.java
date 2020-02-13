@@ -148,12 +148,14 @@ class AsyncMapReduceIterableImpl<TDocument, TResult> extends AsyncMongoIterableI
     }
 
     @Override
+    @Deprecated
     public AsyncMapReduceIterable<TResult> sharded(final boolean sharded) {
         this.sharded = sharded;
         return this;
     }
 
     @Override
+    @Deprecated
     public AsyncMapReduceIterable<TResult> nonAtomic(final boolean nonAtomic) {
         this.nonAtomic = nonAtomic;
         return this;

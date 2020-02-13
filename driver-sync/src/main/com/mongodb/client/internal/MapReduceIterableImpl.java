@@ -157,12 +157,14 @@ class MapReduceIterableImpl<TDocument, TResult> extends MongoIterableImpl<TResul
     }
 
     @Override
+    @Deprecated
     public MapReduceIterable<TResult> sharded(final boolean sharded) {
         this.sharded = sharded;
         return this;
     }
 
     @Override
+    @Deprecated
     public MapReduceIterable<TResult> nonAtomic(final boolean nonAtomic) {
         this.nonAtomic = nonAtomic;
         return this;
