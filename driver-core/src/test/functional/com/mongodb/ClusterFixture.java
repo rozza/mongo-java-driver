@@ -343,7 +343,7 @@ public final class ClusterFixture {
                 ServerSettings.builder().build(),
                 ConnectionPoolSettings.builder().applyConnectionString(connectionString).build(),
                 streamFactory,
-                new SocketStreamFactory(SocketSettings.builder().build(), getSslSettings(connectionString)),
+                new SocketStreamFactory(SocketSettings.builder().readTimeout(5, SECONDS).build(), getSslSettings(connectionString)),
                 connectionString.getCredential(),
                 null, null, null,
                 connectionString.getCompressorList());

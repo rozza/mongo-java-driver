@@ -90,6 +90,20 @@ public interface InternalConnection extends BufferProvider {
      */
     <T> T sendAndReceive(CommandMessage message, Decoder<T> decoder, SessionContext sessionContext);
 
+    <T> void send(CommandMessage message, Decoder<T> decoder, SessionContext sessionContext);
+
+    <T> T receive(Decoder<T> decoder, SessionContext sessionContext);
+
+    default boolean supportsAdditionalTimeout() {
+        return false;
+    }
+
+    default <T> T receive(Decoder<T> decoder, SessionContext sessionContext, int additionalTimeout) {
+        throw new UnsupportedOperationException();
+    }
+
+    boolean hasMoreToCome();
+
     /**
      * Send a command message to the server.
      *
@@ -132,5 +146,4 @@ public interface InternalConnection extends BufferProvider {
      * @param callback the callback to invoke on completion
      */
     void receiveMessageAsync(int responseTo, SingleResultCallback<ResponseBuffers> callback);
-
 }

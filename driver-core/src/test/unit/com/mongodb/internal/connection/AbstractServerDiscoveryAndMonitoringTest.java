@@ -42,6 +42,8 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import static com.mongodb.connection.ServerConnectionState.CONNECTING;
+import static com.mongodb.internal.connection.ClusterableServer.ConnectionState.AFTER_HANDSHAKE;
+import static com.mongodb.internal.connection.ClusterableServer.ConnectionState.BEFORE_HANDSHAKE;
 import static com.mongodb.internal.connection.DescriptionHelper.createServerDescription;
 import static com.mongodb.internal.connection.ProtocolHelper.getCommandFailureException;
 import static org.junit.Assert.assertEquals;
@@ -105,10 +107,10 @@ public class AbstractServerDiscoveryAndMonitoringTest {
 
         switch (when) {
             case "beforeHandshakeCompletes":
-                server.invalidate(errorGeneration);
+                server.invalidate(BEFORE_HANDSHAKE, exception, errorGeneration, maxWireVersion);
                 break;
             case "afterHandshakeCompletes":
-                server.invalidate(exception, errorGeneration, maxWireVersion);
+                server.invalidate(AFTER_HANDSHAKE, exception, errorGeneration, maxWireVersion);
                 break;
             default:
                 throw new UnsupportedOperationException("Unsupported `when` value: " + when);
