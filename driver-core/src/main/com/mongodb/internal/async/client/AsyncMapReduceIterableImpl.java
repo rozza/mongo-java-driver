@@ -42,6 +42,7 @@ import java.util.concurrent.TimeUnit;
 import static com.mongodb.ReadPreference.primary;
 import static com.mongodb.assertions.Assertions.notNull;
 
+@SuppressWarnings("deprecation")
 class AsyncMapReduceIterableImpl<TDocument, TResult> extends AsyncMongoIterableImpl<TResult> implements AsyncMapReduceIterable<TResult> {
     private final AsyncOperations<TDocument> operations;
     private final MongoNamespace namespace;
@@ -148,14 +149,12 @@ class AsyncMapReduceIterableImpl<TDocument, TResult> extends AsyncMongoIterableI
     }
 
     @Override
-    @Deprecated
     public AsyncMapReduceIterable<TResult> sharded(final boolean sharded) {
         this.sharded = sharded;
         return this;
     }
 
     @Override
-    @Deprecated
     public AsyncMapReduceIterable<TResult> nonAtomic(final boolean nonAtomic) {
         this.nonAtomic = nonAtomic;
         return this;
