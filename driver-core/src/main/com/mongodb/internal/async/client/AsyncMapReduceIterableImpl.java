@@ -42,7 +42,6 @@ import java.util.concurrent.TimeUnit;
 import static com.mongodb.ReadPreference.primary;
 import static com.mongodb.assertions.Assertions.notNull;
 
-@SuppressWarnings("deprecation")
 class AsyncMapReduceIterableImpl<TDocument, TResult> extends AsyncMongoIterableImpl<TResult> implements AsyncMapReduceIterable<TResult> {
     private final AsyncOperations<TDocument> operations;
     private final MongoNamespace namespace;
