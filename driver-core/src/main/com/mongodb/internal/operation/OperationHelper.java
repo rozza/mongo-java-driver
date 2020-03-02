@@ -462,7 +462,11 @@ final class OperationHelper {
         public void onResult(final T result, final Throwable t) {
             for (ReferenceCounted cur : referenceCounted) {
                 if (cur != null) {
-                    cur.release();
+                    try {
+                        cur.release();
+                    } catch (IllegalStateException ise) {
+                        // Ignore IllegalStateExceptions from releasing potentially unretained resources
+                    }
                 }
             }
             wrapped.onResult(result, t);
