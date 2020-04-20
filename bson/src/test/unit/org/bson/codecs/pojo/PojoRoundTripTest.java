@@ -176,9 +176,8 @@ public final class PojoRoundTripTest extends PojoTestCase {
                         new ConcreteStandAloneAbstractInterfaceModel("C"))),
                 getPojoCodecProviderBuilder(InterfaceBasedModel.class, AbstractInterfaceModel.class,
                         ConcreteAndNestedAbstractInterfaceModel.class, ConcreteStandAloneAbstractInterfaceModel.class),
-                "{'_t': 'org.bson.codecs.pojo.entities.ConcreteAndNestedAbstractInterfaceModel', 'name': 'A', "
-                        + "'child': {'_t': 'org.bson.codecs.pojo.entities.ConcreteAndNestedAbstractInterfaceModel', 'name': 'B', "
-                        + "  'child': {'_t': 'org.bson.codecs.pojo.entities.ConcreteStandAloneAbstractInterfaceModel', 'name': 'C'}}}}"));
+                "{'_t': 'ConcreteAndNested', 'name': 'A', 'child': {'_t': 'ConcreteAndNested', 'name': 'B', "
+                        + "  'child': {'_t': 'ConcreteStandAlone', 'name': 'C'}}}}"));
 
         data.add(new TestData("Concrete generic interface model", new ConcreteInterfaceGenericModel("someValue"),
                 getPojoCodecProviderBuilder(ConcreteInterfaceGenericModel.class), "{propertyA: 'someValue'}"));

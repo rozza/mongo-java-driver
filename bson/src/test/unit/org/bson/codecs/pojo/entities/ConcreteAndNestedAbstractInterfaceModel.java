@@ -17,10 +17,12 @@
 package org.bson.codecs.pojo.entities;
 
 
+import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 import org.bson.codecs.pojo.annotations.BsonProperty;
 
 import java.util.List;
 
+@BsonDiscriminator("ConcreteAndNested")
 public final class ConcreteAndNestedAbstractInterfaceModel extends AbstractInterfaceModel {
     @BsonProperty(useDiscriminator = true)
     private InterfaceBasedModel child;

@@ -21,6 +21,7 @@ import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.diagnostics.Logger;
 import org.bson.diagnostics.Loggers;
 
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -80,11 +81,12 @@ public final class PojoCodecProvider implements CodecProvider {
         } else if (automatic || (clazz.getPackage() != null && packages.contains(clazz.getPackage().getName()))) {
             try {
                 classModel = createClassModel(clazz, conventions);
-                if (clazz.isInterface() || !classModel.getPropertyModels().isEmpty()) {
-                    discriminatorLookup.addClassModel(classModel);
-                    return new AutomaticPojoCodec<T>(new PojoCodecImpl<T>(classModel, registry, propertyCodecProviders,
-                            discriminatorLookup));
+                if (Modifier.isInterface(clazz.getModifiers()) || Modifier.isAbstract(clazz.getModifiers())
+                        || !classModel.getPropertyModels().isEmpty()) {
+                    discriminatorLookup.addAutomaticClassModel(classModel);
+                    return new AutomaticPojoCodec<>(new PojoCodecImpl<>(classModel, registry, propertyCodecProviders, discriminatorLookup));
                 }
+
             } catch (Exception e) {
                 LOGGER.warn(format("Cannot use '%s' with the PojoCodec.", clazz.getSimpleName()), e);
                 return null;

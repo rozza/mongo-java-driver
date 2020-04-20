@@ -16,6 +16,9 @@
 
 package org.bson.codecs.pojo.entities;
 
+import org.bson.codecs.pojo.annotations.BsonDiscriminator;
+
+@BsonDiscriminator("ConcreteStandAlone")
 public final class ConcreteStandAloneAbstractInterfaceModel extends AbstractInterfaceModel {
 
     public ConcreteStandAloneAbstractInterfaceModel() {

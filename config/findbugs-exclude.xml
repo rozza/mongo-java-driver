@@ -99,6 +99,11 @@
         <Bug pattern="DE_MIGHT_IGNORE"/>
     </Match>
 
+    <Match>
+        <Class name="org.bson.codecs.pojo.DiscriminatorLookup"/>
+        <Bug pattern="REC_CATCH_EXCEPTION"/>
+    </Match>
+
     <!-- Test exclusions -->
     <!-- All bugs in test classes, except for JUnit-specific bugs -->
     <Match>

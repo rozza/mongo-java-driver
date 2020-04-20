@@ -270,9 +270,7 @@ public final class PojoCustomTest extends PojoTestCase {
         roundTrip(builder,
                 new ConcreteAndNestedAbstractInterfaceModel("A",
                         singletonList(new ConcreteStandAloneAbstractInterfaceModel("B"))),
-                "{'_t': 'org.bson.codecs.pojo.entities.ConcreteAndNestedAbstractInterfaceModel', 'name': 'A', "
-                        + "  'wildcardList': [{'_t': 'org.bson.codecs.pojo.entities.ConcreteStandAloneAbstractInterfaceModel', "
-                        + "'name': 'B'}]}");
+                "{'_t': 'ConcreteAndNested', 'name': 'A', 'wildcardList': [{'_t': 'ConcreteStandAlone', 'name': 'B'}]}");
     }
 
     @Test(expected = CodecConfigurationException.class)
