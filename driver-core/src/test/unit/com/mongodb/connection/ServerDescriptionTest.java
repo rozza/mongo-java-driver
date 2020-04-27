@@ -19,7 +19,6 @@ package com.mongodb.connection;
 import com.mongodb.ServerAddress;
 import com.mongodb.Tag;
 import com.mongodb.TagSet;
-import org.bson.BsonDocument;
 import org.bson.types.ObjectId;
 import org.junit.Test;
 
@@ -249,12 +248,6 @@ public class ServerDescriptionTest {
         // roundTripTime is considered equals and equivalent state
         otherDescription = createBuilder().roundTripTime(62, TimeUnit.MILLISECONDS).build();
         assertEquals(builder.build(), otherDescription);
-
-        TopologyVersion topologyVersion = new TopologyVersion(
-                BsonDocument.parse("{processId: {$oid: '000000000000000000000001'}, counter: {'$numberLong': '1'}}"));
-        otherDescription = createBuilder().topologyVersion(topologyVersion).build();
-        assertNotEquals(builder.build(), otherDescription);
-        assertEquals(builder.topologyVersion(topologyVersion).build(), otherDescription);
     }
 
     @Test

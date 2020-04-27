@@ -25,7 +25,6 @@ import com.mongodb.connection.ClusterId;
 import com.mongodb.connection.ClusterSettings;
 import com.mongodb.connection.ClusterType;
 import com.mongodb.connection.ServerDescription;
-import com.mongodb.connection.TopologyVersion;
 import com.mongodb.diagnostics.logging.Logger;
 import com.mongodb.diagnostics.logging.Loggers;
 import com.mongodb.event.ClusterDescriptionChangedEvent;
@@ -206,25 +205,18 @@ public abstract class AbstractMultiServerCluster extends BaseCluster {
                     }
                 }
 
-                TopologyVersion newTopologyVersion = newDescription.getTopologyVersion();
-                boolean isStale = newTopologyVersion != null
-                        && newTopologyVersion.compareTo(event.getPreviousDescription().getTopologyVersion()) < 0;
-                if (isStale) {
-                    shouldUpdateDescription = false;
-                } else {
-                    switch (clusterType) {
-                        case REPLICA_SET:
-                            shouldUpdateDescription = handleReplicaSetMemberChanged(newDescription);
-                            break;
-                        case SHARDED:
-                            shouldUpdateDescription = handleShardRouterChanged(newDescription);
-                            break;
-                        case STANDALONE:
-                            shouldUpdateDescription = handleStandAloneChanged(newDescription);
-                            break;
-                        default:
-                            break;
-                    }
+                switch (clusterType) {
+                    case REPLICA_SET:
+                        shouldUpdateDescription = handleReplicaSetMemberChanged(newDescription);
+                        break;
+                    case SHARDED:
+                        shouldUpdateDescription = handleShardRouterChanged(newDescription);
+                        break;
+                    case STANDALONE:
+                        shouldUpdateDescription = handleStandAloneChanged(newDescription);
+                        break;
+                    default:
+                        break;
                 }
             }
 

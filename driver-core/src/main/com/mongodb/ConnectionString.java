@@ -1112,7 +1112,7 @@ public class ConnectionString {
      * Indicates if the connection should be a direct connection
      *
      * @return true if a direct connection
-     * @since 4.4
+     * @since 4.1
      */
     @Nullable
     public Boolean isDirectConnection() {

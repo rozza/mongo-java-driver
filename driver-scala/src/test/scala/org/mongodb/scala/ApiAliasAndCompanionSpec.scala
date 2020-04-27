@@ -180,8 +180,7 @@ class ApiAliasAndCompanionSpec extends BaseSpec {
       "ServerVersion",
       "SocketStreamFactory",
       "Stream",
-      "SplittablePayload",
-      "TopologyVersion"
+      "SplittablePayload"
     )
 
     val filters = FilterBuilder.parse("-com.mongodb.connection.netty.*")

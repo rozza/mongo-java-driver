@@ -28,7 +28,6 @@ import org.bson.types.ObjectId;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashSet;
-import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
@@ -90,7 +89,6 @@ public class ServerDescription {
     private final long lastUpdateTimeNanos;
 
     private final Integer logicalSessionTimeoutMinutes;
-    private final TopologyVersion topologyVersion;
 
     private final Throwable exception;
 
@@ -108,7 +106,7 @@ public class ServerDescription {
      *
      * @param serverDescription the ServerDescription to base the builder from
      * @return a new Builder for ServerDescription.
-     * @since 4.4
+     * @since 4.1
      */
     public static Builder builder(final ServerDescription serverDescription) {
         return new Builder(serverDescription);
@@ -136,18 +134,6 @@ public class ServerDescription {
     }
 
     /**
-     * Gets the topology version of the server
-     *
-     * @return the topology version or null
-     * @mongodb.server.release 4.4
-     * @since 4.1
-     */
-    @Nullable
-    public TopologyVersion getTopologyVersion() {
-        return topologyVersion;
-    }
-
-    /**
      * A builder for creating ServerDescription.
      */
     @NotThreadSafe
@@ -172,7 +158,6 @@ public class ServerDescription {
         private Date lastWriteDate;
         private long lastUpdateTimeNanos = Time.nanoTime();
         private Integer logicalSessionTimeoutMinutes;
-        private TopologyVersion topologyVersion;
 
         private Throwable exception;
 
@@ -201,7 +186,6 @@ public class ServerDescription {
             this.lastUpdateTimeNanos = serverDescription.lastUpdateTimeNanos;
             this.logicalSessionTimeoutMinutes = serverDescription.logicalSessionTimeoutMinutes;
             this.exception = serverDescription.exception;
-            this.topologyVersion = serverDescription.topologyVersion;
         }
 
         /**
@@ -447,18 +431,6 @@ public class ServerDescription {
          */
         public Builder exception(final Throwable exception) {
             this.exception = exception;
-            return this;
-        }
-
-        /**
-         * Sets the topologyVersion
-         * @param topologyVersion the topology version
-         * @return this
-         * @mongodb.server.release 4.4
-         * @since 4.1
-         */
-        public Builder topologyVersion(final TopologyVersion topologyVersion) {
-            this.topologyVersion = topologyVersion;
             return this;
         }
 
@@ -791,6 +763,12 @@ public class ServerDescription {
         return exception;
     }
 
+    /**
+     * Returns true if this instance is equals to @code{o}.  Note that equality is defined to NOT include the round trip time.
+     *
+     * @param o the object to compare to
+     * @return true if this instance is equals to @code{o}
+     */
     @Override
     public boolean equals(final Object o) {
         if (this == o) {
@@ -799,38 +777,111 @@ public class ServerDescription {
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
-        final ServerDescription that = (ServerDescription) o;
-        return maxDocumentSize == that.maxDocumentSize
-                && ok == that.ok
-                && lastUpdateTimeNanos == that.lastUpdateTimeNanos
-                && minWireVersion == that.minWireVersion
-                && maxWireVersion == that.maxWireVersion
-                && Objects.equals(address, that.address)
-                && Objects.equals(type, that.type)
-                && Objects.equals(canonicalAddress, that.canonicalAddress)
-                && Objects.equals(hosts, that.hosts)
-                && Objects.equals(passives, that.passives)
-                && Objects.equals(arbiters, that.arbiters)
-                && Objects.equals(primary, that.primary)
-                && Objects.equals(tagSet, that.tagSet)
-                && Objects.equals(setName, that.setName)
-                && Objects.equals(state, that.state)
-                && Objects.equals(electionId, that.electionId)
-                && Objects.equals(setVersion, that.setVersion)
-                && Objects.equals(lastWriteDate, that.lastWriteDate)
-                && Objects.equals(logicalSessionTimeoutMinutes, that.logicalSessionTimeoutMinutes)
-                && Objects.equals(topologyVersion, that.topologyVersion)
-                && Objects.equals(exception != null ? exception.getClass() : null,
-                                  that.exception != null ? that.exception.getClass() : null)
-                && Objects.equals(exception != null ? exception.getMessage() : null,
-                                  that.exception != null ? that.exception.getMessage() : null);
+
+        ServerDescription that = (ServerDescription) o;
+
+        if (maxDocumentSize != that.maxDocumentSize) {
+            return false;
+        }
+        if (ok != that.ok) {
+            return false;
+        }
+        if (!address.equals(that.address)) {
+            return false;
+        }
+        if (!arbiters.equals(that.arbiters)) {
+            return false;
+        }
+        if (canonicalAddress != null ? !canonicalAddress.equals(that.canonicalAddress) : that.canonicalAddress != null) {
+            return false;
+        }
+        if (!hosts.equals(that.hosts)) {
+            return false;
+        }
+        if (!passives.equals(that.passives)) {
+            return false;
+        }
+        if (primary != null ? !primary.equals(that.primary) : that.primary != null) {
+            return false;
+        }
+        if (setName != null ? !setName.equals(that.setName) : that.setName != null) {
+            return false;
+        }
+        if (state != that.state) {
+            return false;
+        }
+        if (!tagSet.equals(that.tagSet)) {
+            return false;
+        }
+        if (type != that.type) {
+            return false;
+        }
+        if (minWireVersion != that.minWireVersion) {
+            return false;
+        }
+        if (maxWireVersion != that.maxWireVersion) {
+            return false;
+        }
+        if (electionId != null ? !electionId.equals(that.electionId) : that.electionId != null) {
+            return false;
+        }
+        if (setVersion != null ? !setVersion.equals(that.setVersion) : that.setVersion != null) {
+            return false;
+        }
+        if (lastWriteDate != null ? !lastWriteDate.equals(that.lastWriteDate) : that.lastWriteDate != null) {
+            return false;
+        }
+
+        if (lastUpdateTimeNanos != that.lastUpdateTimeNanos) {
+            return false;
+        }
+
+        if (logicalSessionTimeoutMinutes != null
+                    ? !logicalSessionTimeoutMinutes.equals(that.logicalSessionTimeoutMinutes)
+                    : that.logicalSessionTimeoutMinutes != null) {
+            return false;
+        }
+
+        // Compare class equality and message as exceptions rarely override equals
+        Class<?> thisExceptionClass = exception != null ? exception.getClass() : null;
+        Class<?> thatExceptionClass = that.exception != null ? that.exception.getClass() : null;
+        if (thisExceptionClass != null ? !thisExceptionClass.equals(thatExceptionClass) : thatExceptionClass != null) {
+            return false;
+        }
+
+        String thisExceptionMessage = exception != null ? exception.getMessage() : null;
+        String thatExceptionMessage = that.exception != null ? that.exception.getMessage() : null;
+        if (thisExceptionMessage != null ? !thisExceptionMessage.equals(thatExceptionMessage) : thatExceptionMessage != null) {
+            return false;
+        }
+
+        return true;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(address, type, canonicalAddress, hosts, passives, arbiters, primary, maxDocumentSize, tagSet, setName,
-                roundTripTimeNanos, ok, state, minWireVersion, maxWireVersion, electionId, setVersion, logicalSessionTimeoutMinutes,
-                topologyVersion, exception != null ? exception.getClass() : null, exception != null ? exception.getMessage() : null);
+        int result = address.hashCode();
+        result = 31 * result + type.hashCode();
+        result = 31 * result + (canonicalAddress != null ? canonicalAddress.hashCode() : 0);
+        result = 31 * result + hosts.hashCode();
+        result = 31 * result + passives.hashCode();
+        result = 31 * result + arbiters.hashCode();
+        result = 31 * result + (primary != null ? primary.hashCode() : 0);
+        result = 31 * result + maxDocumentSize;
+        result = 31 * result + tagSet.hashCode();
+        result = 31 * result + (setName != null ? setName.hashCode() : 0);
+        result = 31 * result + (electionId != null ? electionId.hashCode() : 0);
+        result = 31 * result + (setVersion != null ? setVersion.hashCode() : 0);
+        result = 31 * result + (lastWriteDate != null ? lastWriteDate.hashCode() : 0);
+        result = 31 * result + (int) (lastUpdateTimeNanos ^ (lastUpdateTimeNanos >>> 32));
+        result = 31 * result + (ok ? 1 : 0);
+        result = 31 * result + state.hashCode();
+        result = 31 * result + minWireVersion;
+        result = 31 * result + maxWireVersion;
+        result = 31 * result + (logicalSessionTimeoutMinutes != null ? logicalSessionTimeoutMinutes.hashCode() : 0);
+        result = 31 * result + (exception == null ? 0 : exception.getClass().hashCode());
+        result = 31 * result + (exception == null ? 0 : exception.getMessage().hashCode());
+        return result;
     }
 
     @Override
@@ -863,7 +914,6 @@ public class ServerDescription {
                   + ", lastUpdateTimeNanos=" + lastUpdateTimeNanos
                 : "")
                + (exception == null ? "" : ", exception=" + translateExceptionToString())
-               + (topologyVersion == null ? "" : ", topologyVersion=" + topologyVersion)
                + '}';
     }
 
@@ -927,6 +977,5 @@ public class ServerDescription {
         lastUpdateTimeNanos = builder.lastUpdateTimeNanos;
         logicalSessionTimeoutMinutes = builder.logicalSessionTimeoutMinutes;
         exception = builder.exception;
-        topologyVersion = builder.topologyVersion;
     }
 }
