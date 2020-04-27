@@ -23,16 +23,16 @@ import com.mongodb.connection.ClusterId;
 import com.mongodb.connection.ClusterSettings;
 import com.mongodb.connection.ClusterType;
 import com.mongodb.connection.ServerDescription;
+import com.mongodb.connection.ServerType;
 import com.mongodb.diagnostics.logging.Logger;
 import com.mongodb.diagnostics.logging.Loggers;
 import com.mongodb.event.ClusterDescriptionChangedEvent;
 import com.mongodb.event.ServerDescriptionChangedEvent;
 import com.mongodb.event.ServerListener;
 
-import java.util.Collections;
-
 import static com.mongodb.assertions.Assertions.isTrue;
 import static java.lang.String.format;
+import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 
 /**
@@ -82,19 +82,21 @@ public final class SingleServerCluster extends BaseCluster {
     private class DefaultServerStateListener implements ServerListener {
         @Override
         public void serverDescriptionChanged(final ServerDescriptionChangedEvent event) {
-            ServerDescription descriptionToPublish = event.getNewDescription();
-            if (event.getNewDescription().isOk()) {
+            ServerDescription newDescription = event.getNewDescription();
+            if (newDescription.isOk()) {
                 if (getSettings().getRequiredClusterType() != ClusterType.UNKNOWN
-                        && getSettings().getRequiredClusterType() != event.getNewDescription().getClusterType()) {
-                    descriptionToPublish = null;
+                        && getSettings().getRequiredClusterType() != newDescription.getClusterType()) {
+                    newDescription = null;
                 } else if (getSettings().getRequiredClusterType() == ClusterType.REPLICA_SET
                         && getSettings().getRequiredReplicaSetName() != null) {
-                    if (!getSettings().getRequiredReplicaSetName().equals(event.getNewDescription().getSetName())) {
-                        descriptionToPublish = null;
+                    if (!getSettings().getRequiredReplicaSetName().equals(newDescription.getSetName())) {
+                        newDescription = ServerDescription.builder(newDescription).type(ServerType.UNKNOWN).setName(null).build();
+                        publishDescription(ClusterType.UNKNOWN, newDescription);
+                        return;
                     }
                 }
             }
-            publishDescription(descriptionToPublish);
+            publishDescription(newDescription);
         }
     }
 
@@ -103,9 +105,13 @@ public final class SingleServerCluster extends BaseCluster {
         if (clusterType == ClusterType.UNKNOWN && serverDescription != null) {
             clusterType = serverDescription.getClusterType();
         }
+        publishDescription(clusterType, serverDescription);
+    }
+
+    private void publishDescription(final ClusterType clusterType, final ServerDescription serverDescription) {
         ClusterDescription currentDescription = getCurrentDescription();
         ClusterDescription description = new ClusterDescription(ClusterConnectionMode.SINGLE, clusterType,
-                serverDescription == null ? Collections.<ServerDescription>emptyList() : singletonList(serverDescription), getSettings(),
+                serverDescription == null ? emptyList() : singletonList(serverDescription), getSettings(),
                 getServerFactory().getSettings());
 
         updateDescription(description);

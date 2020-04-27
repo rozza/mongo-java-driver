@@ -19,6 +19,7 @@ package com.mongodb.connection;
 import com.mongodb.ServerAddress;
 import com.mongodb.Tag;
 import com.mongodb.TagSet;
+import org.bson.BsonDocument;
 import org.bson.types.ObjectId;
 import org.junit.Test;
 
@@ -164,6 +165,7 @@ public class ServerDescriptionTest {
         assertEquals(40000L, serverDescription.getLastUpdateTime(TimeUnit.NANOSECONDS));
         assertEquals((Integer) 30, serverDescription.getLogicalSessionTimeoutMinutes());
         assertEquals(exception, serverDescription.getException());
+        assertEquals(serverDescription, builder(serverDescription).build());
     }
 
     @Test
@@ -247,31 +249,12 @@ public class ServerDescriptionTest {
         // roundTripTime is considered equals and equivalent state
         otherDescription = createBuilder().roundTripTime(62, TimeUnit.MILLISECONDS).build();
         assertEquals(builder.build(), otherDescription);
-    }
 
-    private ServerDescription.Builder createBuilder() {
-        return builder().address(new ServerAddress())
-                       .type(ServerType.SHARD_ROUTER)
-                       .tagSet(new TagSet(singletonList(new Tag("dc", "ny"))))
-                       .setName("test")
-                       .maxDocumentSize(100)
-                       .roundTripTime(50000, TimeUnit.NANOSECONDS)
-                       .primary("localhost:27017")
-                       .canonicalAddress("localhost:27017")
-                       .hosts(new HashSet<String>(asList("localhost:27017", "localhost:27018")))
-                       .passives(new HashSet<String>(singletonList("localhost:27019")))
-                       .arbiters(new HashSet<String>(singletonList("localhost:27020")))
-                       .ok(true)
-                       .state(CONNECTED)
-                       .minWireVersion(1)
-                       .lastWriteDate(new Date())
-                       .maxWireVersion(2)
-                       .electionId(new ObjectId("abcdabcdabcdabcdabcdabcd"))
-                       .setVersion(2)
-                       .lastUpdateTimeNanos(1)
-                       .lastWriteDate(new Date(42))
-                       .logicalSessionTimeoutMinutes(25)
-                       .roundTripTime(56, TimeUnit.MILLISECONDS);
+        TopologyVersion topologyVersion = new TopologyVersion(
+                BsonDocument.parse("{processId: {$oid: '000000000000000000000001'}, counter: {'$numberLong': '1'}}"));
+        otherDescription = createBuilder().topologyVersion(topologyVersion).build();
+        assertNotEquals(builder.build(), otherDescription);
+        assertEquals(builder.topologyVersion(topologyVersion).build(), otherDescription);
     }
 
     @Test
@@ -494,5 +477,33 @@ public class ServerDescriptionTest {
         assertFalse(serverDescription.isCompatibleWithDriver());
         assertFalse(serverDescription.isIncompatiblyNewerThanDriver());
         assertTrue(serverDescription.isIncompatiblyOlderThanDriver());
+    }
+
+    private static final ServerDescription SERVER_DESCRIPTION = builder()
+            .address(new ServerAddress())
+            .type(ServerType.SHARD_ROUTER)
+            .tagSet(new TagSet(singletonList(new Tag("dc", "ny"))))
+            .setName("test")
+            .maxDocumentSize(100)
+            .roundTripTime(50000, TimeUnit.NANOSECONDS)
+            .primary("localhost:27017")
+            .canonicalAddress("localhost:27017")
+            .hosts(new HashSet<String>(asList("localhost:27017", "localhost:27018")))
+            .passives(new HashSet<String>(singletonList("localhost:27019")))
+            .arbiters(new HashSet<String>(singletonList("localhost:27020")))
+            .ok(true)
+            .state(CONNECTED)
+            .minWireVersion(1)
+            .lastWriteDate(new Date())
+            .maxWireVersion(2)
+            .electionId(new ObjectId("abcdabcdabcdabcdabcdabcd"))
+            .setVersion(2)
+            .lastUpdateTimeNanos(1)
+            .lastWriteDate(new Date(42))
+            .logicalSessionTimeoutMinutes(25)
+            .roundTripTime(56, TimeUnit.MILLISECONDS).build();
+
+    private ServerDescription.Builder createBuilder() {
+        return builder(SERVER_DESCRIPTION);
     }
 }

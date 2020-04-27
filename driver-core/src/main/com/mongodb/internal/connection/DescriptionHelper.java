@@ -23,6 +23,7 @@ import com.mongodb.connection.ConnectionDescription;
 import com.mongodb.connection.ConnectionId;
 import com.mongodb.connection.ServerDescription;
 import com.mongodb.connection.ServerType;
+import com.mongodb.connection.TopologyVersion;
 import org.bson.BsonArray;
 import org.bson.BsonBoolean;
 import org.bson.BsonDocument;
@@ -91,6 +92,7 @@ public final class DescriptionHelper {
                                 .lastWriteDate(getLastWriteDate(isMasterResult))
                                 .roundTripTime(roundTripTime, NANOSECONDS)
                                 .logicalSessionTimeoutMinutes(getLogicalSessionTimeoutMinutes(isMasterResult))
+                                .topologyVersion(getTopologyVersion(isMasterResult))
                                 .ok(CommandHelper.isCommandOk(isMasterResult)).build();
     }
 
@@ -132,6 +134,11 @@ public final class DescriptionHelper {
     private static Integer getLogicalSessionTimeoutMinutes(final BsonDocument isMasterResult) {
         return isMasterResult.isNumber("logicalSessionTimeoutMinutes")
                        ? isMasterResult.getNumber("logicalSessionTimeoutMinutes").intValue() : null;
+    }
+
+    private static TopologyVersion getTopologyVersion(final BsonDocument isMasterResult) {
+        return isMasterResult.containsKey("topologyVersion") && isMasterResult.isDocument("topologyVersion")
+                ? new TopologyVersion(isMasterResult.getDocument("topologyVersion")) : null;
     }
 
     private static String getString(final BsonDocument response, final String key) {

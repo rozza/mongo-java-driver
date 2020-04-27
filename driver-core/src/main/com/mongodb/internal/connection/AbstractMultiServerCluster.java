@@ -25,6 +25,7 @@ import com.mongodb.connection.ClusterId;
 import com.mongodb.connection.ClusterSettings;
 import com.mongodb.connection.ClusterType;
 import com.mongodb.connection.ServerDescription;
+import com.mongodb.connection.TopologyVersion;
 import com.mongodb.diagnostics.logging.Logger;
 import com.mongodb.diagnostics.logging.Loggers;
 import com.mongodb.event.ClusterDescriptionChangedEvent;
@@ -197,7 +198,7 @@ public abstract class AbstractMultiServerCluster extends BaseCluster {
                 return;
             }
 
-            if (event.getNewDescription().isOk()) {
+            if (newDescription.isOk()) {
                 if (clusterType == UNKNOWN && newDescription.getType() != REPLICA_SET_GHOST) {
                     clusterType = newDescription.getClusterType();
                     if (LOGGER.isInfoEnabled()) {
@@ -205,18 +206,25 @@ public abstract class AbstractMultiServerCluster extends BaseCluster {
                     }
                 }
 
-                switch (clusterType) {
-                    case REPLICA_SET:
-                        shouldUpdateDescription = handleReplicaSetMemberChanged(newDescription);
-                        break;
-                    case SHARDED:
-                        shouldUpdateDescription = handleShardRouterChanged(newDescription);
-                        break;
-                    case STANDALONE:
-                        shouldUpdateDescription = handleStandAloneChanged(newDescription);
-                        break;
-                    default:
-                        break;
+                TopologyVersion newTopologyVersion = newDescription.getTopologyVersion();
+                boolean isStale = newTopologyVersion != null
+                        && newTopologyVersion.compareTo(event.getPreviousDescription().getTopologyVersion()) < 0;
+                if (isStale) {
+                    shouldUpdateDescription = false;
+                } else {
+                    switch (clusterType) {
+                        case REPLICA_SET:
+                            shouldUpdateDescription = handleReplicaSetMemberChanged(newDescription);
+                            break;
+                        case SHARDED:
+                            shouldUpdateDescription = handleShardRouterChanged(newDescription);
+                            break;
+                        case STANDALONE:
+                            shouldUpdateDescription = handleStandAloneChanged(newDescription);
+                            break;
+                        default:
+                            break;
+                    }
                 }
             }
 
@@ -261,7 +269,8 @@ public abstract class AbstractMultiServerCluster extends BaseCluster {
         ensureServers(newDescription);
 
         if (newDescription.getCanonicalAddress() != null
-                && !newDescription.getAddress().equals(new ServerAddress(newDescription.getCanonicalAddress()))) {
+                && !newDescription.getAddress().equals(new ServerAddress(newDescription.getCanonicalAddress()))
+                && !newDescription.isPrimary()) {
             if (LOGGER.isInfoEnabled()) {
                 LOGGER.info(format("Canonical address %s does not match server address.  Removing %s from client view of cluster",
                                    newDescription.getCanonicalAddress(), newDescription.getAddress()));
