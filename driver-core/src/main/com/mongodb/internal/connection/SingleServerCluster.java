@@ -16,6 +16,7 @@
 
 package com.mongodb.internal.connection;
 
+import com.mongodb.MongoConfigurationException;
 import com.mongodb.ServerAddress;
 import com.mongodb.connection.ClusterConnectionMode;
 import com.mongodb.connection.ClusterDescription;
@@ -90,7 +91,14 @@ public final class SingleServerCluster extends BaseCluster {
                 } else if (getSettings().getRequiredClusterType() == ClusterType.REPLICA_SET
                         && getSettings().getRequiredReplicaSetName() != null) {
                     if (!getSettings().getRequiredReplicaSetName().equals(newDescription.getSetName())) {
-                        newDescription = ServerDescription.builder(newDescription).type(ServerType.UNKNOWN).setName(null).build();
+                        newDescription = ServerDescription.builder(newDescription)
+                                .exception(new MongoConfigurationException(
+                                        format("Replica set name '%s' does not match required replica set name of '%s'",
+                                                newDescription.getSetName(), getSettings().getRequiredReplicaSetName())))
+                                .type(ServerType.UNKNOWN)
+                                .setName(null)
+                                .ok(false)
+                                .build();
                         publishDescription(ClusterType.UNKNOWN, newDescription);
                         return;
                     }

@@ -96,28 +96,6 @@ class ClusterSettingsSpecification extends Specification {
         ClusterSettings.builder(customSettings).applySettings(defaultSettings).build() == defaultSettings
     }
 
-    def 'should apply a connection string'() {
-        given:
-        def listenerOne = Mock(ClusterListener)
-        def listenerTwo = Mock(ClusterListener)
-        def defaultSettings = ClusterSettings.builder().build()
-        def customSettings = ClusterSettings.builder()
-                .hosts(hosts)
-                .mode(ClusterConnectionMode.MULTIPLE)
-                .requiredClusterType(ClusterType.REPLICA_SET)
-                .requiredReplicaSetName('foo')
-                .serverSelector(serverSelector)
-                .localThreshold(10, TimeUnit.MILLISECONDS)
-                .serverSelectionTimeout(1, TimeUnit.SECONDS)
-                .addClusterListener(listenerOne)
-                .addClusterListener(listenerTwo)
-                .build()
-
-        expect:
-        ClusterSettings.builder().applySettings(customSettings).build() == customSettings
-        ClusterSettings.builder(customSettings).applySettings(defaultSettings).build() == defaultSettings
-    }
-
     def 'when hosts contains more than one element and mode is SINGLE, should throw IllegalArgumentException'() {
         when:
         def builder = ClusterSettings.builder()
