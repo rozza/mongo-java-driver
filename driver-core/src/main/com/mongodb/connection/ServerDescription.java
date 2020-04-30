@@ -85,6 +85,8 @@ public class ServerDescription {
 
     private final ObjectId electionId;
     private final Integer setVersion;
+    private final TopologyVersion topologyVersion;
+
     private final Date lastWriteDate;
     private final long lastUpdateTimeNanos;
 
@@ -155,6 +157,7 @@ public class ServerDescription {
         private int maxWireVersion = 0;
         private ObjectId electionId;
         private Integer setVersion;
+        private TopologyVersion topologyVersion;
         private Date lastWriteDate;
         private long lastUpdateTimeNanos = Time.nanoTime();
         private Integer logicalSessionTimeoutMinutes;
@@ -182,6 +185,7 @@ public class ServerDescription {
             this.maxWireVersion = serverDescription.maxWireVersion;
             this.electionId = serverDescription.electionId;
             this.setVersion = serverDescription.setVersion;
+            this.topologyVersion = serverDescription.topologyVersion;
             this.lastWriteDate = serverDescription.lastWriteDate;
             this.lastUpdateTimeNanos = serverDescription.lastUpdateTimeNanos;
             this.logicalSessionTimeoutMinutes = serverDescription.logicalSessionTimeoutMinutes;
@@ -382,6 +386,19 @@ public class ServerDescription {
         }
 
         /**
+         * Sets the topologyVersion reported by this server.
+         *
+         * @param topologyVersion the topology version
+         * @return this
+         * @since 4.1
+         * @mongodb.server.release 4.4
+         */
+        public Builder topologyVersion(final TopologyVersion topologyVersion) {
+            this.topologyVersion = topologyVersion;
+            return this;
+        }
+
+        /**
          * Sets the lastWriteDate reported by this server
          *
          * @param lastWriteDate the last write date, which may be null for servers prior to 3.4
@@ -439,7 +456,7 @@ public class ServerDescription {
          *
          * @return a new server description
          */
-        public ServerDescription build() {
+        public ServerDescription  build() {
             return new ServerDescription(this);
         }
     }
@@ -657,6 +674,17 @@ public class ServerDescription {
     }
 
     /**
+     * The topologyVersion reported by this MongoDB server.
+     *
+     * @return the topologyVersion, which may be null
+     * @since 4.1
+     * @mongodb.server.release 4.4
+     */
+    public TopologyVersion getTopologyVersion() {
+        return topologyVersion;
+    }
+
+    /**
      * Gets the last write date.
      * @return the last write date, which may be null
      * @since 3.4
@@ -828,6 +856,10 @@ public class ServerDescription {
         if (setVersion != null ? !setVersion.equals(that.setVersion) : that.setVersion != null) {
             return false;
         }
+        if (topologyVersion != null ? !topologyVersion.equals(that.topologyVersion) : that.topologyVersion != null) {
+            return false;
+        }
+
         if (lastWriteDate != null ? !lastWriteDate.equals(that.lastWriteDate) : that.lastWriteDate != null) {
             return false;
         }
@@ -872,6 +904,7 @@ public class ServerDescription {
         result = 31 * result + (setName != null ? setName.hashCode() : 0);
         result = 31 * result + (electionId != null ? electionId.hashCode() : 0);
         result = 31 * result + (setVersion != null ? setVersion.hashCode() : 0);
+        result = 31 * result + (topologyVersion != null ? topologyVersion.hashCode() : 0);
         result = 31 * result + (lastWriteDate != null ? lastWriteDate.hashCode() : 0);
         result = 31 * result + (int) (lastUpdateTimeNanos ^ (lastUpdateTimeNanos >>> 32));
         result = 31 * result + (ok ? 1 : 0);
@@ -910,6 +943,7 @@ public class ServerDescription {
                   + ", tagSet=" + tagSet
                   + ", electionId=" + electionId
                   + ", setVersion=" + setVersion
+                  + ", topologyVersion=" + topologyVersion
                   + ", lastWriteDate=" + lastWriteDate
                   + ", lastUpdateTimeNanos=" + lastUpdateTimeNanos
                 : "")
@@ -973,6 +1007,7 @@ public class ServerDescription {
         maxWireVersion = builder.maxWireVersion;
         electionId = builder.electionId;
         setVersion = builder.setVersion;
+        topologyVersion = builder.topologyVersion;
         lastWriteDate = builder.lastWriteDate;
         lastUpdateTimeNanos = builder.lastUpdateTimeNanos;
         logicalSessionTimeoutMinutes = builder.logicalSessionTimeoutMinutes;
