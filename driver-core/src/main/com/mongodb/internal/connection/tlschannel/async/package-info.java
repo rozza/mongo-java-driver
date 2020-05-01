@@ -17,21 +17,8 @@
  * https://github.com/marianobarrios/tls-channel
  */
 
-package com.mongodb.internal.connection.tlschannel.util;
-
-import com.mongodb.internal.connection.tlschannel.TlsChannel;
-
-import javax.net.ssl.SSLException;
-
 /**
- * Thrown during {@link TlsChannel} handshake to indicate that a user-supplied function threw an exception.
+ * This package enables the usage of TLS Channel as an {@link
+ * java.nio.channels.AsynchronousByteChannel}.
  */
-public class TlsChannelCallbackException extends SSLException {
-
-    private static final long serialVersionUID = -8618230576763080549L;
-
-    public TlsChannelCallbackException(final String message, final Throwable throwable) {
-        super(message, throwable);
-    }
-
-}
+package com.mongodb.internal.connection.tlschannel.async;
