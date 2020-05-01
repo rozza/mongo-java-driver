@@ -17,6 +17,7 @@
 package com.mongodb.internal.connection;
 
 import com.mongodb.ServerAddress;
+import com.mongodb.connection.ClusterType;
 import com.mongodb.connection.ServerDescription;
 import org.bson.BsonDocument;
 import org.bson.BsonNull;
@@ -35,6 +36,7 @@ import static com.mongodb.internal.event.EventListenerHelper.NO_OP_SERVER_LISTEN
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 // See https://github.com/mongodb/specifications/tree/master/source/server-discovery-and-monitoring/tests
@@ -122,6 +124,9 @@ public class ServerDiscoveryAndMonitoringTest extends AbstractServerDiscoveryAnd
     private void assertTopologyType(final String topologyType) {
         switch (topologyType) {
             case "Single":
+                assertTrue(getCluster().getClass() == SingleServerCluster.class
+                        || (getCluster().getClass() == MultiServerCluster.class
+                            && getCluster().getDescription().getType() == ClusterType.STANDALONE));
                 assertEquals(getClusterType(topologyType, getCluster().getCurrentDescription().getServerDescriptions()),
                         getCluster().getCurrentDescription().getType());
                 break;
