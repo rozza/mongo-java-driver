@@ -34,7 +34,7 @@ install:
 
 before_script:
   - mkdir ${PWD}/${MONGODB_FILE_NAME}-${MONGODB}/data
-  - ${PWD}/${MONGODB_FILE_NAME}-${MONGODB}/bin/mongod --dbpath ${PWD}/${MONGODB_FILE_NAME}-${MONGODB}/data --logpath ${PWD}/${MONGODB_FILE_NAME}-${MONGODB}/mongodb.log --setParameter enableTestCommands=1 --fork --smallfiles --nojournal
+  - ${PWD}/${MONGODB_FILE_NAME}-${MONGODB}/bin/mongod --dbpath ${PWD}/${MONGODB_FILE_NAME}-${MONGODB}/data --logpath ${PWD}/${MONGODB_FILE_NAME}-${MONGODB}/mongodb.log --setParameter enableTestCommands=1 --fork --nojournal
 
 script:
   - ./gradlew -q assemble
