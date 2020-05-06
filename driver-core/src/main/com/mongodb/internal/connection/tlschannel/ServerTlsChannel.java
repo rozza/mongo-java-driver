@@ -19,13 +19,15 @@
 
 package com.mongodb.internal.connection.tlschannel;
 
-import com.mongodb.internal.connection.tlschannel.impl.BufferHolder;
+import com.mongodb.diagnostics.logging.Logger;
+import com.mongodb.diagnostics.logging.Loggers;
 import com.mongodb.internal.connection.tlschannel.impl.ByteBufferSet;
 import com.mongodb.internal.connection.tlschannel.impl.TlsChannelImpl;
 import com.mongodb.internal.connection.tlschannel.impl.TlsChannelImpl.EofException;
 import com.mongodb.internal.connection.tlschannel.impl.TlsExplorer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.mongodb.internal.connection.tlschannel.mongo.ByteBufAllocator;
+import com.mongodb.internal.connection.tlschannel.mongo.ByteBufHolder;
+import com.mongodb.internal.connection.tlschannel.mongo.TrackingByteBufAllocator;
 
 import javax.net.ssl.SNIHostName;
 import javax.net.ssl.SNIServerName;
@@ -49,7 +51,7 @@ import java.util.function.Function;
 /** A server-side {@link TlsChannel}. */
 public class ServerTlsChannel implements TlsChannel {
 
-  private static final Logger logger = LoggerFactory.getLogger(ServerTlsChannel.class);
+  private static final Logger logger = Loggers.getLogger("connection.tls");
 
   private interface SslContextStrategy {
 
@@ -187,14 +189,14 @@ public class ServerTlsChannel implements TlsChannel {
   private final Function<SSLContext, SSLEngine> engineFactory;
   private final Consumer<SSLSession> sessionInitCallback;
   private final boolean runTasks;
-  private final TrackingAllocator plainBufAllocator;
-  private final TrackingAllocator encryptedBufAllocator;
+  private final TrackingByteBufAllocator plainBufAllocator;
+  private final TrackingByteBufAllocator encryptedBufAllocator;
   private final boolean releaseBuffers;
   private final boolean waitForCloseConfirmation;
 
   private final Lock initLock = new ReentrantLock();
 
-  private BufferHolder inEncrypted;
+  private ByteBufHolder inEncrypted;
 
   private volatile boolean sniRead = false;
   private SSLContext sslContext = null;
@@ -207,8 +209,8 @@ public class ServerTlsChannel implements TlsChannel {
       Function<SSLContext, SSLEngine> engineFactory,
       Consumer<SSLSession> sessionInitCallback,
       boolean runTasks,
-      BufferAllocator plainBufAllocator,
-      BufferAllocator encryptedBufAllocator,
+      ByteBufAllocator plainBufAllocator,
+      ByteBufAllocator encryptedBufAllocator,
       boolean releaseBuffers,
       boolean waitForCloseConfirmation) {
     this.underlying = underlying;
@@ -216,12 +218,12 @@ public class ServerTlsChannel implements TlsChannel {
     this.engineFactory = engineFactory;
     this.sessionInitCallback = sessionInitCallback;
     this.runTasks = runTasks;
-    this.plainBufAllocator = new TrackingAllocator(plainBufAllocator);
-    this.encryptedBufAllocator = new TrackingAllocator(encryptedBufAllocator);
+    this.plainBufAllocator = new TrackingByteBufAllocator(plainBufAllocator);
+    this.encryptedBufAllocator = new TrackingByteBufAllocator(encryptedBufAllocator);
     this.releaseBuffers = releaseBuffers;
     this.waitForCloseConfirmation = waitForCloseConfirmation;
     inEncrypted =
-        new BufferHolder(
+        new ByteBufHolder(
             "inEncrypted",
             Optional.empty(),
             encryptedBufAllocator,
@@ -264,12 +266,12 @@ public class ServerTlsChannel implements TlsChannel {
   }
 
   @Override
-  public TrackingAllocator getPlainBufferAllocator() {
+  public TrackingByteBufAllocator getPlainBufferAllocator() {
     return plainBufAllocator;
   }
 
   @Override
-  public TrackingAllocator getEncryptedBufferAllocator() {
+  public TrackingByteBufAllocator getEncryptedBufferAllocator() {
     return encryptedBufAllocator;
   }
 

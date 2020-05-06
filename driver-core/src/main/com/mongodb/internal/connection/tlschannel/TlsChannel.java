@@ -19,6 +19,8 @@
 
 package com.mongodb.internal.connection.tlschannel;
 
+import com.mongodb.internal.connection.tlschannel.mongo.TrackingByteBufAllocator;
+
 import javax.net.ssl.SSLEngine;
 import javax.net.ssl.SSLException;
 import javax.net.ssl.SSLSession;
@@ -101,7 +103,7 @@ public interface TlsChannel extends ByteChannel, GatheringByteChannel, Scatterin
    * @see TlsChannelBuilder#withPlainBufferAllocator(BufferAllocator)
    * @see TrackingAllocator
    */
-  TrackingAllocator getPlainBufferAllocator();
+  TrackingByteBufAllocator getPlainBufferAllocator();
 
   /**
    * Return the {@link BufferAllocator} to use for encrypted data. Actually, a decorating subclass
@@ -111,7 +113,7 @@ public interface TlsChannel extends ByteChannel, GatheringByteChannel, Scatterin
    * @see TlsChannelBuilder#withEncryptedBufferAllocator(BufferAllocator)
    * @see TrackingAllocator
    */
-  TrackingAllocator getEncryptedBufferAllocator();
+  TrackingByteBufAllocator getEncryptedBufferAllocator();
 
   /**
    * Return whether CPU-intensive tasks are run or not.

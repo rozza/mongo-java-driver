@@ -19,14 +19,14 @@
 
 package com.mongodb.internal.connection.tlschannel.async;
 
+import com.mongodb.diagnostics.logging.Logger;
+import com.mongodb.diagnostics.logging.Loggers;
 import com.mongodb.internal.connection.tlschannel.NeedsReadException;
 import com.mongodb.internal.connection.tlschannel.NeedsTaskException;
 import com.mongodb.internal.connection.tlschannel.NeedsWriteException;
 import com.mongodb.internal.connection.tlschannel.TlsChannel;
 import com.mongodb.internal.connection.tlschannel.impl.ByteBufferSet;
 import com.mongodb.internal.connection.tlschannel.util.Util;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.channels.CancelledKeyException;
@@ -55,6 +55,8 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 import java.util.function.LongConsumer;
 
+import static java.lang.String.format;
+
 /**
  * This class encapsulates the infrastructure for running {@link AsynchronousTlsChannel}s. Each
  * instance of this class is a singleton-like object that manages a thread pool that makes it
@@ -62,7 +64,7 @@ import java.util.function.LongConsumer;
  */
 public class AsynchronousTlsChannelGroup {
 
-  private static final Logger logger = LoggerFactory.getLogger(AsynchronousTlsChannelGroup.class);
+  private static final Logger logger = Loggers.getLogger("connection.tls");
 
   /** The main executor of the group has a queue, whose size is a multiple of the number of CPUs. */
   private static final int queueLengthMultiplier = 32;
@@ -163,10 +165,10 @@ public class AsynchronousTlsChannelGroup {
       new ScheduledThreadPoolExecutor(
           1,
           runnable ->
-              new Thread(runnable, String.format("async-channel-group-%d-timeout-thread", id)));
+              new Thread(runnable, format("async-channel-group-%d-timeout-thread", id)));
 
   private final Thread selectorThread =
-      new Thread(this::loop, String.format("async-channel-group-%d-selector", id));
+      new Thread(this::loop, format("async-channel-group-%d-selector", id));
 
   private final ConcurrentLinkedQueue<RegisteredSocket> pendingRegistrations =
       new ConcurrentLinkedQueue<>();
@@ -217,7 +219,7 @@ public class AsynchronousTlsChannelGroup {
             TimeUnit.MILLISECONDS,
             new LinkedBlockingQueue<>(nThreads * queueLengthMultiplier),
             runnable ->
-                new Thread(runnable, String.format("async-channel-group-%d-handler-executor", id)),
+                new Thread(runnable, format("async-channel-group-%d-handler-executor", id)),
             new ThreadPoolExecutor.CallerRunsPolicy());
     selectorThread.start();
   }
@@ -419,7 +421,7 @@ public class AsynchronousTlsChannelGroup {
       try {
         selector.close();
       } catch (IOException e) {
-        logger.warn("error closing selector: {}", e.getMessage());
+        logger.warn(format("error closing selector: %s", e.getMessage()));
       }
     }
   }
@@ -534,10 +536,10 @@ public class AsynchronousTlsChannelGroup {
 
   private void warnAboutNeedTask() {
     if (!loggedTaskWarning.getAndSet(true)) {
-      logger.warn(
-          "caught {}; channels used in asynchronous groups should run tasks themselves; "
+      logger.warn(format(
+          "caught %s; channels used in asynchronous groups should run tasks themselves; "
               + "although task is being dealt with anyway, consider configuring channels properly",
-          NeedsTaskException.class.getName());
+          NeedsTaskException.class.getName()));
     }
   }
 
@@ -596,7 +598,9 @@ public class AsynchronousTlsChannelGroup {
     RegisteredSocket socket;
     while ((socket = pendingRegistrations.poll()) != null) {
       socket.key = socket.socketChannel.register(selector, 0, socket);
-      logger.trace("registered key: {}", socket.key);
+      if (logger.isTraceEnabled()) {
+        logger.trace(format("registered key: %s", socket.key));
+      }
       socket.registered.countDown();
     }
   }

@@ -24,12 +24,13 @@ import com.mongodb.diagnostics.logging.Loggers;
 import com.mongodb.internal.connection.AsynchronousChannelStream;
 import com.mongodb.internal.connection.ConcurrentLinkedDeque;
 import com.mongodb.internal.connection.PowerOfTwoBufferPool;
-import com.mongodb.internal.connection.tlschannel.AsynchronousTlsChannelAdapter;
-import com.mongodb.internal.connection.tlschannel.BufferAllocator;
 import com.mongodb.internal.connection.tlschannel.ClientTlsChannel;
 import com.mongodb.internal.connection.tlschannel.TlsChannel;
 import com.mongodb.internal.connection.tlschannel.async.AsynchronousTlsChannel;
 import com.mongodb.internal.connection.tlschannel.async.AsynchronousTlsChannelGroup;
+import com.mongodb.internal.connection.tlschannel.mongo.AsynchronousTlsChannelAdapter;
+import com.mongodb.internal.connection.tlschannel.mongo.ByteBufAllocator;
+import org.bson.ByteBuf;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLEngine;
@@ -37,7 +38,6 @@ import javax.net.ssl.SSLParameters;
 import java.io.Closeable;
 import java.io.IOException;
 import java.net.StandardSocketOptions;
-import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
@@ -230,11 +230,11 @@ public class TlsChannelStreamFactoryFactory implements StreamFactoryFactory, Clo
                             }
                             sslEngine.setSSLParameters(sslParameters);
 
-                            BufferAllocator bufferAllocator = new BufferProviderAllocator();
+                            ByteBufAllocator byteBufAllocator = new ByteBufProviderAllocator();
 
                             TlsChannel tlsChannel = ClientTlsChannel.newBuilder(socketChannel, sslEngine)
-                                    .withEncryptedBufferAllocator(bufferAllocator)
-                                    .withPlainBufferAllocator(bufferAllocator)
+                                    .withEncryptedBufferAllocator(byteBufAllocator)
+                                    .withPlainBufferAllocator(byteBufAllocator)
                                     .build();
 
                             // build asynchronous channel, based in the TLS channel and associated with the global group.
@@ -263,15 +263,15 @@ public class TlsChannelStreamFactoryFactory implements StreamFactoryFactory, Clo
             }
         }
 
-        private class BufferProviderAllocator implements BufferAllocator {
+        private class ByteBufProviderAllocator implements ByteBufAllocator {
             @Override
-            public ByteBuffer allocate(final int size) {
-                return getBufferProvider().getBuffer(size).asNIO();
+            public ByteBuf allocate(final int size) {
+                return getBufferProvider().getBuffer(size);
             }
 
             @Override
-            public void free(final ByteBuffer buffer) {
-                // GC does it
+            public void free(final ByteBuf byteBuf) {
+                byteBuf.release();
             }
         }
     }

@@ -150,6 +150,11 @@ configure(javaMainProjects) {
         options.fork = true
         options.debug = true
         options.compilerArgs = ['-Xlint:all']
+
+        // http://openjdk.java.net/jeps/247
+        if (JavaVersion.current().ordinal() > JavaVersion.VERSION_1_8.ordinal()) {
+            options.compilerArgs.addAll(['--release', '8'])
+        }
     }
 }
 

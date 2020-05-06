@@ -19,6 +19,8 @@
 
 package com.mongodb.internal.connection.tlschannel;
 
+import com.mongodb.internal.connection.tlschannel.mongo.ByteBufAllocator;
+
 import javax.net.ssl.SSLSession;
 import javax.net.ssl.SSLSocket;
 import java.io.IOException;
@@ -34,8 +36,8 @@ public abstract class TlsChannelBuilder<T extends TlsChannelBuilder<T>> {
   Consumer<SSLSession> sessionInitCallback = session -> {};
   // @formatter:on
   boolean runTasks = true;
-  BufferAllocator plainBufferAllocator = TlsChannel.defaultPlainBufferAllocator;
-  BufferAllocator encryptedBufferAllocator = TlsChannel.defaultEncryptedBufferAllocator;
+  ByteBufAllocator plainBufferAllocator;
+  ByteBufAllocator encryptedBufferAllocator;
   boolean releaseBuffers = true;
   boolean waitForCloseConfirmation = false;
 
@@ -65,7 +67,7 @@ public abstract class TlsChannelBuilder<T extends TlsChannelBuilder<T>> {
    * @param bufferAllocator the buffer allocator
    * @return this object
    */
-  public T withPlainBufferAllocator(BufferAllocator bufferAllocator) {
+  public T withPlainBufferAllocator(ByteBufAllocator bufferAllocator) {
     this.plainBufferAllocator = bufferAllocator;
     return getThis();
   }
@@ -77,7 +79,7 @@ public abstract class TlsChannelBuilder<T extends TlsChannelBuilder<T>> {
    * @param bufferAllocator the buffer allocator
    * @return this object
    */
-  public T withEncryptedBufferAllocator(BufferAllocator bufferAllocator) {
+  public T withEncryptedBufferAllocator(ByteBufAllocator bufferAllocator) {
     this.encryptedBufferAllocator = bufferAllocator;
     return getThis();
   }

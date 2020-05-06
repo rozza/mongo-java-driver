@@ -21,6 +21,8 @@ package com.mongodb.internal.connection.tlschannel;
 
 import com.mongodb.internal.connection.tlschannel.impl.ByteBufferSet;
 import com.mongodb.internal.connection.tlschannel.impl.TlsChannelImpl;
+import com.mongodb.internal.connection.tlschannel.mongo.ByteBufAllocator;
+import com.mongodb.internal.connection.tlschannel.mongo.TrackingByteBufAllocator;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLEngine;
@@ -108,15 +110,15 @@ public class ClientTlsChannel implements TlsChannel {
       SSLEngine engine,
       Consumer<SSLSession> sessionInitCallback,
       boolean runTasks,
-      BufferAllocator plainBufAllocator,
-      BufferAllocator encryptedBufAllocator,
+      ByteBufAllocator plainBufAllocator,
+      ByteBufAllocator encryptedBufAllocator,
       boolean releaseBuffers,
       boolean waitForCloseNotifyOnClose) {
     if (!engine.getUseClientMode())
       throw new IllegalArgumentException("SSLEngine must be in client mode");
     this.underlying = underlying;
-    TrackingAllocator trackingPlainBufAllocator = new TrackingAllocator(plainBufAllocator);
-    TrackingAllocator trackingEncryptedAllocator = new TrackingAllocator(encryptedBufAllocator);
+    TrackingByteBufAllocator trackingPlainBufAllocator = new TrackingByteBufAllocator(plainBufAllocator);
+    TrackingByteBufAllocator trackingEncryptedAllocator = new TrackingByteBufAllocator(encryptedBufAllocator);
     impl =
         new TlsChannelImpl(
             underlying,
@@ -147,12 +149,12 @@ public class ClientTlsChannel implements TlsChannel {
   }
 
   @Override
-  public TrackingAllocator getPlainBufferAllocator() {
+  public TrackingByteBufAllocator getPlainBufferAllocator() {
     return impl.getPlainBufferAllocator();
   }
 
   @Override
-  public TrackingAllocator getEncryptedBufferAllocator() {
+  public TrackingByteBufAllocator getEncryptedBufferAllocator() {
     return impl.getEncryptedBufferAllocator();
   }
 

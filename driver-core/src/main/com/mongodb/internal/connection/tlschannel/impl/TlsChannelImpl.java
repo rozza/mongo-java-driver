@@ -19,14 +19,17 @@
 
 package com.mongodb.internal.connection.tlschannel.impl;
 
+import com.mongodb.diagnostics.logging.Logger;
+import com.mongodb.diagnostics.logging.Loggers;
 import com.mongodb.internal.connection.tlschannel.NeedsReadException;
 import com.mongodb.internal.connection.tlschannel.NeedsTaskException;
 import com.mongodb.internal.connection.tlschannel.NeedsWriteException;
 import com.mongodb.internal.connection.tlschannel.TlsChannelCallbackException;
 import com.mongodb.internal.connection.tlschannel.TrackingAllocator;
+import com.mongodb.internal.connection.tlschannel.mongo.ByteBufHolder;
+import com.mongodb.internal.connection.tlschannel.mongo.TrackingByteBufAllocator;
 import com.mongodb.internal.connection.tlschannel.WouldBlockException;
 import com.mongodb.internal.connection.tlschannel.util.Util;
-import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.net.ssl.SSLEngine;
@@ -46,11 +49,12 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 
+import static java.lang.String.format;
 import static javax.net.ssl.SSLEngineResult.HandshakeStatus.NOT_HANDSHAKING;
 
 public class TlsChannelImpl implements ByteChannel {
 
-  private static final Logger logger = LoggerFactory.getLogger(TlsChannelImpl.class);
+  private static final Logger logger = Loggers.getLogger("connection.tls");
 
   public static final int buffersInitialSize = 4096;
 
@@ -93,12 +97,12 @@ public class TlsChannelImpl implements ByteChannel {
   private final ReadableByteChannel readChannel;
   private final WritableByteChannel writeChannel;
   private final SSLEngine engine;
-  private BufferHolder inEncrypted;
+  private ByteBufHolder inEncrypted;
   private final Consumer<SSLSession> initSessionCallback;
 
   private final boolean runTasks;
-  private final TrackingAllocator encryptedBufAllocator;
-  private final TrackingAllocator plainBufAllocator;
+  private final TrackingByteBufAllocator encryptedBufAllocator;
+  private final TrackingByteBufAllocator plainBufAllocator;
   private final boolean waitForCloseConfirmation;
 
   // @formatter:off
@@ -106,11 +110,11 @@ public class TlsChannelImpl implements ByteChannel {
       ReadableByteChannel readChannel,
       WritableByteChannel writeChannel,
       SSLEngine engine,
-      Optional<BufferHolder> inEncrypted,
+      Optional<ByteBufHolder> inEncrypted,
       Consumer<SSLSession> initSessionCallback,
       boolean runTasks,
-      TrackingAllocator plainBufAllocator,
-      TrackingAllocator encryptedBufAllocator,
+      TrackingByteBufAllocator plainBufAllocator,
+      TrackingByteBufAllocator encryptedBufAllocator,
       boolean releaseBuffers,
       boolean waitForCloseConfirmation) {
     // @formatter:on
@@ -120,7 +124,7 @@ public class TlsChannelImpl implements ByteChannel {
     this.inEncrypted =
         inEncrypted.orElseGet(
             () ->
-                new BufferHolder(
+                new ByteBufHolder(
                     "inEncrypted",
                     Optional.empty(),
                     encryptedBufAllocator,
@@ -134,7 +138,7 @@ public class TlsChannelImpl implements ByteChannel {
     this.encryptedBufAllocator = encryptedBufAllocator;
     this.waitForCloseConfirmation = waitForCloseConfirmation;
     inPlain =
-        new BufferHolder(
+        new ByteBufHolder(
             "inPlain",
             Optional.empty(),
             plainBufAllocator,
@@ -143,7 +147,7 @@ public class TlsChannelImpl implements ByteChannel {
             true /* plainData */,
             releaseBuffers);
     outEncrypted =
-        new BufferHolder(
+        new ByteBufHolder(
             "outEncrypted",
             Optional.empty(),
             encryptedBufAllocator,
@@ -171,10 +175,10 @@ public class TlsChannelImpl implements ByteChannel {
   private volatile boolean shutdownReceived = false;
 
   // decrypted data from inEncrypted
-  private BufferHolder inPlain;
+  private ByteBufHolder inPlain;
 
   // contains data encrypted to send to the underlying channel
-  private BufferHolder outEncrypted;
+  private ByteBufHolder outEncrypted;
 
   /**
    * Handshake wrap() method calls need a buffer to read from, even when they actually do not read
@@ -190,11 +194,11 @@ public class TlsChannelImpl implements ByteChannel {
     return initSessionCallback;
   }
 
-  public TrackingAllocator getPlainBufferAllocator() {
+  public TrackingByteBufAllocator getPlainBufferAllocator() {
     return plainBufAllocator;
   }
 
-  public TrackingAllocator getEncryptedBufferAllocator() {
+  public TrackingByteBufAllocator getEncryptedBufferAllocator() {
     return encryptedBufAllocator;
   }
 
@@ -319,12 +323,12 @@ public class TlsChannelImpl implements ByteChannel {
       SSLEngineResult result =
           engine.unwrap(inEncrypted.buffer, dest.array, dest.offset, dest.length);
       if (logger.isTraceEnabled()) {
-        logger.trace(
-            "engine.unwrap() result [{}]. Engine status: {}; inEncrypted {}; inPlain: {}",
+        logger.trace(format(
+            "engine.unwrap() result [%s]. Engine status: %s; inEncrypted %s; inPlain: %s",
             Util.resultToString(result),
             result.getHandshakeStatus(),
             inEncrypted,
-            dest);
+            dest));
       }
       return result;
     } catch (SSLException e) {
@@ -353,7 +357,9 @@ public class TlsChannelImpl implements ByteChannel {
     Util.assertTrue(buffer.hasRemaining());
     logger.trace("Reading from channel");
     int c = readChannel.read(buffer); // IO block
-    logger.trace("Read from channel; response: {}, buffer: {}", c, buffer);
+    if (logger.isTraceEnabled()) {
+      logger.trace(format("Read from channel; response: %s, buffer: %s", c, buffer));
+    }
     if (c == -1) {
       throw new EofException();
     }
@@ -421,12 +427,12 @@ public class TlsChannelImpl implements ByteChannel {
       SSLEngineResult result =
           engine.wrap(source.array, source.offset, source.length, outEncrypted.buffer);
       if (logger.isTraceEnabled()) {
-        logger.trace(
-            "engine.wrap() result: [{}]; engine status: {}; srcBuffer: {}, outEncrypted: {}",
+        logger.trace(format(
+            "engine.wrap() result: [%s]; engine status: %s; srcBuffer: %s, outEncrypted: %s",
             Util.resultToString(result),
             result.getHandshakeStatus(),
             source,
-            outEncrypted);
+            outEncrypted));
       }
       return result;
     } catch (SSLException e) {
@@ -437,10 +443,12 @@ public class TlsChannelImpl implements ByteChannel {
 
   private void ensureInPlainCapacity(int newCapacity) {
     if (inPlain.buffer.capacity() < newCapacity) {
-      logger.trace(
-          "inPlain buffer too small, increasing from {} to {}",
-          inPlain.buffer.capacity(),
-          newCapacity);
+      if (logger.isTraceEnabled()) {
+        logger.trace(format(
+                "inPlain buffer too small, increasing from %s to %s",
+                inPlain.buffer.capacity(),
+                newCapacity));
+      }
       inPlain.resize(newCapacity);
     }
   }
@@ -467,7 +475,9 @@ public class TlsChannelImpl implements ByteChannel {
   private static void writeToChannel(WritableByteChannel channel, ByteBuffer src)
       throws IOException {
     while (src.hasRemaining()) {
-      logger.trace("Writing to channel: {}", src);
+      if (logger.isTraceEnabled()) {
+        logger.trace(format("Writing to channel: %s", src));
+      }
       int c = channel.write(src);
       if (c == 0) {
         /*
@@ -657,7 +667,9 @@ public class TlsChannelImpl implements ByteChannel {
               shutdown();
             }
           } catch (Throwable e) {
-            logger.debug("error doing TLS shutdown on close(), continuing: {}", e.getMessage());
+            if (logger.isDebugEnabled()) {
+              logger.debug(format("error doing TLS shutdown on close(), continuing: %s", e.getMessage()));
+            }
           }
         }
       } finally {
