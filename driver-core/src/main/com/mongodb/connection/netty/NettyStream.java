@@ -454,6 +454,9 @@ final class NettyStream implements Stream {
     }
 
     private void adjustTimeout(final boolean disable, final int additionalTimeout) {
+            if (isClosed) {
+                return;
+            }
             ChannelHandler timeoutHandler = channel.pipeline().get(READ_HANDLER_NAME);
             if (timeoutHandler != null) {
                 final ReadTimeoutHandler readTimeoutHandler = (ReadTimeoutHandler) timeoutHandler;
