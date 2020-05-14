@@ -201,7 +201,7 @@ public abstract class AbstractUnifiedTest {
                 .applyToServerSettings(new Block<ServerSettings.Builder>() {
                     @Override
                     public void apply(final ServerSettings.Builder builder) {
-                        builder.heartbeatFrequency(5, MILLISECONDS);
+//                        builder.heartbeatFrequency(5, MILLISECONDS);
                         builder.minHeartbeatFrequency(MIN_HEARTBEAT_FREQUENCY_MS, MILLISECONDS);
                         builder.addServerListener(serverListener);
                     }
