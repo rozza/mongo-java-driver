@@ -133,7 +133,7 @@ class DefaultServer implements ClusterableServer {
     }
 
     @Override
-    public void invalidate() {
+    public synchronized void invalidate() {
         if (!isClosed()) {
             serverStateListener.stateChanged(new ChangeEvent<>(description, ServerDescription.builder()
                     .state(CONNECTING).address(serverId.getAddress()).build()));
@@ -145,8 +145,8 @@ class DefaultServer implements ClusterableServer {
     }
 
     @Override
-    public void invalidate(final ConnectionState connectionState, final Throwable t, final int connectionGeneration,
-                           final int maxWireVersion) {
+    public synchronized void invalidate(final ConnectionState connectionState, final Throwable t, final int connectionGeneration,
+                                        final int maxWireVersion) {
         if (!isClosed()) {
             if (connectionGeneration < connectionPool.getGeneration()) {
                 return;
