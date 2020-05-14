@@ -19,19 +19,29 @@ package com.mongodb.reactivestreams.client;
 import com.mongodb.MongoClientSettings;
 import com.mongodb.client.AbstractServerDiscoveryAndMonitoringTest;
 import com.mongodb.client.MongoClient;
+import com.mongodb.connection.StreamFactoryFactory;
 import com.mongodb.reactivestreams.client.syncadapter.SyncMongoClient;
 import org.bson.BsonArray;
 import org.bson.BsonDocument;
+
+import static com.mongodb.ClusterFixture.getOverriddenStreamFactoryFactory;
+import static com.mongodb.ClusterFixture.getSslSettings;
 
 public class ServerDiscoveryAndMonitoringTest extends AbstractServerDiscoveryAndMonitoringTest {
     public ServerDiscoveryAndMonitoringTest(final String filename, final String description, final String databaseName,
                                             final String collectionName, final BsonArray data, final BsonDocument definition,
                                             final boolean skipTest) {
-        super(filename, description, databaseName, collectionName, data, definition, skipTest);
+        super(filename, description, databaseName, collectionName, data, definition,
+                skipTest || (getSslSettings().isEnabled() && getOverriddenStreamFactoryFactory() == null));
     }
 
     @Override
     protected MongoClient createMongoClient(final MongoClientSettings settings) {
         return new SyncMongoClient(MongoClients.create(settings));
+    }
+
+    @Override
+    protected StreamFactoryFactory getStreamFactoryFactory() {
+        return getOverriddenStreamFactoryFactory();
     }
 }

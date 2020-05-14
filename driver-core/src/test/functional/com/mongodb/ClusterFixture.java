@@ -28,8 +28,10 @@ import com.mongodb.connection.SocketSettings;
 import com.mongodb.connection.SocketStreamFactory;
 import com.mongodb.connection.SslSettings;
 import com.mongodb.connection.StreamFactory;
+import com.mongodb.connection.StreamFactoryFactory;
 import com.mongodb.connection.TlsChannelStreamFactoryFactory;
 import com.mongodb.connection.netty.NettyStreamFactory;
+import com.mongodb.connection.netty.NettyStreamFactoryFactory;
 import com.mongodb.internal.async.AsyncBatchCursor;
 import com.mongodb.internal.async.SingleResultCallback;
 import com.mongodb.internal.binding.AsyncClusterBinding;
@@ -105,6 +107,8 @@ public final class ClusterFixture {
     private static Map<ReadPreference, AsyncReadWriteBinding> asyncBindingMap = new HashMap<ReadPreference, AsyncReadWriteBinding>();
 
     private static ServerVersion serverVersion;
+
+    private static NettyStreamFactoryFactory nettyStreamFactoryFactory;
 
     static {
         Runtime.getRuntime().addShutdownHook(new ShutdownHook());
@@ -367,6 +371,19 @@ public final class ClusterFixture {
         } else {
             throw new IllegalArgumentException("Unsupported stream type " + streamType);
         }
+    }
+
+    @Nullable
+    public static StreamFactoryFactory getOverriddenStreamFactoryFactory() {
+        String streamType = System.getProperty("org.mongodb.test.async.type");
+
+        if (streamType.equals("netty")) {
+            if (nettyStreamFactoryFactory == null) {
+                nettyStreamFactoryFactory = NettyStreamFactoryFactory.builder().build();
+            }
+            return nettyStreamFactoryFactory;
+        }
+        return null;
     }
 
     private static SocketSettings getSocketSettings() {
