@@ -192,16 +192,17 @@ class DefaultServerMonitor implements ServerMonitor {
                     SessionContext sessionContext = new ClusterClockAdvancingSessionContext(NoOpSessionContext.INSTANCE, clusterClock);
                     if (!connection.hasMoreToCome()) {
                         BsonDocument ismaster = new BsonDocument("ismaster", new BsonInt32(1));
-                        if (currentServerDescription.getTopologyVersion() != null && connection.supportsAdditionalTimeout()) {
+                        if (shouldStreamResponses(currentServerDescription)) {
                             ismaster.append("topologyVersion", currentServerDescription.getTopologyVersion().asDocument());
                             ismaster.append("maxAwaitTimeMS", new BsonInt64(serverSettings.getHeartbeatFrequency(MILLISECONDS)));
                         }
 
-                        connection.send(createCommandMessage(ismaster, connection), new BsonDocumentCodec(), sessionContext);
+                        connection.send(createCommandMessage(ismaster, connection, currentServerDescription), new BsonDocumentCodec(),
+                                sessionContext);
                     }
 
                     BsonDocument isMasterResult;
-                    if (currentServerDescription.getTopologyVersion() != null && connection.supportsAdditionalTimeout()) {
+                    if (shouldStreamResponses(currentServerDescription)) {
                         isMasterResult = connection.receive(new BsonDocumentCodec(), sessionContext,
                                 Math.toIntExact(serverSettings.getHeartbeatFrequency(MILLISECONDS)));
                     } else {
@@ -229,13 +230,18 @@ class DefaultServerMonitor implements ServerMonitor {
             }
         }
 
-        private CommandMessage createCommandMessage(final BsonDocument ismaster, final InternalConnection connection) {
+        private boolean shouldStreamResponses(final ServerDescription currentServerDescription) {
+            return currentServerDescription.getTopologyVersion() != null && connection.supportsAdditionalTimeout();
+        }
+
+        private CommandMessage createCommandMessage(final BsonDocument ismaster, final InternalConnection connection,
+                                                    final ServerDescription serverDescription) {
             return new CommandMessage(new MongoNamespace("admin", COMMAND_COLLECTION_NAME), ismaster,
                     new NoOpFieldNameValidator(), primary(),
                     MessageSettings.builder()
                             .maxWireVersion(connection.getDescription().getMaxWireVersion())
                             .build(),
-                    true);
+                    shouldStreamResponses(serverDescription));
         }
 
         private void logStateChange(final ServerDescription previousServerDescription,
