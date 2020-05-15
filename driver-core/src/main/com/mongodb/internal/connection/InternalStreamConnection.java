@@ -305,6 +305,11 @@ public class InternalStreamConnection implements InternalConnection {
     }
 
     @Override
+    public boolean supportsConcurrentClose() {
+        return stream.supportsConcurrentClose();
+    }
+
+    @Override
     public boolean supportsAdditionalTimeout() {
         return stream.supportsAdditionalTimeout();
     }

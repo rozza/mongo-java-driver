@@ -136,7 +136,7 @@ class DefaultServerMonitor implements ServerMonitor {
         }
 
         @Override
-        public synchronized void run() {
+        public void run() {
             ServerDescription currentServerDescription = getConnectingServerDescription(null);
             while (!isClosed) {
                 ServerDescription previousServerDescription = currentServerDescription;
@@ -147,8 +147,8 @@ class DefaultServerMonitor implements ServerMonitor {
                 }
 
                 if (currentCheckCancelled) {
-                    currentCheckCancelled = false;
                     waitForNext();
+                    currentCheckCancelled = false;
                     continue;
                 }
 
@@ -159,7 +159,8 @@ class DefaultServerMonitor implements ServerMonitor {
                     connectionPool.invalidate();
                 }
 
-                if (currentServerDescription.getTopologyVersion() != null
+                if (((connection == null || connection.supportsAdditionalTimeout())
+                        && currentServerDescription.getTopologyVersion() != null)
                         || (connection != null && connection.hasMoreToCome())
                         || (currentServerDescription.getException() instanceof MongoSocketException
                         && previousServerDescription.getType() != UNKNOWN)) {
@@ -222,16 +223,21 @@ class DefaultServerMonitor implements ServerMonitor {
                     throw e;
                 }
             } catch (Throwable t) {
-                if (connection != null) {
-                    connection.close();
+                InternalConnection localConnection;
+                synchronized (this) {
+                    localConnection = connection;
                     connection = null;
+                }
+                if (localConnection != null) {
+                    localConnection.close();
                 }
                 return getConnectingServerDescription(t);
             }
         }
 
         private boolean shouldStreamResponses(final ServerDescription currentServerDescription) {
-            return currentServerDescription.getTopologyVersion() != null && connection.supportsAdditionalTimeout();
+            return currentServerDescription.getTopologyVersion() != null && connection.supportsAdditionalTimeout()
+                    && connection.supportsConcurrentClose();
         }
 
         private CommandMessage createCommandMessage(final BsonDocument ismaster, final InternalConnection connection,
@@ -284,9 +290,15 @@ class DefaultServerMonitor implements ServerMonitor {
         }
 
         public void cancelCurrentCheck() {
-            if (connection != null) {
-                currentCheckCancelled = true;
-                connection.close();
+            InternalConnection localConnection = null;
+            synchronized (this) {
+                if (connection != null && !currentCheckCancelled) {
+                    localConnection = connection;
+                    currentCheckCancelled = true;
+                }
+            }
+            if (localConnection != null && localConnection.supportsConcurrentClose()) {
+                localConnection.close();
             }
         }
     }

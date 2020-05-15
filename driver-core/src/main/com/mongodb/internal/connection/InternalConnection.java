@@ -94,6 +94,11 @@ public interface InternalConnection extends BufferProvider {
 
     <T> T receive(Decoder<T> decoder, SessionContext sessionContext);
 
+
+    default boolean supportsConcurrentClose() {
+        return true;
+    }
+
     default boolean supportsAdditionalTimeout() {
         return false;
     }

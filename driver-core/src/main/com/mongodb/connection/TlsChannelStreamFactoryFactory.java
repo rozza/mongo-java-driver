@@ -196,10 +196,13 @@ public class TlsChannelStreamFactoryFactory implements StreamFactoryFactory, Clo
             this.selectorMonitor = selectorMonitor;
         }
 
-        // TODO: remove this once this class can support being closed while a read is in progress, and cause the read to fail
-        // immediately
         @Override
         public boolean supportsAdditionalTimeout() {
+            return true;
+        }
+
+        @Override
+        public boolean supportsConcurrentClose() {
             return false;
         }
 

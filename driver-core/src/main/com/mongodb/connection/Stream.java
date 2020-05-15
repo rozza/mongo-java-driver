@@ -75,6 +75,19 @@ public interface Stream extends BufferProvider{
     }
 
     /**
+     * Gets whether this implementation supports closing concurrently with a read or write operation
+     * <p>
+     * The default is to support it
+     * </p>
+     *
+     * @return true if this implementation supports closing concurrently with a read or write operation
+     * @since 4.1
+     */
+    default boolean supportsConcurrentClose() {
+        return true;
+    }
+
+    /**
      * Read from the stream, blocking until the requested number of bytes have been read.  If supported by the implementation,
      * adds the given additional timeout to the configured timeout for the stream.
      * <p>
