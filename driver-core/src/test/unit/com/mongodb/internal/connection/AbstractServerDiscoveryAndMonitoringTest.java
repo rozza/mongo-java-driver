@@ -52,7 +52,6 @@ public class AbstractServerDiscoveryAndMonitoringTest {
     private final BsonDocument definition;
     private DefaultTestClusterableServerFactory factory;
     private BaseCluster cluster;
-    private TestInternalConnectionFactory internalConnectionFactory;
 
     public AbstractServerDiscoveryAndMonitoringTest(final BsonDocument definition) {
         this.definition = definition;
