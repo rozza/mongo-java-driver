@@ -159,7 +159,7 @@ class DefaultServerMonitor implements ServerMonitor {
                     connectionPool.invalidate();
                 }
 
-                if (((connection == null || connection.supportsAdditionalTimeout())
+                if (((connection == null || shouldStreamResponses(currentServerDescription))
                         && currentServerDescription.getTopologyVersion() != null)
                         || (connection != null && connection.hasMoreToCome())
                         || (currentServerDescription.getException() instanceof MongoSocketException
