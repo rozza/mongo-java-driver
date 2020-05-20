@@ -223,6 +223,7 @@ class DefaultServerMonitor implements ServerMonitor {
                     throw e;
                 }
             } catch (Throwable t) {
+                averageRoundTripTime.reset();
                 InternalConnection localConnection;
                 synchronized (this) {
                     localConnection = connection;
@@ -394,6 +395,7 @@ class DefaultServerMonitor implements ServerMonitor {
                             }
                         }
                     } catch (Throwable ignored) {
+                        averageRoundTripTime.reset();
                     }
                     waitForNext();
                 }
