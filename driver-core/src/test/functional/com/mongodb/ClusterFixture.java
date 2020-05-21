@@ -375,7 +375,7 @@ public final class ClusterFixture {
 
     @Nullable
     public static StreamFactoryFactory getOverriddenStreamFactoryFactory() {
-        String streamType = System.getProperty("org.mongodb.test.async.type");
+        String streamType = System.getProperty("org.mongodb.test.async.type", "nio2");
 
         if (streamType.equals("netty")) {
             if (nettyStreamFactoryFactory == null) {
