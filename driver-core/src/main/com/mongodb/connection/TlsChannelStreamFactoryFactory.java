@@ -203,7 +203,7 @@ public class TlsChannelStreamFactoryFactory implements StreamFactoryFactory, Clo
 
         @Override
         public boolean supportsConcurrentClose() {
-            return false;
+            return true;
         }
 
         @Override
