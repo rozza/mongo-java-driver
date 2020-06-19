@@ -112,16 +112,14 @@ class QueryBatchCursor<T> implements AggregateResponseBatchCursor<T> {
 
         initFromQueryResult(firstQueryResult);
         firstBatchEmpty = firstQueryResult.getResults().isEmpty();
-        if (limitReached()) {
-            killCursor(connection);
-        }
-        if (serverCursor == null && this.connectionSource != null) {
-            this.connectionSource.release();
-            this.connectionSource = null;
-        }
+
         if (connection != null) {
             this.maxWireVersion = connection.getDescription().getMaxWireVersion();
+            if (limitReached()) {
+                killCursor(connection);
+            }
         }
+        checkServerCursorAndReleaseConnectionSource();
     }
 
     @Override
@@ -283,12 +281,9 @@ class QueryBatchCursor<T> implements AggregateResponseBatchCursor<T> {
             if (limitReached()) {
                 killCursor(connection);
             }
-            if (serverCursor == null) {
-                this.connectionSource.release();
-                this.connectionSource = null;
-            }
         } finally {
             connection.release();
+            checkServerCursorAndReleaseConnectionSource();
         }
     }
 
@@ -343,13 +338,25 @@ class QueryBatchCursor<T> implements AggregateResponseBatchCursor<T> {
     private void killCursor(final Connection connection) {
         if (serverCursor != null) {
             notNull("connection", connection);
-            if (serverIsAtLeastVersionThreeDotTwo(connection.getDescription())) {
-                connection.command(namespace.getDatabaseName(), asKillCursorsCommandDocument(), NO_OP_FIELD_NAME_VALIDATOR,
-                        ReadPreference.primary(), new BsonDocumentCodec(), connectionSource.getSessionContext());
-            } else {
-                connection.killCursor(namespace, singletonList(serverCursor.getId()));
+            try {
+                if (serverIsAtLeastVersionThreeDotTwo(connection.getDescription())) {
+                    connection.command(namespace.getDatabaseName(), asKillCursorsCommandDocument(), NO_OP_FIELD_NAME_VALIDATOR,
+                            ReadPreference.primary(), new BsonDocumentCodec(), connectionSource.getSessionContext());
+                } else {
+                    connection.killCursor(namespace, singletonList(serverCursor.getId()));
+                }
+            } catch (MongoException e) {
+                // Ignore exceptions from calling killCursor
+            } finally {
+                serverCursor = null;
             }
-            serverCursor = null;
+        }
+    }
+
+    private void checkServerCursorAndReleaseConnectionSource() {
+        if (serverCursor == null && connectionSource != null) {
+            connectionSource.release();
+            connectionSource = null;
         }
     }
 
