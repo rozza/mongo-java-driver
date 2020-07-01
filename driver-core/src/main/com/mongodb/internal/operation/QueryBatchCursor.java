@@ -119,7 +119,7 @@ class QueryBatchCursor<T> implements AggregateResponseBatchCursor<T> {
                 killCursor(connection);
             }
         }
-        checkServerCursorAndReleaseConnectionSource();
+        releaseConnectionSourceIfNoServerCursor();
     }
 
     @Override
@@ -283,7 +283,7 @@ class QueryBatchCursor<T> implements AggregateResponseBatchCursor<T> {
             }
         } finally {
             connection.release();
-            checkServerCursorAndReleaseConnectionSource();
+            releaseConnectionSourceIfNoServerCursor();
         }
     }
 
@@ -345,15 +345,13 @@ class QueryBatchCursor<T> implements AggregateResponseBatchCursor<T> {
                 } else {
                     connection.killCursor(namespace, singletonList(serverCursor.getId()));
                 }
-            } catch (MongoException e) {
-                // Ignore exceptions from calling killCursor
             } finally {
                 serverCursor = null;
             }
         }
     }
 
-    private void checkServerCursorAndReleaseConnectionSource() {
+    private void releaseConnectionSourceIfNoServerCursor() {
         if (serverCursor == null && connectionSource != null) {
             connectionSource.release();
             connectionSource = null;
