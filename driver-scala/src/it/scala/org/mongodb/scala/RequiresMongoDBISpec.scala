@@ -26,7 +26,7 @@ import scala.concurrent.duration.{ Duration, _ }
 import scala.concurrent.{ Await, ExecutionContext }
 import scala.util.{ Properties, Try }
 
-trait RequiresMongoDBISpec extends FlatSpec with Matchers with BeforeAndAfterAll {
+trait RequiresMongoDBISpec extends BaseSpec with BeforeAndAfterAll {
 
   implicit val ec: ExecutionContext = ExecutionContext.Implicits.global
 
