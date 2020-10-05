@@ -29,7 +29,7 @@ import java.util.concurrent.TimeUnit;
  * @param <TResult> The type of the result.
  * @since 1.0
  */
-public interface AggregatePublisher<TResult> extends Publisher<TResult> {
+public interface AggregatePublisher<TResult> extends MongoPublisher<TResult> {
 
     /**
      * Enables writing to temporary files. A null value indicates that it's unspecified.

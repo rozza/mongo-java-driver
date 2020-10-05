@@ -29,6 +29,8 @@ import org.bson.codecs.pojo.ClassModelBuilder;
 import org.bson.codecs.pojo.PojoCodecProvider;
 import org.bson.codecs.pojo.PropertyModelBuilder;
 
+import java.util.Objects;
+
 import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
 import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
 
@@ -70,5 +72,22 @@ final class ChangeStreamDocumentCodec<TResult> implements Codec<ChangeStreamDocu
     @Override
     public Class<ChangeStreamDocument<TResult>> getEncoderClass() {
         return (Class<ChangeStreamDocument<TResult>>) (Class<? extends ChangeStreamDocument>) ChangeStreamDocument.class;
+    }
+
+    @Override
+    public boolean equals(final Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        final ChangeStreamDocumentCodec<?> that = (ChangeStreamDocumentCodec<?>) o;
+        return Objects.equals(codec.getEncoderClass(), that.codec.getEncoderClass());
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(codec.getEncoderClass());
     }
 }

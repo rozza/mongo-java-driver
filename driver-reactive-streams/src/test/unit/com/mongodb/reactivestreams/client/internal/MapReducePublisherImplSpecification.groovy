@@ -20,6 +20,7 @@ package com.mongodb.reactivestreams.client.internal
 import com.mongodb.client.model.Collation
 import com.mongodb.client.model.MapReduceAction
 import com.mongodb.internal.async.client.AsyncMapReduceIterable
+import com.mongodb.reactivestreams.client.internal.reactor.MapReducePublisherImpl
 import org.bson.Document
 import org.reactivestreams.Subscriber
 import spock.lang.Specification

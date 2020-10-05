@@ -48,7 +48,7 @@ import static com.mongodb.MongoNamespace.checkDatabaseNameValidity;
 import static com.mongodb.assertions.Assertions.notNull;
 import static org.bson.internal.CodecRegistryHelper.createRegistry;
 
-class AsyncMongoDatabaseImpl implements AsyncMongoDatabase {
+public class AsyncMongoDatabaseImpl implements AsyncMongoDatabase {
     private final String name;
     private final ReadPreference readPreference;
     private final CodecRegistry codecRegistry;
@@ -97,6 +97,14 @@ class AsyncMongoDatabaseImpl implements AsyncMongoDatabase {
     @Override
     public ReadConcern getReadConcern() {
         return readConcern;
+    }
+
+    public boolean getRetryReads() {
+        return retryReads;
+    }
+
+    public OperationExecutor getExecutor() {
+        return executor;
     }
 
     @Override

@@ -140,6 +140,16 @@ class AsyncMongoCollectionImpl<TDocument> implements AsyncMongoCollection<TDocum
     }
 
     @Override
+    public OperationExecutor getExecutor() {
+        return executor;
+    }
+
+    @Override
+    public boolean getRetryReads() {
+        return retryReads;
+    }
+
+    @Override
     public <NewTDocument> AsyncMongoCollection<NewTDocument> withDocumentClass(final Class<NewTDocument> newDocumentClass) {
         return new AsyncMongoCollectionImpl<NewTDocument>(namespace, newDocumentClass, codecRegistry, readPreference, writeConcern,
                 retryWrites, retryReads, readConcern, uuidRepresentation, executor);

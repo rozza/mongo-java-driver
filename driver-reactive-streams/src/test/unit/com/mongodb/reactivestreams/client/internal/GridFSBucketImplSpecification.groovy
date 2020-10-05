@@ -25,6 +25,7 @@ import com.mongodb.internal.async.client.gridfs.AsyncGridFSFindIterable
 import com.mongodb.reactivestreams.client.ClientSession
 
 import com.mongodb.reactivestreams.client.gridfs.GridFSBucket
+import com.mongodb.reactivestreams.client.internal.gridfs.GridFSBucketImpl
 import org.bson.BsonObjectId
 import org.bson.Document
 import org.reactivestreams.Subscriber

@@ -33,11 +33,11 @@ import static com.mongodb.assertions.Assertions.isTrue;
 import static com.mongodb.internal.connection.ClusterDescriptionHelper.getAny;
 import static com.mongodb.internal.connection.ClusterDescriptionHelper.getAnyPrimaryOrSecondary;
 
-class ClientSessionHelper {
+public class ClientSessionHelper {
     private final AsyncMongoClientImpl mongoClient;
     private final ServerSessionPool serverSessionPool;
 
-    ClientSessionHelper(final AsyncMongoClientImpl mongoClient, final ServerSessionPool serverSessionPool) {
+    public ClientSessionHelper(final AsyncMongoClientImpl mongoClient, final ServerSessionPool serverSessionPool) {
         this.mongoClient = mongoClient;
         this.serverSessionPool = serverSessionPool;
     }

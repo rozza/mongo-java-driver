@@ -34,7 +34,7 @@ import java.util.concurrent.TimeUnit;
  * @mongodb.server.release 3.6
  * @since 1.6
  */
-public interface ChangeStreamPublisher<TResult> extends Publisher<ChangeStreamDocument<TResult>> {
+public interface ChangeStreamPublisher<TResult> extends MongoPublisher<ChangeStreamDocument<TResult>> {
     /**
      * Sets the fullDocument value.
      *

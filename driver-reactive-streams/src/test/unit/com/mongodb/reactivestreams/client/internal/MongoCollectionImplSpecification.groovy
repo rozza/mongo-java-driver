@@ -17,17 +17,10 @@
 package com.mongodb.reactivestreams.client.internal
 
 import com.mongodb.MongoNamespace
-import com.mongodb.ReadConcern
-import com.mongodb.ReadPreference
-import com.mongodb.WriteConcern
 import com.mongodb.client.model.BulkWriteOptions
-import com.mongodb.client.model.Collation
-import com.mongodb.client.model.CollationStrength
-import com.mongodb.client.model.CountOptions
 import com.mongodb.client.model.CreateIndexOptions
 import com.mongodb.client.model.DeleteOptions
 import com.mongodb.client.model.DropIndexOptions
-import com.mongodb.client.model.EstimatedDocumentCountOptions
 import com.mongodb.client.model.FindOneAndDeleteOptions
 import com.mongodb.client.model.FindOneAndReplaceOptions
 import com.mongodb.client.model.FindOneAndUpdateOptions
@@ -39,18 +32,12 @@ import com.mongodb.client.model.InsertOneOptions
 import com.mongodb.client.model.RenameCollectionOptions
 import com.mongodb.client.model.ReplaceOptions
 import com.mongodb.client.model.UpdateOptions
-import com.mongodb.internal.async.client.AsyncAggregateIterable
-import com.mongodb.internal.async.client.AsyncChangeStreamIterable
-import com.mongodb.internal.async.client.AsyncClientSession as WrappedClientSession
-import com.mongodb.internal.async.client.AsyncDistinctIterable
-import com.mongodb.internal.async.client.AsyncFindIterable
 import com.mongodb.internal.async.client.AsyncListIndexesIterable
 import com.mongodb.internal.async.client.AsyncMapReduceIterable
 import com.mongodb.internal.async.client.AsyncMongoCollection as WrappedMongoCollection
-import com.mongodb.reactivestreams.client.ClientSession
+import com.mongodb.reactivestreams.client.internal.reactor.MapReducePublisherImpl
 import org.bson.BsonDocument
 import org.bson.Document
-import org.bson.codecs.configuration.CodecRegistry
 import org.reactivestreams.Subscriber
 import spock.lang.Specification
 
@@ -59,7 +46,7 @@ import static spock.util.matcher.HamcrestSupport.expect
 
 @SuppressWarnings('ClassSize')
 class MongoCollectionImplSpecification extends Specification {
-
+/*
     def subscriber = Stub(Subscriber) {
         onSubscribe(_) >> { args -> args[0].request(1) }
     }
@@ -459,6 +446,7 @@ class MongoCollectionImplSpecification extends Specification {
         1 * wrapped.watch(wrappedClientSession, pipeline, BsonDocument) >> wrappedResult
         expect changeStreamPublisher, isTheSameAs(new ChangeStreamPublisherImpl(wrappedResult))
     }
+
 
     def 'should create MapReducePublisher correctly'() {
         given:
@@ -1162,5 +1150,5 @@ class MongoCollectionImplSpecification extends Specification {
         then:
         1 * wrapped.renameCollection(wrappedClientSession, nameCollectionNamespace, options, _)
     }
-
+  */
 }

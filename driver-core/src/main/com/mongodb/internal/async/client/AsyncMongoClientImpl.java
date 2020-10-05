@@ -231,7 +231,14 @@ class AsyncMongoClientImpl implements AsyncMongoClient {
                 ReadPreference.primary(), executor, settings.getRetryReads());
     }
 
-    MongoClientSettings getSettings() {
+    @Override
+    public OperationExecutor getExecutor() {
+        return executor;
+    }
+
+
+    @Override
+    public MongoClientSettings getSettings() {
         return settings;
     }
 
@@ -247,6 +254,7 @@ class AsyncMongoClientImpl implements AsyncMongoClient {
         return crypt;
     }
 
+    @Override
     public CodecRegistry getCodecRegistry() {
         return codecRegistry;
     }

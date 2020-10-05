@@ -40,7 +40,7 @@ public class TestOperationExecutor implements OperationExecutor {
     private final List<AsyncReadOperation> readOperations = new ArrayList<AsyncReadOperation>();
     private final List<AsyncWriteOperation> writeOperations = new ArrayList<AsyncWriteOperation>();
 
-    TestOperationExecutor(final List<Object> responses) {
+    public TestOperationExecutor(final List<Object> responses) {
         this(responses, false);
     }
 

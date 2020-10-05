@@ -30,7 +30,7 @@ import java.util.concurrent.TimeUnit;
  * @param <TResult> The type of the result.
  * @since 1.0
  */
-public interface FindPublisher<TResult> extends Publisher<TResult> {
+public interface FindPublisher<TResult> extends MongoPublisher<TResult> {
 
     /**
      * Helper to return a publisher limited to the first result.

@@ -110,6 +110,9 @@ public interface AsyncMongoCollection<TDocument> {
      */
     ReadConcern getReadConcern();
 
+    OperationExecutor getExecutor();
+    boolean getRetryReads();
+
     /**
      * Create a new MongoCollection instance with a different default class to cast any documents returned from the database into..
      *

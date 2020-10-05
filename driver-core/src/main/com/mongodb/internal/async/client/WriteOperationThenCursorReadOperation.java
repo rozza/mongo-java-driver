@@ -23,12 +23,12 @@ import com.mongodb.internal.binding.AsyncWriteBinding;
 import com.mongodb.internal.operation.AsyncReadOperation;
 import com.mongodb.internal.operation.AsyncWriteOperation;
 
-class WriteOperationThenCursorReadOperation<T> implements AsyncReadOperation<AsyncBatchCursor<T>> {
+public class WriteOperationThenCursorReadOperation<T> implements AsyncReadOperation<AsyncBatchCursor<T>> {
     private final AsyncWriteOperation<Void> aggregateToCollectionOperation;
     private final AsyncReadOperation<AsyncBatchCursor<T>> readOperation;
 
-    WriteOperationThenCursorReadOperation(final AsyncWriteOperation<Void> aggregateToCollectionOperation,
-                                          final AsyncReadOperation<AsyncBatchCursor<T>> readOperation) {
+    public WriteOperationThenCursorReadOperation(final AsyncWriteOperation<Void> aggregateToCollectionOperation,
+                                                 final AsyncReadOperation<AsyncBatchCursor<T>> readOperation) {
         this.aggregateToCollectionOperation = aggregateToCollectionOperation;
         this.readOperation = readOperation;
     }
@@ -44,14 +44,11 @@ class WriteOperationThenCursorReadOperation<T> implements AsyncReadOperation<Asy
     @Override
     @SuppressWarnings("unchecked")
     public void executeAsync(final AsyncReadBinding binding, final SingleResultCallback<AsyncBatchCursor<T>> callback) {
-        aggregateToCollectionOperation.executeAsync((AsyncWriteBinding) binding, new SingleResultCallback<Void>() {
-            @Override
-            public void onResult(final Void result, final Throwable t) {
-                if (t != null) {
-                    callback.onResult(null, t);
-                } else {
-                    readOperation.executeAsync(binding, callback);
-                }
+        aggregateToCollectionOperation.executeAsync((AsyncWriteBinding) binding, (result, t) -> {
+            if (t != null) {
+                callback.onResult(null, t);
+            } else {
+                readOperation.executeAsync(binding, callback);
             }
         });
     }

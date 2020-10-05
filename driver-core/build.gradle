@@ -33,15 +33,20 @@ sourceSets.main.resources.srcDirs = ['src/resources']
 dependencies {
     api project(path: ':bson', configuration: 'default')
 
-    implementation "com.github.jnr:jnr-unixsocket:$jnrUnixsocketVersion", optional
+    // TODO - this is a big change - can we make it optional?
+    implementation platform('io.projectreactor:reactor-bom:Dysprosium-SR12')
+    implementation 'io.projectreactor:reactor-core'
+
     api "io.netty:netty-buffer:$nettyVersion", optional
     api "io.netty:netty-transport:$nettyVersion", optional
-    implementation "io.netty:netty-handler:$nettyVersion", optional
-    implementation "org.xerial.snappy:snappy-java:$snappyVersion", optional
+    implementation "com.github.jnr:jnr-unixsocket:$jnrUnixsocketVersion", optional
     implementation "com.github.luben:zstd-jni:$zstdVersion", optional
+    implementation "io.netty:netty-handler:$nettyVersion", optional
     implementation "org.mongodb:mongodb-crypt:$mongoCryptVersion", optional
+    implementation "org.xerial.snappy:snappy-java:$snappyVersion", optional
 
     testImplementation project(':bson').sourceSets.test.output
+    testImplementation 'io.projectreactor:reactor-test'
 }
 
 buildConfig {

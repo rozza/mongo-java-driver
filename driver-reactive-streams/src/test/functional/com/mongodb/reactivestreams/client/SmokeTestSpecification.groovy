@@ -21,14 +21,19 @@ import com.mongodb.MongoNamespace
 import com.mongodb.client.model.IndexModel
 import com.mongodb.client.result.InsertOneResult
 import com.mongodb.diagnostics.logging.Loggers
+import com.mongodb.reactivestreams.client.syncadapter.SyncMongoClient
 import org.bson.BsonInt32
 import org.bson.Document
 import org.bson.RawBsonDocument
+import reactor.core.publisher.Flux
 import spock.lang.IgnoreIf
+
+import java.util.function.Consumer
 
 import static Fixture.getMongoClient
 import static com.mongodb.ClusterFixture.TIMEOUT
 import static com.mongodb.ClusterFixture.getConnectionString
+import static com.mongodb.reactivestreams.client.Fixture.getMongoClientSettings
 import static com.mongodb.reactivestreams.client.Fixture.isReplicaSet
 import static com.mongodb.reactivestreams.client.Fixture.serverVersionAtLeast
 import static java.util.concurrent.TimeUnit.SECONDS
@@ -36,6 +41,26 @@ import static java.util.concurrent.TimeUnit.SECONDS
 class SmokeTestSpecification extends FunctionalSpecification {
 
     private static final LOGGER = Loggers.getLogger('smokeTest')
+
+    def 'should be able to find all'() {
+        when:
+        (1.100).map(Document.parse("{_id: $it}")).collect()
+        collection.insertMany()
+
+        //databaseNames.forEach({mongoClient.getDatabase(it).createCollection('test')})
+        Flux<Document> databases = Flux.from(mongoClient.listDatabases())
+
+        then:
+        println(databases.buffer(5).blockFirst())
+        !databases.isEmpty()
+
+        cleanup:
+        mongoClient.listDatabases().forEach({ n ->
+            if (n.getString("name").startsWith("MongoListTest")) {
+                mongoClient.getDatabase(n.getString("name"))
+            }
+        })
+    }
 
     def 'should handle common scenarios without error'() {
         given:

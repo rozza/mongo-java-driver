@@ -17,12 +17,14 @@
 package com.mongodb.internal.async.client;
 
 import com.mongodb.ClientSessionOptions;
+import com.mongodb.MongoClientSettings;
 import com.mongodb.annotations.Immutable;
 import com.mongodb.connection.ClusterDescription;
 import com.mongodb.connection.ClusterSettings;
 import com.mongodb.event.ClusterListener;
 import com.mongodb.internal.async.SingleResultCallback;
 import org.bson.Document;
+import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.conversions.Bson;
 
 import java.io.Closeable;
@@ -251,4 +253,10 @@ public interface AsyncMongoClient extends Closeable {
      * @see com.mongodb.MongoClientSettings.Builder#applyToClusterSettings(com.mongodb.Block)
      */
     ClusterDescription getClusterDescription();
+
+    OperationExecutor getExecutor();
+
+    MongoClientSettings getSettings();
+
+    CodecRegistry getCodecRegistry();
 }

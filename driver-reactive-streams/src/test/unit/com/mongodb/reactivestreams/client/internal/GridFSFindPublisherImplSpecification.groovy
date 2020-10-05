@@ -18,6 +18,7 @@ package com.mongodb.reactivestreams.client.internal
 
 import com.mongodb.client.model.Collation
 import com.mongodb.internal.async.client.gridfs.AsyncGridFSFindIterable
+import com.mongodb.reactivestreams.client.internal.gridfs.GridFSFindPublisherImpl
 import org.bson.Document
 import org.reactivestreams.Subscriber
 import spock.lang.Specification

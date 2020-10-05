@@ -19,7 +19,7 @@ package com.mongodb.reactivestreams.client.gridfs
 import com.mongodb.internal.async.client.AsyncMongoDatabase as WrappedMongoDatabase
 import com.mongodb.internal.async.client.gridfs.AsyncGridFSBuckets as WrappedGridFSBuckets
 import com.mongodb.reactivestreams.client.MongoDatabase
-import com.mongodb.reactivestreams.client.internal.MongoDatabaseImpl
+import com.mongodb.reactivestreams.client.internal.reactor.MongoDatabaseImpl
 import spock.lang.Specification
 
 class GridFSBucketsSpecification extends Specification {
