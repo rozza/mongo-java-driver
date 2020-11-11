@@ -31,7 +31,7 @@ import java.util.concurrent.TimeUnit;
  * @param <TResult> The type of the result.
  * @since 1.0
  */
-public interface MapReducePublisher<TResult> extends Publisher<TResult> {
+public interface MapReducePublisher<TResult> extends BatchCursorPublisher<TResult> {
 
     /**
      * Sets the collectionName for the output of the MapReduce

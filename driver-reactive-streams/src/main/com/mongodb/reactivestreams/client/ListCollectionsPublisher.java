@@ -28,7 +28,7 @@ import java.util.concurrent.TimeUnit;
  * @param <TResult> The type of the result.
  * @since 1.0
  */
-public interface ListCollectionsPublisher<TResult> extends Publisher<TResult> {
+public interface ListCollectionsPublisher<TResult> extends BatchCursorPublisher<TResult> {
 
     /**
      * Sets the query filter to apply to the query.

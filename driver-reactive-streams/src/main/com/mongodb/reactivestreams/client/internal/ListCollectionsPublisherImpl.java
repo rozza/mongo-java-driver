@@ -16,51 +16,61 @@
 
 package com.mongodb.reactivestreams.client.internal;
 
-import com.mongodb.internal.async.client.AsyncListCollectionsIterable;
+import com.mongodb.ReadConcern;
+import com.mongodb.ReadPreference;
+import com.mongodb.internal.async.AsyncBatchCursor;
+import com.mongodb.internal.async.client.OperationExecutor;
+import com.mongodb.internal.operation.AsyncOperations;
+import com.mongodb.internal.operation.AsyncReadOperation;
+import com.mongodb.lang.Nullable;
+import com.mongodb.reactivestreams.client.ClientSession;
 import com.mongodb.reactivestreams.client.ListCollectionsPublisher;
+import org.bson.BsonDocument;
+import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.conversions.Bson;
-import org.reactivestreams.Publisher;
-import org.reactivestreams.Subscriber;
 
 import java.util.concurrent.TimeUnit;
 
 import static com.mongodb.assertions.Assertions.notNull;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
+class ListCollectionsPublisherImpl<T> extends BatchCursorPublisherImpl<T> implements ListCollectionsPublisher<T> {
 
-final class ListCollectionsPublisherImpl<TResult> implements ListCollectionsPublisher<TResult> {
+    private final String databaseName;
+    private final Class<T> resultClass;
+    private final AsyncOperations<BsonDocument> operations;
+    private final boolean collectionNamesOnly;
+    private Bson filter;
+    private long maxTimeMS;
 
-    private final AsyncListCollectionsIterable<TResult> wrapped;
-
-    ListCollectionsPublisherImpl(final AsyncListCollectionsIterable<TResult> wrapped) {
-        this.wrapped = notNull("wrapped", wrapped);
+    ListCollectionsPublisherImpl(@Nullable final ClientSession clientSession, final String databaseName, final Class<T> resultClass,
+                                 final CodecRegistry codecRegistry, final ReadPreference readPreference,
+                                 final OperationExecutor executor, final boolean retryReads,
+                                 final boolean collectionNamesOnly) {
+        super(clientSession, executor, ReadConcern.DEFAULT, readPreference, retryReads);
+        this.collectionNamesOnly = collectionNamesOnly;
+        this.operations = new AsyncOperations<>(BsonDocument.class, readPreference, codecRegistry, retryReads);
+        this.databaseName = notNull("databaseName", databaseName);
+        this.resultClass = notNull("resultClass", resultClass);
     }
 
-    @Override
-    public ListCollectionsPublisher<TResult> filter(final Bson filter) {
-        wrapped.filter(filter);
-        return this;
-    }
-
-    @Override
-    public ListCollectionsPublisher<TResult> maxTime(final long maxTime, final TimeUnit timeUnit) {
+    public ListCollectionsPublisherImpl<T> maxTime(final long maxTime, final TimeUnit timeUnit) {
         notNull("timeUnit", timeUnit);
-        wrapped.maxTime(maxTime, timeUnit);
+        this.maxTimeMS = MILLISECONDS.convert(maxTime, timeUnit);
         return this;
     }
 
-    @Override
-    public ListCollectionsPublisher<TResult> batchSize(final int batchSize) {
-        wrapped.batchSize(batchSize);
+    public ListCollectionsPublisherImpl<T> batchSize(final int batchSize) {
+        super.batchSize(batchSize);
         return this;
     }
 
-    @Override
-    public Publisher<TResult> first() {
-        return Publishers.publish(wrapped::first);
+    public ListCollectionsPublisherImpl<T> filter(@Nullable final Bson filter) {
+        this.filter = filter;
+        return this;
     }
 
-    @Override
-    public void subscribe(final Subscriber<? super TResult> s) {
-        Publishers.publish(wrapped).subscribe(s);
+    AsyncReadOperation<AsyncBatchCursor<T>> asAsyncReadOperation() {
+        return operations.listCollections(databaseName, resultClass, filter, collectionNamesOnly, getBatchSize(), maxTimeMS);
     }
 }

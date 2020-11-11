@@ -169,6 +169,10 @@ abstract class AsyncMongoIterableImpl<TResult> implements AsyncMongoIterable<TRe
 
     private void loopCursor(final AsyncBatchCursor<TResult> batchCursor, final Block<? super TResult> block,
                             final SingleResultCallback<Void> callback) {
+        if (batchCursor.isClosed()) {
+            callback.onResult(null, null);
+            return;
+        }
         batchCursor.next(new SingleResultCallback<List<TResult>>() {
             @Override
             public void onResult(final List<TResult> results, final Throwable t) {

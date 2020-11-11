@@ -42,7 +42,12 @@ import com.mongodb.client.result.DeleteResult;
 import com.mongodb.client.result.InsertManyResult;
 import com.mongodb.client.result.InsertOneResult;
 import com.mongodb.client.result.UpdateResult;
-import com.mongodb.internal.async.client.AsyncMongoCollection;
+import com.mongodb.internal.async.client.OperationExecutor;
+import com.mongodb.internal.bulk.WriteRequest;
+import com.mongodb.internal.client.model.AggregationLevel;
+import com.mongodb.internal.client.model.CountStrategy;
+import com.mongodb.internal.client.model.changestream.ChangeStreamLevel;
+import com.mongodb.internal.operation.AsyncOperations;
 import com.mongodb.reactivestreams.client.AggregatePublisher;
 import com.mongodb.reactivestreams.client.ChangeStreamPublisher;
 import com.mongodb.reactivestreams.client.ClientSession;
@@ -52,78 +57,131 @@ import com.mongodb.reactivestreams.client.ListIndexesPublisher;
 import com.mongodb.reactivestreams.client.MapReducePublisher;
 import com.mongodb.reactivestreams.client.MongoCollection;
 import org.bson.BsonDocument;
+import org.bson.BsonValue;
 import org.bson.Document;
+import org.bson.UuidRepresentation;
 import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.conversions.Bson;
 import org.reactivestreams.Publisher;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.function.Function;
 
 import static com.mongodb.assertions.Assertions.notNull;
+import static com.mongodb.internal.client.model.CountOptionsHelper.fromEstimatedDocumentCountOptions;
+import static java.util.Collections.singletonList;
+import static org.bson.internal.CodecRegistryHelper.createRegistry;
 
 
-final class MongoCollectionImpl<TDocument> implements MongoCollection<TDocument> {
+final class MongoCollectionImpl<T> implements MongoCollection<T> {
+    private final MongoNamespace namespace;
+    private final Class<T> documentClass;
+    private final ReadPreference readPreference;
+    private final CodecRegistry codecRegistry;
+    private final WriteConcern writeConcern;
+    private final boolean retryWrites;
+    private final boolean retryReads;
+    private final ReadConcern readConcern;
+    private final UuidRepresentation uuidRepresentation;
+    private final OperationExecutor executor;
+    private final AsyncOperations<T> operations;
 
-    private final AsyncMongoCollection<TDocument> wrapped;
-
-    MongoCollectionImpl(final AsyncMongoCollection<TDocument> wrapped) {
-        this.wrapped = notNull("wrapped", wrapped);
+    MongoCollectionImpl(final MongoNamespace namespace,
+                        final Class<T> documentClass,
+                        final CodecRegistry codecRegistry,
+                        final ReadPreference readPreference,
+                        final ReadConcern readConcern,
+                        final WriteConcern writeConcern,
+                        final OperationExecutor executor,
+                        final boolean retryReads,
+                        final boolean retryWrites,
+                        final UuidRepresentation uuidRepresentation) {
+        this.namespace = notNull("namespace", namespace);
+        this.documentClass = notNull("documentClass", documentClass);
+        this.codecRegistry = notNull("codecRegistry", codecRegistry);
+        this.readPreference = notNull("readPreference", readPreference);
+        this.writeConcern = notNull("writeConcern", writeConcern);
+        this.retryWrites = retryWrites;
+        this.retryReads = retryReads;
+        this.readConcern = notNull("readConcern", readConcern);
+        this.uuidRepresentation = notNull("uuidRepresentation", uuidRepresentation);
+        this.executor = notNull("executor", executor);
+        this.operations = new AsyncOperations<>(namespace, documentClass, readPreference, codecRegistry, readConcern, writeConcern,
+                                                retryWrites, retryReads);
     }
 
     @Override
     public MongoNamespace getNamespace() {
-        return wrapped.getNamespace();
+        return namespace;
     }
 
     @Override
-    public Class<TDocument> getDocumentClass() {
-        return wrapped.getDocumentClass();
+    public Class<T> getDocumentClass() {
+        return documentClass;
     }
 
     @Override
     public CodecRegistry getCodecRegistry() {
-        return wrapped.getCodecRegistry();
+        return codecRegistry;
     }
 
     @Override
     public ReadPreference getReadPreference() {
-        return wrapped.getReadPreference();
+        return readPreference;
     }
 
     @Override
     public WriteConcern getWriteConcern() {
-        return wrapped.getWriteConcern();
+        return writeConcern;
     }
 
     @Override
     public ReadConcern getReadConcern() {
-        return wrapped.getReadConcern();
+        return readConcern;
+    }
+
+    OperationExecutor getExecutor() {
+        return executor;
+    }
+
+    boolean getRetryReads() {
+        return retryReads;
+    }
+
+    public AsyncOperations<T> getOperations() {
+        return operations;
     }
 
     @Override
-    public <NewTDocument> MongoCollection<NewTDocument> withDocumentClass(final Class<NewTDocument> clazz) {
-        return new MongoCollectionImpl<>(wrapped.withDocumentClass(clazz));
+    public <D> MongoCollection<D> withDocumentClass(final Class<D> newDocumentClass) {
+        return new MongoCollectionImpl<>(namespace, newDocumentClass, codecRegistry,
+                                         readPreference, readConcern, writeConcern, executor, retryReads, retryWrites, uuidRepresentation);
     }
 
     @Override
-    public MongoCollection<TDocument> withCodecRegistry(final CodecRegistry codecRegistry) {
-        return new MongoCollectionImpl<>(wrapped.withCodecRegistry(codecRegistry));
+    public MongoCollection<T> withCodecRegistry(final CodecRegistry codecRegistry) {
+        return new MongoCollectionImpl<>(namespace, documentClass, createRegistry(codecRegistry, uuidRepresentation),
+                                         readPreference, readConcern, writeConcern, executor, retryReads, retryWrites, uuidRepresentation);
     }
 
     @Override
-    public MongoCollection<TDocument> withReadPreference(final ReadPreference readPreference) {
-        return new MongoCollectionImpl<>(wrapped.withReadPreference(readPreference));
+    public MongoCollection<T> withReadPreference(final ReadPreference readPreference) {
+        return new MongoCollectionImpl<>(namespace, documentClass, codecRegistry,
+                                         readPreference, readConcern, writeConcern, executor, retryReads, retryWrites, uuidRepresentation);
     }
 
     @Override
-    public MongoCollection<TDocument> withWriteConcern(final WriteConcern writeConcern) {
-        return new MongoCollectionImpl<>(wrapped.withWriteConcern(writeConcern));
+    public MongoCollection<T> withWriteConcern(final WriteConcern writeConcern) {
+        return new MongoCollectionImpl<>(namespace, documentClass, codecRegistry,
+                                         readPreference, readConcern, writeConcern, executor, retryReads, retryWrites, uuidRepresentation);
     }
 
     @Override
-    public MongoCollection<TDocument> withReadConcern(final ReadConcern readConcern) {
-        return new MongoCollectionImpl<>(wrapped.withReadConcern(readConcern));
+    public MongoCollection<T> withReadConcern(final ReadConcern readConcern) {
+        return new MongoCollectionImpl<>(namespace, documentClass, codecRegistry,
+                                         readPreference, readConcern, writeConcern, executor, retryReads, retryWrites, uuidRepresentation);
     }
 
     @Override
@@ -133,7 +191,9 @@ final class MongoCollectionImpl<TDocument> implements MongoCollection<TDocument>
 
     @Override
     public Publisher<Long> estimatedDocumentCount(final EstimatedDocumentCountOptions options) {
-        return Publishers.publish(callback -> wrapped.estimatedDocumentCount(options, callback));
+        return PublisherCreator.createReadOperationMono(() -> operations.count(
+                new BsonDocument(), fromEstimatedDocumentCountOptions(notNull("options", options)), CountStrategy.COMMAND),
+                                                        null, getReadPreference(), getReadConcern(), getExecutor());
     }
 
     @Override
@@ -148,7 +208,9 @@ final class MongoCollectionImpl<TDocument> implements MongoCollection<TDocument>
 
     @Override
     public Publisher<Long> countDocuments(final Bson filter, final CountOptions options) {
-        return Publishers.publish(callback -> wrapped.countDocuments(filter, options, callback));
+        return PublisherCreator.createReadOperationMono(
+                () -> operations.count(notNull("filter", filter), notNull("options", options), CountStrategy.AGGREGATE),
+                null, getReadPreference(), getReadConcern(), getExecutor());
     }
 
     @Override
@@ -163,8 +225,9 @@ final class MongoCollectionImpl<TDocument> implements MongoCollection<TDocument>
 
     @Override
     public Publisher<Long> countDocuments(final ClientSession clientSession, final Bson filter, final CountOptions options) {
-        return Publishers.publish(
-                callback -> wrapped.countDocuments(clientSession.getWrapped(), filter, options, callback));
+        return PublisherCreator.createReadOperationMono(
+                () -> operations.count(notNull("filter", filter), notNull("options", options), CountStrategy.AGGREGATE),
+                notNull("clientSession", clientSession), getReadPreference(), getReadConcern(), getExecutor());
     }
 
     @Override
@@ -174,7 +237,11 @@ final class MongoCollectionImpl<TDocument> implements MongoCollection<TDocument>
 
     @Override
     public <TResult> DistinctPublisher<TResult> distinct(final String fieldName, final Bson filter, final Class<TResult> resultClass) {
-        return new DistinctPublisherImpl<>(wrapped.distinct(fieldName, resultClass)).filter(filter);
+        return PublisherCreator.createDistinctPublisher(null, getNamespace(),
+                                                        getDocumentClass(), notNull("resultClass", resultClass), getCodecRegistry(),
+                                                        getReadPreference(), getReadConcern(), getExecutor(),
+                                                        notNull("fieldName", fieldName), notNull("filter", filter),
+                                                        getRetryReads());
     }
 
     @Override
@@ -186,11 +253,15 @@ final class MongoCollectionImpl<TDocument> implements MongoCollection<TDocument>
     @Override
     public <TResult> DistinctPublisher<TResult> distinct(final ClientSession clientSession, final String fieldName, final Bson filter,
                                                          final Class<TResult> resultClass) {
-        return new DistinctPublisherImpl<>(wrapped.distinct(clientSession.getWrapped(), fieldName, resultClass)).filter(filter);
+        return PublisherCreator.createDistinctPublisher(notNull("clientSession", clientSession), getNamespace(),
+                                                        getDocumentClass(), notNull("resultClass", resultClass), getCodecRegistry(),
+                                                        getReadPreference(), getReadConcern(), getExecutor(),
+                                                        notNull("fieldName", fieldName), notNull("filter", filter),
+                                                        getRetryReads());
     }
 
     @Override
-    public FindPublisher<TDocument> find() {
+    public FindPublisher<T> find() {
         return find(new BsonDocument(), getDocumentClass());
     }
 
@@ -200,17 +271,19 @@ final class MongoCollectionImpl<TDocument> implements MongoCollection<TDocument>
     }
 
     @Override
-    public FindPublisher<TDocument> find(final Bson filter) {
+    public FindPublisher<T> find(final Bson filter) {
         return find(filter, getDocumentClass());
     }
 
     @Override
     public <TResult> FindPublisher<TResult> find(final Bson filter, final Class<TResult> clazz) {
-        return new FindPublisherImpl<>(wrapped.find(filter, clazz));
+        return PublisherCreator.createFindPublisher(null, getNamespace(),
+                                                    getDocumentClass(), clazz, getCodecRegistry(),
+                                                    getReadPreference(), getReadConcern(), getExecutor(), filter, getRetryReads());
     }
 
     @Override
-    public FindPublisher<TDocument> find(final ClientSession clientSession) {
+    public FindPublisher<T> find(final ClientSession clientSession) {
         return find(clientSession, new BsonDocument(), getDocumentClass());
     }
 
@@ -220,34 +293,42 @@ final class MongoCollectionImpl<TDocument> implements MongoCollection<TDocument>
     }
 
     @Override
-    public FindPublisher<TDocument> find(final ClientSession clientSession, final Bson filter) {
+    public FindPublisher<T> find(final ClientSession clientSession, final Bson filter) {
         return find(clientSession, filter, getDocumentClass());
     }
 
     @Override
     public <TResult> FindPublisher<TResult> find(final ClientSession clientSession, final Bson filter, final Class<TResult> clazz) {
-        return new FindPublisherImpl<>(wrapped.find(clientSession.getWrapped(), filter, clazz));
+        return PublisherCreator.createFindPublisher(notNull("clientSession", clientSession), getNamespace(),
+                                                    getDocumentClass(), clazz, getCodecRegistry(),
+                                                    getReadPreference(), getReadConcern(), getExecutor(), filter, getRetryReads());
     }
 
     @Override
-    public AggregatePublisher<TDocument> aggregate(final List<? extends Bson> pipeline) {
+    public AggregatePublisher<T> aggregate(final List<? extends Bson> pipeline) {
         return aggregate(pipeline, getDocumentClass());
     }
 
     @Override
     public <TResult> AggregatePublisher<TResult> aggregate(final List<? extends Bson> pipeline, final Class<TResult> clazz) {
-        return new AggregatePublisherImpl<>(wrapped.aggregate(pipeline, clazz));
+        return PublisherCreator.createAggregatePublisher(null, getNamespace(), getDocumentClass(), clazz, getCodecRegistry(),
+                                                         getReadPreference(), getReadConcern(), getWriteConcern(), getExecutor(), pipeline,
+                                                         AggregationLevel.COLLECTION,
+                                                         getRetryReads());
     }
 
     @Override
-    public AggregatePublisher<TDocument> aggregate(final ClientSession clientSession, final List<? extends Bson> pipeline) {
+    public AggregatePublisher<T> aggregate(final ClientSession clientSession, final List<? extends Bson> pipeline) {
         return aggregate(clientSession, pipeline, getDocumentClass());
     }
 
     @Override
     public <TResult> AggregatePublisher<TResult> aggregate(final ClientSession clientSession, final List<? extends Bson> pipeline,
                                                            final Class<TResult> clazz) {
-        return new AggregatePublisherImpl<>(wrapped.aggregate(clientSession.getWrapped(), pipeline, clazz));
+        return PublisherCreator.createAggregatePublisher(notNull("clientSession", clientSession), getNamespace(), getDocumentClass(),
+                                                         clazz, getCodecRegistry(), getReadPreference(), getReadConcern(),
+                                                         getWriteConcern(), getExecutor(), pipeline,
+                                                         AggregationLevel.COLLECTION, getRetryReads());
     }
 
     @Override
@@ -267,7 +348,10 @@ final class MongoCollectionImpl<TDocument> implements MongoCollection<TDocument>
 
     @Override
     public <TResult> ChangeStreamPublisher<TResult> watch(final List<? extends Bson> pipeline, final Class<TResult> resultClass) {
-        return new ChangeStreamPublisherImpl<>(wrapped.watch(pipeline, resultClass));
+        return PublisherCreator.createChangeStreamPublisher(null, getNamespace(), resultClass,
+                                                            getCodecRegistry(), getReadPreference(), getReadConcern(), getExecutor(),
+                                                            pipeline, ChangeStreamLevel.COLLECTION,
+                                                            getRetryReads());
     }
 
     @Override
@@ -288,102 +372,121 @@ final class MongoCollectionImpl<TDocument> implements MongoCollection<TDocument>
     @Override
     public <TResult> ChangeStreamPublisher<TResult> watch(final ClientSession clientSession, final List<? extends Bson> pipeline,
                                                           final Class<TResult> resultClass) {
-        return new ChangeStreamPublisherImpl<>(wrapped.watch(clientSession.getWrapped(), pipeline, resultClass));
+        return PublisherCreator.createChangeStreamPublisher(notNull("clientSession", clientSession), getNamespace(), resultClass,
+                                                            getCodecRegistry(), getReadPreference(), getReadConcern(), getExecutor(),
+                                                            pipeline, ChangeStreamLevel.COLLECTION,
+                                                            getRetryReads());
     }
 
     @Override
-    public MapReducePublisher<TDocument> mapReduce(final String mapFunction, final String reduceFunction) {
+    public MapReducePublisher<T> mapReduce(final String mapFunction, final String reduceFunction) {
         return mapReduce(mapFunction, reduceFunction, getDocumentClass());
     }
 
     @Override
     public <TResult> MapReducePublisher<TResult> mapReduce(final String mapFunction, final String reduceFunction,
                                                            final Class<TResult> clazz) {
-        return new MapReducePublisherImpl<>(wrapped.mapReduce(mapFunction, reduceFunction, clazz));
+        return PublisherCreator.createMapReducePublisher(null, getNamespace(), getDocumentClass(), clazz, getCodecRegistry(),
+                                                         getReadPreference(), getReadConcern(), getWriteConcern(), getExecutor(),
+                                                         mapFunction, reduceFunction);
     }
 
     @Override
-    public MapReducePublisher<TDocument> mapReduce(final ClientSession clientSession, final String mapFunction,
-                                                  final String reduceFunction) {
+    public MapReducePublisher<T> mapReduce(final ClientSession clientSession, final String mapFunction,
+                                           final String reduceFunction) {
         return mapReduce(clientSession, mapFunction, reduceFunction, getDocumentClass());
     }
 
     @Override
     public <TResult> MapReducePublisher<TResult> mapReduce(final ClientSession clientSession, final String mapFunction,
                                                            final String reduceFunction, final Class<TResult> clazz) {
-        return new MapReducePublisherImpl<>(wrapped.mapReduce(clientSession.getWrapped(), mapFunction, reduceFunction, clazz));
+        return PublisherCreator.createMapReducePublisher(notNull("clientSession", clientSession), getNamespace(), getDocumentClass(),
+                                                         clazz, getCodecRegistry(), getReadPreference(), getReadConcern(),
+                                                         getWriteConcern(), getExecutor(), mapFunction,
+                                                         reduceFunction);
     }
 
     @Override
-    public Publisher<BulkWriteResult> bulkWrite(final List<? extends WriteModel<? extends TDocument>> requests) {
+    public Publisher<BulkWriteResult> bulkWrite(final List<? extends WriteModel<? extends T>> requests) {
         return bulkWrite(requests, new BulkWriteOptions());
     }
 
     @Override
-    public Publisher<BulkWriteResult> bulkWrite(final List<? extends WriteModel<? extends TDocument>> requests,
+    public Publisher<BulkWriteResult> bulkWrite(final List<? extends WriteModel<? extends T>> requests,
                                                 final BulkWriteOptions options) {
-        return Publishers.publish(
-                callback -> wrapped.bulkWrite(requests, options, callback));
+        return PublisherCreator.createWriteOperationMono(() -> operations.bulkWrite(notNull("requests", requests),
+                                                                                    notNull("options", options)),
+                                                         null, getReadConcern(), getExecutor());
     }
 
     @Override
     public Publisher<BulkWriteResult> bulkWrite(final ClientSession clientSession,
-                                                final List<? extends WriteModel<? extends TDocument>> requests) {
+                                                final List<? extends WriteModel<? extends T>> requests) {
         return bulkWrite(clientSession, requests, new BulkWriteOptions());
     }
 
     @Override
     public Publisher<BulkWriteResult> bulkWrite(final ClientSession clientSession,
-                                                final List<? extends WriteModel<? extends TDocument>> requests,
+                                                final List<? extends WriteModel<? extends T>> requests,
                                                 final BulkWriteOptions options) {
-        return Publishers.publish(
-                callback -> wrapped.bulkWrite(clientSession.getWrapped(), requests, options, callback));
+        return PublisherCreator.createWriteOperationMono(() -> operations.bulkWrite(notNull("requests", requests),
+                                                                                    notNull("options", options)),
+                                                         notNull("clientSession", clientSession), getReadConcern(), getExecutor());
     }
 
     @Override
-    public Publisher<InsertOneResult> insertOne(final TDocument document) {
+    public Publisher<InsertOneResult> insertOne(final T document) {
         return insertOne(document, new InsertOneOptions());
     }
 
     @Override
-    public Publisher<InsertOneResult> insertOne(final TDocument document, final InsertOneOptions options) {
-        return Publishers.publish(
-                callback -> wrapped.insertOne(document, options, callback));
+    public Publisher<InsertOneResult> insertOne(final T document, final InsertOneOptions options) {
+        return PublisherCreator.createSingleWriteRequestMono(() -> operations.insertOne(notNull("document", document),
+                                                                                        notNull("options", options)),
+                                                             null, getReadConcern(), getExecutor(), WriteRequest.Type.INSERT)
+                .map(INSERT_ONE_RESULT_MAPPER);
     }
 
     @Override
-    public Publisher<InsertOneResult> insertOne(final ClientSession clientSession, final TDocument document) {
+    public Publisher<InsertOneResult> insertOne(final ClientSession clientSession, final T document) {
         return insertOne(clientSession, document, new InsertOneOptions());
     }
 
     @Override
-    public Publisher<InsertOneResult> insertOne(final ClientSession clientSession, final TDocument document,
+    public Publisher<InsertOneResult> insertOne(final ClientSession clientSession, final T document,
                                                 final InsertOneOptions options) {
-        return Publishers.publish(
-                callback -> wrapped.insertOne(clientSession.getWrapped(), document, options, callback));
+        return PublisherCreator.createSingleWriteRequestMono(() -> operations.insertOne(notNull("document", document),
+                                                                                        notNull("options", options)),
+                                                             notNull("clientSession", clientSession), getReadConcern(), getExecutor(),
+                                                             WriteRequest.Type.INSERT)
+                .map(INSERT_ONE_RESULT_MAPPER);
     }
 
     @Override
-    public Publisher<InsertManyResult> insertMany(final List<? extends TDocument> documents) {
+    public Publisher<InsertManyResult> insertMany(final List<? extends T> documents) {
         return insertMany(documents, new InsertManyOptions());
     }
 
     @Override
-    public Publisher<InsertManyResult> insertMany(final List<? extends TDocument> documents, final InsertManyOptions options) {
-        return Publishers.publish(
-                callback -> wrapped.insertMany(documents, options, callback));
+    public Publisher<InsertManyResult> insertMany(final List<? extends T> documents, final InsertManyOptions options) {
+        return PublisherCreator.createWriteOperationMono(() -> operations.insertMany(notNull("documents", documents),
+                                                                                     notNull("options", options)),
+                                                         null, getReadConcern(), getExecutor())
+                .map(INSERT_MANY_RESULT_MAPPER);
     }
 
     @Override
-    public Publisher<InsertManyResult> insertMany(final ClientSession clientSession, final List<? extends TDocument> documents) {
+    public Publisher<InsertManyResult> insertMany(final ClientSession clientSession, final List<? extends T> documents) {
         return insertMany(clientSession, documents, new InsertManyOptions());
     }
 
     @Override
-    public Publisher<InsertManyResult> insertMany(final ClientSession clientSession, final List<? extends TDocument> documents,
-                                         final InsertManyOptions options) {
-        return Publishers.publish(
-                callback -> wrapped.insertMany(clientSession.getWrapped(), documents, options, callback));
+    public Publisher<InsertManyResult> insertMany(final ClientSession clientSession, final List<? extends T> documents,
+                                                  final InsertManyOptions options) {
+        return PublisherCreator.createWriteOperationMono(() -> operations.insertMany(notNull("documents", documents),
+                                                                                     notNull("options", options)),
+                                                         notNull("clientSession", clientSession), getReadConcern(), getExecutor())
+                .map(INSERT_MANY_RESULT_MAPPER);
     }
 
     @Override
@@ -393,8 +496,9 @@ final class MongoCollectionImpl<TDocument> implements MongoCollection<TDocument>
 
     @Override
     public Publisher<DeleteResult> deleteOne(final Bson filter, final DeleteOptions options) {
-        return Publishers.publish(
-                callback -> wrapped.deleteOne(filter, options, callback));
+        return PublisherCreator.createSingleWriteRequestMono(() -> operations.deleteOne(filter, options),
+                                                             null, getReadConcern(), getExecutor(), WriteRequest.Type.DELETE)
+                .map(DELETE_RESULT_MAPPER);
     }
 
     @Override
@@ -404,8 +508,10 @@ final class MongoCollectionImpl<TDocument> implements MongoCollection<TDocument>
 
     @Override
     public Publisher<DeleteResult> deleteOne(final ClientSession clientSession, final Bson filter, final DeleteOptions options) {
-        return Publishers.publish(
-                callback -> wrapped.deleteOne(clientSession.getWrapped(), filter, options, callback));
+        return PublisherCreator.createSingleWriteRequestMono(() -> operations.deleteOne(filter, options),
+                                                             notNull("clientSession", clientSession), getReadConcern(), getExecutor(),
+                                                             WriteRequest.Type.DELETE)
+                .map(DELETE_RESULT_MAPPER);
     }
 
     @Override
@@ -415,8 +521,9 @@ final class MongoCollectionImpl<TDocument> implements MongoCollection<TDocument>
 
     @Override
     public Publisher<DeleteResult> deleteMany(final Bson filter, final DeleteOptions options) {
-        return Publishers.publish(
-                callback -> wrapped.deleteMany(filter, options, callback));
+        return PublisherCreator.createSingleWriteRequestMono(() -> operations.deleteMany(filter, options),
+                                                             null, getReadConcern(), getExecutor(), WriteRequest.Type.DELETE)
+                .map(DELETE_RESULT_MAPPER);
     }
 
     @Override
@@ -426,31 +533,36 @@ final class MongoCollectionImpl<TDocument> implements MongoCollection<TDocument>
 
     @Override
     public Publisher<DeleteResult> deleteMany(final ClientSession clientSession, final Bson filter, final DeleteOptions options) {
-        return Publishers.publish(
-                callback -> wrapped.deleteMany(clientSession.getWrapped(), filter, options, callback));
+        return PublisherCreator.createSingleWriteRequestMono(() -> operations.deleteMany(filter, options),
+                                                             notNull("clientSession", clientSession), getReadConcern(), getExecutor(),
+                                                             WriteRequest.Type.DELETE)
+                .map(DELETE_RESULT_MAPPER);
     }
 
     @Override
-    public Publisher<UpdateResult> replaceOne(final Bson filter, final TDocument replacement) {
+    public Publisher<UpdateResult> replaceOne(final Bson filter, final T replacement) {
         return replaceOne(filter, replacement, new ReplaceOptions());
     }
 
     @Override
-    public Publisher<UpdateResult> replaceOne(final Bson filter, final TDocument replacement, final ReplaceOptions options) {
-        return Publishers.publish(
-                callback -> wrapped.replaceOne(filter, replacement, options, callback));
+    public Publisher<UpdateResult> replaceOne(final Bson filter, final T replacement, final ReplaceOptions options) {
+        return PublisherCreator.createSingleWriteRequestMono(() -> operations.replaceOne(filter, replacement, options),
+                                                             null, getReadConcern(), getExecutor(), WriteRequest.Type.REPLACE)
+                .map(UPDATE_RESULT_MAPPER);
     }
 
     @Override
-    public Publisher<UpdateResult> replaceOne(final ClientSession clientSession, final Bson filter, final TDocument replacement) {
+    public Publisher<UpdateResult> replaceOne(final ClientSession clientSession, final Bson filter, final T replacement) {
         return replaceOne(clientSession, filter, replacement, new ReplaceOptions());
     }
 
     @Override
-    public Publisher<UpdateResult> replaceOne(final ClientSession clientSession, final Bson filter, final TDocument replacement,
+    public Publisher<UpdateResult> replaceOne(final ClientSession clientSession, final Bson filter, final T replacement,
                                               final ReplaceOptions options) {
-        return Publishers.publish(
-                callback -> wrapped.replaceOne(clientSession.getWrapped(), filter, replacement, options, callback));
+        return PublisherCreator.createSingleWriteRequestMono(() -> operations.replaceOne(filter, replacement, options),
+                                                             notNull("clientSession", clientSession), getReadConcern(), getExecutor(),
+                                                             WriteRequest.Type.REPLACE)
+                .map(UPDATE_RESULT_MAPPER);
     }
 
     @Override
@@ -460,8 +572,9 @@ final class MongoCollectionImpl<TDocument> implements MongoCollection<TDocument>
 
     @Override
     public Publisher<UpdateResult> updateOne(final Bson filter, final Bson update, final UpdateOptions options) {
-        return Publishers.publish(
-                callback -> wrapped.updateOne(filter, update, options, callback));
+        return PublisherCreator.createSingleWriteRequestMono(() -> operations.updateOne(filter, update, options),
+                                                             null, getReadConcern(), getExecutor(), WriteRequest.Type.UPDATE)
+                .map(UPDATE_RESULT_MAPPER);
     }
 
     @Override
@@ -472,8 +585,10 @@ final class MongoCollectionImpl<TDocument> implements MongoCollection<TDocument>
     @Override
     public Publisher<UpdateResult> updateOne(final ClientSession clientSession, final Bson filter, final Bson update,
                                              final UpdateOptions options) {
-        return Publishers.publish(
-                callback -> wrapped.updateOne(clientSession.getWrapped(), filter, update, options, callback));
+        return PublisherCreator.createSingleWriteRequestMono(() -> operations.updateOne(filter, update, options),
+                                                             notNull("clientSession", clientSession), getReadConcern(), getExecutor(),
+                                                             WriteRequest.Type.UPDATE)
+                .map(UPDATE_RESULT_MAPPER);
     }
 
     @Override
@@ -483,8 +598,9 @@ final class MongoCollectionImpl<TDocument> implements MongoCollection<TDocument>
 
     @Override
     public Publisher<UpdateResult> updateOne(final Bson filter, final List<? extends Bson> update, final UpdateOptions options) {
-        return Publishers.publish(
-                callback -> wrapped.updateOne(filter, update, options, callback));
+        return PublisherCreator.createSingleWriteRequestMono(() -> operations.updateOne(filter, update, options),
+                                                             null, getReadConcern(), getExecutor(), WriteRequest.Type.UPDATE)
+                .map(UPDATE_RESULT_MAPPER);
     }
 
     @Override
@@ -495,8 +611,10 @@ final class MongoCollectionImpl<TDocument> implements MongoCollection<TDocument>
     @Override
     public Publisher<UpdateResult> updateOne(final ClientSession clientSession, final Bson filter, final List<? extends Bson> update,
                                              final UpdateOptions options) {
-        return Publishers.publish(
-                callback -> wrapped.updateOne(clientSession.getWrapped(), filter, update, options, callback));
+        return PublisherCreator.createSingleWriteRequestMono(() -> operations.updateOne(filter, update, options),
+                                                             notNull("clientSession", clientSession), getReadConcern(), getExecutor(),
+                                                             WriteRequest.Type.UPDATE)
+                .map(UPDATE_RESULT_MAPPER);
     }
 
     @Override
@@ -506,8 +624,9 @@ final class MongoCollectionImpl<TDocument> implements MongoCollection<TDocument>
 
     @Override
     public Publisher<UpdateResult> updateMany(final Bson filter, final Bson update, final UpdateOptions options) {
-        return Publishers.publish(
-                callback -> wrapped.updateMany(filter, update, options, callback));
+        return PublisherCreator.createSingleWriteRequestMono(() -> operations.updateMany(filter, update, options),
+                                                             null, getReadConcern(), getExecutor(), WriteRequest.Type.UPDATE)
+                .map(UPDATE_RESULT_MAPPER);
     }
 
     @Override
@@ -518,8 +637,10 @@ final class MongoCollectionImpl<TDocument> implements MongoCollection<TDocument>
     @Override
     public Publisher<UpdateResult> updateMany(final ClientSession clientSession, final Bson filter, final Bson update,
                                               final UpdateOptions options) {
-        return Publishers.publish(
-                callback -> wrapped.updateMany(clientSession.getWrapped(), filter, update, options, callback));
+        return PublisherCreator.createSingleWriteRequestMono(() -> operations.updateMany(filter, update, options),
+                                                             notNull("clientSession", clientSession), getReadConcern(), getExecutor(),
+                                                             WriteRequest.Type.UPDATE)
+                .map(UPDATE_RESULT_MAPPER);
     }
 
     @Override
@@ -529,8 +650,9 @@ final class MongoCollectionImpl<TDocument> implements MongoCollection<TDocument>
 
     @Override
     public Publisher<UpdateResult> updateMany(final Bson filter, final List<? extends Bson> update, final UpdateOptions options) {
-        return Publishers.publish(
-                callback -> wrapped.updateMany(filter, update, options, callback));
+        return PublisherCreator.createSingleWriteRequestMono(() -> operations.updateMany(filter, update, options),
+                                                             null, getReadConcern(), getExecutor(), WriteRequest.Type.UPDATE)
+                .map(UPDATE_RESULT_MAPPER);
     }
 
     @Override
@@ -541,113 +663,129 @@ final class MongoCollectionImpl<TDocument> implements MongoCollection<TDocument>
     @Override
     public Publisher<UpdateResult> updateMany(final ClientSession clientSession, final Bson filter, final List<? extends Bson> update,
                                               final UpdateOptions options) {
-        return Publishers.publish(
-                callback -> wrapped.updateMany(clientSession.getWrapped(), filter, update, options, callback));
+        return PublisherCreator.createSingleWriteRequestMono(() -> operations.updateMany(filter, update, options),
+                                                             notNull("clientSession", clientSession), getReadConcern(), getExecutor(),
+                                                             WriteRequest.Type.UPDATE)
+                .map(UPDATE_RESULT_MAPPER);
     }
 
     @Override
-    public Publisher<TDocument> findOneAndDelete(final Bson filter) {
+    public Publisher<T> findOneAndDelete(final Bson filter) {
         return findOneAndDelete(filter, new FindOneAndDeleteOptions());
     }
 
     @Override
-    public Publisher<TDocument> findOneAndDelete(final Bson filter, final FindOneAndDeleteOptions options) {
-        return Publishers.publish(
-                callback -> wrapped.findOneAndDelete(filter, options, callback));
+    public Publisher<T> findOneAndDelete(final Bson filter, final FindOneAndDeleteOptions options) {
+        return PublisherCreator.createWriteOperationMono(() -> operations.findOneAndDelete(notNull("filter", filter),
+                                                                                           notNull("options", options)),
+                                                         null, getReadConcern(), getExecutor());
     }
 
     @Override
-    public Publisher<TDocument> findOneAndDelete(final ClientSession clientSession, final Bson filter) {
+    public Publisher<T> findOneAndDelete(final ClientSession clientSession, final Bson filter) {
         return findOneAndDelete(clientSession, filter, new FindOneAndDeleteOptions());
     }
 
     @Override
-    public Publisher<TDocument> findOneAndDelete(final ClientSession clientSession, final Bson filter,
-                                                 final FindOneAndDeleteOptions options) {
-        return Publishers.publish(
-                callback -> wrapped.findOneAndDelete(clientSession.getWrapped(), filter, options, callback));
+    public Publisher<T> findOneAndDelete(final ClientSession clientSession, final Bson filter,
+                                         final FindOneAndDeleteOptions options) {
+        return PublisherCreator.createWriteOperationMono(() -> operations.findOneAndDelete(notNull("filter", filter),
+                                                                                           notNull("options", options)),
+                                                         notNull("clientSession", clientSession), getReadConcern(), getExecutor());
     }
 
     @Override
-    public Publisher<TDocument> findOneAndReplace(final Bson filter, final TDocument replacement) {
+    public Publisher<T> findOneAndReplace(final Bson filter, final T replacement) {
         return findOneAndReplace(filter, replacement, new FindOneAndReplaceOptions());
     }
 
     @Override
-    public Publisher<TDocument> findOneAndReplace(final Bson filter, final TDocument replacement, final FindOneAndReplaceOptions options) {
-        return Publishers.publish(
-                callback -> wrapped.findOneAndReplace(filter, replacement, options, callback));
+    public Publisher<T> findOneAndReplace(final Bson filter, final T replacement, final FindOneAndReplaceOptions options) {
+        return PublisherCreator.createWriteOperationMono(() -> operations.findOneAndReplace(notNull("filter", filter),
+                                                                                            notNull("replacement", replacement),
+                                                                                            notNull("options", options)),
+                                                         null, getReadConcern(), getExecutor());
     }
 
     @Override
-    public Publisher<TDocument> findOneAndReplace(final ClientSession clientSession, final Bson filter, final TDocument replacement) {
+    public Publisher<T> findOneAndReplace(final ClientSession clientSession, final Bson filter, final T replacement) {
         return findOneAndReplace(clientSession, filter, replacement, new FindOneAndReplaceOptions());
     }
 
     @Override
-    public Publisher<TDocument> findOneAndReplace(final ClientSession clientSession, final Bson filter, final TDocument replacement,
-                                                  final FindOneAndReplaceOptions options) {
-        return Publishers.publish(
-                callback -> wrapped.findOneAndReplace(clientSession.getWrapped(), filter, replacement, options, callback));
+    public Publisher<T> findOneAndReplace(final ClientSession clientSession, final Bson filter, final T replacement,
+                                          final FindOneAndReplaceOptions options) {
+        return PublisherCreator.createWriteOperationMono(() -> operations.findOneAndReplace(notNull("filter", filter),
+                                                                                            notNull("replacement", replacement),
+                                                                                            notNull("options", options)),
+                                                         notNull("clientSession", clientSession), getReadConcern(), getExecutor());
     }
 
     @Override
-    public Publisher<TDocument> findOneAndUpdate(final Bson filter, final Bson update) {
+    public Publisher<T> findOneAndUpdate(final Bson filter, final Bson update) {
         return findOneAndUpdate(filter, update, new FindOneAndUpdateOptions());
     }
 
     @Override
-    public Publisher<TDocument> findOneAndUpdate(final Bson filter, final Bson update, final FindOneAndUpdateOptions options) {
-        return Publishers.publish(
-                callback -> wrapped.findOneAndUpdate(filter, update, options, callback));
+    public Publisher<T> findOneAndUpdate(final Bson filter, final Bson update, final FindOneAndUpdateOptions options) {
+        return PublisherCreator.createWriteOperationMono(() -> operations.findOneAndUpdate(notNull("filter", filter),
+                                                                                           notNull("update", update),
+                                                                                           notNull("options", options)),
+                                                         null, getReadConcern(), getExecutor());
     }
 
     @Override
-    public Publisher<TDocument> findOneAndUpdate(final ClientSession clientSession, final Bson filter, final Bson update) {
+    public Publisher<T> findOneAndUpdate(final ClientSession clientSession, final Bson filter, final Bson update) {
         return findOneAndUpdate(clientSession, filter, update, new FindOneAndUpdateOptions());
     }
 
     @Override
-    public Publisher<TDocument> findOneAndUpdate(final ClientSession clientSession, final Bson filter, final Bson update,
-                                                 final FindOneAndUpdateOptions options) {
-        return Publishers.publish(
-                callback -> wrapped.findOneAndUpdate(clientSession.getWrapped(), filter, update, options, callback));
+    public Publisher<T> findOneAndUpdate(final ClientSession clientSession, final Bson filter, final Bson update,
+                                         final FindOneAndUpdateOptions options) {
+        return PublisherCreator.createWriteOperationMono(() -> operations.findOneAndUpdate(notNull("filter", filter),
+                                                                                           notNull("update", update),
+                                                                                           notNull("options", options)),
+                                                         notNull("clientSession", clientSession), getReadConcern(), getExecutor());
     }
 
     @Override
-    public Publisher<TDocument> findOneAndUpdate(final Bson filter, final List<? extends Bson> update) {
+    public Publisher<T> findOneAndUpdate(final Bson filter, final List<? extends Bson> update) {
         return findOneAndUpdate(filter, update, new FindOneAndUpdateOptions());
     }
 
     @Override
-    public Publisher<TDocument> findOneAndUpdate(final Bson filter, final List<? extends Bson> update,
-                                                 final FindOneAndUpdateOptions options) {
-        return Publishers.publish(
-                callback -> wrapped.findOneAndUpdate(filter, update, options, callback));
+    public Publisher<T> findOneAndUpdate(final Bson filter, final List<? extends Bson> update,
+                                         final FindOneAndUpdateOptions options) {
+        return PublisherCreator.createWriteOperationMono(() -> operations.findOneAndUpdate(notNull("filter", filter),
+                                                                                           notNull("update", update),
+                                                                                           notNull("options", options)),
+                                                         null, getReadConcern(), getExecutor());
     }
 
     @Override
-    public Publisher<TDocument> findOneAndUpdate(final ClientSession clientSession, final Bson filter,
-                                                 final List<? extends Bson> update) {
+    public Publisher<T> findOneAndUpdate(final ClientSession clientSession, final Bson filter,
+                                         final List<? extends Bson> update) {
         return findOneAndUpdate(clientSession, filter, update, new FindOneAndUpdateOptions());
     }
 
     @Override
-    public Publisher<TDocument> findOneAndUpdate(final ClientSession clientSession, final Bson filter,
-                                                 final List<? extends Bson> update, final FindOneAndUpdateOptions options) {
-        return Publishers.publish(
-                callback -> wrapped.findOneAndUpdate(clientSession.getWrapped(), filter, update, options, callback));
+    public Publisher<T> findOneAndUpdate(final ClientSession clientSession, final Bson filter,
+                                         final List<? extends Bson> update, final FindOneAndUpdateOptions options) {
+        return PublisherCreator.createWriteOperationMono(() -> operations.findOneAndUpdate(notNull("filter", filter),
+                                                                                           notNull("update", update),
+                                                                                           notNull("options", options)),
+                                                         notNull("clientSession", clientSession), getReadConcern(), getExecutor());
     }
 
     @Override
     public Publisher<Void> drop() {
-        return Publishers.publish(wrapped::drop);
+        return PublisherCreator.createWriteOperationMono(operations::dropCollection, null, getReadConcern(), getExecutor());
     }
 
     @Override
     public Publisher<Void> drop(final ClientSession clientSession) {
-        return Publishers.publish(
-                callback -> wrapped.drop(clientSession.getWrapped(), callback));
+        return PublisherCreator.createWriteOperationMono(operations::dropCollection, notNull("clientSession", clientSession),
+                                                         getReadConcern(), getExecutor());
     }
 
     @Override
@@ -657,8 +795,7 @@ final class MongoCollectionImpl<TDocument> implements MongoCollection<TDocument>
 
     @Override
     public Publisher<String> createIndex(final Bson key, final IndexOptions options) {
-        return Publishers.publish(
-                callback -> wrapped.createIndex(key, options, callback));
+        return createIndexes(singletonList(new IndexModel(notNull("key", key), notNull("options", options))));
     }
 
     @Override
@@ -668,8 +805,8 @@ final class MongoCollectionImpl<TDocument> implements MongoCollection<TDocument>
 
     @Override
     public Publisher<String> createIndex(final ClientSession clientSession, final Bson key, final IndexOptions options) {
-        return Publishers.publish(
-                callback -> wrapped.createIndex(clientSession.getWrapped(), key, options, callback));
+        return createIndexes(notNull("clientSession", clientSession),
+                             singletonList(new IndexModel(notNull("key", key), notNull("options", options))));
     }
 
     @Override
@@ -679,8 +816,8 @@ final class MongoCollectionImpl<TDocument> implements MongoCollection<TDocument>
 
     @Override
     public Publisher<String> createIndexes(final List<IndexModel> indexes, final CreateIndexOptions createIndexOptions) {
-        return Publishers.publishAndFlatten(
-                callback -> wrapped.createIndexes(indexes, createIndexOptions, callback));
+        return PublisherCreator.createIndexesFlux(() -> operations.createIndexes(indexes, createIndexOptions),
+                                                  null, getReadConcern(), getExecutor(), indexes, getCodecRegistry());
     }
 
     @Override
@@ -691,8 +828,9 @@ final class MongoCollectionImpl<TDocument> implements MongoCollection<TDocument>
     @Override
     public Publisher<String> createIndexes(final ClientSession clientSession, final List<IndexModel> indexes,
                                            final CreateIndexOptions createIndexOptions) {
-        return Publishers.publishAndFlatten(
-                callback -> wrapped.createIndexes(clientSession.getWrapped(), indexes, createIndexOptions, callback));
+        return PublisherCreator.createIndexesFlux(() -> operations.createIndexes(indexes, createIndexOptions),
+                                                  notNull("clientSession", clientSession), getReadConcern(), getExecutor(), indexes,
+                                                  getCodecRegistry());
     }
 
     @Override
@@ -702,7 +840,8 @@ final class MongoCollectionImpl<TDocument> implements MongoCollection<TDocument>
 
     @Override
     public <TResult> ListIndexesPublisher<TResult> listIndexes(final Class<TResult> clazz) {
-        return new ListIndexesPublisherImpl<>(wrapped.listIndexes(clazz));
+        return PublisherCreator.createListIndexesPublisher(null, getNamespace(), clazz, getCodecRegistry(), getReadPreference(),
+                                                           getExecutor(), getRetryReads());
     }
 
     @Override
@@ -712,7 +851,8 @@ final class MongoCollectionImpl<TDocument> implements MongoCollection<TDocument>
 
     @Override
     public <TResult> ListIndexesPublisher<TResult> listIndexes(final ClientSession clientSession, final Class<TResult> clazz) {
-        return new ListIndexesPublisherImpl<>(wrapped.listIndexes(clientSession.getWrapped(), clazz));
+        return PublisherCreator.createListIndexesPublisher(notNull("clientSession", clientSession), getNamespace(), clazz,
+                                                           getCodecRegistry(), getReadPreference(), getExecutor(), getRetryReads());
     }
 
     @Override
@@ -727,14 +867,16 @@ final class MongoCollectionImpl<TDocument> implements MongoCollection<TDocument>
 
     @Override
     public Publisher<Void> dropIndex(final String indexName, final DropIndexOptions dropIndexOptions) {
-        return Publishers.publish(
-                callback -> wrapped.dropIndex(indexName, dropIndexOptions, callback));
+        return PublisherCreator.createWriteOperationMono(() -> operations.dropIndex(notNull("indexName", indexName),
+                                                                                    notNull("dropIndexOptions", dropIndexOptions)),
+                                                         null, getReadConcern(), getExecutor());
     }
 
     @Override
     public Publisher<Void> dropIndex(final Bson keys, final DropIndexOptions dropIndexOptions) {
-        return Publishers.publish(
-                callback -> wrapped.dropIndex(keys, dropIndexOptions, callback));
+        return PublisherCreator.createWriteOperationMono(() -> operations.dropIndex(notNull("keys", keys),
+                                                                                    notNull("dropIndexOptions", dropIndexOptions)),
+                                                         null, getReadConcern(), getExecutor());
     }
 
     @Override
@@ -749,15 +891,17 @@ final class MongoCollectionImpl<TDocument> implements MongoCollection<TDocument>
 
     @Override
     public Publisher<Void> dropIndex(final ClientSession clientSession, final String indexName,
-                                        final DropIndexOptions dropIndexOptions) {
-        return Publishers.publish(
-                callback -> wrapped.dropIndex(clientSession.getWrapped(), indexName, dropIndexOptions, callback));
+                                     final DropIndexOptions dropIndexOptions) {
+        return PublisherCreator.createWriteOperationMono(() -> operations.dropIndex(notNull("indexName", indexName),
+                                                                                    notNull("dropIndexOptions", dropIndexOptions)),
+                                                         notNull("clientSession", clientSession), getReadConcern(), getExecutor());
     }
 
     @Override
     public Publisher<Void> dropIndex(final ClientSession clientSession, final Bson keys, final DropIndexOptions dropIndexOptions) {
-        return Publishers.publish(
-                callback -> wrapped.dropIndex(clientSession.getWrapped(), keys, dropIndexOptions, callback));
+        return PublisherCreator.createWriteOperationMono(() -> operations.dropIndex(notNull("keys", keys),
+                                                                                    notNull("dropIndexOptions", dropIndexOptions)),
+                                                         notNull("clientSession", clientSession), getReadConcern(), getExecutor());
     }
 
     @Override
@@ -787,8 +931,9 @@ final class MongoCollectionImpl<TDocument> implements MongoCollection<TDocument>
 
     @Override
     public Publisher<Void> renameCollection(final MongoNamespace newCollectionNamespace, final RenameCollectionOptions options) {
-        return Publishers.publish(
-                callback -> wrapped.renameCollection(newCollectionNamespace, options, callback));
+        return PublisherCreator.createWriteOperationMono(() -> operations.renameCollection(
+                notNull("newCollectionNamespace", newCollectionNamespace), notNull("options", options)),
+                                                         null, getReadConcern(), getExecutor());
     }
 
     @Override
@@ -798,10 +943,42 @@ final class MongoCollectionImpl<TDocument> implements MongoCollection<TDocument>
 
     @Override
     public Publisher<Void> renameCollection(final ClientSession clientSession, final MongoNamespace newCollectionNamespace,
-                                               final RenameCollectionOptions options) {
-        return Publishers.publish(
-                callback -> wrapped.renameCollection(clientSession.getWrapped(), newCollectionNamespace, options,
-                        callback));
+                                            final RenameCollectionOptions options) {
+        return PublisherCreator.createWriteOperationMono(() -> operations.renameCollection(
+                notNull("newCollectionNamespace", newCollectionNamespace), notNull("options", options)),
+                                                         notNull("clientSession", clientSession), getReadConcern(), getExecutor());
     }
 
+
+    private static final Function<BulkWriteResult, InsertOneResult> INSERT_ONE_RESULT_MAPPER = result -> {
+        if (result.wasAcknowledged()) {
+            BsonValue insertedId = result.getInserts().isEmpty() ? null : result.getInserts().get(0).getId();
+            return InsertOneResult.acknowledged(insertedId);
+        } else {
+            return InsertOneResult.unacknowledged();
+        }
+    };
+    private static final Function<BulkWriteResult, InsertManyResult> INSERT_MANY_RESULT_MAPPER = result -> {
+        if (result.wasAcknowledged()) {
+            return InsertManyResult.acknowledged(result.getInserts().stream()
+                                                         .collect(HashMap::new, (m, v) -> m.put(v.getIndex(), v.getId()), HashMap::putAll));
+        } else {
+            return InsertManyResult.unacknowledged();
+        }
+    };
+    private static final Function<BulkWriteResult, DeleteResult> DELETE_RESULT_MAPPER = result -> {
+        if (result.wasAcknowledged()) {
+            return DeleteResult.acknowledged(result.getDeletedCount());
+        } else {
+            return DeleteResult.unacknowledged();
+        }
+    };
+    private static final Function<BulkWriteResult, UpdateResult> UPDATE_RESULT_MAPPER = result -> {
+        if (result.wasAcknowledged()) {
+            BsonValue upsertedId = result.getUpserts().isEmpty() ? null : result.getUpserts().get(0).getId();
+            return UpdateResult.acknowledged(result.getMatchedCount(), (long) result.getModifiedCount(), upsertedId);
+        } else {
+            return UpdateResult.unacknowledged();
+        }
+    };
 }

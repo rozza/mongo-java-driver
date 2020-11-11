@@ -26,7 +26,7 @@ import java.util.concurrent.TimeUnit;
  * @param <TResult> The type of the result.
  * @since 1.0
  */
-public interface ListIndexesPublisher<TResult> extends Publisher<TResult> {
+public interface ListIndexesPublisher<TResult> extends BatchCursorPublisher<TResult> {
 
     /**
      * Sets the maximum execution time on the server for this operation.

@@ -29,7 +29,7 @@ import java.util.concurrent.TimeUnit;
  * @param <TResult> The type of the result.
  * @since 1.0
  */
-public interface DistinctPublisher<TResult> extends Publisher<TResult> {
+public interface DistinctPublisher<TResult> extends BatchCursorPublisher<TResult> {
 
     /**
      * Sets the query filter to apply to the query.
@@ -71,6 +71,7 @@ public interface DistinctPublisher<TResult> extends Publisher<TResult> {
      * @since 1.8
      * @mongodb.driver.manual reference/method/cursor.batchSize/#cursor.batchSize Batch Size
      */
+    @Override
     DistinctPublisher<TResult> batchSize(int batchSize);
 
     /**
@@ -79,6 +80,7 @@ public interface DistinctPublisher<TResult> extends Publisher<TResult> {
      * @return a Publisher which will contain a single item.
      * @since 1.8
      */
+    @Override
     Publisher<TResult> first();
 
 }

@@ -16,57 +16,72 @@
 
 package com.mongodb.reactivestreams.client.internal;
 
+import com.mongodb.MongoNamespace;
+import com.mongodb.ReadConcern;
+import com.mongodb.ReadPreference;
 import com.mongodb.client.model.Collation;
-import com.mongodb.internal.async.client.AsyncDistinctIterable;
+import com.mongodb.internal.async.AsyncBatchCursor;
+import com.mongodb.internal.async.client.OperationExecutor;
+import com.mongodb.internal.operation.AsyncOperations;
+import com.mongodb.internal.operation.AsyncReadOperation;
+import com.mongodb.lang.Nullable;
+import com.mongodb.reactivestreams.client.ClientSession;
 import com.mongodb.reactivestreams.client.DistinctPublisher;
+import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.conversions.Bson;
-import org.reactivestreams.Publisher;
-import org.reactivestreams.Subscriber;
 
 import java.util.concurrent.TimeUnit;
 
 import static com.mongodb.assertions.Assertions.notNull;
 
+final class DistinctPublisherImpl<D, T> extends BatchCursorPublisherImpl<T> implements DistinctPublisher<T> {
 
-final class DistinctPublisherImpl<TResult> implements DistinctPublisher<TResult> {
+    private final AsyncOperations<D> operations;
+    private final Class<T> resultClass;
+    private final String fieldName;
 
-    private final AsyncDistinctIterable<TResult> wrapped;
+    private Bson filter;
+    private long maxTimeMS;
+    private Collation collation;
 
-    DistinctPublisherImpl(final AsyncDistinctIterable<TResult> wrapped) {
-        this.wrapped = notNull("wrapped", wrapped);
+    DistinctPublisherImpl(@Nullable final ClientSession clientSession, final MongoNamespace namespace,
+                          final Class<D> documentClass, final Class<T> resultClass, final CodecRegistry codecRegistry,
+                          final ReadPreference readPreference, final ReadConcern readConcern, final OperationExecutor executor,
+                          final String fieldName, final Bson filter, final boolean retryReads) {
+        super(clientSession, executor, readConcern, readPreference, retryReads);
+        this.operations = new AsyncOperations<>(namespace, documentClass, readPreference, codecRegistry, retryReads);
+        this.resultClass = notNull("resultClass", resultClass);
+        this.fieldName = notNull("fieldName", fieldName);
+        this.filter = notNull("filter", filter);
     }
 
     @Override
-    public DistinctPublisher<TResult> filter(final Bson filter) {
-        wrapped.filter(filter);
+    public DistinctPublisher<T> filter(@Nullable final Bson filter) {
+        this.filter = filter;
         return this;
     }
 
     @Override
-    public DistinctPublisher<TResult> maxTime(final long maxTime, final TimeUnit timeUnit) {
-        wrapped.maxTime(maxTime, timeUnit);
+    public DistinctPublisher<T> maxTime(final long maxTime, final TimeUnit timeUnit) {
+        notNull("timeUnit", timeUnit);
+        this.maxTimeMS = TimeUnit.MILLISECONDS.convert(maxTime, timeUnit);
         return this;
     }
 
     @Override
-    public DistinctPublisher<TResult> collation(final Collation collation) {
-        wrapped.collation(collation);
+    public DistinctPublisher<T> batchSize(final int batchSize) {
+        super.batchSize(batchSize);
         return this;
     }
 
     @Override
-    public DistinctPublisher<TResult> batchSize(final int batchSize) {
-        wrapped.batchSize(batchSize);
+    public DistinctPublisher<T> collation(@Nullable final Collation collation) {
+        this.collation = collation;
         return this;
     }
 
     @Override
-    public Publisher<TResult> first() {
-        return Publishers.publish(wrapped::first);
-    }
-
-    @Override
-    public void subscribe(final Subscriber<? super TResult> s) {
-        Publishers.publish(wrapped).subscribe(s);
+    AsyncReadOperation<AsyncBatchCursor<T>> asAsyncReadOperation() {
+        return operations.distinct(fieldName, filter, resultClass, maxTimeMS, collation);
     }
 }
