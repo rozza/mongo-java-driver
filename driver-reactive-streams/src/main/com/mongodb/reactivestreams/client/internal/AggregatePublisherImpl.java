@@ -37,13 +37,12 @@ import org.bson.BsonString;
 import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.conversions.Bson;
 import org.reactivestreams.Publisher;
-import reactor.core.publisher.Mono;
 
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import static com.mongodb.assertions.Assertions.notNull;
-import static com.mongodb.reactivestreams.client.internal.PublisherCreator.sinkToCallback;
+import static com.mongodb.reactivestreams.client.internal.PublisherCreator.createWriteOperationMono;
 
 final class AggregatePublisherImpl<D, T> extends BatchCursorPublisherImpl<T> implements AggregatePublisher<T> {
     private final AsyncOperations<D> operations;
@@ -134,11 +133,10 @@ final class AggregatePublisherImpl<D, T> extends BatchCursorPublisherImpl<T> imp
             throw new IllegalStateException("The last stage of the aggregation pipeline must be $out or $merge");
         }
 
-        return Mono.create(sink -> getExecutor().execute(operations.aggregateToCollection(pipeline, maxTimeMS, allowDiskUse,
-                                                                                          bypassDocumentValidation, collation, hint,
-                                                                                          comment, aggregationLevel), getReadConcern(),
-                                                         getClientSession() != null ? getClientSession().getWrapped() : null,
-                                                         sinkToCallback(sink)));
+        return createWriteOperationMono(() -> operations.aggregateToCollection(pipeline, maxTimeMS, allowDiskUse,
+                                                                               bypassDocumentValidation, collation, hint,
+                                                                               comment, aggregationLevel),
+                                        getClientSession(), getReadConcern(), getExecutor());
     }
 
     @Override

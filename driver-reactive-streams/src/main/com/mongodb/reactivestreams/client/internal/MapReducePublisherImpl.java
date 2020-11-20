@@ -24,7 +24,6 @@ import com.mongodb.client.model.Collation;
 import com.mongodb.client.model.MapReduceAction;
 import com.mongodb.internal.async.AsyncBatchCursor;
 import com.mongodb.internal.async.SingleResultCallback;
-import com.mongodb.internal.async.client.AsyncClientSession;
 import com.mongodb.internal.async.client.OperationExecutor;
 import com.mongodb.internal.async.client.WriteOperationThenCursorReadOperation;
 import com.mongodb.internal.binding.AsyncReadBinding;
@@ -42,12 +41,12 @@ import org.bson.BsonDocument;
 import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.conversions.Bson;
 import org.reactivestreams.Publisher;
-import reactor.core.publisher.Mono;
 
 import java.util.concurrent.TimeUnit;
 
 import static com.mongodb.ReadPreference.primary;
 import static com.mongodb.assertions.Assertions.notNull;
+import static com.mongodb.reactivestreams.client.internal.PublisherCreator.createWriteOperationMono;
 
 final class MapReducePublisherImpl<D, T> extends BatchCursorPublisherImpl<T> implements MapReducePublisher<T> {
 
@@ -193,17 +192,8 @@ final class MapReducePublisherImpl<D, T> extends BatchCursorPublisherImpl<T> imp
         if (inline) {
             throw new IllegalStateException("The options must specify a non-inline result");
         }
-        return Mono.create(sink -> {
-            AsyncClientSession session = getClientSession() != null ? getClientSession().getWrapped() : null;
-            getExecutor().execute(createMapReduceToCollectionOperation().getOperation(), getReadConcern(), session,
-                                  ((MapReduceStatistics result, Throwable t) -> {
-                                      if (t != null) {
-                                          sink.error(t);
-                                      } else {
-                                          sink.success();
-                                      }
-                                  }));
-        });
+        return createWriteOperationMono(() -> createMapReduceToCollectionOperation().getOperation(),
+                                        getClientSession(), getReadConcern(), getExecutor()).then();
     }
 
     @Override
