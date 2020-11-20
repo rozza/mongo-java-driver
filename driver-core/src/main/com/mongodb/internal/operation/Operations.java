@@ -65,7 +65,6 @@ import org.bson.conversions.Bson;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 import static com.mongodb.assertions.Assertions.notNull;
@@ -73,7 +72,7 @@ import static java.lang.String.format;
 import static java.util.Collections.singletonList;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
-final class Operations<TDocument> {
+public final class Operations<TDocument> {
     private final MongoNamespace namespace;
     private final Class<TDocument> documentClass;
     private final ReadPreference readPreference;
@@ -554,27 +553,4 @@ final class Operations<TDocument> {
         return document == null ? null : document.toBsonDocument(documentClass, codecRegistry);
     }
 
-    @Override
-    public boolean equals(final Object o) {
-        if (this == o) {
-            return true;
-        }
-        if (o == null || getClass() != o.getClass()) {
-            return false;
-        }
-        final Operations<?> that = (Operations<?>) o;
-        return retryWrites == that.retryWrites
-                && retryReads == that.retryReads
-                && Objects.equals(namespace, that.namespace)
-                && Objects.equals(documentClass, that.documentClass)
-                && Objects.equals(readPreference, that.readPreference)
-                && Objects.equals(codecRegistry, that.codecRegistry)
-                && Objects.equals(readConcern, that.readConcern)
-                && Objects.equals(writeConcern, that.writeConcern);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(namespace, documentClass, readPreference, codecRegistry, readConcern, writeConcern, retryWrites, retryReads);
-    }
 }

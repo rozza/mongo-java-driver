@@ -16,7 +16,6 @@
 
 package com.mongodb.reactivestreams.client.internal;
 
-import com.mongodb.client.model.changestream.ChangeStreamDocument;
 import com.mongodb.internal.async.AsyncBatchCursor;
 import com.mongodb.internal.async.SingleResultCallback;
 import com.mongodb.internal.bulk.IndexRequest;
@@ -25,9 +24,9 @@ import com.mongodb.internal.client.model.FindOptions;
 import com.mongodb.internal.operation.AsyncOperations;
 import com.mongodb.internal.operation.AsyncReadOperation;
 import com.mongodb.internal.operation.AsyncWriteOperation;
+import com.mongodb.internal.operation.Operations;
 import com.mongodb.lang.Nullable;
 import org.bson.Document;
-import org.bson.codecs.Codec;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -123,6 +122,8 @@ public class TestHelper {
         if (actual instanceof AsyncReadOperation || actual instanceof AsyncWriteOperation) {
             return getClassPrivateFieldValues(actual);
         } else if (actual instanceof AsyncOperations) {
+            return getClassPrivateFieldValues(actual);
+        } else if (actual instanceof Operations) {
             return getClassPrivateFieldValues(actual);
         } else if (actual.getClass().getSimpleName().equals("ChangeStreamDocumentCodec")) {
             return getClassGetterValues(actual);
