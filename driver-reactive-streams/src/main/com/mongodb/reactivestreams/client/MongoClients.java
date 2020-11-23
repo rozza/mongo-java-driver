@@ -131,9 +131,8 @@ public final class MongoClients {
     }
 
     private static MongoClient createMongoClient(final MongoClientSettings settings,
-                                                      @Nullable final MongoDriverInformation mongoDriverInformation,
-                                                      final StreamFactory streamFactory, final StreamFactory heartbeatStreamFactory,
-                                                      @Nullable final Closeable externalResourceCloser) {
+            @Nullable final MongoDriverInformation mongoDriverInformation, final StreamFactory streamFactory,
+            final StreamFactory heartbeatStreamFactory, @Nullable final Closeable externalResourceCloser) {
         return new MongoClientImpl(settings, createCluster(settings, wrapMongoDriverInformation(mongoDriverInformation),
                 streamFactory, heartbeatStreamFactory), externalResourceCloser);
     }
@@ -154,8 +153,8 @@ public final class MongoClients {
     }
 
     private static MongoClient createWithTlsChannel(final MongoClientSettings settings,
-                                                         @Nullable final MongoDriverInformation mongoDriverInformation) {
-        final TlsChannelStreamFactoryFactory streamFactoryFactory = new TlsChannelStreamFactoryFactory();
+            @Nullable final MongoDriverInformation mongoDriverInformation) {
+        TlsChannelStreamFactoryFactory streamFactoryFactory = new TlsChannelStreamFactoryFactory();
         StreamFactory streamFactory = streamFactoryFactory.create(settings.getSocketSettings(), settings.getSslSettings());
         StreamFactory heartbeatStreamFactory = streamFactoryFactory.create(settings.getHeartbeatSocketSettings(),
                 settings.getSslSettings());
@@ -163,7 +162,7 @@ public final class MongoClients {
     }
 
     private static MongoClient createWithAsynchronousSocketChannel(final MongoClientSettings settings,
-                                                                        @Nullable final MongoDriverInformation mongoDriverInformation) {
+            @Nullable final MongoDriverInformation mongoDriverInformation) {
         StreamFactoryFactory streamFactoryFactory = AsynchronousSocketChannelStreamFactoryFactory.builder().build();
         StreamFactory streamFactory = streamFactoryFactory.create(settings.getSocketSettings(), settings.getSslSettings());
         StreamFactory heartbeatStreamFactory = streamFactoryFactory.create(settings.getHeartbeatSocketSettings(),

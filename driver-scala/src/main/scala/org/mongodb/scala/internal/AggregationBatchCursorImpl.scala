@@ -17,7 +17,7 @@ package org.mongodb.scala.internal
 
 import java.io.Closeable
 
-import com.mongodb.reactivestreams.client.{ AggregationBatchCursor => JAggregationBatchCursor }
+import com.mongodb.reactivestreams.client.{ AggregateBatchCursor => JAggregationBatchCursor }
 import org.bson.{ BsonDocument, BsonTimestamp }
 import org.mongodb.scala.{ AggregationBatchCursor, Observable, ToSingleObservablePublisher }
 

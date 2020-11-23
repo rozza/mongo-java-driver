@@ -22,7 +22,7 @@ import com.mongodb.internal.async.AsyncBatchCursor;
 import com.mongodb.internal.async.client.OperationExecutor;
 import com.mongodb.internal.operation.AsyncReadOperation;
 import com.mongodb.lang.Nullable;
-import com.mongodb.reactivestreams.client.AggregationBatchCursor;
+import com.mongodb.reactivestreams.client.AggregateBatchCursor;
 import com.mongodb.reactivestreams.client.AggregationBatchCursorPublisher;
 import com.mongodb.reactivestreams.client.ClientSession;
 import org.reactivestreams.Publisher;
@@ -90,7 +90,7 @@ public abstract class AggregationBatchCursorPublisherImpl<T> implements Aggregat
     }
 
     @Override
-    public Publisher<AggregationBatchCursor<T>> batchCursor() {
-        return Mono.from(wrapped.batchCursor()).map(AggregationBatchCursorImpl::new);
+    public Publisher<AggregateBatchCursor<T>> batchCursor() {
+        return Mono.from(wrapped.batchCursor()).map(AggregateBatchCursorImpl::new);
     }
 }

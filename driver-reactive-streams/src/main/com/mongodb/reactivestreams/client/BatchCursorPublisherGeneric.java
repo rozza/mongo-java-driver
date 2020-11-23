@@ -26,7 +26,7 @@ import org.reactivestreams.Publisher;
  * @param <T> the result type
  * @since 4.2
  */
-public interface BatchCursorPublisherGeneric<C, T> extends Publisher<T> {
+public interface BatchCursorPublisherGeneric<C extends BatchCursor<T>, T> extends Publisher<T> {
 
     /**
      * Helper to return the first item from the Publisher.

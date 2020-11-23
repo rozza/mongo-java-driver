@@ -23,6 +23,6 @@ package com.mongodb.reactivestreams.client;
  * @mongodb.driver.manual ../meta-driver/latest/legacy/mongodb-wire-protocol/#wire-op-get-more OP_GET_MORE
  * @since 4.2
  */
-public interface AggregationBatchCursorPublisher<T> extends BatchCursorPublisherGeneric<AggregationBatchCursor<T>, T> {
+public interface AggregationBatchCursorPublisher<T> extends BatchCursorPublisherGeneric<AggregateBatchCursor<T>, T> {
 
 }

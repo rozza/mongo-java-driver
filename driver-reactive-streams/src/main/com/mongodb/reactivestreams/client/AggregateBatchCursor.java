@@ -26,7 +26,7 @@ import org.bson.BsonTimestamp;
  * @mongodb.driver.manual ../meta-driver/latest/legacy/mongodb-wire-protocol/#wire-op-get-more OP_GET_MORE
  * @since 4.2
  */
-public interface AggregationBatchCursor<T> extends BatchCursor<T> {
+public interface AggregateBatchCursor<T> extends BatchCursor<T> {
     /**
      * Returns the postBatchResumeToken.
      *

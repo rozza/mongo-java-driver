@@ -16,7 +16,7 @@
 
 package org.mongodb.scala
 
-import com.mongodb.reactivestreams.client.{ AggregationBatchCursor => JAggregationBatchCursor }
+import com.mongodb.reactivestreams.client.{ AggregateBatchCursor => JAggregationBatchCursor }
 import org.bson.{ BsonDocument, BsonTimestamp }
 import org.mongodb.scala.internal.AggregationBatchCursorImpl
 

@@ -68,7 +68,7 @@ public class ChangeStreamProseTest extends DatabaseTestCase {
     public void testMissingResumeTokenThrowsException() {
         boolean exceptionFound = false;
 
-        try (AggregationBatchCursor<ChangeStreamDocument<Document>> cursor = createChangeStreamCursor(
+        try (AggregateBatchCursor<ChangeStreamDocument<Document>> cursor = createChangeStreamCursor(
                 collection.watch(singletonList(Aggregates.project(Document.parse("{ _id : 0 }")))))) {
             insertOneDocument();
             getNextBatch(cursor);
@@ -90,7 +90,7 @@ public class ChangeStreamProseTest extends DatabaseTestCase {
     public void testResumeOneTimeOnError() {
         assumeTrue(serverVersionAtLeast(4, 0));
 
-        try (AggregationBatchCursor<ChangeStreamDocument<Document>> cursor = createChangeStreamCursor()) {
+        try (AggregateBatchCursor<ChangeStreamDocument<Document>> cursor = createChangeStreamCursor()) {
             insertOneDocument();
             setFailPoint("getMore", 10107);
             assertNotNull(getNextBatch(cursor));
@@ -105,7 +105,7 @@ public class ChangeStreamProseTest extends DatabaseTestCase {
     @Test
     public void testNoResumeForAggregateErrors() {
         boolean exceptionFound = false;
-        AggregationBatchCursor<ChangeStreamDocument<Document>> cursor = null;
+        AggregateBatchCursor<ChangeStreamDocument<Document>> cursor = null;
 
         try {
             cursor = createChangeStreamCursor(collection.watch(singletonList(Document.parse("{ $unsupportedStage: { _id : 0 } }"))));
@@ -123,16 +123,16 @@ public class ChangeStreamProseTest extends DatabaseTestCase {
        Mono.from(collection.insertOne(Document.parse("{ x: 1 }"))).block(TIMEOUT_DURATION);
     }
 
-    private AggregationBatchCursor<ChangeStreamDocument<Document>> createChangeStreamCursor() {
+    private AggregateBatchCursor<ChangeStreamDocument<Document>> createChangeStreamCursor() {
         return createChangeStreamCursor(collection.watch());
     }
 
-    private AggregationBatchCursor<ChangeStreamDocument<Document>> createChangeStreamCursor(
+    private AggregateBatchCursor<ChangeStreamDocument<Document>> createChangeStreamCursor(
             final ChangeStreamPublisher<Document> changeStreamPublisher) {
         return Mono.from(changeStreamPublisher.batchCursor()).block(TIMEOUT_DURATION);
     }
 
-    private List<ChangeStreamDocument<Document>> getNextBatch(final AggregationBatchCursor<ChangeStreamDocument<Document>> cursor) {
+    private List<ChangeStreamDocument<Document>> getNextBatch(final AggregateBatchCursor<ChangeStreamDocument<Document>> cursor) {
         return Mono.from(cursor.next()).block(TIMEOUT_DURATION);
     }
 

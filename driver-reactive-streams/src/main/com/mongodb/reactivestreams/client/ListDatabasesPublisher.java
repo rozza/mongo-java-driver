@@ -19,7 +19,6 @@ package com.mongodb.reactivestreams.client;
 
 import com.mongodb.lang.Nullable;
 import org.bson.conversions.Bson;
-import org.reactivestreams.Publisher;
 
 import java.util.concurrent.TimeUnit;
 
@@ -86,11 +85,4 @@ public interface ListDatabasesPublisher<TResult> extends BatchCursorPublisher<TR
      */
     ListDatabasesPublisher<TResult> batchSize(int batchSize);
 
-    /**
-     * Helper to return a publisher limited to the first result.
-     *
-     * @return a Publisher which will contain a single item.
-     * @since 1.8
-     */
-    Publisher<TResult> first();
 }
