@@ -16,7 +16,6 @@
 package com.mongodb.reactivestreams.client.internal;
 
 import com.mongodb.internal.async.AsyncBatchCursor;
-import com.mongodb.reactivestreams.client.BatchCursor;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Mono;
 

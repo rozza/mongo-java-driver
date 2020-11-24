@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.mongodb.reactivestreams.client;
+package com.mongodb.reactivestreams.client.internal;
 
 import org.bson.BsonDocument;
 import org.bson.BsonTimestamp;

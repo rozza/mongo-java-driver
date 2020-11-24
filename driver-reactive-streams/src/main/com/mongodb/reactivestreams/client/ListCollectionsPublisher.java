@@ -18,6 +18,7 @@ package com.mongodb.reactivestreams.client;
 
 import com.mongodb.lang.Nullable;
 import org.bson.conversions.Bson;
+import org.reactivestreams.Publisher;
 
 import java.util.concurrent.TimeUnit;
 
@@ -27,7 +28,7 @@ import java.util.concurrent.TimeUnit;
  * @param <TResult> The type of the result.
  * @since 1.0
  */
-public interface ListCollectionsPublisher<TResult> extends BatchCursorPublisher<TResult> {
+public interface ListCollectionsPublisher<TResult> extends Publisher<TResult> {
 
     /**
      * Sets the query filter to apply to the query.
@@ -61,4 +62,11 @@ public interface ListCollectionsPublisher<TResult> extends BatchCursorPublisher<
      */
     ListCollectionsPublisher<TResult> batchSize(int batchSize);
 
+    /**
+     * Helper to return a publisher limited to the first result.
+     *
+     * @return a Publisher which will contain a single item.
+     * @since 1.8
+     */
+    Publisher<TResult> first();
 }

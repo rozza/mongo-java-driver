@@ -22,14 +22,12 @@ import com.mongodb.internal.async.AsyncBatchCursor;
 import com.mongodb.internal.async.client.OperationExecutor;
 import com.mongodb.internal.operation.AsyncReadOperation;
 import com.mongodb.lang.Nullable;
-import com.mongodb.reactivestreams.client.AggregateBatchCursor;
-import com.mongodb.reactivestreams.client.AggregationBatchCursorPublisher;
 import com.mongodb.reactivestreams.client.ClientSession;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import reactor.core.publisher.Mono;
 
-public abstract class AggregationBatchCursorPublisherImpl<T> implements AggregationBatchCursorPublisher<T> {
+public abstract class AggregationBatchCursorPublisherImpl<T> implements BatchCursorPublisher<T> {
 
     private final BatchCursorPublisherImpl<T> wrapped;
 
@@ -73,7 +71,7 @@ public abstract class AggregationBatchCursorPublisherImpl<T> implements Aggregat
     }
 
     @Override
-    public AggregationBatchCursorPublisher<T> batchSize(final int batchSize) {
+    public Publisher<T> batchSize(final int batchSize) {
         wrapped.batchSize(batchSize);
         return this;
     }
@@ -90,7 +88,7 @@ public abstract class AggregationBatchCursorPublisherImpl<T> implements Aggregat
     }
 
     @Override
-    public Publisher<AggregateBatchCursor<T>> batchCursor() {
+    public Mono<AggregateBatchCursor<T>> batchCursor() {
         return Mono.from(wrapped.batchCursor()).map(AggregateBatchCursorImpl::new);
     }
 }

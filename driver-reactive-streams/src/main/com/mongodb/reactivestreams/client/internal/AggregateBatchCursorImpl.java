@@ -17,8 +17,6 @@
 package com.mongodb.reactivestreams.client.internal;
 
 import com.mongodb.internal.async.AsyncAggregateResponseBatchCursor;
-import com.mongodb.reactivestreams.client.AggregateBatchCursor;
-import com.mongodb.reactivestreams.client.BatchCursor;
 import org.bson.BsonDocument;
 import org.bson.BsonTimestamp;
 import org.reactivestreams.Publisher;

@@ -34,7 +34,7 @@ import java.util.concurrent.TimeUnit;
  * @mongodb.server.release 3.6
  * @since 1.6
  */
-public interface ChangeStreamPublisher<TResult> extends AggregationBatchCursorPublisher<ChangeStreamDocument<TResult>> {
+public interface ChangeStreamPublisher<TResult> extends Publisher<ChangeStreamDocument<TResult>> {
     /**
      * Sets the fullDocument value.
      *
@@ -123,6 +123,11 @@ public interface ChangeStreamPublisher<TResult> extends AggregationBatchCursorPu
      */
     ChangeStreamPublisher<TResult> batchSize(int batchSize);
 
-    @Override
-    Publisher<AggregateBatchCursor<ChangeStreamDocument<TResult>>> batchCursor();
+    /**
+     * Helper to return a publisher limited to the first result.
+     *
+     * @return a Publisher which will contain a single item.
+     * @since 1.8
+     */
+    Publisher<ChangeStreamDocument<TResult>> first();
 }

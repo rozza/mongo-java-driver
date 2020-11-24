@@ -84,9 +84,9 @@ public class MongoCollectionImplTest extends TestHelper {
                                       MongoClientSettings.getDefaultCodecRegistry(), ReadPreference.primary(),
                                       ReadConcern.DEFAULT, WriteConcern.ACKNOWLEDGED, mock(OperationExecutor.class),
                                       true, true, UuidRepresentation.STANDARD);
-    
+
     private final PublisherHelper<Document> publisherHelper = collection.getPublisherHelper();
-    
+
     private final Bson filter = BsonDocument.parse("{$match: {open: true}}");
     private final List<Bson> pipeline = singletonList(filter);
     private final Collation collation = Collation.builder().locale("de").build();
@@ -694,7 +694,8 @@ public class MongoCollectionImplTest extends TestHelper {
                                                      () -> collection.findOneAndReplace(null, filter, replacement, options))
                   ),
                   () -> {
-                      Publisher<Document> expected = publisherHelper.findOneAndReplace(null, filter, replacement, new FindOneAndReplaceOptions());
+                      Publisher<Document> expected =
+                              publisherHelper.findOneAndReplace(null, filter, replacement, new FindOneAndReplaceOptions());
                       assertPublisherIsTheSameAs(expected, collection.findOneAndReplace(filter, replacement), "Default");
                   },
                   () -> {
@@ -703,7 +704,8 @@ public class MongoCollectionImplTest extends TestHelper {
                                                  "With filter & options");
                   },
                   () -> {
-                      Publisher<Document> expected = publisherHelper.findOneAndReplace(clientSession, filter, replacement, new FindOneAndReplaceOptions());
+                      Publisher<Document> expected =
+                              publisherHelper.findOneAndReplace(clientSession, filter, replacement, new FindOneAndReplaceOptions());
                       assertPublisherIsTheSameAs(expected, collection.findOneAndReplace(clientSession, filter, replacement),
                                                  "With client session");
                   },
@@ -743,7 +745,8 @@ public class MongoCollectionImplTest extends TestHelper {
                                                  "With filter & options");
                   },
                   () -> {
-                      Publisher<Document> expected = publisherHelper.findOneAndUpdate(clientSession, filter, update, new FindOneAndUpdateOptions());
+                      Publisher<Document> expected =
+                              publisherHelper.findOneAndUpdate(clientSession, filter, update, new FindOneAndUpdateOptions());
                       assertPublisherIsTheSameAs(expected, collection.findOneAndUpdate(clientSession, filter, update),
                                                  "With client session");
                   },
@@ -947,7 +950,8 @@ public class MongoCollectionImplTest extends TestHelper {
                                                      () -> collection.renameCollection(null, mongoNamespace, options))
                   ),
                   () -> {
-                      Publisher<Void> expected = publisherHelper.renameCollection(clientSession, mongoNamespace, new RenameCollectionOptions());
+                      Publisher<Void> expected =
+                              publisherHelper.renameCollection(clientSession, mongoNamespace, new RenameCollectionOptions());
                       assertPublisherIsTheSameAs(expected, collection.renameCollection(mongoNamespace), "Default");
                   },
                   () -> {
@@ -955,7 +959,8 @@ public class MongoCollectionImplTest extends TestHelper {
                       assertPublisherIsTheSameAs(expected, collection.renameCollection(mongoNamespace, options), "With options");
                   },
                   () -> {
-                      Publisher<Void> expected = publisherHelper.renameCollection(clientSession, mongoNamespace, new RenameCollectionOptions());
+                      Publisher<Void> expected =
+                              publisherHelper.renameCollection(clientSession, mongoNamespace, new RenameCollectionOptions());
                       assertPublisherIsTheSameAs(expected, collection.renameCollection(clientSession, mongoNamespace),
                                                  "With client session");
                   },
@@ -995,7 +1000,8 @@ public class MongoCollectionImplTest extends TestHelper {
                                                  "With filter & options");
                   },
                   () -> {
-                      Publisher<UpdateResult> expected = publisherHelper.replaceOne(clientSession, filter, replacement, new ReplaceOptions());
+                      Publisher<UpdateResult> expected =
+                              publisherHelper.replaceOne(clientSession, filter, replacement, new ReplaceOptions());
                       assertPublisherIsTheSameAs(expected, collection.replaceOne(clientSession, filter, replacement),
                                                  "With client session");
                   },

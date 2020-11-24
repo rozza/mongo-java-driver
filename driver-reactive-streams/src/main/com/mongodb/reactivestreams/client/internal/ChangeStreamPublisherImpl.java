@@ -45,7 +45,7 @@ import static com.mongodb.assertions.Assertions.notNull;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 
-final class ChangeStreamPublisherImpl<T> extends AggregationBatchCursorPublisherImpl<ChangeStreamDocument<T>>
+public final class ChangeStreamPublisherImpl<T> extends AggregationBatchCursorPublisherImpl<ChangeStreamDocument<T>>
         implements ChangeStreamPublisher<T> {
 
     private final MongoNamespace namespace;
@@ -61,7 +61,8 @@ final class ChangeStreamPublisherImpl<T> extends AggregationBatchCursorPublisher
     private Collation collation;
     private BsonTimestamp startAtOperationTime;
 
-    ChangeStreamPublisherImpl(@Nullable final ClientSession clientSession, final String databaseName,
+    ChangeStreamPublisherImpl(
+            @Nullable final ClientSession clientSession, final String databaseName,
             final Class<T> resultClass, final CodecRegistry codecRegistry, final ReadPreference readPreference,
             final ReadConcern readConcern, final OperationExecutor executor, final List<? extends Bson> pipeline,
             final ChangeStreamLevel changeStreamLevel, final boolean retryReads) {
@@ -69,10 +70,11 @@ final class ChangeStreamPublisherImpl<T> extends AggregationBatchCursorPublisher
              resultClass, codecRegistry, readPreference, readConcern, executor, pipeline, changeStreamLevel, retryReads);
     }
 
-    ChangeStreamPublisherImpl(@Nullable final ClientSession clientSession, final MongoNamespace namespace, final Class<T> resultClass,
-                              final CodecRegistry codecRegistry, final ReadPreference readPreference, final ReadConcern readConcern,
-                              final OperationExecutor executor, final List<? extends Bson> pipeline,
-                              final ChangeStreamLevel changeStreamLevel, final boolean retryReads) {
+    ChangeStreamPublisherImpl(
+            @Nullable final ClientSession clientSession, final MongoNamespace namespace, final Class<T> resultClass,
+            final CodecRegistry codecRegistry, final ReadPreference readPreference, final ReadConcern readConcern,
+            final OperationExecutor executor, final List<? extends Bson> pipeline,
+            final ChangeStreamLevel changeStreamLevel, final boolean retryReads) {
         super(clientSession, executor, readConcern, readPreference, retryReads);
         this.namespace = notNull("namespace", namespace);
         this.codecRegistry = notNull("codecRegistry", codecRegistry);
@@ -114,8 +116,8 @@ final class ChangeStreamPublisherImpl<T> extends AggregationBatchCursorPublisher
 
     @Override
     public <TDocument> Publisher<TDocument> withDocumentClass(final Class<TDocument> clazz) {
-        return new AggregationBatchCursorPublisherImpl<TDocument>(getClientSession(), getExecutor(), getReadConcern(),
-                                                                  getReadPreference(), getRetryReads()) {
+        return new BatchCursorPublisherImpl<TDocument>(getClientSession(), getExecutor(), getReadConcern(),
+                                                       getReadPreference(), getRetryReads()) {
             @Override
             AsyncReadOperation<AsyncBatchCursor<TDocument>> asAsyncReadOperation() {
                 return createChangeStreamOperation(codecRegistry.get(clazz));
@@ -141,7 +143,7 @@ final class ChangeStreamPublisherImpl<T> extends AggregationBatchCursorPublisher
     }
 
     private <S> AsyncReadOperation<AsyncBatchCursor<S>> createChangeStreamOperation(final Codec<S> codec) {
-        return new ChangeStreamOperation<S>(namespace, fullDocument, createBsonDocumentList(pipeline), codec, changeStreamLevel)
+        return new ChangeStreamOperation<>(namespace, fullDocument, createBsonDocumentList(pipeline), codec, changeStreamLevel)
                 .batchSize(getBatchSize())
                 .collation(collation)
                 .maxAwaitTime(maxAwaitTimeMS, MILLISECONDS)
@@ -152,7 +154,7 @@ final class ChangeStreamPublisherImpl<T> extends AggregationBatchCursorPublisher
     }
 
     private List<BsonDocument> createBsonDocumentList(final List<? extends Bson> pipeline) {
-        List<BsonDocument> aggregateList = new ArrayList<BsonDocument>(pipeline.size());
+        List<BsonDocument> aggregateList = new ArrayList<>(pipeline.size());
         for (Bson obj : pipeline) {
             if (obj == null) {
                 throw new IllegalArgumentException("pipeline can not contain a null value");

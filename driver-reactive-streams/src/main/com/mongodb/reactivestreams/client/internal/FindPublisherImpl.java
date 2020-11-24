@@ -36,7 +36,7 @@ import java.util.concurrent.TimeUnit;
 
 import static com.mongodb.assertions.Assertions.notNull;
 
-final class FindPublisherImpl<D, T> extends BatchCursorPublisherImpl<T> implements FindPublisher<T> {
+public final class FindPublisherImpl<D, T> extends BatchCursorPublisherImpl<T> implements FindPublisher<T> {
 
     private final AsyncOperations<D> operations;
     private final Class<T> resultClass;

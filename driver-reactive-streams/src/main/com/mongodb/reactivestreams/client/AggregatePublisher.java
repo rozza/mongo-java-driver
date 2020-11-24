@@ -29,7 +29,7 @@ import java.util.concurrent.TimeUnit;
  * @param <TResult> The type of the result.
  * @since 1.0
  */
-public interface AggregatePublisher<TResult> extends AggregationBatchCursorPublisher<TResult> {
+public interface AggregatePublisher<TResult> extends Publisher<TResult> {
 
     /**
      * Enables writing to temporary files. A null value indicates that it's unspecified.
@@ -128,4 +128,11 @@ public interface AggregatePublisher<TResult> extends AggregationBatchCursorPubli
      */
     AggregatePublisher<TResult> batchSize(int batchSize);
 
+    /**
+     * Helper to return a publisher limited to the first result.
+     *
+     * @return a Publisher which will contain a single item.
+     * @since 1.8
+     */
+    Publisher<TResult> first();
 }

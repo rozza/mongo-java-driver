@@ -43,7 +43,7 @@ import java.util.concurrent.TimeUnit;
 
 import static com.mongodb.assertions.Assertions.notNull;
 
-final class AggregatePublisherImpl<D, T> extends AggregationBatchCursorPublisherImpl<T> implements AggregatePublisher<T> {
+final class AggregatePublisherImpl<D, T> extends BatchCursorPublisherImpl<T> implements AggregatePublisher<T> {
     private final AsyncOperations<D> operations;
     private final MongoNamespace namespace;
     private final Class<D> documentClass;

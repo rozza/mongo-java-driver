@@ -31,8 +31,7 @@ import scala.concurrent.duration.Duration
  * @tparam TResult The type of the result.
  * @since 1.0
  */
-case class DistinctObservable[TResult](private val wrapped: DistinctPublisher[TResult])
-    extends BatchCursorObservable[BatchCursor[TResult], TResult] {
+case class DistinctObservable[TResult](private val wrapped: DistinctPublisher[TResult]) extends Observable[TResult] {
 
   /**
    * Sets the query filter to apply to the query.
@@ -93,21 +92,4 @@ case class DistinctObservable[TResult](private val wrapped: DistinctPublisher[TR
   def first(): SingleObservable[TResult] = wrapped.first()
 
   override def subscribe(observer: Observer[_ >: TResult]): Unit = wrapped.subscribe(observer)
-
-  /**
-   * Gets the number of documents to return per batch
-   *
-   * @return the batch size
-   * @since 4.2
-   */
-  override def getBatchSize: Option[Int] = Option.apply(wrapped.getBatchSize)
-
-  /**
-   * Provide the underlying [[BatchCursor]] allowing fine grained control of the cursor.
-   *
-   * @return the Publisher containing the BatchCursor
-   * @since 4.2
-   */
-  override def batchCursor: SingleObservable[BatchCursor[TResult]] =
-    wrapped.batchCursor().toSingle().map(BatchCursor(_))
 }

@@ -14,19 +14,18 @@
  * limitations under the License.
  */
 
-package com.mongodb.reactivestreams.client;
+package com.mongodb.reactivestreams.client.internal;
 
 import com.mongodb.lang.Nullable;
 import org.reactivestreams.Publisher;
 
 /**
- * Operations that allow asynchronous iteration over a collection view.
+ * A publisher for batch cursors
  *
- * @param <C> the batch cursor type
- * @param <T> the result type
+ * @param <T> The type of documents the cursor contains
  * @since 4.2
  */
-public interface BatchCursorPublisherGeneric<C extends BatchCursor<T>, T> extends Publisher<T> {
+public interface BatchCursorPublisher<T> extends Publisher<T> {
 
     /**
      * Helper to return the first item from the Publisher.
@@ -57,6 +56,6 @@ public interface BatchCursorPublisherGeneric<C extends BatchCursor<T>, T> extend
      * Provide the underlying {@link BatchCursor} allowing fine grained control of the cursor.
      * @return the Publisher containing the BatchCursor
      */
-    Publisher<C> batchCursor();
+    Publisher<? extends BatchCursor<T>> batchCursor();
 
 }

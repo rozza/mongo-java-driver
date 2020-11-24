@@ -22,8 +22,6 @@ import com.mongodb.internal.async.AsyncBatchCursor;
 import com.mongodb.internal.async.client.OperationExecutor;
 import com.mongodb.internal.operation.AsyncReadOperation;
 import com.mongodb.lang.Nullable;
-import com.mongodb.reactivestreams.client.BatchCursor;
-import com.mongodb.reactivestreams.client.BatchCursorPublisher;
 import com.mongodb.reactivestreams.client.ClientSession;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;

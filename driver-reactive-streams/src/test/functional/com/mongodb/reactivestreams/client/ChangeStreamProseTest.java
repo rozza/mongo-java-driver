@@ -23,6 +23,8 @@ import com.mongodb.MongoQueryException;
 import com.mongodb.client.model.Aggregates;
 import com.mongodb.client.model.changestream.ChangeStreamDocument;
 import com.mongodb.client.test.CollectionHelper;
+import com.mongodb.reactivestreams.client.internal.AggregateBatchCursor;
+import com.mongodb.reactivestreams.client.internal.ChangeStreamPublisherImpl;
 import org.bson.BsonArray;
 import org.bson.BsonDocument;
 import org.bson.BsonInt32;
@@ -129,7 +131,7 @@ public class ChangeStreamProseTest extends DatabaseTestCase {
 
     private AggregateBatchCursor<ChangeStreamDocument<Document>> createChangeStreamCursor(
             final ChangeStreamPublisher<Document> changeStreamPublisher) {
-        return Mono.from(changeStreamPublisher.batchCursor()).block(TIMEOUT_DURATION);
+        return ((ChangeStreamPublisherImpl<Document>) changeStreamPublisher).batchCursor().block(TIMEOUT_DURATION);
     }
 
     private List<ChangeStreamDocument<Document>> getNextBatch(final AggregateBatchCursor<ChangeStreamDocument<Document>> cursor) {

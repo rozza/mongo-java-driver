@@ -38,7 +38,7 @@ import scala.concurrent.duration.Duration
  * @note Requires MongoDB 3.6 or greater
  */
 case class ChangeStreamObservable[TResult](private val wrapped: ChangeStreamPublisher[TResult])
-    extends BatchCursorObservable[AggregationBatchCursor[ChangeStreamDocument[TResult]], ChangeStreamDocument[TResult]] {
+    extends Observable[ChangeStreamDocument[TResult]] {
 
   /**
    * Sets the fullDocument value.
@@ -149,23 +149,6 @@ case class ChangeStreamObservable[TResult](private val wrapped: ChangeStreamPubl
    * @since 4.0
    */
   def first(): SingleObservable[ChangeStreamDocument[TResult]] = wrapped.first()
-
-  /**
-   * Gets the number of documents to return per batch
-   *
-   * @return the batch size
-   * @since 4.2
-   */
-  override def getBatchSize: Option[Int] = Option.apply(wrapped.getBatchSize)
-
-  /**
-   * Provide the underlying [[AggregationBatchCursor]] allowing fine grained control of the cursor.
-   *
-   * @return a single observable containing the BatchCursor
-   * @since 4.2
-   */
-  def batchCursor: SingleObservable[AggregationBatchCursor[ChangeStreamDocument[TResult]]] =
-    wrapped.batchCursor().toSingle().map(AggregationBatchCursor(_))
 
   override def subscribe(observer: Observer[_ >: ChangeStreamDocument[TResult]]): Unit = wrapped.subscribe(observer)
 }

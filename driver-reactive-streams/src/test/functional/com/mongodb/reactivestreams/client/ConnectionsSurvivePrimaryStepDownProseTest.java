@@ -24,6 +24,9 @@ import com.mongodb.WriteConcern;
 import com.mongodb.client.test.CollectionHelper;
 import com.mongodb.event.ConnectionPoolClearedEvent;
 import com.mongodb.internal.connection.TestConnectionPoolListener;
+import com.mongodb.reactivestreams.client.internal.BatchCursor;
+import com.mongodb.reactivestreams.client.internal.FindPublisherImpl;
+import com.mongodb.reactivestreams.client.internal.FindPublisherImplTest;
 import org.bson.Document;
 import org.bson.codecs.DocumentCodec;
 import org.junit.After;
@@ -88,6 +91,7 @@ public class ConnectionsSurvivePrimaryStepDownProseTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     public void testGetMoreIteration() {
         assumeTrue(serverVersionAtLeast(asList(4, 1, 10)));
 
@@ -97,7 +101,8 @@ public class ConnectionsSurvivePrimaryStepDownProseTest {
 
         int connectionCount = connectionPoolListener.countEvents(com.mongodb.event.ConnectionAddedEvent.class);
 
-        BatchCursor<Document> cursor = Mono.from(collection.find().batchSize(2).batchCursor()).block(TIMEOUT_DURATION);
+        BatchCursor<Document> cursor = ((FindPublisherImpl<Document, Document>) collection.find().batchSize(2)).batchCursor()
+                .block(TIMEOUT_DURATION);
         assertNotNull(cursor);
         assertEquals(asList(documents.get(0), documents.get(1)), Mono.from(cursor.next()).block(TIMEOUT_DURATION));
 

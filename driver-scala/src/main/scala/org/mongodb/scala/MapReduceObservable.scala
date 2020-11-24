@@ -33,8 +33,7 @@ import scala.concurrent.duration.Duration
  * @tparam TResult The type of the result.
  * @since 1.0
  */
-case class MapReduceObservable[TResult](wrapped: MapReducePublisher[TResult])
-    extends BatchCursorObservable[BatchCursor[TResult], TResult] {
+case class MapReduceObservable[TResult](wrapped: MapReducePublisher[TResult]) extends Observable[TResult] {
 
   /**
    * Sets the collectionName for the output of the MapReduce
@@ -259,23 +258,6 @@ case class MapReduceObservable[TResult](wrapped: MapReducePublisher[TResult])
    * @since 4.0
    */
   def first(): SingleObservable[TResult] = wrapped.first()
-
-  /**
-   * Gets the number of documents to return per batch
-   *
-   * @return the batch size
-   * @since 4.2
-   */
-  override def getBatchSize: Option[Int] = Option.apply(wrapped.getBatchSize)
-
-  /**
-   * Provide the underlying [[BatchCursor]] allowing fine grained control of the cursor.
-   *
-   * @return the Publisher containing the BatchCursor
-   * @since 4.2
-   */
-  override def batchCursor: SingleObservable[BatchCursor[TResult]] =
-    wrapped.batchCursor().toSingle().map(BatchCursor(_))
 
   override def subscribe(observer: Observer[_ >: TResult]): Unit = wrapped.subscribe(observer)
 }

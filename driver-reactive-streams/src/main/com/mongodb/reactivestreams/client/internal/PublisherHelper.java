@@ -166,7 +166,7 @@ public final class PublisherHelper<T> {
                 () -> new CommandReadOperation<>(getNamespace().getDatabaseName(),
                                                  toBsonDocument(notNull("command", command)),
                                                  getCodecRegistry().get(notNull("clazz", clazz))),
-                clientSession, readPreference);
+                clientSession, notNull("readPreference", readPreference));
     }
 
 
