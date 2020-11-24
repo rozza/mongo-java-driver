@@ -61,6 +61,14 @@ final class ChangeStreamPublisherImpl<T> extends AggregationBatchCursorPublisher
     private Collation collation;
     private BsonTimestamp startAtOperationTime;
 
+    ChangeStreamPublisherImpl(@Nullable final ClientSession clientSession, final String databaseName,
+            final Class<T> resultClass, final CodecRegistry codecRegistry, final ReadPreference readPreference,
+            final ReadConcern readConcern, final OperationExecutor executor, final List<? extends Bson> pipeline,
+            final ChangeStreamLevel changeStreamLevel, final boolean retryReads) {
+        this(clientSession, new MongoNamespace(notNull("databaseName", databaseName), "ignored"),
+             resultClass, codecRegistry, readPreference, readConcern, executor, pipeline, changeStreamLevel, retryReads);
+    }
+
     ChangeStreamPublisherImpl(@Nullable final ClientSession clientSession, final MongoNamespace namespace, final Class<T> resultClass,
                               final CodecRegistry codecRegistry, final ReadPreference readPreference, final ReadConcern readConcern,
                               final OperationExecutor executor, final List<? extends Bson> pipeline,

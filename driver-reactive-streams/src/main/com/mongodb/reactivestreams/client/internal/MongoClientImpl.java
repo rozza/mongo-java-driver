@@ -170,8 +170,8 @@ public final class MongoClientImpl implements MongoClient {
 
     @Override
     public <T> ListDatabasesPublisher<T> listDatabases(final Class<T> clazz) {
-        return PublisherCreator.createListDatabasesPublisher(null, clazz, getCodecRegistry(),
-                                                             ReadPreference.primary(), getExecutor(), getSettings().getRetryReads());
+        return new ListDatabasesPublisherImpl<>(null, clazz, getCodecRegistry(), ReadPreference.primary(), getExecutor(),
+                                                getSettings().getRetryReads());
     }
 
     @Override
@@ -181,8 +181,8 @@ public final class MongoClientImpl implements MongoClient {
 
     @Override
     public <T> ListDatabasesPublisher<T> listDatabases(final ClientSession clientSession, final Class<T> clazz) {
-        return PublisherCreator.createListDatabasesPublisher(notNull("clientSession", clientSession), clazz, getCodecRegistry(),
-                                                             ReadPreference.primary(), getExecutor(), getSettings().getRetryReads());
+        return new ListDatabasesPublisherImpl<>(notNull("clientSession", clientSession), clazz, getCodecRegistry(),
+                                                ReadPreference.primary(), getExecutor(), getSettings().getRetryReads());
     }
 
     @Override
@@ -202,10 +202,9 @@ public final class MongoClientImpl implements MongoClient {
 
     @Override
     public <T> ChangeStreamPublisher<T> watch(final List<? extends Bson> pipeline, final Class<T> resultClass) {
-        return PublisherCreator.createChangeStreamPublisher(null, "admin", resultClass,
-                                                            getSettings().getCodecRegistry(), getSettings().getReadPreference(),
-                                                            getSettings().getReadConcern(), getExecutor(), pipeline,
-                                                            ChangeStreamLevel.CLIENT, getSettings().getRetryReads());
+        return new ChangeStreamPublisherImpl<>(null, "admin", resultClass, getSettings().getCodecRegistry(),
+                                               getSettings().getReadPreference(), getSettings().getReadConcern(), getExecutor(), pipeline,
+                                               ChangeStreamLevel.CLIENT, getSettings().getRetryReads());
     }
 
     @Override
@@ -226,10 +225,10 @@ public final class MongoClientImpl implements MongoClient {
     @Override
     public <T> ChangeStreamPublisher<T> watch(final ClientSession clientSession, final List<? extends Bson> pipeline,
                                               final Class<T> resultClass) {
-        return PublisherCreator.createChangeStreamPublisher(notNull("clientSession", clientSession), "admin", resultClass,
-                                                            getSettings().getCodecRegistry(), getSettings().getReadPreference(),
-                                                            getSettings().getReadConcern(), getExecutor(), pipeline,
-                                                            ChangeStreamLevel.CLIENT, getSettings().getRetryReads());
+        return new ChangeStreamPublisherImpl<>(notNull("clientSession", clientSession), "admin", resultClass,
+                                               getSettings().getCodecRegistry(), getSettings().getReadPreference(),
+                                               getSettings().getReadConcern(), getExecutor(), pipeline, ChangeStreamLevel.CLIENT,
+                                               getSettings().getRetryReads());
     }
 
     @Override

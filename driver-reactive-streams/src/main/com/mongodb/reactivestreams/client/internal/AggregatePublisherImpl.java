@@ -42,7 +42,6 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import static com.mongodb.assertions.Assertions.notNull;
-import static com.mongodb.reactivestreams.client.internal.PublisherCreator.createWriteOperationMono;
 
 final class AggregatePublisherImpl<D, T> extends AggregationBatchCursorPublisherImpl<T> implements AggregatePublisher<T> {
     private final AsyncOperations<D> operations;
@@ -59,6 +58,14 @@ final class AggregatePublisherImpl<D, T> extends AggregationBatchCursorPublisher
     private Collation collation;
     private String comment;
     private Bson hint;
+
+    AggregatePublisherImpl(@Nullable final ClientSession clientSession, final String databaseName, final Class<D> documentClass,
+            final Class<T> resultClass, final CodecRegistry codecRegistry, final ReadPreference readPreference,
+            final ReadConcern readConcern, final WriteConcern writeConcern, final OperationExecutor executor,
+            final List<? extends Bson> pipeline, final AggregationLevel aggregationLevel, final boolean retryReads) {
+        this(clientSession, new MongoNamespace(notNull("databaseName", databaseName), "ignored"), documentClass,
+             resultClass, codecRegistry, readPreference, readConcern, writeConcern, executor, pipeline, aggregationLevel, retryReads);
+    }
 
     AggregatePublisherImpl(@Nullable final ClientSession clientSession, final MongoNamespace namespace,
                            final Class<D> documentClass, final Class<T> resultClass, final CodecRegistry codecRegistry,
@@ -133,10 +140,12 @@ final class AggregatePublisherImpl<D, T> extends AggregationBatchCursorPublisher
             throw new IllegalStateException("The last stage of the aggregation pipeline must be $out or $merge");
         }
 
-        return createWriteOperationMono(() -> operations.aggregateToCollection(pipeline, maxTimeMS, allowDiskUse,
-                                                                               bypassDocumentValidation, collation, hint,
-                                                                               comment, aggregationLevel),
-                                        getClientSession(), getReadConcern(), getExecutor());
+        // TODO
+//        return createWriteOperationMono(() -> operations.aggregateToCollection(pipeline, maxTimeMS, allowDiskUse,
+//                                                                               bypassDocumentValidation, collation, hint,
+//                                                                               comment, aggregationLevel),
+//                                        getClientSession(), getReadConcern(), getExecutor());
+        return null;
     }
 
     @Override

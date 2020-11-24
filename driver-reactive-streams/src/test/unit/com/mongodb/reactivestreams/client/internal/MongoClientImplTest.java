@@ -42,8 +42,6 @@ import reactor.core.publisher.Mono;
 
 import java.util.List;
 
-import static com.mongodb.reactivestreams.client.internal.PublisherCreator.createChangeStreamPublisher;
-import static com.mongodb.reactivestreams.client.internal.PublisherCreator.createListDatabasesPublisher;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static org.junit.jupiter.api.Assertions.assertAll;
@@ -69,33 +67,34 @@ public class MongoClientImplTest extends TestHelper {
                                                      () -> mongoClient.listDatabases(clientSession, null))),
                   () -> {
                       ListDatabasesPublisher<Document> expected =
-                              createListDatabasesPublisher(null, Document.class, mongoClient.getSettings().getCodecRegistry(),
-                                                           mongoClient.getSettings().getReadPreference(), mongoClient.getExecutor(),
-                                                           mongoClient.getSettings().getRetryReads());
+                              new ListDatabasesPublisherImpl<>(null, Document.class, mongoClient.getSettings().getCodecRegistry(),
+                                                               mongoClient.getSettings().getReadPreference(), mongoClient.getExecutor(),
+                                                               mongoClient.getSettings().getRetryReads());
 
                       assertPublisherIsTheSameAs(expected, mongoClient.listDatabases(), "Default");
                   },
                   () -> {
                       ListDatabasesPublisher<Document> expected =
-                              createListDatabasesPublisher(clientSession, Document.class, mongoClient.getSettings().getCodecRegistry(),
-                                                           mongoClient.getSettings().getReadPreference(), mongoClient.getExecutor(),
-                                                           mongoClient.getSettings().getRetryReads());
+                              new ListDatabasesPublisherImpl<>(clientSession, Document.class, mongoClient.getSettings().getCodecRegistry(),
+                                                               mongoClient.getSettings().getReadPreference(), mongoClient.getExecutor(),
+                                                               mongoClient.getSettings().getRetryReads());
 
                       assertPublisherIsTheSameAs(expected, mongoClient.listDatabases(clientSession), "With session");
                   },
                   () -> {
                       ListDatabasesPublisher<BsonDocument> expected =
-                              createListDatabasesPublisher(null, BsonDocument.class, mongoClient.getSettings().getCodecRegistry(),
-                                                           mongoClient.getSettings().getReadPreference(), mongoClient.getExecutor(),
-                                                           mongoClient.getSettings().getRetryReads());
+                              new ListDatabasesPublisherImpl<>(null, BsonDocument.class, mongoClient.getSettings().getCodecRegistry(),
+                                                               mongoClient.getSettings().getReadPreference(), mongoClient.getExecutor(),
+                                                               mongoClient.getSettings().getRetryReads());
 
                       assertPublisherIsTheSameAs(expected, mongoClient.listDatabases(BsonDocument.class), "Alternative class");
                   },
                   () -> {
                       ListDatabasesPublisher<BsonDocument> expected =
-                              createListDatabasesPublisher(clientSession, BsonDocument.class, mongoClient.getSettings().getCodecRegistry(),
-                                                           mongoClient.getSettings().getReadPreference(), mongoClient.getExecutor(),
-                                                           mongoClient.getSettings().getRetryReads());
+                              new ListDatabasesPublisherImpl<>(clientSession, BsonDocument.class,
+                                                               mongoClient.getSettings().getCodecRegistry(),
+                                                               mongoClient.getSettings().getReadPreference(), mongoClient.getExecutor(),
+                                                               mongoClient.getSettings().getRetryReads());
 
                       assertPublisherIsTheSameAs(expected, mongoClient.listDatabases(clientSession, BsonDocument.class),
                                                  "Alternative class with session");
@@ -112,18 +111,18 @@ public class MongoClientImplTest extends TestHelper {
                                   () -> assertThrows(IllegalArgumentException.class, () -> mongoClient.listDatabaseNames(null))),
                   () -> {
                       ListDatabasesPublisher<Document> expected =
-                              createListDatabasesPublisher(null, Document.class, mongoClient.getSettings().getCodecRegistry(),
-                                                           mongoClient.getSettings().getReadPreference(), mongoClient.getExecutor(),
-                                                           mongoClient.getSettings().getRetryReads())
+                              new ListDatabasesPublisherImpl<>(null, Document.class, mongoClient.getSettings().getCodecRegistry(),
+                                                               mongoClient.getSettings().getReadPreference(), mongoClient.getExecutor(),
+                                                               mongoClient.getSettings().getRetryReads())
                                       .nameOnly(true);
 
                       assertPublisherIsTheSameAs(expected, mongoClient.listDatabaseNames(), "Default");
                   },
                   () -> {
                       ListDatabasesPublisher<Document> expected =
-                              createListDatabasesPublisher(clientSession, Document.class, mongoClient.getSettings().getCodecRegistry(),
-                                                           mongoClient.getSettings().getReadPreference(), mongoClient.getExecutor(),
-                                                           mongoClient.getSettings().getRetryReads())
+                              new ListDatabasesPublisherImpl<>(clientSession, Document.class, mongoClient.getSettings().getCodecRegistry(),
+                                                               mongoClient.getSettings().getReadPreference(), mongoClient.getExecutor(),
+                                                               mongoClient.getSettings().getRetryReads())
                                       .nameOnly(true);
 
                       assertPublisherIsTheSameAs(expected, mongoClient.listDatabaseNames(clientSession), "With session");
@@ -148,84 +147,92 @@ public class MongoClientImplTest extends TestHelper {
                   ),
                   () -> {
                       ChangeStreamPublisher<Document> expected =
-                              createChangeStreamPublisher(null, "admin", Document.class,
-                                                          mongoClient.getSettings().getCodecRegistry(),
-                                                          mongoClient.getSettings().getReadPreference(),
-                                                          mongoClient.getSettings().getReadConcern(), mongoClient.getExecutor(),
-                                                          emptyList(), ChangeStreamLevel.CLIENT, mongoClient.getSettings().getRetryReads());
+                              new ChangeStreamPublisherImpl<>(null, "admin", Document.class,
+                                                              mongoClient.getSettings().getCodecRegistry(),
+                                                              mongoClient.getSettings().getReadPreference(),
+                                                              mongoClient.getSettings().getReadConcern(), mongoClient.getExecutor(),
+                                                              emptyList(), ChangeStreamLevel.CLIENT,
+                                                              mongoClient.getSettings().getRetryReads());
 
                       assertPublisherIsTheSameAs(expected, mongoClient.watch(), "Default");
                   },
                   () -> {
                       ChangeStreamPublisher<Document> expected =
-                              createChangeStreamPublisher(null, "admin", Document.class,
-                                                          mongoClient.getSettings().getCodecRegistry(),
-                                                          mongoClient.getSettings().getReadPreference(),
-                                                          mongoClient.getSettings().getReadConcern(), mongoClient.getExecutor(), pipeline,
-                                                          ChangeStreamLevel.CLIENT, mongoClient.getSettings().getRetryReads());
+                              new ChangeStreamPublisherImpl<>(null, "admin", Document.class,
+                                                              mongoClient.getSettings().getCodecRegistry(),
+                                                              mongoClient.getSettings().getReadPreference(),
+                                                              mongoClient.getSettings().getReadConcern(), mongoClient.getExecutor(),
+                                                              pipeline,
+                                                              ChangeStreamLevel.CLIENT, mongoClient.getSettings().getRetryReads());
 
                       assertPublisherIsTheSameAs(expected, mongoClient.watch(pipeline), "With pipeline");
                   },
                   () -> {
                       ChangeStreamPublisher<BsonDocument> expected =
-                              createChangeStreamPublisher(null, "admin", BsonDocument.class,
-                                                          mongoClient.getSettings().getCodecRegistry(),
-                                                          mongoClient.getSettings().getReadPreference(),
-                                                          mongoClient.getSettings().getReadConcern(), mongoClient.getExecutor(),
-                                                          emptyList(), ChangeStreamLevel.CLIENT, mongoClient.getSettings().getRetryReads());
+                              new ChangeStreamPublisherImpl<>(null, "admin", BsonDocument.class,
+                                                              mongoClient.getSettings().getCodecRegistry(),
+                                                              mongoClient.getSettings().getReadPreference(),
+                                                              mongoClient.getSettings().getReadConcern(), mongoClient.getExecutor(),
+                                                              emptyList(), ChangeStreamLevel.CLIENT,
+                                                              mongoClient.getSettings().getRetryReads());
 
                       assertPublisherIsTheSameAs(expected, mongoClient.watch(BsonDocument.class),
                                                  "With result class");
                   },
                   () -> {
                       ChangeStreamPublisher<BsonDocument> expected =
-                              createChangeStreamPublisher(null, "admin", BsonDocument.class,
-                                                          mongoClient.getSettings().getCodecRegistry(),
-                                                          mongoClient.getSettings().getReadPreference(),
-                                                          mongoClient.getSettings().getReadConcern(), mongoClient.getExecutor(), pipeline,
-                                                          ChangeStreamLevel.CLIENT, mongoClient.getSettings().getRetryReads());
+                              new ChangeStreamPublisherImpl<>(null, "admin", BsonDocument.class,
+                                                              mongoClient.getSettings().getCodecRegistry(),
+                                                              mongoClient.getSettings().getReadPreference(),
+                                                              mongoClient.getSettings().getReadConcern(), mongoClient.getExecutor(),
+                                                              pipeline,
+                                                              ChangeStreamLevel.CLIENT, mongoClient.getSettings().getRetryReads());
 
                       assertPublisherIsTheSameAs(expected, mongoClient.watch(pipeline, BsonDocument.class),
                                                  "With pipeline & result class");
                   },
                   () -> {
                       ChangeStreamPublisher<Document> expected =
-                              createChangeStreamPublisher(clientSession, "admin", Document.class,
-                                                          mongoClient.getSettings().getCodecRegistry(),
-                                                          mongoClient.getSettings().getReadPreference(),
-                                                          mongoClient.getSettings().getReadConcern(), mongoClient.getExecutor(),
-                                                          emptyList(), ChangeStreamLevel.CLIENT, mongoClient.getSettings().getRetryReads());
+                              new ChangeStreamPublisherImpl<>(clientSession, "admin", Document.class,
+                                                              mongoClient.getSettings().getCodecRegistry(),
+                                                              mongoClient.getSettings().getReadPreference(),
+                                                              mongoClient.getSettings().getReadConcern(), mongoClient.getExecutor(),
+                                                              emptyList(), ChangeStreamLevel.CLIENT,
+                                                              mongoClient.getSettings().getRetryReads());
 
                       assertPublisherIsTheSameAs(expected, mongoClient.watch(clientSession), "with session");
                   },
                   () -> {
                       ChangeStreamPublisher<Document> expected =
-                              createChangeStreamPublisher(clientSession, "admin", Document.class,
-                                                          mongoClient.getSettings().getCodecRegistry(),
-                                                          mongoClient.getSettings().getReadPreference(),
-                                                          mongoClient.getSettings().getReadConcern(), mongoClient.getExecutor(), pipeline,
-                                                          ChangeStreamLevel.CLIENT, mongoClient.getSettings().getRetryReads());
+                              new ChangeStreamPublisherImpl<>(clientSession, "admin", Document.class,
+                                                              mongoClient.getSettings().getCodecRegistry(),
+                                                              mongoClient.getSettings().getReadPreference(),
+                                                              mongoClient.getSettings().getReadConcern(), mongoClient.getExecutor(),
+                                                              pipeline,
+                                                              ChangeStreamLevel.CLIENT, mongoClient.getSettings().getRetryReads());
 
                       assertPublisherIsTheSameAs(expected, mongoClient.watch(clientSession, pipeline), "With session & pipeline");
                   },
                   () -> {
                       ChangeStreamPublisher<BsonDocument> expected =
-                              createChangeStreamPublisher(clientSession, "admin", BsonDocument.class,
-                                                          mongoClient.getSettings().getCodecRegistry(),
-                                                          mongoClient.getSettings().getReadPreference(),
-                                                          mongoClient.getSettings().getReadConcern(), mongoClient.getExecutor(),
-                                                          emptyList(), ChangeStreamLevel.CLIENT, mongoClient.getSettings().getRetryReads());
+                              new ChangeStreamPublisherImpl<>(clientSession, "admin", BsonDocument.class,
+                                                              mongoClient.getSettings().getCodecRegistry(),
+                                                              mongoClient.getSettings().getReadPreference(),
+                                                              mongoClient.getSettings().getReadConcern(), mongoClient.getExecutor(),
+                                                              emptyList(), ChangeStreamLevel.CLIENT,
+                                                              mongoClient.getSettings().getRetryReads());
 
                       assertPublisherIsTheSameAs(expected, mongoClient.watch(clientSession, BsonDocument.class),
                                                  "With session & resultClass");
                   },
                   () -> {
                       ChangeStreamPublisher<BsonDocument> expected =
-                              createChangeStreamPublisher(clientSession, "admin", BsonDocument.class,
-                                                          mongoClient.getSettings().getCodecRegistry(),
-                                                          mongoClient.getSettings().getReadPreference(),
-                                                          mongoClient.getSettings().getReadConcern(), mongoClient.getExecutor(), pipeline,
-                                                          ChangeStreamLevel.CLIENT, mongoClient.getSettings().getRetryReads());
+                              new ChangeStreamPublisherImpl<>(clientSession, "admin", BsonDocument.class,
+                                                              mongoClient.getSettings().getCodecRegistry(),
+                                                              mongoClient.getSettings().getReadPreference(),
+                                                              mongoClient.getSettings().getReadConcern(), mongoClient.getExecutor(),
+                                                              pipeline,
+                                                              ChangeStreamLevel.CLIENT, mongoClient.getSettings().getRetryReads());
 
                       assertPublisherIsTheSameAs(expected, mongoClient.watch(clientSession, pipeline, BsonDocument.class),
                                                  "With clientSession, pipeline & result class");

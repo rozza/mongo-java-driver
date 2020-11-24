@@ -40,7 +40,6 @@ import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 
 import static com.mongodb.reactivestreams.client.MongoClients.getDefaultCodecRegistry;
-import static com.mongodb.reactivestreams.client.internal.PublisherCreator.createMapReducePublisher;
 import static java.util.Arrays.asList;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
@@ -63,10 +62,10 @@ public class MapReducePublisherImplTest extends TestHelper {
         configureBatchCursor();
 
         TestOperationExecutor executor = new TestOperationExecutor(asList(getBatchCursor(), getBatchCursor()));
-        MapReducePublisher<Document> publisher = createMapReducePublisher(null, NAMESPACE, Document.class, Document.class,
-                                                                          getDefaultCodecRegistry(), ReadPreference.primary(),
-                                                                          ReadConcern.DEFAULT, WriteConcern.ACKNOWLEDGED,
-                                                                          executor, MAP_FUNCTION, REDUCE_FUNCTION);
+        MapReducePublisher<Document> publisher = new MapReducePublisherImpl<>(null, NAMESPACE, Document.class, Document.class,
+                                                                              getDefaultCodecRegistry(), ReadPreference.primary(),
+                                                                              ReadConcern.DEFAULT, WriteConcern.ACKNOWLEDGED,
+                                                                              executor, MAP_FUNCTION, REDUCE_FUNCTION);
 
         MapReduceWithInlineResultsOperation<Document> expectedOperation =
                 new MapReduceWithInlineResultsOperation<>(NAMESPACE, new BsonJavaScript(MAP_FUNCTION), new BsonJavaScript(REDUCE_FUNCTION),
@@ -120,10 +119,10 @@ public class MapReducePublisherImplTest extends TestHelper {
         MapReduceStatistics stats = Mockito.mock(MapReduceStatistics.class);
 
         TestOperationExecutor executor = new TestOperationExecutor(asList(stats, stats));
-        MapReducePublisher<Document> publisher = createMapReducePublisher(null, NAMESPACE, Document.class, Document.class,
-                                                                          getDefaultCodecRegistry(), ReadPreference.primary(),
-                                                                          ReadConcern.DEFAULT, WriteConcern.ACKNOWLEDGED,
-                                                                          executor, MAP_FUNCTION, REDUCE_FUNCTION)
+        MapReducePublisher<Document> publisher = new MapReducePublisherImpl<>(null, NAMESPACE, Document.class, Document.class,
+                                                                              getDefaultCodecRegistry(), ReadPreference.primary(),
+                                                                              ReadConcern.DEFAULT, WriteConcern.ACKNOWLEDGED,
+                                                                              executor, MAP_FUNCTION, REDUCE_FUNCTION)
                 .collectionName(NAMESPACE.getCollectionName());
 
         MapReduceToCollectionOperation expectedOperation = new MapReduceToCollectionOperation(NAMESPACE,
@@ -171,21 +170,21 @@ public class MapReducePublisherImplTest extends TestHelper {
         TestOperationExecutor executor = new TestOperationExecutor(asList(new MongoException("Failure"), null, null));
 
         // Operation fails
-        MapReducePublisher<Document> publisher = createMapReducePublisher(null, NAMESPACE, Document.class, Document.class,
-                                                                          getDefaultCodecRegistry(), ReadPreference.primary(),
-                                                                          ReadConcern.DEFAULT, WriteConcern.ACKNOWLEDGED,
-                                                                          executor, MAP_FUNCTION, REDUCE_FUNCTION);
+        MapReducePublisher<Document> publisher = new MapReducePublisherImpl<>(null, NAMESPACE, Document.class, Document.class,
+                                                                              getDefaultCodecRegistry(), ReadPreference.primary(),
+                                                                              ReadConcern.DEFAULT, WriteConcern.ACKNOWLEDGED,
+                                                                              executor, MAP_FUNCTION, REDUCE_FUNCTION);
         assertThrows(MongoException.class, () -> Flux.from(publisher).blockFirst());
 
         // toCollection inline
         assertThrows(IllegalStateException.class, publisher::toCollection);
 
         // Missing Codec
-        Publisher<Document> publisherMissingCodec = createMapReducePublisher(null, NAMESPACE, Document.class, Document.class,
-                                                                             fromProviders(new BsonValueCodecProvider()),
-                                                                             ReadPreference.primary(), ReadConcern.DEFAULT,
-                                                                             WriteConcern.ACKNOWLEDGED,
-                                                                             executor, MAP_FUNCTION, REDUCE_FUNCTION);
+        Publisher<Document> publisherMissingCodec = new MapReducePublisherImpl<>(null, NAMESPACE, Document.class, Document.class,
+                                                                                 fromProviders(new BsonValueCodecProvider()),
+                                                                                 ReadPreference.primary(), ReadConcern.DEFAULT,
+                                                                                 WriteConcern.ACKNOWLEDGED,
+                                                                                 executor, MAP_FUNCTION, REDUCE_FUNCTION);
         assertThrows(CodecConfigurationException.class, () -> Flux.from(publisherMissingCodec).blockFirst());
     }
 }

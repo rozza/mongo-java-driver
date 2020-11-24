@@ -33,7 +33,6 @@ import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Flux;
 
 import static com.mongodb.reactivestreams.client.MongoClients.getDefaultCodecRegistry;
-import static com.mongodb.reactivestreams.client.internal.PublisherCreator.createFindPublisher;
 import static java.util.Arrays.asList;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -51,7 +50,7 @@ public class FindPublisherImplTest extends TestHelper {
         configureBatchCursor();
 
         TestOperationExecutor executor = new TestOperationExecutor(asList(getBatchCursor(), getBatchCursor()));
-        FindPublisher<Document> publisher = createFindPublisher(null, NAMESPACE, Document.class, Document.class,
+        FindPublisher<Document> publisher = new FindPublisherImpl<>(null, NAMESPACE, Document.class, Document.class,
                                                                 getDefaultCodecRegistry(), ReadPreference.primary(), ReadConcern.DEFAULT,
                                                                 executor, new Document(), true);
 

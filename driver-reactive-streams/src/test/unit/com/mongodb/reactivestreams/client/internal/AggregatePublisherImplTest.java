@@ -41,7 +41,6 @@ import reactor.core.publisher.Flux;
 import java.util.List;
 
 import static com.mongodb.reactivestreams.client.MongoClients.getDefaultCodecRegistry;
-import static com.mongodb.reactivestreams.client.internal.PublisherCreator.createAggregatePublisher;
 import static java.lang.String.format;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
@@ -63,11 +62,11 @@ public class AggregatePublisherImplTest extends TestHelper {
         List<BsonDocument> pipeline = singletonList(BsonDocument.parse("{'$match': 1}"));
 
         TestOperationExecutor executor = new TestOperationExecutor(asList(getBatchCursor(), getBatchCursor()));
-        AggregatePublisher<Document> publisher = createAggregatePublisher(null, NAMESPACE, Document.class,
-                                                                          Document.class, getDefaultCodecRegistry(),
-                                                                          ReadPreference.primary(), ReadConcern.DEFAULT,
-                                                                          WriteConcern.ACKNOWLEDGED,
-                                                                          executor, pipeline, AggregationLevel.COLLECTION, true);
+        AggregatePublisher<Document> publisher = new AggregatePublisherImpl<>(null, NAMESPACE, Document.class,
+                                                                              Document.class, getDefaultCodecRegistry(),
+                                                                              ReadPreference.primary(), ReadConcern.DEFAULT,
+                                                                              WriteConcern.ACKNOWLEDGED,
+                                                                              executor, pipeline, AggregationLevel.COLLECTION, true);
 
         AggregateOperation<Document> expectedOperation = new AggregateOperation<>(NAMESPACE, pipeline,
                                                                                   getDefaultCodecRegistry().get(Document.class))
@@ -115,11 +114,11 @@ public class AggregatePublisherImplTest extends TestHelper {
         MongoNamespace collectionNamespace = new MongoNamespace(NAMESPACE.getDatabaseName(), collectionName);
 
         TestOperationExecutor executor = new TestOperationExecutor(asList(getBatchCursor(), getBatchCursor(), getBatchCursor(), null));
-        AggregatePublisher<Document> publisher = createAggregatePublisher(null, NAMESPACE, Document.class,
-                                                                          Document.class, getDefaultCodecRegistry(),
-                                                                          ReadPreference.primary(), ReadConcern.DEFAULT,
-                                                                          WriteConcern.ACKNOWLEDGED,
-                                                                          executor, pipeline, AggregationLevel.COLLECTION, true);
+        AggregatePublisher<Document> publisher = new AggregatePublisherImpl<>(null, NAMESPACE, Document.class,
+                                                                              Document.class, getDefaultCodecRegistry(),
+                                                                              ReadPreference.primary(), ReadConcern.DEFAULT,
+                                                                              WriteConcern.ACKNOWLEDGED,
+                                                                              executor, pipeline, AggregationLevel.COLLECTION, true);
 
         AggregateToCollectionOperation expectedOperation = new AggregateToCollectionOperation(NAMESPACE, pipeline,
                                                                                               ReadConcern.DEFAULT,
@@ -169,10 +168,10 @@ public class AggregatePublisherImplTest extends TestHelper {
         assertOperationIsTheSameAs(expectedFindOperation, operation.getReadOperation());
 
         // Should handle database level aggregations
-        publisher = createAggregatePublisher(null, NAMESPACE.getDatabaseName(), Document.class,
-                                             Document.class, getDefaultCodecRegistry(), ReadPreference.primary(), ReadConcern.DEFAULT,
-                                             WriteConcern.ACKNOWLEDGED,
-                                             executor, pipeline, AggregationLevel.DATABASE, true);
+        publisher = new AggregatePublisherImpl<>(null, NAMESPACE.getDatabaseName(), Document.class,
+                                                 Document.class, getDefaultCodecRegistry(), ReadPreference.primary(), ReadConcern.DEFAULT,
+                                                 WriteConcern.ACKNOWLEDGED,
+                                                 executor, pipeline, AggregationLevel.DATABASE, true);
 
         expectedOperation = new AggregateToCollectionOperation(NAMESPACE, pipeline, ReadConcern.DEFAULT, WriteConcern.ACKNOWLEDGED);
 
@@ -182,10 +181,10 @@ public class AggregatePublisherImplTest extends TestHelper {
         assertOperationIsTheSameAs(expectedOperation, operation.getAggregateToCollectionOperation());
 
         // Should handle toCollection
-        publisher = createAggregatePublisher(null, NAMESPACE, Document.class,
-                                             Document.class, getDefaultCodecRegistry(), ReadPreference.primary(), ReadConcern.DEFAULT,
-                                             WriteConcern.ACKNOWLEDGED,
-                                             executor, pipeline, AggregationLevel.COLLECTION, true);
+        publisher = new AggregatePublisherImpl<>(null, NAMESPACE, Document.class,
+                                                 Document.class, getDefaultCodecRegistry(), ReadPreference.primary(), ReadConcern.DEFAULT,
+                                                 WriteConcern.ACKNOWLEDGED,
+                                                 executor, pipeline, AggregationLevel.COLLECTION, true);
 
         expectedOperation = new AggregateToCollectionOperation(NAMESPACE, pipeline, ReadConcern.DEFAULT, WriteConcern.ACKNOWLEDGED);
 
@@ -200,21 +199,21 @@ public class AggregatePublisherImplTest extends TestHelper {
         List<BsonDocument> pipeline = asList(BsonDocument.parse("{'$match': 1}"), BsonDocument.parse("{'$out': {s3: true}}"));
 
         TestOperationExecutor executor = new TestOperationExecutor(asList(null, null, null, null));
-        AggregatePublisher<Document> publisher = createAggregatePublisher(null, NAMESPACE, Document.class,
-                                                                          Document.class, getDefaultCodecRegistry(),
-                                                                          ReadPreference.primary(), ReadConcern.DEFAULT,
-                                                                          WriteConcern.ACKNOWLEDGED,
-                                                                          executor, pipeline, AggregationLevel.COLLECTION, true);
+        AggregatePublisher<Document> publisher = new AggregatePublisherImpl<>(null, NAMESPACE, Document.class,
+                                                                              Document.class, getDefaultCodecRegistry(),
+                                                                              ReadPreference.primary(), ReadConcern.DEFAULT,
+                                                                              WriteConcern.ACKNOWLEDGED,
+                                                                              executor, pipeline, AggregationLevel.COLLECTION, true);
 
         // default input should be as expected
         assertThrows(IllegalStateException.class, () -> Flux.from(publisher).blockFirst());
 
         // Should handle toCollection
-        Publisher<Void> toCollectionPublisher = createAggregatePublisher(null, NAMESPACE, Document.class,
-                                                                         Document.class, getDefaultCodecRegistry(),
-                                                                         ReadPreference.primary(), ReadConcern.DEFAULT,
-                                                                         WriteConcern.ACKNOWLEDGED,
-                                                                         executor, pipeline, AggregationLevel.COLLECTION, true)
+        Publisher<Void> toCollectionPublisher = new AggregatePublisherImpl<>(null, NAMESPACE, Document.class,
+                                                                             Document.class, getDefaultCodecRegistry(),
+                                                                             ReadPreference.primary(), ReadConcern.DEFAULT,
+                                                                             WriteConcern.ACKNOWLEDGED,
+                                                                             executor, pipeline, AggregationLevel.COLLECTION, true)
                 .toCollection();
 
         AggregateToCollectionOperation expectedOperation = new AggregateToCollectionOperation(NAMESPACE, pipeline, ReadConcern.DEFAULT,
@@ -224,10 +223,10 @@ public class AggregatePublisherImplTest extends TestHelper {
         assertOperationIsTheSameAs(expectedOperation, executor.getWriteOperation());
 
         // Should handle database level
-        toCollectionPublisher = createAggregatePublisher(null, NAMESPACE.getDatabaseName(), Document.class,
-                                                         Document.class, getDefaultCodecRegistry(), ReadPreference.primary(),
-                                                         ReadConcern.DEFAULT, WriteConcern.ACKNOWLEDGED,
-                                                         executor, pipeline, AggregationLevel.DATABASE, true).toCollection();
+        toCollectionPublisher = new AggregatePublisherImpl<>(null, NAMESPACE.getDatabaseName(), Document.class,
+                                                             Document.class, getDefaultCodecRegistry(), ReadPreference.primary(),
+                                                             ReadConcern.DEFAULT, WriteConcern.ACKNOWLEDGED,
+                                                             executor, pipeline, AggregationLevel.DATABASE, true).toCollection();
 
         Flux.from(toCollectionPublisher).blockFirst();
         assertOperationIsTheSameAs(expectedOperation, executor.getWriteOperation());
@@ -235,10 +234,11 @@ public class AggregatePublisherImplTest extends TestHelper {
         // Should handle $out with namespace
         List<BsonDocument> pipelineWithNamespace = asList(BsonDocument.parse("{'$match': 1}"),
                                                           BsonDocument.parse("{'$out': {db: 'db1', coll: 'coll1'}}"));
-        toCollectionPublisher = createAggregatePublisher(null, NAMESPACE, Document.class,
-                                                         Document.class, getDefaultCodecRegistry(), ReadPreference.primary(),
-                                                         ReadConcern.DEFAULT, WriteConcern.ACKNOWLEDGED,
-                                                         executor, pipelineWithNamespace, AggregationLevel.COLLECTION, true).toCollection();
+        toCollectionPublisher = new AggregatePublisherImpl<>(null, NAMESPACE, Document.class,
+                                                             Document.class, getDefaultCodecRegistry(), ReadPreference.primary(),
+                                                             ReadConcern.DEFAULT, WriteConcern.ACKNOWLEDGED,
+                                                             executor, pipelineWithNamespace, AggregationLevel.COLLECTION, true)
+                .toCollection();
 
         expectedOperation = new AggregateToCollectionOperation(NAMESPACE, pipelineWithNamespace, ReadConcern.DEFAULT,
                                                                WriteConcern.ACKNOWLEDGED);
@@ -257,11 +257,11 @@ public class AggregatePublisherImplTest extends TestHelper {
         MongoNamespace collectionNamespace = new MongoNamespace(NAMESPACE.getDatabaseName(), collectionName);
 
         TestOperationExecutor executor = new TestOperationExecutor(asList(getBatchCursor(), getBatchCursor(), getBatchCursor(), null));
-        AggregatePublisher<Document> publisher = createAggregatePublisher(null, NAMESPACE, Document.class,
-                                                                          Document.class, getDefaultCodecRegistry(),
-                                                                          ReadPreference.primary(), ReadConcern.DEFAULT,
-                                                                          WriteConcern.ACKNOWLEDGED,
-                                                                          executor, pipeline, AggregationLevel.COLLECTION, true);
+        AggregatePublisher<Document> publisher = new AggregatePublisherImpl<>(null, NAMESPACE, Document.class,
+                                                                              Document.class, getDefaultCodecRegistry(),
+                                                                              ReadPreference.primary(), ReadConcern.DEFAULT,
+                                                                              WriteConcern.ACKNOWLEDGED,
+                                                                              executor, pipeline, AggregationLevel.COLLECTION, true);
 
         AggregateToCollectionOperation expectedOperation = new AggregateToCollectionOperation(NAMESPACE, pipeline,
                                                                                               ReadConcern.DEFAULT,
@@ -311,10 +311,10 @@ public class AggregatePublisherImplTest extends TestHelper {
         assertOperationIsTheSameAs(expectedFindOperation, operation.getReadOperation());
 
         // Should handle database level aggregations
-        publisher = createAggregatePublisher(null, NAMESPACE.getDatabaseName(), Document.class,
-                                             Document.class, getDefaultCodecRegistry(), ReadPreference.primary(), ReadConcern.DEFAULT,
-                                             WriteConcern.ACKNOWLEDGED,
-                                             executor, pipeline, AggregationLevel.DATABASE, true);
+        publisher = new AggregatePublisherImpl<>(null, NAMESPACE.getDatabaseName(), Document.class,
+                                                 Document.class, getDefaultCodecRegistry(), ReadPreference.primary(), ReadConcern.DEFAULT,
+                                                 WriteConcern.ACKNOWLEDGED,
+                                                 executor, pipeline, AggregationLevel.DATABASE, true);
 
         expectedOperation = new AggregateToCollectionOperation(NAMESPACE, pipeline, ReadConcern.DEFAULT, WriteConcern.ACKNOWLEDGED);
 
@@ -324,10 +324,10 @@ public class AggregatePublisherImplTest extends TestHelper {
         assertOperationIsTheSameAs(expectedOperation, operation.getAggregateToCollectionOperation());
 
         // Should handle toCollection
-        publisher = createAggregatePublisher(null, NAMESPACE, Document.class,
-                                             Document.class, getDefaultCodecRegistry(), ReadPreference.primary(), ReadConcern.DEFAULT,
-                                             WriteConcern.ACKNOWLEDGED,
-                                             executor, pipeline, AggregationLevel.COLLECTION, true);
+        publisher = new AggregatePublisherImpl<>(null, NAMESPACE, Document.class,
+                                                 Document.class, getDefaultCodecRegistry(), ReadPreference.primary(), ReadConcern.DEFAULT,
+                                                 WriteConcern.ACKNOWLEDGED,
+                                                 executor, pipeline, AggregationLevel.COLLECTION, true);
 
         expectedOperation = new AggregateToCollectionOperation(NAMESPACE, pipeline, ReadConcern.DEFAULT, WriteConcern.ACKNOWLEDGED);
 
@@ -343,27 +343,28 @@ public class AggregatePublisherImplTest extends TestHelper {
         TestOperationExecutor executor = new TestOperationExecutor(asList(new MongoException("Failure"), null, null));
 
         // Operation fails
-        Publisher<Document> publisher = createAggregatePublisher(null, NAMESPACE, Document.class, Document.class,
-                                                                 getDefaultCodecRegistry(), ReadPreference.primary(), ReadConcern.DEFAULT,
-                                                                 WriteConcern.ACKNOWLEDGED,
-                                                                 executor, pipeline, AggregationLevel.COLLECTION, true);
+        Publisher<Document> publisher = new AggregatePublisherImpl<>(null, NAMESPACE, Document.class, Document.class,
+                                                                     getDefaultCodecRegistry(), ReadPreference.primary(),
+                                                                     ReadConcern.DEFAULT,
+                                                                     WriteConcern.ACKNOWLEDGED,
+                                                                     executor, pipeline, AggregationLevel.COLLECTION, true);
         assertThrows(MongoException.class, () -> Flux.from(publisher).blockFirst());
 
         // Missing Codec
-        Publisher<Document> publisherMissingCodec = createAggregatePublisher(null, NAMESPACE, Document.class, Document.class,
-                                                                             fromProviders(new BsonValueCodecProvider()),
-                                                                             ReadPreference.primary(), ReadConcern.DEFAULT,
-                                                                             WriteConcern.ACKNOWLEDGED,
-                                                                             executor, pipeline, AggregationLevel.COLLECTION, true);
+        Publisher<Document> publisherMissingCodec = new AggregatePublisherImpl<>(null, NAMESPACE, Document.class, Document.class,
+                                                                                 fromProviders(new BsonValueCodecProvider()),
+                                                                                 ReadPreference.primary(), ReadConcern.DEFAULT,
+                                                                                 WriteConcern.ACKNOWLEDGED,
+                                                                                 executor, pipeline, AggregationLevel.COLLECTION, true);
         assertThrows(CodecConfigurationException.class, () -> Flux.from(publisherMissingCodec).blockFirst());
 
         // Pipeline contains null
-        Publisher<Document> publisherPipelineNull = createAggregatePublisher(null, NAMESPACE, Document.class, Document.class,
-                                                                             fromProviders(new DocumentCodecProvider()),
-                                                                             ReadPreference.primary(), ReadConcern.DEFAULT,
-                                                                             WriteConcern.ACKNOWLEDGED,
-                                                                             executor, singletonList(null), AggregationLevel.COLLECTION,
-                                                                             false);
+        Publisher<Document> publisherPipelineNull = new AggregatePublisherImpl<>(null, NAMESPACE, Document.class, Document.class,
+                                                                                 fromProviders(new DocumentCodecProvider()),
+                                                                                 ReadPreference.primary(), ReadConcern.DEFAULT,
+                                                                                 WriteConcern.ACKNOWLEDGED,
+                                                                                 executor, singletonList(null), AggregationLevel.COLLECTION,
+                                                                                 false);
         assertThrows(IllegalArgumentException.class, () -> Flux.from(publisherPipelineNull).blockFirst());
     }
 

@@ -22,7 +22,7 @@ import reactor.core.publisher.Mono;
 
 import java.util.List;
 
-import static com.mongodb.reactivestreams.client.internal.PublisherCreator.sinkToCallback;
+import static com.mongodb.reactivestreams.client.internal.PublisherHelper.sinkToCallback;
 
 public class BatchCursorImpl<T> implements BatchCursor<T> {
 

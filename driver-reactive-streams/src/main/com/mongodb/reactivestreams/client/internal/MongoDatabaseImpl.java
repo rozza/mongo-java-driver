@@ -62,6 +62,8 @@ public final class MongoDatabaseImpl implements MongoDatabase {
     private final UuidRepresentation uuidRepresentation;
     private final OperationExecutor executor;
 
+    private final PublisherHelper<Document> publisherHelper;
+
     MongoDatabaseImpl(final String name,
                       final CodecRegistry codecRegistry,
                       final ReadPreference readPreference,
@@ -81,6 +83,8 @@ public final class MongoDatabaseImpl implements MongoDatabase {
         this.retryReads = retryReads;
         this.retryWrites = retryWrites;
         this.uuidRepresentation = notNull("uuidRepresentation", uuidRepresentation);
+        this.publisherHelper = new PublisherHelper<>(new MongoNamespace(getName(), "ignored"), Document.class, readPreference,
+                                                     codecRegistry, readConcern, writeConcern, retryWrites, retryReads, executor);
     }
 
     @Override
@@ -122,6 +126,10 @@ public final class MongoDatabaseImpl implements MongoDatabase {
 
     UuidRepresentation getUuidRepresentation() {
         return uuidRepresentation;
+    }
+
+    PublisherHelper<Document> getPublisherHelper() {
+        return publisherHelper;
     }
 
     @Override
@@ -178,10 +186,7 @@ public final class MongoDatabaseImpl implements MongoDatabase {
 
     @Override
     public <T> Publisher<T> runCommand(final Bson command, final ReadPreference readPreference, final Class<T> clazz) {
-        return PublisherCreator.createRunCommandMono(null,
-                                                     getName(), notNull("clazz", clazz), getCodecRegistry(),
-                                                     notNull("readPreference", readPreference),
-                                                     getReadConcern(), getExecutor(), notNull("command", command));
+        return publisherHelper.runCommand(null, command, readPreference, clazz);
     }
 
     @Override
@@ -202,21 +207,17 @@ public final class MongoDatabaseImpl implements MongoDatabase {
     @Override
     public <T> Publisher<T> runCommand(final ClientSession clientSession, final Bson command,
                                        final ReadPreference readPreference, final Class<T> clazz) {
-        return PublisherCreator.createRunCommandMono(notNull("clientSession", clientSession),
-                                                     getName(), notNull("clazz", clazz), getCodecRegistry(),
-                                                     notNull("readPreference", readPreference),
-                                                     getReadConcern(), getExecutor(), notNull("command", command));
+        return publisherHelper.runCommand(notNull("clientSession", clientSession), command, readPreference, clazz);
     }
 
     @Override
     public Publisher<Void> drop() {
-        return PublisherCreator.createDropDatabaseMono(null, getName(), getReadConcern(), getWriteConcern(), getExecutor());
+        return publisherHelper.dropDatabase(null);
     }
 
     @Override
     public Publisher<Void> drop(final ClientSession clientSession) {
-        return PublisherCreator.createDropDatabaseMono(notNull("clientSession", clientSession), getName(), getReadConcern(),
-                                                       getWriteConcern(), getExecutor());
+        return publisherHelper.dropDatabase(notNull("clientSession", clientSession));
     }
 
     @Override
@@ -236,8 +237,8 @@ public final class MongoDatabaseImpl implements MongoDatabase {
 
     @Override
     public <C> ListCollectionsPublisher<C> listCollections(final Class<C> clazz) {
-        return PublisherCreator.createListCollectionsPublisher(null, getName(), clazz, getCodecRegistry(),
-                                                               getReadPreference(), getExecutor(), getRetryReads(), false);
+        return new ListCollectionsPublisherImpl<>(null, getName(), clazz, getCodecRegistry(), getReadPreference(), getExecutor(),
+                                                  getRetryReads(), false);
     }
 
     @Override
@@ -247,9 +248,8 @@ public final class MongoDatabaseImpl implements MongoDatabase {
 
     @Override
     public <C> ListCollectionsPublisher<C> listCollections(final ClientSession clientSession, final Class<C> clazz) {
-        return PublisherCreator.createListCollectionsPublisher(notNull("clientSession", clientSession), getName(), clazz,
-                                                               getCodecRegistry(), getReadPreference(), getExecutor(), getRetryReads(),
-                                                               false);
+        return new ListCollectionsPublisherImpl<>(notNull("clientSession", clientSession), getName(), clazz, getCodecRegistry(),
+                                                  getReadPreference(), getExecutor(), getRetryReads(), false);
     }
 
     @Override
@@ -259,9 +259,9 @@ public final class MongoDatabaseImpl implements MongoDatabase {
 
     @Override
     public Publisher<Void> createCollection(final String collectionName, final CreateCollectionOptions options) {
-        return PublisherCreator.createCreateCollectionMono(null, new MongoNamespace(getName(), notNull("collectionName", collectionName)),
-                                                           getCodecRegistry(), getReadConcern(), getWriteConcern(), getExecutor(),
-                                                           notNull("options", options));
+        return publisherHelper.createCollection(null,
+                                                new MongoNamespace(getName(), notNull("collectionName", collectionName)),
+                                                notNull("options", options));
     }
 
     @Override
@@ -272,10 +272,9 @@ public final class MongoDatabaseImpl implements MongoDatabase {
     @Override
     public Publisher<Void> createCollection(final ClientSession clientSession, final String collectionName,
                                             final CreateCollectionOptions options) {
-        return PublisherCreator.createCreateCollectionMono(notNull("clientSession", clientSession),
-                                                           new MongoNamespace(getName(), notNull("collectionName", collectionName)),
-                                                           getCodecRegistry(), getReadConcern(), getWriteConcern(), getExecutor(),
-                                                           notNull("options", options));
+        return publisherHelper.createCollection(notNull("clientSession", clientSession),
+                                                new MongoNamespace(getName(), notNull("collectionName", collectionName)),
+                                                 notNull("options", options));
     }
 
     @Override
@@ -286,10 +285,7 @@ public final class MongoDatabaseImpl implements MongoDatabase {
     @Override
     public Publisher<Void> createView(final String viewName, final String viewOn, final List<? extends Bson> pipeline,
                                       final CreateViewOptions options) {
-        return PublisherCreator.createViewMono(null,
-                                               new MongoNamespace(getName(), notNull("viewOn", viewOn)), getCodecRegistry(),
-                                               getReadConcern(), getWriteConcern(), getExecutor(), notNull("viewName", viewName),
-                                               pipeline, notNull("options", options));
+        return publisherHelper.createView(null, viewName, viewOn, pipeline, options);
     }
 
     @Override
@@ -301,10 +297,7 @@ public final class MongoDatabaseImpl implements MongoDatabase {
     @Override
     public Publisher<Void> createView(final ClientSession clientSession, final String viewName, final String viewOn,
                                       final List<? extends Bson> pipeline, final CreateViewOptions options) {
-        return PublisherCreator.createViewMono(notNull("clientSession", clientSession),
-                                               new MongoNamespace(getName(), notNull("viewOn", viewOn)), getCodecRegistry(),
-                                               getReadConcern(), getWriteConcern(), getExecutor(), notNull("viewName", viewName),
-                                               pipeline, notNull("options", options));
+        return publisherHelper.createView(notNull("clientSession", clientSession), viewName, viewOn, pipeline, options);
     }
 
     @Override
@@ -324,9 +317,8 @@ public final class MongoDatabaseImpl implements MongoDatabase {
 
     @Override
     public <T> ChangeStreamPublisher<T> watch(final List<? extends Bson> pipeline, final Class<T> resultClass) {
-        return PublisherCreator.createChangeStreamPublisher(null, getName(), resultClass,
-                                                            getCodecRegistry(), getReadPreference(), getReadConcern(), getExecutor(),
-                                                            pipeline, ChangeStreamLevel.DATABASE, getRetryReads());
+        return new ChangeStreamPublisherImpl<>(null, getName(), resultClass, getCodecRegistry(), getReadPreference(), getReadConcern(),
+                                               getExecutor(), pipeline, ChangeStreamLevel.DATABASE, getRetryReads());
     }
 
     @Override
@@ -347,9 +339,9 @@ public final class MongoDatabaseImpl implements MongoDatabase {
     @Override
     public <T> ChangeStreamPublisher<T> watch(final ClientSession clientSession, final List<? extends Bson> pipeline,
                                               final Class<T> resultClass) {
-        return PublisherCreator.createChangeStreamPublisher(notNull("clientSession", clientSession), getName(), resultClass,
-                                                            getCodecRegistry(), getReadPreference(), getReadConcern(), getExecutor(),
-                                                            pipeline, ChangeStreamLevel.DATABASE, getRetryReads());
+        return new ChangeStreamPublisherImpl<>(notNull("clientSession", clientSession), getName(), resultClass, getCodecRegistry(),
+                                               getReadPreference(), getReadConcern(), getExecutor(), pipeline, ChangeStreamLevel.DATABASE,
+                                               getRetryReads());
     }
 
     @Override
@@ -359,10 +351,10 @@ public final class MongoDatabaseImpl implements MongoDatabase {
 
     @Override
     public <T> AggregatePublisher<T> aggregate(final List<? extends Bson> pipeline, final Class<T> resultClass) {
-        return PublisherCreator.createAggregatePublisher(null, getName(), Document.class,
-                                                         resultClass, getCodecRegistry(), getReadPreference(), getReadConcern(),
-                                                         getWriteConcern(), getExecutor(), pipeline,
-                                                         AggregationLevel.DATABASE, getRetryReads());
+        return new AggregatePublisherImpl<>(null, getName(), Document.class,
+                                                            resultClass, getCodecRegistry(), getReadPreference(), getReadConcern(),
+                                                            getWriteConcern(), getExecutor(), pipeline,
+                                                            AggregationLevel.DATABASE, getRetryReads());
     }
 
     @Override
@@ -373,10 +365,10 @@ public final class MongoDatabaseImpl implements MongoDatabase {
     @Override
     public <T> AggregatePublisher<T> aggregate(final ClientSession clientSession, final List<? extends Bson> pipeline,
                                                final Class<T> resultClass) {
-        return PublisherCreator.createAggregatePublisher(notNull("clientSession", clientSession), getName(), Document.class,
-                                                         resultClass, getCodecRegistry(), getReadPreference(), getReadConcern(),
-                                                         getWriteConcern(), getExecutor(), pipeline,
-                                                         AggregationLevel.DATABASE, getRetryReads());
+        return new AggregatePublisherImpl<>(notNull("clientSession", clientSession), getName(), Document.class,
+                                                            resultClass, getCodecRegistry(), getReadPreference(), getReadConcern(),
+                                                            getWriteConcern(), getExecutor(), pipeline,
+                                                            AggregationLevel.DATABASE, getRetryReads());
     }
 
 }

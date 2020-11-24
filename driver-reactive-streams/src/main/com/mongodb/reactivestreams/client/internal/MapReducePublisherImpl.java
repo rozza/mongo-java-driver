@@ -46,7 +46,6 @@ import java.util.concurrent.TimeUnit;
 
 import static com.mongodb.ReadPreference.primary;
 import static com.mongodb.assertions.Assertions.notNull;
-import static com.mongodb.reactivestreams.client.internal.PublisherCreator.createWriteOperationMono;
 
 final class MapReducePublisherImpl<D, T> extends BatchCursorPublisherImpl<T> implements MapReducePublisher<T> {
 
@@ -192,8 +191,10 @@ final class MapReducePublisherImpl<D, T> extends BatchCursorPublisherImpl<T> imp
         if (inline) {
             throw new IllegalStateException("The options must specify a non-inline result");
         }
-        return createWriteOperationMono(() -> createMapReduceToCollectionOperation().getOperation(),
-                                        getClientSession(), getReadConcern(), getExecutor()).then();
+//        return createWriteOperationMono(() -> createMapReduceToCollectionOperation().getOperation(),
+//                                        getClientSession(), getReadConcern(), getExecutor()).then();
+        // TODO
+        return null;
     }
 
     @Override

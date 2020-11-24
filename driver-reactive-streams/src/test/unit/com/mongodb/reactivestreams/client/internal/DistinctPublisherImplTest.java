@@ -21,19 +21,23 @@ import com.mongodb.MongoNamespace;
 import com.mongodb.ReadConcern;
 import com.mongodb.ReadPreference;
 import com.mongodb.client.model.Collation;
+import com.mongodb.internal.async.client.OperationExecutor;
 import com.mongodb.internal.operation.DistinctOperation;
+import com.mongodb.lang.Nullable;
+import com.mongodb.reactivestreams.client.ClientSession;
 import com.mongodb.reactivestreams.client.DistinctPublisher;
 import org.bson.BsonDocument;
 import org.bson.Document;
 import org.bson.codecs.BsonValueCodecProvider;
 import org.bson.codecs.configuration.CodecConfigurationException;
+import org.bson.codecs.configuration.CodecRegistry;
+import org.bson.conversions.Bson;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 
 import static com.mongodb.reactivestreams.client.MongoClients.getDefaultCodecRegistry;
-import static com.mongodb.reactivestreams.client.internal.PublisherCreator.createDistinctPublisher;
 import static java.util.Arrays.asList;
 import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -101,6 +105,14 @@ public class DistinctPublisherImplTest extends TestHelper {
                                                                             "fieldName",
                                                                             new Document(), true);
         assertThrows(CodecConfigurationException.class, () -> Flux.from(publisherMissingCodec).blockFirst());
+    }
+
+    public <D, T> DistinctPublisher<T> createDistinctPublisher(@Nullable final ClientSession clientSession, final MongoNamespace namespace,
+            final Class<D> documentClass, final Class<T> resultClass, final CodecRegistry codecRegistry,
+            final ReadPreference readPreference, final ReadConcern readConcern, final OperationExecutor executor,
+            final String fieldName, final Bson filter, final boolean retryReads) {
+        return new DistinctPublisherImpl<>(clientSession, namespace, documentClass, resultClass, codecRegistry, readPreference, readConcern,
+                                           executor, fieldName, filter, retryReads);
     }
 
 }

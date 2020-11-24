@@ -34,7 +34,7 @@ import reactor.core.publisher.Mono;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static com.mongodb.assertions.Assertions.notNull;
-import static com.mongodb.reactivestreams.client.internal.PublisherCreator.sinkToCallback;
+import static com.mongodb.reactivestreams.client.internal.PublisherHelper.sinkToCallback;
 
 public abstract class BatchCursorPublisherImpl<T> implements BatchCursorPublisher<T> {
     private final ClientSession clientSession;

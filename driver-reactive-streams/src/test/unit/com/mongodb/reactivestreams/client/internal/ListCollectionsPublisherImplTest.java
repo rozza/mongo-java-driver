@@ -27,7 +27,6 @@ import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Flux;
 
 import static com.mongodb.reactivestreams.client.MongoClients.getDefaultCodecRegistry;
-import static com.mongodb.reactivestreams.client.internal.PublisherCreator.createListCollectionsPublisher;
 import static java.util.Arrays.asList;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -42,7 +41,7 @@ public class ListCollectionsPublisherImplTest extends TestHelper {
         configureBatchCursor();
 
         TestOperationExecutor executor = new TestOperationExecutor(asList(getBatchCursor(), getBatchCursor()));
-        ListCollectionsPublisher<String> publisher = createListCollectionsPublisher(null, DATABASE_NAME, String.class,
+        ListCollectionsPublisher<String> publisher = new ListCollectionsPublisherImpl<>(null, DATABASE_NAME, String.class,
                                                                                     getDefaultCodecRegistry(), ReadPreference.primary(),
                                                                                     executor, true, true);
 
