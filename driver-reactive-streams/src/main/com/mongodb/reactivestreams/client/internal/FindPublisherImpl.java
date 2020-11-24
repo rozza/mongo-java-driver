@@ -185,9 +185,14 @@ final class FindPublisherImpl<D, T> extends BatchCursorPublisherImpl<T> implemen
         return this;
     }
 
+
     @Override
     AsyncReadOperation<AsyncBatchCursor<T>> asAsyncReadOperation() {
         return operations.find(filter, resultClass, findOptions);
     }
 
+    @Override
+    AsyncReadOperation<AsyncBatchCursor<T>> asAsyncFirstReadOperation() {
+        return operations.findFirst(filter, resultClass, findOptions);
+    }
 }

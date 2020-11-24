@@ -55,6 +55,10 @@ public abstract class BatchCursorPublisherImpl<T> implements BatchCursorPublishe
 
     abstract AsyncReadOperation<AsyncBatchCursor<T>> asAsyncReadOperation();
 
+    AsyncReadOperation<AsyncBatchCursor<T>> asAsyncFirstReadOperation() {
+        return asAsyncReadOperation();
+    }
+
     @Nullable
     public ClientSession getClientSession() {
         return clientSession;
@@ -88,7 +92,7 @@ public abstract class BatchCursorPublisherImpl<T> implements BatchCursorPublishe
     }
 
     public Publisher<T> first() {
-        return batchCursor()
+        return batchCursor(asAsyncFirstReadOperation())
                 .flatMap(batchCursor -> Mono.create(sink -> {
                     batchCursor.setBatchSize(1);
                     Mono.from(batchCursor.next())
@@ -151,10 +155,14 @@ public abstract class BatchCursorPublisherImpl<T> implements BatchCursorPublishe
 
     @Override
     public Mono<BatchCursor<T>> batchCursor() {
-        return Mono.<AsyncBatchCursor<T>>create(sink ->
-                    executor.execute(asAsyncReadOperation(), readPreference, readConcern,
-                                     clientSession != null ? clientSession.getWrapped() : null,
-                                     sinkToCallback(sink)))
-                        .map(BatchCursorImpl::new);
+        return batchCursor(asAsyncReadOperation());
     }
+
+    private Mono<BatchCursor<T>> batchCursor(final AsyncReadOperation<AsyncBatchCursor<T>> operation) {
+        return Mono.<AsyncBatchCursor<T>>create(sink -> executor.execute(operation, readPreference, readConcern,
+                                                                         clientSession != null ? clientSession.getWrapped() : null,
+                                                                         sinkToCallback(sink)))
+                .map(BatchCursorImpl::new);
+    }
+
 }
