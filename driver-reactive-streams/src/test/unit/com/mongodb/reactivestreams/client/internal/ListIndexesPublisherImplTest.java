@@ -39,10 +39,8 @@ public class ListIndexesPublisherImplTest extends TestHelper {
     void shouldBuildTheExpectedOperation() {
         configureBatchCursor();
 
-        TestOperationExecutor executor = new TestOperationExecutor(asList(getBatchCursor(), getBatchCursor()));
-        ListIndexesPublisher<Document> publisher = new ListIndexesPublisherImpl<>(null, NAMESPACE, Document.class,
-                                                                              getDefaultCodecRegistry(), ReadPreference.primary(), executor,
-                                                                              true);
+        TestOperationExecutor executor = createOperationExecutor(asList(getBatchCursor(), getBatchCursor()));
+        ListIndexesPublisher<Document> publisher = new ListIndexesPublisherImpl<>(null, createMongoOperationPublisher(executor));
 
         ListIndexesOperation<Document> expectedOperation =
                 new ListIndexesOperation<>(NAMESPACE, getDefaultCodecRegistry().get(Document.class))

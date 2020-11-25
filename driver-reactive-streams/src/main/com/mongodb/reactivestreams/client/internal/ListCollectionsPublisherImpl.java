@@ -17,16 +17,11 @@
 package com.mongodb.reactivestreams.client.internal;
 
 import com.mongodb.ReadConcern;
-import com.mongodb.ReadPreference;
 import com.mongodb.internal.async.AsyncBatchCursor;
-import com.mongodb.internal.async.client.OperationExecutor;
-import com.mongodb.internal.operation.AsyncOperations;
 import com.mongodb.internal.operation.AsyncReadOperation;
 import com.mongodb.lang.Nullable;
 import com.mongodb.reactivestreams.client.ClientSession;
 import com.mongodb.reactivestreams.client.ListCollectionsPublisher;
-import org.bson.BsonDocument;
-import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.conversions.Bson;
 
 import java.util.concurrent.TimeUnit;
@@ -36,22 +31,16 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 class ListCollectionsPublisherImpl<T> extends BatchCursorPublisherImpl<T> implements ListCollectionsPublisher<T> {
 
-    private final String databaseName;
-    private final Class<T> resultClass;
-    private final AsyncOperations<BsonDocument> operations;
     private final boolean collectionNamesOnly;
     private Bson filter;
     private long maxTimeMS;
 
-    ListCollectionsPublisherImpl(@Nullable final ClientSession clientSession, final String databaseName, final Class<T> resultClass,
-                                 final CodecRegistry codecRegistry, final ReadPreference readPreference,
-                                 final OperationExecutor executor, final boolean retryReads,
-                                 final boolean collectionNamesOnly) {
-        super(clientSession, executor, ReadConcern.DEFAULT, readPreference, retryReads);
+    ListCollectionsPublisherImpl(
+            @Nullable final ClientSession clientSession,
+            final MongoOperationPublisher<T> mongoOperationPublisher,
+            final boolean collectionNamesOnly) {
+        super(clientSession, mongoOperationPublisher.withReadConcern(ReadConcern.DEFAULT));
         this.collectionNamesOnly = collectionNamesOnly;
-        this.operations = new AsyncOperations<>(BsonDocument.class, readPreference, codecRegistry, retryReads);
-        this.databaseName = notNull("databaseName", databaseName);
-        this.resultClass = notNull("resultClass", resultClass);
     }
 
     public ListCollectionsPublisherImpl<T> maxTime(final long maxTime, final TimeUnit timeUnit) {
@@ -71,6 +60,7 @@ class ListCollectionsPublisherImpl<T> extends BatchCursorPublisherImpl<T> implem
     }
 
     AsyncReadOperation<AsyncBatchCursor<T>> asAsyncReadOperation() {
-        return operations.listCollections(databaseName, resultClass, filter, collectionNamesOnly, getBatchSize(), maxTimeMS);
+        return getOperations().listCollections(getNamespace().getDatabaseName(), getDocumentClass(), filter, collectionNamesOnly,
+                                               getBatchSize(), maxTimeMS);
     }
 }

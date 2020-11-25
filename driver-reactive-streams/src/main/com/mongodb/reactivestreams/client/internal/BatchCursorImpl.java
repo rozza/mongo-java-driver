@@ -21,7 +21,7 @@ import reactor.core.publisher.Mono;
 
 import java.util.List;
 
-import static com.mongodb.reactivestreams.client.internal.PublisherHelper.sinkToCallback;
+import static com.mongodb.reactivestreams.client.internal.MongoOperationPublisher.sinkToCallback;
 
 public class BatchCursorImpl<T> implements BatchCursor<T> {
 

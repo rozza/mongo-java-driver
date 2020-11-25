@@ -16,14 +16,10 @@
 
 package com.mongodb.reactivestreams.client.internal;
 
-import com.mongodb.MongoNamespace;
-import com.mongodb.ReadConcern;
-import com.mongodb.ReadPreference;
 import com.mongodb.client.model.Collation;
 import com.mongodb.client.model.changestream.ChangeStreamDocument;
 import com.mongodb.client.model.changestream.FullDocument;
 import com.mongodb.internal.async.AsyncBatchCursor;
-import com.mongodb.internal.async.client.OperationExecutor;
 import com.mongodb.internal.client.model.changestream.ChangeStreamLevel;
 import com.mongodb.internal.operation.AsyncReadOperation;
 import com.mongodb.internal.operation.ChangeStreamOperation;
@@ -33,7 +29,6 @@ import com.mongodb.reactivestreams.client.ClientSession;
 import org.bson.BsonDocument;
 import org.bson.BsonTimestamp;
 import org.bson.codecs.Codec;
-import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.conversions.Bson;
 import org.reactivestreams.Publisher;
 
@@ -48,8 +43,6 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 public final class ChangeStreamPublisherImpl<T> extends AggregationBatchCursorPublisherImpl<ChangeStreamDocument<T>>
         implements ChangeStreamPublisher<T> {
 
-    private final MongoNamespace namespace;
-    private final CodecRegistry codecRegistry;
     private final List<? extends Bson> pipeline;
     private final Codec<ChangeStreamDocument<T>> codec;
     private final ChangeStreamLevel changeStreamLevel;
@@ -62,25 +55,27 @@ public final class ChangeStreamPublisherImpl<T> extends AggregationBatchCursorPu
     private BsonTimestamp startAtOperationTime;
 
     ChangeStreamPublisherImpl(
-            @Nullable final ClientSession clientSession, final String databaseName,
-            final Class<T> resultClass, final CodecRegistry codecRegistry, final ReadPreference readPreference,
-            final ReadConcern readConcern, final OperationExecutor executor, final List<? extends Bson> pipeline,
-            final ChangeStreamLevel changeStreamLevel, final boolean retryReads) {
-        this(clientSession, new MongoNamespace(notNull("databaseName", databaseName), "ignored"),
-             resultClass, codecRegistry, readPreference, readConcern, executor, pipeline, changeStreamLevel, retryReads);
+            @Nullable final ClientSession clientSession,
+            final MongoOperationPublisher<?> mongoOperationPublisher,
+            final Class<T> innerResultClass,
+            final List<? extends Bson> pipeline,
+            final ChangeStreamLevel changeStreamLevel) {
+        this(clientSession, mongoOperationPublisher,
+             ChangeStreamDocument.createCodec(notNull("innerResultClass", innerResultClass),
+                                              mongoOperationPublisher.getCodecRegistry()),
+             notNull("pipeline", pipeline), notNull("changeStreamLevel", changeStreamLevel));
     }
 
-    ChangeStreamPublisherImpl(
-            @Nullable final ClientSession clientSession, final MongoNamespace namespace, final Class<T> resultClass,
-            final CodecRegistry codecRegistry, final ReadPreference readPreference, final ReadConcern readConcern,
-            final OperationExecutor executor, final List<? extends Bson> pipeline,
-            final ChangeStreamLevel changeStreamLevel, final boolean retryReads) {
-        super(clientSession, executor, readConcern, readPreference, retryReads);
-        this.namespace = notNull("namespace", namespace);
-        this.codecRegistry = notNull("codecRegistry", codecRegistry);
-        this.pipeline = notNull("pipeline", pipeline);
-        this.codec = ChangeStreamDocument.createCodec(notNull("resultClass", resultClass), codecRegistry);
-        this.changeStreamLevel = notNull("changeStreamLevel", changeStreamLevel);
+    private ChangeStreamPublisherImpl(
+            @Nullable final ClientSession clientSession,
+            final MongoOperationPublisher<?> mongoOperationPublisher,
+            final Codec<ChangeStreamDocument<T>> codec,
+            final List<? extends Bson> pipeline,
+            final ChangeStreamLevel changeStreamLevel) {
+        super(clientSession, mongoOperationPublisher.withDocumentClass(codec.getEncoderClass()));
+        this.pipeline = pipeline;
+        this.codec = codec;
+        this.changeStreamLevel = changeStreamLevel;
     }
 
     @Override
@@ -116,11 +111,10 @@ public final class ChangeStreamPublisherImpl<T> extends AggregationBatchCursorPu
 
     @Override
     public <TDocument> Publisher<TDocument> withDocumentClass(final Class<TDocument> clazz) {
-        return new BatchCursorPublisherImpl<TDocument>(getClientSession(), getExecutor(), getReadConcern(),
-                                                       getReadPreference(), getRetryReads()) {
+        return new BatchCursorPublisherImpl<TDocument>(getClientSession(), getMongoOperationPublisher().withDocumentClass(clazz)) {
             @Override
             AsyncReadOperation<AsyncBatchCursor<TDocument>> asAsyncReadOperation() {
-                return createChangeStreamOperation(codecRegistry.get(clazz));
+                return createChangeStreamOperation(getMongoOperationPublisher().getCodecRegistry().get(clazz));
             }
         };
     }
@@ -143,7 +137,8 @@ public final class ChangeStreamPublisherImpl<T> extends AggregationBatchCursorPu
     }
 
     private <S> AsyncReadOperation<AsyncBatchCursor<S>> createChangeStreamOperation(final Codec<S> codec) {
-        return new ChangeStreamOperation<>(namespace, fullDocument, createBsonDocumentList(pipeline), codec, changeStreamLevel)
+        return new ChangeStreamOperation<>(getNamespace(), fullDocument,
+                                           createBsonDocumentList(pipeline), codec, changeStreamLevel)
                 .batchSize(getBatchSize())
                 .collation(collation)
                 .maxAwaitTime(maxAwaitTimeMS, MILLISECONDS)
@@ -159,7 +154,7 @@ public final class ChangeStreamPublisherImpl<T> extends AggregationBatchCursorPu
             if (obj == null) {
                 throw new IllegalArgumentException("pipeline can not contain a null value");
             }
-            aggregateList.add(obj.toBsonDocument(BsonDocument.class, codecRegistry));
+            aggregateList.add(obj.toBsonDocument(BsonDocument.class, getCodecRegistry()));
         }
         return aggregateList;
     }

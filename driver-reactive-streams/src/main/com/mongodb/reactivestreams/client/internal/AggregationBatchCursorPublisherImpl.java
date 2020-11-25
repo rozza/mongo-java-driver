@@ -16,13 +16,16 @@
 
 package com.mongodb.reactivestreams.client.internal;
 
+import com.mongodb.MongoNamespace;
 import com.mongodb.ReadConcern;
 import com.mongodb.ReadPreference;
+import com.mongodb.WriteConcern;
 import com.mongodb.internal.async.AsyncBatchCursor;
-import com.mongodb.internal.async.client.OperationExecutor;
 import com.mongodb.internal.operation.AsyncReadOperation;
+import com.mongodb.internal.operation.Operations;
 import com.mongodb.lang.Nullable;
 import com.mongodb.reactivestreams.client.ClientSession;
+import org.bson.codecs.configuration.CodecRegistry;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import reactor.core.publisher.Mono;
@@ -32,9 +35,8 @@ public abstract class AggregationBatchCursorPublisherImpl<T> implements BatchCur
     private final BatchCursorPublisherImpl<T> wrapped;
 
     AggregationBatchCursorPublisherImpl(
-            @Nullable final ClientSession clientSession, final OperationExecutor executor, final ReadConcern readConcern,
-            final ReadPreference readPreference, final boolean retryReads) {
-        wrapped = new BatchCursorPublisherImpl<T>(clientSession, executor, readConcern, readPreference, retryReads) {
+            @Nullable final ClientSession clientSession, final MongoOperationPublisher<T> mongoOperationPublisher) {
+        wrapped = new BatchCursorPublisherImpl<T>(clientSession, mongoOperationPublisher) {
             @Override
             AsyncReadOperation<AsyncBatchCursor<T>> asAsyncReadOperation() {
                 return AggregationBatchCursorPublisherImpl.this.asAsyncReadOperation();
@@ -44,25 +46,51 @@ public abstract class AggregationBatchCursorPublisherImpl<T> implements BatchCur
 
     abstract AsyncReadOperation<AsyncBatchCursor<T>> asAsyncReadOperation();
 
+    // TODO CLEANUPO
+
     @Nullable
     public ClientSession getClientSession() {
         return wrapped.getClientSession();
     }
 
-    public OperationExecutor getExecutor() {
-        return wrapped.getExecutor();
+    MongoNamespace getNamespace() {
+        return wrapped.getNamespace();
     }
 
-    public ReadPreference getReadPreference() {
+    ReadPreference getReadPreference() {
         return wrapped.getReadPreference();
     }
 
-    public ReadConcern getReadConcern() {
+    CodecRegistry getCodecRegistry() {
+        return wrapped.getCodecRegistry();
+    }
+
+    ReadConcern getReadConcern() {
         return wrapped.getReadConcern();
     }
 
-    public boolean getRetryReads() {
+    WriteConcern getWriteConcern() {
+        return wrapped.getWriteConcern();
+    }
+
+    boolean getRetryWrites() {
+        return wrapped.getRetryWrites();
+    }
+
+    boolean getRetryReads() {
         return wrapped.getRetryReads();
+    }
+
+    Class<T> getDocumentClass() {
+        return wrapped.getDocumentClass();
+    }
+
+    Operations<T> getOperations() {
+        return wrapped.getOperations();
+    }
+
+    MongoOperationPublisher<T> getMongoOperationPublisher() {
+        return wrapped.getMongoOperationPublisher();
     }
 
     @Override

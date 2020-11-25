@@ -92,11 +92,6 @@ public final class Fixture {
         return database.getCollection(namespace.getCollectionName());
     }
 
-    public static boolean isSharded() {
-        getMongoClient();
-        return mongoClient.getCluster().getDescription().getType() == SHARDED;
-    }
-
     public static void dropDatabase(final String name) {
         if (name == null) {
             return;

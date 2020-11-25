@@ -18,7 +18,6 @@ package com.mongodb.reactivestreams.client.internal;
 
 import com.mongodb.CursorType;
 import com.mongodb.MongoNamespace;
-import com.mongodb.ReadConcern;
 import com.mongodb.ReadPreference;
 import com.mongodb.client.model.Collation;
 import com.mongodb.client.model.Sorts;
@@ -49,10 +48,8 @@ public class FindPublisherImplTest extends TestHelper {
     void shouldBuildTheExpectedOperation() {
         configureBatchCursor();
 
-        TestOperationExecutor executor = new TestOperationExecutor(asList(getBatchCursor(), getBatchCursor()));
-        FindPublisher<Document> publisher = new FindPublisherImpl<>(null, NAMESPACE, Document.class, Document.class,
-                                                                getDefaultCodecRegistry(), ReadPreference.primary(), ReadConcern.DEFAULT,
-                                                                executor, new Document(), true);
+        TestOperationExecutor executor = createOperationExecutor(asList(getBatchCursor(), getBatchCursor()));
+        FindPublisher<Document> publisher = new FindPublisherImpl<>(null, createMongoOperationPublisher(executor), new Document());
 
         FindOperation<Document> expectedOperation = new FindOperation<>(NAMESPACE, getDefaultCodecRegistry().get(Document.class))
                 .retryReads(true)

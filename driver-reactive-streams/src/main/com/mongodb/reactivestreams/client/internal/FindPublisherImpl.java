@@ -17,40 +17,27 @@
 package com.mongodb.reactivestreams.client.internal;
 
 import com.mongodb.CursorType;
-import com.mongodb.MongoNamespace;
-import com.mongodb.ReadConcern;
-import com.mongodb.ReadPreference;
 import com.mongodb.client.model.Collation;
 import com.mongodb.internal.async.AsyncBatchCursor;
-import com.mongodb.internal.async.client.OperationExecutor;
 import com.mongodb.internal.client.model.FindOptions;
-import com.mongodb.internal.operation.AsyncOperations;
 import com.mongodb.internal.operation.AsyncReadOperation;
 import com.mongodb.lang.Nullable;
 import com.mongodb.reactivestreams.client.ClientSession;
 import com.mongodb.reactivestreams.client.FindPublisher;
-import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.conversions.Bson;
 
 import java.util.concurrent.TimeUnit;
 
 import static com.mongodb.assertions.Assertions.notNull;
 
-public final class FindPublisherImpl<D, T> extends BatchCursorPublisherImpl<T> implements FindPublisher<T> {
-
-    private final AsyncOperations<D> operations;
-    private final Class<T> resultClass;
+public final class FindPublisherImpl<T> extends BatchCursorPublisherImpl<T> implements FindPublisher<T> {
     private final FindOptions findOptions;
 
     private Bson filter;
 
-    FindPublisherImpl(@Nullable final ClientSession clientSession, final MongoNamespace namespace,
-                             final Class<D> documentClass, final Class<T> resultClass, final CodecRegistry codecRegistry,
-                             final ReadPreference readPreference, final ReadConcern readConcern, final OperationExecutor executor,
-                             final Bson filter, final boolean retryReads) {
-        super(clientSession, executor, readConcern, readPreference, retryReads);
-        this.operations = new AsyncOperations<>(namespace, documentClass, readPreference, codecRegistry, retryReads);
-        this.resultClass = notNull("resultClass", resultClass);
+    FindPublisherImpl(@Nullable final ClientSession clientSession, final MongoOperationPublisher<T> mongoOperationPublisher,
+            final Bson filter) {
+        super(clientSession, mongoOperationPublisher);
         this.filter = notNull("filter", filter);
         this.findOptions = new FindOptions();
     }
@@ -188,11 +175,11 @@ public final class FindPublisherImpl<D, T> extends BatchCursorPublisherImpl<T> i
 
     @Override
     AsyncReadOperation<AsyncBatchCursor<T>> asAsyncReadOperation() {
-        return operations.find(filter, resultClass, findOptions);
+        return getOperations().find(filter, getDocumentClass(), findOptions);
     }
 
     @Override
     AsyncReadOperation<AsyncBatchCursor<T>> asAsyncFirstReadOperation() {
-        return operations.findFirst(filter, resultClass, findOptions);
+        return getOperations().findFirst(filter, getDocumentClass(), findOptions);
     }
 }

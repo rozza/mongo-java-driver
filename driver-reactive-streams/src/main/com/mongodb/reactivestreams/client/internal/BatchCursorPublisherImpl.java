@@ -16,13 +16,16 @@
 
 package com.mongodb.reactivestreams.client.internal;
 
+import com.mongodb.MongoNamespace;
 import com.mongodb.ReadConcern;
 import com.mongodb.ReadPreference;
+import com.mongodb.WriteConcern;
 import com.mongodb.internal.async.AsyncBatchCursor;
-import com.mongodb.internal.async.client.OperationExecutor;
 import com.mongodb.internal.operation.AsyncReadOperation;
+import com.mongodb.internal.operation.Operations;
 import com.mongodb.lang.Nullable;
 import com.mongodb.reactivestreams.client.ClientSession;
+import org.bson.codecs.configuration.CodecRegistry;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import reactor.core.publisher.Flux;
@@ -30,25 +33,19 @@ import reactor.core.publisher.FluxSink;
 import reactor.core.publisher.Mono;
 
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Supplier;
 
 import static com.mongodb.assertions.Assertions.notNull;
-import static com.mongodb.reactivestreams.client.internal.PublisherHelper.sinkToCallback;
 
 public abstract class BatchCursorPublisherImpl<T> implements BatchCursorPublisher<T> {
     private final ClientSession clientSession;
-    private final ReadConcern readConcern;
-    private final OperationExecutor executor;
-    private final ReadPreference readPreference;
-    private final boolean retryReads;
+    private final MongoOperationPublisher<T> mongoOperationPublisher;
+
     private Integer batchSize;
 
-    BatchCursorPublisherImpl(@Nullable final ClientSession clientSession, final OperationExecutor executor,
-                              final ReadConcern readConcern, final ReadPreference readPreference, final boolean retryReads) {
+    BatchCursorPublisherImpl(@Nullable final ClientSession clientSession, final MongoOperationPublisher<T> mongoOperationPublisher) {
         this.clientSession = clientSession;
-        this.executor = notNull("executor", executor);
-        this.readConcern = notNull("readConcern", readConcern);
-        this.readPreference = notNull("readPreference", readPreference);
-        this.retryReads = retryReads;
+        this.mongoOperationPublisher = notNull("mongoOperationPublisher", mongoOperationPublisher);
     }
 
     abstract AsyncReadOperation<AsyncBatchCursor<T>> asAsyncReadOperation();
@@ -58,25 +55,52 @@ public abstract class BatchCursorPublisherImpl<T> implements BatchCursorPublishe
     }
 
     @Nullable
-    public ClientSession getClientSession() {
+    ClientSession getClientSession() {
         return clientSession;
     }
 
-    OperationExecutor getExecutor() {
-        return executor;
+    MongoOperationPublisher<T> getMongoOperationPublisher() {
+        return mongoOperationPublisher;
+    }
+
+    Operations<T> getOperations() {
+        return mongoOperationPublisher.getOperations();
+    }
+
+
+    // TODO CLEANUPO
+    MongoNamespace getNamespace() {
+        return mongoOperationPublisher.getNamespace();
     }
 
     ReadPreference getReadPreference() {
-        return readPreference;
+        return mongoOperationPublisher.getReadPreference();
+    }
+
+    CodecRegistry getCodecRegistry() {
+        return mongoOperationPublisher.getCodecRegistry();
     }
 
     ReadConcern getReadConcern() {
-        return readConcern;
+        return mongoOperationPublisher.getReadConcern();
+    }
+
+    WriteConcern getWriteConcern() {
+        return mongoOperationPublisher.getWriteConcern();
+    }
+
+    boolean getRetryWrites() {
+        return mongoOperationPublisher.getRetryWrites();
     }
 
     boolean getRetryReads() {
-        return retryReads;
+        return mongoOperationPublisher.getRetryReads();
     }
+
+    Class<T> getDocumentClass() {
+        return mongoOperationPublisher.getDocumentClass();
+    }
+
 
     @Nullable
     public Integer getBatchSize() {
@@ -90,7 +114,7 @@ public abstract class BatchCursorPublisherImpl<T> implements BatchCursorPublishe
     }
 
     public Publisher<T> first() {
-        return batchCursor(asAsyncFirstReadOperation())
+        return batchCursor(this::asAsyncFirstReadOperation)
                 .flatMap(batchCursor -> Mono.create(sink -> {
                     batchCursor.setBatchSize(1);
                     Mono.from(batchCursor.next())
@@ -153,14 +177,11 @@ public abstract class BatchCursorPublisherImpl<T> implements BatchCursorPublishe
 
     @Override
     public Mono<BatchCursor<T>> batchCursor() {
-        return batchCursor(asAsyncReadOperation());
+        return batchCursor(this::asAsyncReadOperation);
     }
 
-    private Mono<BatchCursor<T>> batchCursor(final AsyncReadOperation<AsyncBatchCursor<T>> operation) {
-        return Mono.<AsyncBatchCursor<T>>create(sink -> executor.execute(operation, readPreference, readConcern,
-                                                                         clientSession != null ? clientSession.getWrapped() : null,
-                                                                         sinkToCallback(sink)))
-                .map(BatchCursorImpl::new);
+    Mono<BatchCursor<T>> batchCursor(final Supplier<AsyncReadOperation<AsyncBatchCursor<T>>> supplier) {
+        return mongoOperationPublisher.createReadOperationMono(supplier, clientSession).map(BatchCursorImpl::new);
     }
 
 }

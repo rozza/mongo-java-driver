@@ -16,18 +16,11 @@
 
 package com.mongodb.reactivestreams.client.internal;
 
-import com.mongodb.MongoNamespace;
-import com.mongodb.ReadConcern;
-import com.mongodb.ReadPreference;
 import com.mongodb.internal.async.AsyncBatchCursor;
-import com.mongodb.internal.async.client.OperationExecutor;
-import com.mongodb.internal.operation.AsyncOperations;
 import com.mongodb.internal.operation.AsyncReadOperation;
 import com.mongodb.lang.Nullable;
 import com.mongodb.reactivestreams.client.ClientSession;
 import com.mongodb.reactivestreams.client.ListIndexesPublisher;
-import org.bson.BsonDocument;
-import org.bson.codecs.configuration.CodecRegistry;
 
 import java.util.concurrent.TimeUnit;
 
@@ -36,16 +29,12 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 class ListIndexesPublisherImpl<T> extends BatchCursorPublisherImpl<T> implements ListIndexesPublisher<T> {
 
-    private final Class<T> resultClass;
-    private final AsyncOperations<BsonDocument> operations;
     private long maxTimeMS;
 
-    ListIndexesPublisherImpl(@Nullable final ClientSession clientSession, final MongoNamespace namespace, final Class<T> resultClass,
-                             final CodecRegistry codecRegistry, final ReadPreference readPreference,
-                             final OperationExecutor executor, final boolean retryReads) {
-        super(clientSession, executor, ReadConcern.DEFAULT, readPreference, retryReads);
-        this.operations = new AsyncOperations<>(namespace, BsonDocument.class, readPreference, codecRegistry, retryReads);
-        this.resultClass = notNull("clazz", resultClass);
+    ListIndexesPublisherImpl(
+            @Nullable final ClientSession clientSession,
+            final MongoOperationPublisher<T> mongoOperationPublisher) {
+        super(clientSession, mongoOperationPublisher);
     }
 
     public ListIndexesPublisherImpl<T> maxTime(final long maxTime, final TimeUnit timeUnit) {
@@ -59,8 +48,7 @@ class ListIndexesPublisherImpl<T> extends BatchCursorPublisherImpl<T> implements
         return this;
     }
 
-
     AsyncReadOperation<AsyncBatchCursor<T>> asAsyncReadOperation() {
-        return operations.listIndexes(resultClass, getBatchSize(), maxTimeMS);
+        return getOperations().listIndexes(getDocumentClass(), getBatchSize(), maxTimeMS);
     }
 }

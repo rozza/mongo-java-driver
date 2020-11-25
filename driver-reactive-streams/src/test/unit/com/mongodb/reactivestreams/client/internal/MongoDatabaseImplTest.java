@@ -16,15 +16,11 @@
 
 package com.mongodb.reactivestreams.client.internal;
 
-import com.mongodb.MongoClientSettings;
 import com.mongodb.MongoNamespace;
-import com.mongodb.ReadConcern;
 import com.mongodb.ReadPreference;
-import com.mongodb.WriteConcern;
 import com.mongodb.client.model.Collation;
 import com.mongodb.client.model.CreateCollectionOptions;
 import com.mongodb.client.model.CreateViewOptions;
-import com.mongodb.internal.async.client.OperationExecutor;
 import com.mongodb.internal.client.model.AggregationLevel;
 import com.mongodb.internal.client.model.changestream.ChangeStreamLevel;
 import com.mongodb.reactivestreams.client.AggregatePublisher;
@@ -33,29 +29,25 @@ import com.mongodb.reactivestreams.client.ClientSession;
 import com.mongodb.reactivestreams.client.ListCollectionsPublisher;
 import org.bson.BsonDocument;
 import org.bson.Document;
-import org.bson.UuidRepresentation;
 import org.bson.conversions.Bson;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.reactivestreams.Publisher;
+
 import java.util.List;
 
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Mockito.mock;
 
 
 public class MongoDatabaseImplTest extends TestHelper {
     @Mock
     private ClientSession clientSession;
 
-    private final MongoDatabaseImpl database =
-            new MongoDatabaseImpl("db", MongoClientSettings.getDefaultCodecRegistry(), ReadPreference.primary(),
-                                  ReadConcern.DEFAULT, WriteConcern.ACKNOWLEDGED, mock(OperationExecutor.class),
-                                  true, true, UuidRepresentation.STANDARD);
-    private final PublisherHelper<Document> publisherHelper = database.getPublisherHelper();
+    private final MongoDatabaseImpl database = new MongoDatabaseImpl(OPERATION_PUBLISHER.withDatabase("db"));
+    private final MongoOperationPublisher<Document> mongoOperationPublisher = database.getMongoOperationPublisher();
 
     @Test
     void testAggregate() {
@@ -67,43 +59,26 @@ public class MongoDatabaseImplTest extends TestHelper {
                   ),
                   () -> {
                       AggregatePublisher<Document> expected =
-                              new AggregatePublisherImpl<>(null, database.getName(), Document.class, Document.class,
-                                                           database.getCodecRegistry(), database.getReadPreference(),
-                                                           database.getReadConcern(), database.getWriteConcern(),
-                                                           database.getExecutor(), pipeline,
-                                                           AggregationLevel.DATABASE, database.getRetryReads());
-
+                              new AggregatePublisherImpl<>(null, mongoOperationPublisher, pipeline, AggregationLevel.DATABASE);
                       assertPublisherIsTheSameAs(expected, database.aggregate(pipeline), "Default");
                   },
                   () -> {
                       AggregatePublisher<BsonDocument> expected =
-                              new AggregatePublisherImpl<>(null, database.getName(), Document.class, BsonDocument.class,
-                                                           database.getCodecRegistry(), database.getReadPreference(),
-                                                           database.getReadConcern(), database.getWriteConcern(),
-                                                           database.getExecutor(), pipeline,
-                                                           AggregationLevel.DATABASE, database.getRetryReads());
-
+                              new AggregatePublisherImpl<>(null, mongoOperationPublisher.withDocumentClass(BsonDocument.class),
+                                                           pipeline, AggregationLevel.DATABASE);
                       assertPublisherIsTheSameAs(expected, database.aggregate(pipeline, BsonDocument.class),
                                                  "With result class");
                   },
                   () -> {
                       AggregatePublisher<Document> expected =
-                              new AggregatePublisherImpl<>(clientSession, database.getName(), Document.class, Document.class,
-                                                           database.getCodecRegistry(), database.getReadPreference(),
-                                                           database.getReadConcern(), database.getWriteConcern(),
-                                                           database.getExecutor(), pipeline,
-                                                           AggregationLevel.DATABASE, database.getRetryReads());
-
+                              new AggregatePublisherImpl<>(clientSession, mongoOperationPublisher,
+                                                           pipeline, AggregationLevel.DATABASE);
                       assertPublisherIsTheSameAs(expected, database.aggregate(clientSession, pipeline), "With session");
                   },
                   () -> {
                       AggregatePublisher<BsonDocument> expected =
-                              new AggregatePublisherImpl<>(clientSession, database.getName(), Document.class, BsonDocument.class,
-                                                           database.getCodecRegistry(), database.getReadPreference(),
-                                                           database.getReadConcern(), database.getWriteConcern(),
-                                                           database.getExecutor(), pipeline,
-                                                           AggregationLevel.DATABASE, database.getRetryReads());
-
+                              new AggregatePublisherImpl<>(clientSession, mongoOperationPublisher.withDocumentClass(BsonDocument.class),
+                                                           pipeline, AggregationLevel.DATABASE);
                       assertPublisherIsTheSameAs(expected, database.aggregate(clientSession, pipeline, BsonDocument.class),
                                                  "With session & result class");
                   }
@@ -124,34 +99,24 @@ public class MongoDatabaseImplTest extends TestHelper {
                   ),
                   () -> {
                       ListCollectionsPublisher<Document> expected =
-                              new ListCollectionsPublisherImpl<>(null, database.getName(), Document.class,
-                                                                 database.getCodecRegistry(),
-                                                                 database.getReadPreference(), database.getExecutor(),
-                                                                 database.getRetryReads(), false);
+                              new ListCollectionsPublisherImpl<>(null, mongoOperationPublisher, false);
                       assertPublisherIsTheSameAs(expected, database.listCollections(), "Default");
                   },
                   () -> {
                       ListCollectionsPublisher<BsonDocument> expected =
-                              new ListCollectionsPublisherImpl<>(null, database.getName(), BsonDocument.class,
-                                                                 database.getCodecRegistry(),
-                                                                 database.getReadPreference(), database.getExecutor(),
-                                                                 database.getRetryReads(), false);
+                              new ListCollectionsPublisherImpl<>(null, mongoOperationPublisher.withDocumentClass(BsonDocument.class),
+                                                                 false);
                       assertPublisherIsTheSameAs(expected, database.listCollections(BsonDocument.class), "With result class");
                   },
                   () -> {
                       ListCollectionsPublisher<Document> expected =
-                              new ListCollectionsPublisherImpl<>(clientSession, database.getName(), Document.class,
-                                                                 database.getCodecRegistry(),
-                                                                 database.getReadPreference(), database.getExecutor(),
-                                                                 database.getRetryReads(), false);
+                              new ListCollectionsPublisherImpl<>(clientSession, mongoOperationPublisher, false);
                       assertPublisherIsTheSameAs(expected, database.listCollections(clientSession), "With client session");
                   },
                   () -> {
                       ListCollectionsPublisher<BsonDocument> expected =
-                              new ListCollectionsPublisherImpl<>(clientSession, database.getName(), BsonDocument.class,
-                                                                 database.getCodecRegistry(),
-                                                                 database.getReadPreference(), database.getExecutor(),
-                                                                 database.getRetryReads(), false);
+                              new ListCollectionsPublisherImpl<>(clientSession,
+                                                                 mongoOperationPublisher.withDocumentClass(BsonDocument.class), false);
                       assertPublisherIsTheSameAs(expected, database.listCollections(clientSession, BsonDocument.class),
                                                  "With client session & result class");
                   }
@@ -166,18 +131,12 @@ public class MongoDatabaseImplTest extends TestHelper {
                   ),
                   () -> {
                       ListCollectionsPublisher<Document> expected =
-                              new ListCollectionsPublisherImpl<>(null, database.getName(), Document.class,
-                                                                 database.getCodecRegistry(),
-                                                                 database.getReadPreference(), database.getExecutor(),
-                                                                 database.getRetryReads(), false);
+                              new ListCollectionsPublisherImpl<>(null, mongoOperationPublisher, true);
                       assertPublisherIsTheSameAs(expected, database.listCollectionNames(), "Default");
                   },
                   () -> {
                       ListCollectionsPublisher<Document> expected =
-                              new ListCollectionsPublisherImpl<>(clientSession, database.getName(), Document.class,
-                                                                 database.getCodecRegistry(),
-                                                                 database.getReadPreference(), database.getExecutor(),
-                                                                 database.getRetryReads(), false);
+                              new ListCollectionsPublisherImpl<>(clientSession, mongoOperationPublisher, true);
                       assertPublisherIsTheSameAs(expected, database.listCollectionNames(clientSession), "With client session");
                   }
         );
@@ -197,19 +156,19 @@ public class MongoDatabaseImplTest extends TestHelper {
                                                      () -> database.createCollection(clientSession, collectionName, null))
                   ),
                   () -> {
-                      Publisher<Void> expected = publisherHelper
+                      Publisher<Void> expected = mongoOperationPublisher
                               .createCollection(null, new MongoNamespace(database.getName(), collectionName),
                                                 new CreateCollectionOptions());
                       assertPublisherIsTheSameAs(expected, database.createCollection(collectionName), "Default");
                   },
                   () -> {
                       CreateCollectionOptions options = new CreateCollectionOptions().sizeInBytes(500).capped(true);
-                      Publisher<Void> expected = publisherHelper
+                      Publisher<Void> expected = mongoOperationPublisher
                               .createCollection(null, new MongoNamespace(database.getName(), collectionName), options);
                       assertPublisherIsTheSameAs(expected, database.createCollection(collectionName, options), "With options");
                   },
                   () -> {
-                      Publisher<Void> expected = publisherHelper
+                      Publisher<Void> expected = mongoOperationPublisher
                               .createCollection(clientSession, new MongoNamespace(database.getName(), collectionName),
                                                 new CreateCollectionOptions());
                       assertPublisherIsTheSameAs(expected, database.createCollection(clientSession, collectionName),
@@ -217,7 +176,7 @@ public class MongoDatabaseImplTest extends TestHelper {
                   },
                   () -> {
                       CreateCollectionOptions options = new CreateCollectionOptions().sizeInBytes(500).capped(true);
-                      Publisher<Void> expected = publisherHelper
+                      Publisher<Void> expected = mongoOperationPublisher
                               .createCollection(clientSession, new MongoNamespace(database.getName(), collectionName), options);
                       assertPublisherIsTheSameAs(expected, database.createCollection(clientSession, collectionName, options),
                                                  "With client session & options");
@@ -249,22 +208,23 @@ public class MongoDatabaseImplTest extends TestHelper {
 
                   ),
                   () -> {
-                      Publisher<Void> expected = publisherHelper.createView(null, viewName, viewOn, pipeline, new CreateViewOptions());
+                      Publisher<Void> expected =
+                              mongoOperationPublisher.createView(null, viewName, viewOn, pipeline, new CreateViewOptions());
                       assertPublisherIsTheSameAs(expected, database.createView(viewName, viewOn, pipeline), "Default");
                   },
                   () -> {
-                      Publisher<Void> expected = publisherHelper.createView(null, viewName, viewOn, pipeline, options);
+                      Publisher<Void> expected = mongoOperationPublisher.createView(null, viewName, viewOn, pipeline, options);
                       assertPublisherIsTheSameAs(expected, database.createView(viewName, viewOn, pipeline, options),
                                                  "With options");
                   },
                   () -> {
                       Publisher<Void> expected =
-                              publisherHelper.createView(clientSession, viewName, viewOn, pipeline, new CreateViewOptions());
+                              mongoOperationPublisher.createView(clientSession, viewName, viewOn, pipeline, new CreateViewOptions());
                       assertPublisherIsTheSameAs(expected, database.createView(clientSession, viewName, viewOn, pipeline),
                                                  "With client session");
                   },
                   () -> {
-                      Publisher<Void> expected = publisherHelper.createView(clientSession, viewName, viewOn, pipeline, options);
+                      Publisher<Void> expected = mongoOperationPublisher.createView(clientSession, viewName, viewOn, pipeline, options);
                       assertPublisherIsTheSameAs(expected, database.createView(clientSession, viewName, viewOn, pipeline, options),
                                                  "With client session & options");
                   }
@@ -278,11 +238,11 @@ public class MongoDatabaseImplTest extends TestHelper {
                                   () -> assertThrows(IllegalArgumentException.class, () -> database.drop(null))
                   ),
                   () -> {
-                     Publisher<Void> expected = publisherHelper.dropDatabase(null);
+                      Publisher<Void> expected = mongoOperationPublisher.dropDatabase(null);
                       assertPublisherIsTheSameAs(expected, database.drop(), "Default");
                   },
                   () -> {
-                      Publisher<Void> expected = publisherHelper.dropDatabase(clientSession);
+                      Publisher<Void> expected = mongoOperationPublisher.dropDatabase(clientSession);
                       assertPublisherIsTheSameAs(expected, database.drop(clientSession), "With client session");
                   }
         );
@@ -313,47 +273,47 @@ public class MongoDatabaseImplTest extends TestHelper {
                   ),
                   () -> {
                       Publisher<Document> expected =
-                              publisherHelper.runCommand(null, command, ReadPreference.primary(), Document.class);
+                              mongoOperationPublisher.runCommand(null, command, ReadPreference.primary(), Document.class);
                       assertPublisherIsTheSameAs(expected, database.runCommand(command), "Default");
                   },
                   () -> {
                       Publisher<BsonDocument> expected =
-                              publisherHelper.runCommand(null, command, ReadPreference.primary(), BsonDocument.class);
+                              mongoOperationPublisher.runCommand(null, command, ReadPreference.primary(), BsonDocument.class);
                       assertPublisherIsTheSameAs(expected, database.runCommand(command, BsonDocument.class),
                                                  "With result class");
                   },
                   () -> {
                       Publisher<Document> expected =
-                              publisherHelper.runCommand(null, command, ReadPreference.nearest(), Document.class);
+                              mongoOperationPublisher.runCommand(null, command, ReadPreference.nearest(), Document.class);
                       assertPublisherIsTheSameAs(expected, database.runCommand(command, ReadPreference.nearest()),
                                                  "With read preference");
                   },
                   () -> {
                       Publisher<BsonDocument> expected =
-                              publisherHelper.runCommand(null, command, ReadPreference.nearest(), BsonDocument.class);
+                              mongoOperationPublisher.runCommand(null, command, ReadPreference.nearest(), BsonDocument.class);
                       assertPublisherIsTheSameAs(expected, database.runCommand(command, ReadPreference.nearest(), BsonDocument.class),
                                                  "With read preference & result class");
                   },
                   () -> {
                       Publisher<Document> expected =
-                              publisherHelper.runCommand(clientSession, command, ReadPreference.primary(), Document.class);
+                              mongoOperationPublisher.runCommand(clientSession, command, ReadPreference.primary(), Document.class);
                       assertPublisherIsTheSameAs(expected, database.runCommand(clientSession, command),
                                                  "With client session");
                   },
                   () -> {
-                      Publisher<BsonDocument> expected = publisherHelper
+                      Publisher<BsonDocument> expected = mongoOperationPublisher
                               .runCommand(clientSession, command, ReadPreference.primary(), BsonDocument.class);
                       assertPublisherIsTheSameAs(expected, database.runCommand(clientSession, command, BsonDocument.class),
                                                  "With client session & result class");
                   },
                   () -> {
                       Publisher<Document> expected =
-                              publisherHelper.runCommand(clientSession, command, ReadPreference.nearest(), Document.class);
+                              mongoOperationPublisher.runCommand(clientSession, command, ReadPreference.nearest(), Document.class);
                       assertPublisherIsTheSameAs(expected, database.runCommand(clientSession, command, ReadPreference.nearest()),
                                                  "With client session & read preference");
                   },
                   () -> {
-                      Publisher<BsonDocument> expected = publisherHelper
+                      Publisher<BsonDocument> expected = mongoOperationPublisher
                               .runCommand(clientSession, command, ReadPreference.nearest(), BsonDocument.class);
                       assertPublisherIsTheSameAs(expected, database.runCommand(clientSession, command, ReadPreference.nearest(),
                                                                                BsonDocument.class),
@@ -377,85 +337,53 @@ public class MongoDatabaseImplTest extends TestHelper {
                   ),
                   () -> {
                       ChangeStreamPublisher<Document> expected =
-                              new ChangeStreamPublisherImpl<>(null, database.getName(), Document.class,
-                                                              database.getCodecRegistry(),
-                                                              database.getReadPreference(),
-                                                              database.getReadConcern(), database.getExecutor(),
-                                                              emptyList(), ChangeStreamLevel.DATABASE, database.getRetryReads());
-
+                              new ChangeStreamPublisherImpl<>(null, mongoOperationPublisher, Document.class, emptyList(),
+                                                              ChangeStreamLevel.DATABASE);
                       assertPublisherIsTheSameAs(expected, database.watch(), "Default");
                   },
                   () -> {
                       ChangeStreamPublisher<Document> expected =
-                              new ChangeStreamPublisherImpl<>(null, database.getName(), Document.class,
-                                                              database.getCodecRegistry(),
-                                                              database.getReadPreference(),
-                                                              database.getReadConcern(), database.getExecutor(), pipeline,
-                                                              ChangeStreamLevel.DATABASE, database.getRetryReads());
-
+                              new ChangeStreamPublisherImpl<>(null, mongoOperationPublisher, Document.class, pipeline,
+                                                              ChangeStreamLevel.DATABASE);
                       assertPublisherIsTheSameAs(expected, database.watch(pipeline), "With pipeline");
                   },
                   () -> {
                       ChangeStreamPublisher<BsonDocument> expected =
-                              new ChangeStreamPublisherImpl<>(null, database.getName(), BsonDocument.class,
-                                                              database.getCodecRegistry(),
-                                                              database.getReadPreference(),
-                                                              database.getReadConcern(), database.getExecutor(),
-                                                              emptyList(), ChangeStreamLevel.DATABASE, database.getRetryReads());
-
+                              new ChangeStreamPublisherImpl<>(null, mongoOperationPublisher, BsonDocument.class, emptyList(),
+                                                              ChangeStreamLevel.DATABASE);
                       assertPublisherIsTheSameAs(expected, database.watch(BsonDocument.class),
                                                  "With result class");
                   },
                   () -> {
                       ChangeStreamPublisher<BsonDocument> expected =
-                              new ChangeStreamPublisherImpl<>(null, database.getName(), BsonDocument.class,
-                                                              database.getCodecRegistry(),
-                                                              database.getReadPreference(),
-                                                              database.getReadConcern(), database.getExecutor(), pipeline,
-                                                              ChangeStreamLevel.DATABASE, database.getRetryReads());
-
+                              new ChangeStreamPublisherImpl<>(null, mongoOperationPublisher, BsonDocument.class, pipeline,
+                                                              ChangeStreamLevel.DATABASE);
                       assertPublisherIsTheSameAs(expected, database.watch(pipeline, BsonDocument.class),
                                                  "With pipeline & result class");
                   },
                   () -> {
                       ChangeStreamPublisher<Document> expected =
-                              new ChangeStreamPublisherImpl<>(clientSession, database.getName(), Document.class,
-                                                              database.getCodecRegistry(),
-                                                              database.getReadPreference(),
-                                                              database.getReadConcern(), database.getExecutor(),
-                                                              emptyList(), ChangeStreamLevel.DATABASE, database.getRetryReads());
-
+                              new ChangeStreamPublisherImpl<>(clientSession, mongoOperationPublisher, Document.class, emptyList(),
+                                                              ChangeStreamLevel.DATABASE);
                       assertPublisherIsTheSameAs(expected, database.watch(clientSession), "with session");
                   },
                   () -> {
                       ChangeStreamPublisher<Document> expected =
-                              new ChangeStreamPublisherImpl<>(clientSession, database.getName(), Document.class,
-                                                              database.getCodecRegistry(),
-                                                              database.getReadPreference(),
-                                                              database.getReadConcern(), database.getExecutor(), pipeline,
-                                                              ChangeStreamLevel.DATABASE, database.getRetryReads());
-
+                              new ChangeStreamPublisherImpl<>(clientSession, mongoOperationPublisher, Document.class, pipeline,
+                                                              ChangeStreamLevel.DATABASE);
                       assertPublisherIsTheSameAs(expected, database.watch(clientSession, pipeline), "With session & pipeline");
                   },
                   () -> {
                       ChangeStreamPublisher<BsonDocument> expected =
-                              new ChangeStreamPublisherImpl<>(clientSession, database.getName(), BsonDocument.class,
-                                                              database.getCodecRegistry(),
-                                                              database.getReadPreference(),
-                                                              database.getReadConcern(), database.getExecutor(),
-                                                              emptyList(), ChangeStreamLevel.DATABASE, database.getRetryReads());
-
+                              new ChangeStreamPublisherImpl<>(clientSession, mongoOperationPublisher, BsonDocument.class, emptyList(),
+                                                              ChangeStreamLevel.DATABASE);
                       assertPublisherIsTheSameAs(expected, database.watch(clientSession, BsonDocument.class),
                                                  "With session & resultClass");
                   },
                   () -> {
                       ChangeStreamPublisher<BsonDocument> expected =
-                              new ChangeStreamPublisherImpl<>(clientSession, database.getName(), BsonDocument.class,
-                                                              database.getCodecRegistry(),
-                                                              database.getReadPreference(),
-                                                              database.getReadConcern(), database.getExecutor(), pipeline,
-                                                              ChangeStreamLevel.DATABASE, database.getRetryReads());
-
+                              new ChangeStreamPublisherImpl<>(clientSession, mongoOperationPublisher, BsonDocument.class, pipeline,
+                                                              ChangeStreamLevel.DATABASE);
                       assertPublisherIsTheSameAs(expected, database.watch(clientSession, pipeline, BsonDocument.class),
                                                  "With clientSession, pipeline & result class");
                   }

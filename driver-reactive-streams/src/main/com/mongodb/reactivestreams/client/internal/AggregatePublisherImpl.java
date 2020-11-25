@@ -17,16 +17,11 @@
 package com.mongodb.reactivestreams.client.internal;
 
 import com.mongodb.MongoNamespace;
-import com.mongodb.ReadConcern;
-import com.mongodb.ReadPreference;
-import com.mongodb.WriteConcern;
 import com.mongodb.client.model.Collation;
 import com.mongodb.internal.async.AsyncBatchCursor;
-import com.mongodb.internal.async.client.OperationExecutor;
 import com.mongodb.internal.async.client.WriteOperationThenCursorReadOperation;
 import com.mongodb.internal.client.model.AggregationLevel;
 import com.mongodb.internal.client.model.FindOptions;
-import com.mongodb.internal.operation.AsyncOperations;
 import com.mongodb.internal.operation.AsyncReadOperation;
 import com.mongodb.internal.operation.AsyncWriteOperation;
 import com.mongodb.lang.Nullable;
@@ -34,7 +29,6 @@ import com.mongodb.reactivestreams.client.AggregatePublisher;
 import com.mongodb.reactivestreams.client.ClientSession;
 import org.bson.BsonDocument;
 import org.bson.BsonString;
-import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.conversions.Bson;
 import org.reactivestreams.Publisher;
 
@@ -43,12 +37,7 @@ import java.util.concurrent.TimeUnit;
 
 import static com.mongodb.assertions.Assertions.notNull;
 
-final class AggregatePublisherImpl<D, T> extends BatchCursorPublisherImpl<T> implements AggregatePublisher<T> {
-    private final AsyncOperations<D> operations;
-    private final MongoNamespace namespace;
-    private final Class<D> documentClass;
-    private final Class<T> resultClass;
-    private final CodecRegistry codecRegistry;
+final class AggregatePublisherImpl<T> extends AggregationBatchCursorPublisherImpl<T> implements AggregatePublisher<T> {
     private final List<? extends Bson> pipeline;
     private final AggregationLevel aggregationLevel;
     private Boolean allowDiskUse;
@@ -59,26 +48,12 @@ final class AggregatePublisherImpl<D, T> extends BatchCursorPublisherImpl<T> imp
     private String comment;
     private Bson hint;
 
-    AggregatePublisherImpl(@Nullable final ClientSession clientSession, final String databaseName, final Class<D> documentClass,
-            final Class<T> resultClass, final CodecRegistry codecRegistry, final ReadPreference readPreference,
-            final ReadConcern readConcern, final WriteConcern writeConcern, final OperationExecutor executor,
-            final List<? extends Bson> pipeline, final AggregationLevel aggregationLevel, final boolean retryReads) {
-        this(clientSession, new MongoNamespace(notNull("databaseName", databaseName), "ignored"), documentClass,
-             resultClass, codecRegistry, readPreference, readConcern, writeConcern, executor, pipeline, aggregationLevel, retryReads);
-    }
-
-    AggregatePublisherImpl(@Nullable final ClientSession clientSession, final MongoNamespace namespace,
-                           final Class<D> documentClass, final Class<T> resultClass, final CodecRegistry codecRegistry,
-                           final ReadPreference readPreference, final ReadConcern readConcern, final WriteConcern writeConcern,
-                           final OperationExecutor executor, final List<? extends Bson> pipeline,
-                           final AggregationLevel aggregationLevel, final boolean retryReads) {
-        super(clientSession, executor, readConcern, readPreference, retryReads);
-        this.operations = new AsyncOperations<>(namespace, documentClass, readPreference, codecRegistry, readConcern, writeConcern,
-                                                false, retryReads);
-        this.namespace = notNull("namespace", namespace);
-        this.documentClass = notNull("documentClass", documentClass);
-        this.resultClass = notNull("resultClass", resultClass);
-        this.codecRegistry = notNull("codecRegistry", codecRegistry);
+    AggregatePublisherImpl(
+            @Nullable final ClientSession clientSession,
+            final MongoOperationPublisher<T> mongoOperationPublisher,
+            final List<? extends Bson> pipeline,
+            final AggregationLevel aggregationLevel) {
+        super(clientSession, mongoOperationPublisher);
         this.pipeline = notNull("pipeline", pipeline);
         this.aggregationLevel = notNull("aggregationLevel", aggregationLevel);
     }
@@ -139,13 +114,7 @@ final class AggregatePublisherImpl<D, T> extends BatchCursorPublisherImpl<T> imp
         if (lastPipelineStage == null || !lastPipelineStage.containsKey("$out") && !lastPipelineStage.containsKey("$merge")) {
             throw new IllegalStateException("The last stage of the aggregation pipeline must be $out or $merge");
         }
-
-        // TODO
-//        return createWriteOperationMono(() -> operations.aggregateToCollection(pipeline, maxTimeMS, allowDiskUse,
-//                                                                               bypassDocumentValidation, collation, hint,
-//                                                                               comment, aggregationLevel),
-//                                        getClientSession(), getReadConcern(), getExecutor());
-        return null;
+        return getMongoOperationPublisher().createWriteOperationMono(this::getAggregateToCollectionOperation, getClientSession());
     }
 
     @Override
@@ -153,9 +122,7 @@ final class AggregatePublisherImpl<D, T> extends BatchCursorPublisherImpl<T> imp
         MongoNamespace outNamespace = getOutNamespace();
 
         if (outNamespace != null) {
-            AsyncWriteOperation<Void> aggregateToCollectionOperation =
-                    operations.aggregateToCollection(pipeline, maxTimeMS, allowDiskUse, bypassDocumentValidation, collation, hint, comment,
-                                                     aggregationLevel);
+            AsyncWriteOperation<Void> aggregateToCollectionOperation = getAggregateToCollectionOperation();
 
             FindOptions findOptions = new FindOptions().collation(collation);
             Integer batchSize = getBatchSize();
@@ -163,13 +130,19 @@ final class AggregatePublisherImpl<D, T> extends BatchCursorPublisherImpl<T> imp
                 findOptions.batchSize(batchSize);
             }
             AsyncReadOperation<AsyncBatchCursor<T>> findOperation =
-                    operations.find(outNamespace, new BsonDocument(), resultClass, findOptions);
+                    getOperations().find(outNamespace, new BsonDocument(), getDocumentClass(), findOptions);
 
             return new WriteOperationThenCursorReadOperation<>(aggregateToCollectionOperation, findOperation);
         } else {
-            return operations.aggregate(pipeline, resultClass, maxTimeMS, maxAwaitTimeMS, getBatchSize(), collation,
-                                        hint, comment, allowDiskUse, aggregationLevel);
+            return getOperations()
+                    .aggregate(pipeline, getDocumentClass(), maxTimeMS, maxAwaitTimeMS,
+                               getBatchSize(), collation, hint, comment, allowDiskUse, aggregationLevel);
         }
+    }
+
+    private AsyncWriteOperation<Void> getAggregateToCollectionOperation() {
+        return getOperations().aggregateToCollection(pipeline, maxTimeMS, allowDiskUse, bypassDocumentValidation, collation, hint, comment,
+                                                     aggregationLevel);
     }
 
     @Nullable
@@ -178,7 +151,7 @@ final class AggregatePublisherImpl<D, T> extends BatchCursorPublisherImpl<T> imp
             return null;
         } else {
             Bson lastStage = notNull("last pipeline stage", pipeline.get(pipeline.size() - 1));
-            return lastStage.toBsonDocument(documentClass, codecRegistry);
+            return lastStage.toBsonDocument(getDocumentClass(), getCodecRegistry());
         }
     }
 
@@ -188,9 +161,10 @@ final class AggregatePublisherImpl<D, T> extends BatchCursorPublisherImpl<T> imp
         if (lastPipelineStage == null) {
             return null;
         }
+        String databaseName = getNamespace().getDatabaseName();
         if (lastPipelineStage.containsKey("$out")) {
             if (lastPipelineStage.get("$out").isString()) {
-                return new MongoNamespace(namespace.getDatabaseName(), lastPipelineStage.getString("$out").getValue());
+                return new MongoNamespace(databaseName, lastPipelineStage.getString("$out").getValue());
             } else if (lastPipelineStage.get("$out").isDocument()) {
                 BsonDocument outDocument = lastPipelineStage.getDocument("$out");
                 if (!outDocument.containsKey("db") || !outDocument.containsKey("coll")) {
@@ -205,10 +179,10 @@ final class AggregatePublisherImpl<D, T> extends BatchCursorPublisherImpl<T> imp
             BsonDocument mergeDocument = lastPipelineStage.getDocument("$merge");
             if (mergeDocument.isDocument("into")) {
                 BsonDocument intoDocument = mergeDocument.getDocument("into");
-                return new MongoNamespace(intoDocument.getString("db", new BsonString(namespace.getDatabaseName())).getValue(),
+                return new MongoNamespace(intoDocument.getString("db", new BsonString(databaseName)).getValue(),
                                           intoDocument.getString("coll").getValue());
             } else if (mergeDocument.isString("into")) {
-                return new MongoNamespace(namespace.getDatabaseName(), mergeDocument.getString("into").getValue());
+                return new MongoNamespace(databaseName, mergeDocument.getString("into").getValue());
             }
         }
 

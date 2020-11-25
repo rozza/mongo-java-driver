@@ -17,21 +17,12 @@
 package com.mongodb.reactivestreams.client.internal;
 
 import com.mongodb.MongoException;
-import com.mongodb.MongoNamespace;
-import com.mongodb.ReadConcern;
 import com.mongodb.ReadPreference;
-import com.mongodb.client.model.Collation;
-import com.mongodb.internal.async.client.OperationExecutor;
 import com.mongodb.internal.operation.DistinctOperation;
-import com.mongodb.lang.Nullable;
-import com.mongodb.reactivestreams.client.ClientSession;
 import com.mongodb.reactivestreams.client.DistinctPublisher;
 import org.bson.BsonDocument;
 import org.bson.Document;
-import org.bson.codecs.BsonValueCodecProvider;
 import org.bson.codecs.configuration.CodecConfigurationException;
-import org.bson.codecs.configuration.CodecRegistry;
-import org.bson.conversions.Bson;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.reactivestreams.Publisher;
@@ -39,25 +30,18 @@ import reactor.core.publisher.Flux;
 
 import static com.mongodb.reactivestreams.client.MongoClients.getDefaultCodecRegistry;
 import static java.util.Arrays.asList;
-import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class DistinctPublisherImplTest extends TestHelper {
 
-    private static final MongoNamespace NAMESPACE = new MongoNamespace("db", "coll");
-    private static final Collation COLLATION = Collation.builder().locale("en").build();
-
     @DisplayName("Should build the expected DistinctOperation")
     @Test
     void shouldBuildTheExpectedOperation() {
-        configureBatchCursor();
-
         String fieldName = "fieldName";
-        TestOperationExecutor executor = new TestOperationExecutor(asList(getBatchCursor(), getBatchCursor()));
-        DistinctPublisher<Document> publisher = createDistinctPublisher(null, NAMESPACE, Document.class, Document.class,
-                                                                        getDefaultCodecRegistry(), ReadPreference.primary(),
-                                                                        ReadConcern.DEFAULT, executor, fieldName, new Document(), true);
+        TestOperationExecutor executor = createOperationExecutor(asList(getBatchCursor(), getBatchCursor()));
+        DistinctPublisher<Document> publisher =
+                new DistinctPublisherImpl<>(null, createMongoOperationPublisher(executor), fieldName, new Document());
 
         DistinctOperation<Document> expectedOperation = new DistinctOperation<>(NAMESPACE, fieldName,
                                                                                 getDefaultCodecRegistry().get(Document.class))
@@ -90,29 +74,18 @@ public class DistinctPublisherImplTest extends TestHelper {
     @DisplayName("Should handle error scenarios")
     @Test
     void shouldHandleErrorScenarios() {
-        TestOperationExecutor executor = new TestOperationExecutor(asList(new MongoException("Failure"), null));
+        TestOperationExecutor executor = createOperationExecutor(asList(new MongoException("Failure"), null));
 
         // Operation fails
-        Publisher<Document> publisher = createDistinctPublisher(null, NAMESPACE, Document.class, Document.class,
-                                                                getDefaultCodecRegistry(), ReadPreference.primary(), ReadConcern.DEFAULT,
-                                                                executor, "fieldName", new Document(), true);
+        Publisher<Document> publisher =
+                new DistinctPublisherImpl<>(null, createMongoOperationPublisher(executor), "fieldName", new Document());
         assertThrows(MongoException.class, () -> Flux.from(publisher).blockFirst());
 
         // Missing Codec
-        Publisher<Document> publisherMissingCodec = createDistinctPublisher(null, NAMESPACE, Document.class, Document.class,
-                                                                            fromProviders(new BsonValueCodecProvider()),
-                                                                            ReadPreference.primary(), ReadConcern.DEFAULT, executor,
-                                                                            "fieldName",
-                                                                            new Document(), true);
+        Publisher<Document> publisherMissingCodec =
+                new DistinctPublisherImpl<>(null, createMongoOperationPublisher(executor).withCodecRegistry(BSON_CODEC_REGISTRY),
+                                            "fieldName", new Document());
         assertThrows(CodecConfigurationException.class, () -> Flux.from(publisherMissingCodec).blockFirst());
-    }
-
-    public <D, T> DistinctPublisher<T> createDistinctPublisher(@Nullable final ClientSession clientSession, final MongoNamespace namespace,
-            final Class<D> documentClass, final Class<T> resultClass, final CodecRegistry codecRegistry,
-            final ReadPreference readPreference, final ReadConcern readConcern, final OperationExecutor executor,
-            final String fieldName, final Bson filter, final boolean retryReads) {
-        return new DistinctPublisherImpl<>(clientSession, namespace, documentClass, resultClass, codecRegistry, readPreference, readConcern,
-                                           executor, fieldName, filter, retryReads);
     }
 
 }

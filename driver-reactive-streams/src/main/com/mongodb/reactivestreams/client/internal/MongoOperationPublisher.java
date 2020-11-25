@@ -70,6 +70,7 @@ import com.mongodb.lang.Nullable;
 import com.mongodb.reactivestreams.client.ClientSession;
 import org.bson.BsonDocument;
 import org.bson.BsonValue;
+import org.bson.UuidRepresentation;
 import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.conversions.Bson;
 import org.reactivestreams.Publisher;
@@ -86,23 +87,139 @@ import static com.mongodb.assertions.Assertions.notNull;
 import static com.mongodb.internal.client.model.CountOptionsHelper.fromEstimatedDocumentCountOptions;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
+import static org.bson.internal.CodecRegistryHelper.createRegistry;
 
-public final class PublisherHelper<T> {
+public final class MongoOperationPublisher<T> {
 
-    private final OperationExecutor executor;
     private final Operations<T> operations;
+    private final UuidRepresentation uuidRepresentation;
+    private final OperationExecutor executor;
 
-    PublisherHelper(
-            final MongoNamespace namespace, final Class<T> documentClass, final ReadPreference readPreference,
-            final CodecRegistry codecRegistry, final ReadConcern readConcern, final WriteConcern writeConcern,
-            final boolean retryWrites, final boolean retryReads, final OperationExecutor executor) {
-        this(new Operations<>(namespace, documentClass, readPreference, codecRegistry, readConcern, writeConcern, retryWrites, retryReads),
-             executor);
+    MongoOperationPublisher(
+            final Class<T> documentClass, final CodecRegistry codecRegistry, final ReadPreference readPreference,
+            final ReadConcern readConcern, final WriteConcern writeConcern, final boolean retryWrites, final boolean retryReads,
+            final UuidRepresentation uuidRepresentation, final OperationExecutor executor) {
+        this(new MongoNamespace("_ignored", "_ignored"), documentClass,
+             codecRegistry, readPreference, readConcern, writeConcern, retryWrites, retryReads,
+             uuidRepresentation, executor);
     }
 
-    PublisherHelper(final Operations<T> operations, final OperationExecutor executor) {
-        this.operations = notNull("operations", operations);
+    MongoOperationPublisher(
+            final MongoNamespace namespace, final Class<T> documentClass, final CodecRegistry codecRegistry,
+            final ReadPreference readPreference, final ReadConcern readConcern, final WriteConcern writeConcern,
+            final boolean retryWrites, final boolean retryReads, final UuidRepresentation uuidRepresentation,
+            final OperationExecutor executor) {
+        this.operations = new Operations<>(namespace, notNull("documentClass", documentClass),
+                                           notNull("readPreference", readPreference), notNull("codecRegistry", codecRegistry),
+                                           notNull("readConcern", readConcern), notNull("writeConcern", writeConcern),
+                                           retryWrites, retryReads);
+        this.uuidRepresentation = notNull("uuidRepresentation", uuidRepresentation);
         this.executor = notNull("executor", executor);
+    }
+
+    MongoNamespace getNamespace() {
+        return operations.getNamespace();
+    }
+
+    ReadPreference getReadPreference() {
+        return operations.getReadPreference();
+    }
+
+    CodecRegistry getCodecRegistry() {
+        return operations.getCodecRegistry();
+    }
+
+    ReadConcern getReadConcern() {
+        return operations.getReadConcern();
+    }
+
+    WriteConcern getWriteConcern() {
+        return operations.getWriteConcern();
+    }
+
+    public boolean getRetryWrites() {
+        return operations.isRetryWrites();
+    }
+
+    public boolean getRetryReads() {
+        return operations.isRetryReads();
+    }
+
+    Class<T> getDocumentClass() {
+        return operations.getDocumentClass();
+    }
+
+    public Operations<T> getOperations() {
+        return operations;
+    }
+
+    OperationExecutor getExecutor() {
+        return executor;
+    }
+
+    MongoOperationPublisher<T> withDatabase(final String name) {
+        return withDatabaseAndDocumentClass(name, getDocumentClass());
+    }
+
+    <D> MongoOperationPublisher<D> withDatabaseAndDocumentClass(final String name, final Class<D> documentClass) {
+        return withNamespaceAndDocumentClass(new MongoNamespace(notNull("name", name), "ignored"),
+                                             notNull("documentClass", documentClass));
+    }
+
+    MongoOperationPublisher<T> withNamespace(final MongoNamespace namespace) {
+        return withNamespaceAndDocumentClass(namespace, getDocumentClass());
+    }
+
+    <D> MongoOperationPublisher<D> withDocumentClass(final Class<D> documentClass) {
+        return withNamespaceAndDocumentClass(getNamespace(), documentClass);
+    }
+
+    @SuppressWarnings("unchecked")
+    <D> MongoOperationPublisher<D> withNamespaceAndDocumentClass(final MongoNamespace namespace, final Class<D> documentClass) {
+        if (getNamespace().equals(namespace) && getDocumentClass().equals(documentClass)) {
+            return (MongoOperationPublisher<D>) this;
+        }
+        return new MongoOperationPublisher<>(notNull("namespace", namespace), notNull("documentClass", documentClass),
+                                             getCodecRegistry(), getReadPreference(), getReadConcern(), getWriteConcern(),
+                                             getRetryWrites(), getRetryReads(), uuidRepresentation, executor);
+    }
+
+    MongoOperationPublisher<T> withCodecRegistry(final CodecRegistry codecRegistry) {
+        if (getCodecRegistry().equals(codecRegistry)) {
+            return this;
+        }
+        return new MongoOperationPublisher<>(getNamespace(), getDocumentClass(),
+                                             createRegistry(notNull("codecRegistry", codecRegistry), uuidRepresentation),
+                                             getReadPreference(), getReadConcern(), getWriteConcern(), getRetryWrites(), getRetryReads(),
+                                             uuidRepresentation, executor);
+    }
+
+    MongoOperationPublisher<T> withReadPreference(final ReadPreference readPreference) {
+        if (getReadPreference().equals(readPreference)) {
+            return this;
+        }
+        return new MongoOperationPublisher<>(getNamespace(), getDocumentClass(), getCodecRegistry(),
+                                             notNull("readPreference", readPreference),
+                                             getReadConcern(), getWriteConcern(), getRetryWrites(), getRetryReads(),
+                                             uuidRepresentation, executor);
+    }
+
+    MongoOperationPublisher<T> withWriteConcern(final WriteConcern writeConcern) {
+        if (getWriteConcern().equals(writeConcern)) {
+            return this;
+        }
+        return new MongoOperationPublisher<>(getNamespace(), getDocumentClass(), getCodecRegistry(), getReadPreference(), getReadConcern(),
+                                             notNull("writeConcern", writeConcern),
+                                             getRetryWrites(), getRetryReads(), uuidRepresentation, executor);
+    }
+
+    MongoOperationPublisher<T> withReadConcern(final ReadConcern readConcern) {
+        if (getReadConcern().equals(readConcern)) {
+            return this;
+        }
+        return new MongoOperationPublisher<>(getNamespace(), getDocumentClass(),
+                                             getCodecRegistry(), getReadPreference(), notNull("readConcern", readConcern),
+                                             getWriteConcern(), getRetryWrites(), getRetryReads(), uuidRepresentation, executor);
     }
 
     Publisher<Void> dropDatabase(@Nullable final ClientSession clientSession) {
@@ -344,7 +461,7 @@ public final class PublisherHelper<T> {
         return createReadOperationMono(operation, clientSession, getReadPreference());
     }
 
-    private <R> Mono<R> createReadOperationMono(
+    <R> Mono<R> createReadOperationMono(
             final Supplier<AsyncReadOperation<R>> operation,
             @Nullable final ClientSession clientSession,
             final ReadPreference readPreference) {
@@ -353,31 +470,11 @@ public final class PublisherHelper<T> {
                                                     getSession(clientSession), sinkToCallback(sink)));
     }
 
-    private <R> Mono<R> createWriteOperationMono(
+    <R> Mono<R> createWriteOperationMono(
             final Supplier<AsyncWriteOperation<R>> operation,
             @Nullable final ClientSession clientSession) {
         AsyncWriteOperation<R> writeOperation = operation.get();
         return Mono.create(sink -> executor.execute(writeOperation, getReadConcern(), getSession(clientSession), sinkToCallback(sink)));
-    }
-
-    MongoNamespace getNamespace() {
-        return operations.getNamespace();
-    }
-
-    ReadPreference getReadPreference() {
-        return operations.getReadPreference();
-    }
-
-    CodecRegistry getCodecRegistry() {
-        return operations.getCodecRegistry();
-    }
-
-    ReadConcern getReadConcern() {
-        return operations.getReadConcern();
-    }
-
-    WriteConcern getWriteConcern() {
-        return operations.getWriteConcern();
     }
 
     private Mono<BulkWriteResult> createSingleWriteRequestMono(
@@ -466,7 +563,6 @@ public final class PublisherHelper<T> {
             }
         };
     }
-
 
     @Nullable
     private BsonDocument toBsonDocument(@Nullable final Bson document) {

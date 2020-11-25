@@ -33,17 +33,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class ListCollectionsPublisherImplTest extends TestHelper {
 
-    private static final String DATABASE_NAME = "databaseName";
+    private static final String DATABASE_NAME = NAMESPACE.getDatabaseName();
 
     @DisplayName("Should build the expected ListCollectionsOperation")
     @Test
     void shouldBuildTheExpectedOperation() {
-        configureBatchCursor();
-
-        TestOperationExecutor executor = new TestOperationExecutor(asList(getBatchCursor(), getBatchCursor()));
-        ListCollectionsPublisher<String> publisher = new ListCollectionsPublisherImpl<>(null, DATABASE_NAME, String.class,
-                                                                                    getDefaultCodecRegistry(), ReadPreference.primary(),
-                                                                                    executor, true, true);
+        TestOperationExecutor executor = createOperationExecutor(asList(getBatchCursor(), getBatchCursor()));
+        ListCollectionsPublisher<String> publisher = new ListCollectionsPublisherImpl<>(null, createMongoOperationPublisher(executor)
+                .withDocumentClass(String.class), true);
 
         ListCollectionsOperation<String> expectedOperation = new ListCollectionsOperation<>(DATABASE_NAME,
                                                                                             getDefaultCodecRegistry().get(String.class))
@@ -66,7 +63,6 @@ public class ListCollectionsPublisherImplTest extends TestHelper {
                 .maxTime(10, SECONDS)
                 .batchSize(100);
 
-        configureBatchCursor();
         Flux.from(publisher).blockFirst();
         assertOperationIsTheSameAs(expectedOperation, executor.getReadOperation());
         assertEquals(ReadPreference.primary(), executor.getReadPreference());

@@ -38,9 +38,8 @@ public class ListDatabasesPublisherImplTest extends TestHelper {
     void shouldBuildTheExpectedOperation() {
         configureBatchCursor();
 
-        TestOperationExecutor executor = new TestOperationExecutor(asList(getBatchCursor(), getBatchCursor()));
-        ListDatabasesPublisher<Document> publisher = new ListDatabasesPublisherImpl<>(null, Document.class, getDefaultCodecRegistry(),
-                                                                                  ReadPreference.primary(), executor, true);
+        TestOperationExecutor executor = createOperationExecutor(asList(getBatchCursor(), getBatchCursor()));
+        ListDatabasesPublisher<Document> publisher = new ListDatabasesPublisherImpl<>(null, createMongoOperationPublisher(executor));
 
         ListDatabasesOperation<Document> expectedOperation = new ListDatabasesOperation<>(getDefaultCodecRegistry().get(Document.class))
                 .retryReads(true);

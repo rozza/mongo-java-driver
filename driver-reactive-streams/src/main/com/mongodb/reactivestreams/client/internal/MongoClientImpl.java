@@ -20,7 +20,6 @@ import com.mongodb.AutoEncryptionSettings;
 import com.mongodb.ClientSessionOptions;
 import com.mongodb.MongoClientException;
 import com.mongodb.MongoClientSettings;
-import com.mongodb.ReadPreference;
 import com.mongodb.connection.ClusterDescription;
 import com.mongodb.diagnostics.logging.Logger;
 import com.mongodb.diagnostics.logging.Loggers;
@@ -37,7 +36,6 @@ import com.mongodb.reactivestreams.client.MongoDatabase;
 import com.mongodb.reactivestreams.client.internal.crypt.Crypt;
 import com.mongodb.reactivestreams.client.internal.crypt.Crypts;
 import org.bson.Document;
-import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.conversions.Bson;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
@@ -66,7 +64,7 @@ public final class MongoClientImpl implements MongoClient {
     private final Closeable externalResourceCloser;
     private final ServerSessionPool serverSessionPool;
     private final ClientSessionHelper clientSessionHelper;
-    private final CodecRegistry codecRegistry;
+    private final MongoOperationPublisher<Document> mongoOperationPublisher;
     private final Crypt crypt;
 
     public MongoClientImpl(final MongoClientSettings settings, final Cluster cluster, @Nullable final Closeable externalResourceCloser) {
@@ -92,28 +90,25 @@ public final class MongoClientImpl implements MongoClient {
             this.executor = executor;
         }
         this.externalResourceCloser = externalResourceCloser;
-        this.codecRegistry = createRegistry(settings.getCodecRegistry(), settings.getUuidRepresentation());
+        this.mongoOperationPublisher = new MongoOperationPublisher<>(Document.class,
+                                                                     createRegistry(settings.getCodecRegistry(),
+                                                                                    settings.getUuidRepresentation()),
+                                                                     settings.getReadPreference(),
+                                                                     settings.getReadConcern(), settings.getWriteConcern(),
+                                                                     settings.getRetryWrites(), settings.getRetryReads(),
+                                                                     settings.getUuidRepresentation(), this.executor);
     }
-
 
     public Cluster getCluster() {
         return cluster;
-    }
-
-    Closeable getExternalResourceCloser() {
-        return externalResourceCloser;
     }
 
     public ServerSessionPool getServerSessionPool() {
         return serverSessionPool;
     }
 
-    ClientSessionHelper getClientSessionHelper() {
-        return clientSessionHelper;
-    }
-
-    CodecRegistry getCodecRegistry() {
-        return codecRegistry;
+    public MongoOperationPublisher<Document> getMongoOperationPublisher() {
+        return mongoOperationPublisher;
     }
 
     @Nullable
@@ -126,15 +121,12 @@ public final class MongoClientImpl implements MongoClient {
     }
 
     OperationExecutor getExecutor() {
-        return executor;
+        return mongoOperationPublisher.getExecutor();
     }
 
     @Override
     public MongoDatabase getDatabase(final String name) {
-        return new MongoDatabaseImpl(name, getCodecRegistry(), getSettings().getReadPreference(),
-                                     getSettings().getReadConcern(), getSettings().getWriteConcern(), getExecutor(),
-                                     getSettings().getRetryReads(),
-                                     getSettings().getRetryWrites(), getSettings().getUuidRepresentation());
+        return new MongoDatabaseImpl(mongoOperationPublisher.withDatabase(name));
     }
 
     @Override
@@ -170,8 +162,7 @@ public final class MongoClientImpl implements MongoClient {
 
     @Override
     public <T> ListDatabasesPublisher<T> listDatabases(final Class<T> clazz) {
-        return new ListDatabasesPublisherImpl<>(null, clazz, getCodecRegistry(), ReadPreference.primary(), getExecutor(),
-                                                getSettings().getRetryReads());
+        return new ListDatabasesPublisherImpl<>(null, mongoOperationPublisher.withDocumentClass(clazz));
     }
 
     @Override
@@ -181,8 +172,7 @@ public final class MongoClientImpl implements MongoClient {
 
     @Override
     public <T> ListDatabasesPublisher<T> listDatabases(final ClientSession clientSession, final Class<T> clazz) {
-        return new ListDatabasesPublisherImpl<>(notNull("clientSession", clientSession), clazz, getCodecRegistry(),
-                                                ReadPreference.primary(), getExecutor(), getSettings().getRetryReads());
+        return new ListDatabasesPublisherImpl<>(notNull("clientSession", clientSession), mongoOperationPublisher.withDocumentClass(clazz));
     }
 
     @Override
@@ -202,9 +192,8 @@ public final class MongoClientImpl implements MongoClient {
 
     @Override
     public <T> ChangeStreamPublisher<T> watch(final List<? extends Bson> pipeline, final Class<T> resultClass) {
-        return new ChangeStreamPublisherImpl<>(null, "admin", resultClass, getSettings().getCodecRegistry(),
-                                               getSettings().getReadPreference(), getSettings().getReadConcern(), getExecutor(), pipeline,
-                                               ChangeStreamLevel.CLIENT, getSettings().getRetryReads());
+        return new ChangeStreamPublisherImpl<>(null, mongoOperationPublisher.withDatabase("admin"),
+                                               resultClass, pipeline, ChangeStreamLevel.CLIENT);
     }
 
     @Override
@@ -225,10 +214,8 @@ public final class MongoClientImpl implements MongoClient {
     @Override
     public <T> ChangeStreamPublisher<T> watch(final ClientSession clientSession, final List<? extends Bson> pipeline,
                                               final Class<T> resultClass) {
-        return new ChangeStreamPublisherImpl<>(notNull("clientSession", clientSession), "admin", resultClass,
-                                               getSettings().getCodecRegistry(), getSettings().getReadPreference(),
-                                               getSettings().getReadConcern(), getExecutor(), pipeline, ChangeStreamLevel.CLIENT,
-                                               getSettings().getRetryReads());
+        return new ChangeStreamPublisherImpl<>(notNull("clientSession", clientSession), mongoOperationPublisher.withDatabase("admin"),
+                                               resultClass, pipeline, ChangeStreamLevel.CLIENT);
     }
 
     @Override

@@ -17,10 +17,7 @@
 package com.mongodb.reactivestreams.client.internal;
 
 import com.mongodb.MongoException;
-import com.mongodb.MongoNamespace;
-import com.mongodb.ReadConcern;
 import com.mongodb.ReadPreference;
-import com.mongodb.client.model.Collation;
 import com.mongodb.client.model.changestream.ChangeStreamDocument;
 import com.mongodb.client.model.changestream.FullDocument;
 import com.mongodb.internal.client.model.changestream.ChangeStreamLevel;
@@ -28,7 +25,6 @@ import com.mongodb.internal.operation.ChangeStreamOperation;
 import com.mongodb.reactivestreams.client.ChangeStreamPublisher;
 import org.bson.BsonDocument;
 import org.bson.Document;
-import org.bson.codecs.BsonValueCodecProvider;
 import org.bson.codecs.Codec;
 import org.bson.codecs.configuration.CodecConfigurationException;
 import org.junit.jupiter.api.DisplayName;
@@ -42,33 +38,24 @@ import static com.mongodb.reactivestreams.client.MongoClients.getDefaultCodecReg
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static java.util.concurrent.TimeUnit.SECONDS;
-import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class ChangeStreamPublisherImplTest extends TestHelper {
 
-    private static final MongoNamespace NAMESPACE = new MongoNamespace("db", "coll");
-    private static final Collation COLLATION = Collation.builder().locale("en").build();
-
     @DisplayName("Should build the expected ChangeStreamOperation")
     @Test
     void shouldBuildTheExpectedOperation() {
-        configureBatchCursor();
         List<BsonDocument> pipeline = singletonList(BsonDocument.parse("{'$match': 1}"));
         Codec<ChangeStreamDocument<Document>> codec = ChangeStreamDocument.createCodec(Document.class, getDefaultCodecRegistry());
 
-        TestOperationExecutor executor = new TestOperationExecutor(asList(getBatchCursor(), getBatchCursor()));
-        ChangeStreamPublisher<Document> publisher = new ChangeStreamPublisherImpl<>(null, NAMESPACE, Document.class,
-                                                                                    getDefaultCodecRegistry(), ReadPreference.primary(),
-                                                                                    ReadConcern.DEFAULT, executor, pipeline,
-                                                                                    ChangeStreamLevel.COLLECTION,
-                                                                                    true);
+        TestOperationExecutor executor = createOperationExecutor(asList(getBatchCursor(), getBatchCursor()));
+        ChangeStreamPublisher<Document> publisher = new ChangeStreamPublisherImpl<>(null, createMongoOperationPublisher(executor),
+                                                                                    Document.class, pipeline, ChangeStreamLevel.COLLECTION);
 
-        ChangeStreamOperation<ChangeStreamDocument<Document>> expectedOperation = new ChangeStreamOperation<>(NAMESPACE,
-                                                                                                              FullDocument.DEFAULT,
-                                                                                                              pipeline, codec)
-                .retryReads(true);
+        ChangeStreamOperation<ChangeStreamDocument<Document>> expectedOperation =
+                new ChangeStreamOperation<>(NAMESPACE, FullDocument.DEFAULT, pipeline, codec)
+                        .retryReads(true);
 
         // default input should be as expected
         Flux.from(publisher).blockFirst();
@@ -83,14 +70,12 @@ public class ChangeStreamPublisherImplTest extends TestHelper {
                 .maxAwaitTime(20, SECONDS)
                 .fullDocument(FullDocument.UPDATE_LOOKUP);
 
-        expectedOperation = new ChangeStreamOperation<>(NAMESPACE,
-                                                        FullDocument.UPDATE_LOOKUP, pipeline, codec).retryReads(true);
+        expectedOperation = new ChangeStreamOperation<>(NAMESPACE, FullDocument.UPDATE_LOOKUP, pipeline, codec).retryReads(true);
         expectedOperation
                 .batchSize(100)
                 .collation(COLLATION)
                 .maxAwaitTime(20, SECONDS);
 
-        configureBatchCursor();
         Flux.from(publisher).blockFirst();
         assertEquals(ReadPreference.primary(), executor.getReadPreference());
         assertOperationIsTheSameAs(expectedOperation, executor.getReadOperation());
@@ -99,19 +84,16 @@ public class ChangeStreamPublisherImplTest extends TestHelper {
     @DisplayName("Should build the expected ChangeStreamOperation when setting the document class")
     @Test
     void shouldBuildTheExpectedOperationWhenSettingDocumentClass() {
-        configureBatchCursor();
         List<BsonDocument> pipeline = singletonList(BsonDocument.parse("{'$match': 1}"));
-        TestOperationExecutor executor = new TestOperationExecutor(singletonList(getBatchCursor()));
-        Publisher<BsonDocument> publisher = new ChangeStreamPublisherImpl<>(null, NAMESPACE, Document.class,
-                                                                            getDefaultCodecRegistry(), ReadPreference.primary(),
-                                                                            ReadConcern.DEFAULT, executor, pipeline,
-                                                                            ChangeStreamLevel.COLLECTION, false)
-                .withDocumentClass(BsonDocument.class);
+        TestOperationExecutor executor = createOperationExecutor(singletonList(getBatchCursor()));
 
-        ChangeStreamOperation<BsonDocument> expectedOperation = new ChangeStreamOperation<>(NAMESPACE,
-                                                                                            FullDocument.DEFAULT, pipeline,
-                                                                                            getDefaultCodecRegistry()
-                                                                                                    .get(BsonDocument.class));
+        Publisher<BsonDocument> publisher = new ChangeStreamPublisherImpl<>(null, createMongoOperationPublisher(executor),
+                                                                            Document.class, pipeline, ChangeStreamLevel.COLLECTION)
+                        .withDocumentClass(BsonDocument.class);
+
+        ChangeStreamOperation<BsonDocument> expectedOperation =
+                new ChangeStreamOperation<>(NAMESPACE, FullDocument.DEFAULT, pipeline, getDefaultCodecRegistry().get(BsonDocument.class))
+                        .retryReads(true);
 
         // default input should be as expected
         Flux.from(publisher).blockFirst();
@@ -124,30 +106,22 @@ public class ChangeStreamPublisherImplTest extends TestHelper {
     @Test
     void shouldHandleErrorScenarios() {
         List<BsonDocument> pipeline = singletonList(BsonDocument.parse("{'$match': 1}"));
-        TestOperationExecutor executor = new TestOperationExecutor(asList(new MongoException("Failure"), null, null));
+        TestOperationExecutor executor = createOperationExecutor(asList(new MongoException("Failure"), null, null));
 
         // Operation fails
-        ChangeStreamPublisher<Document> publisher = new ChangeStreamPublisherImpl<>(null, NAMESPACE, Document.class,
-                                                                                    getDefaultCodecRegistry(), ReadPreference.primary(),
-                                                                                    ReadConcern.DEFAULT, executor, pipeline,
-                                                                                    ChangeStreamLevel.COLLECTION, false);
+        ChangeStreamPublisher<Document> publisher = new ChangeStreamPublisherImpl<>(null, createMongoOperationPublisher(executor),
+                                                                                    Document.class, pipeline, ChangeStreamLevel.COLLECTION);
         assertThrows(MongoException.class, () -> Flux.from(publisher).blockFirst());
 
         // Missing Codec
-        assertThrows(CodecConfigurationException.class, () -> new ChangeStreamPublisherImpl<>(null, NAMESPACE, Document.class,
-                                                                                              fromProviders(new BsonValueCodecProvider()),
-                                                                                              ReadPreference.primary(), ReadConcern.DEFAULT,
-                                                                                              executor, pipeline,
-                                                                                              ChangeStreamLevel.COLLECTION, false));
+        assertThrows(CodecConfigurationException.class, () ->
+                new ChangeStreamPublisherImpl<>(null, createMongoOperationPublisher(executor)
+                        .withCodecRegistry(BSON_CODEC_REGISTRY), Document.class, pipeline, ChangeStreamLevel.COLLECTION));
 
         // Pipeline contains null
-        ChangeStreamPublisher<Document> publisherPipelineNull = new ChangeStreamPublisherImpl<>(null, NAMESPACE, Document.class,
-                                                                                                getDefaultCodecRegistry(),
-                                                                                                ReadPreference.primary(),
-                                                                                                ReadConcern.DEFAULT,
-                                                                                                executor, singletonList(null),
-                                                                                                ChangeStreamLevel.COLLECTION, false);
+        ChangeStreamPublisher<Document> publisherPipelineNull =
+                new ChangeStreamPublisherImpl<>(null, createMongoOperationPublisher(executor), Document.class,
+                                                singletonList(null), ChangeStreamLevel.COLLECTION);
         assertThrows(IllegalArgumentException.class, () -> Flux.from(publisherPipelineNull).blockFirst());
     }
-
 }

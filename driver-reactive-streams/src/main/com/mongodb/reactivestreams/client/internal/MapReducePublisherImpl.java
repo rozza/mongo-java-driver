@@ -17,19 +17,15 @@
 package com.mongodb.reactivestreams.client.internal;
 
 import com.mongodb.MongoNamespace;
-import com.mongodb.ReadConcern;
 import com.mongodb.ReadPreference;
-import com.mongodb.WriteConcern;
 import com.mongodb.client.model.Collation;
 import com.mongodb.client.model.MapReduceAction;
 import com.mongodb.internal.async.AsyncBatchCursor;
 import com.mongodb.internal.async.SingleResultCallback;
-import com.mongodb.internal.async.client.OperationExecutor;
 import com.mongodb.internal.async.client.WriteOperationThenCursorReadOperation;
 import com.mongodb.internal.binding.AsyncReadBinding;
 import com.mongodb.internal.binding.AsyncWriteBinding;
 import com.mongodb.internal.client.model.FindOptions;
-import com.mongodb.internal.operation.AsyncOperations;
 import com.mongodb.internal.operation.AsyncReadOperation;
 import com.mongodb.internal.operation.AsyncWriteOperation;
 import com.mongodb.internal.operation.MapReduceAsyncBatchCursor;
@@ -38,7 +34,6 @@ import com.mongodb.lang.Nullable;
 import com.mongodb.reactivestreams.client.ClientSession;
 import com.mongodb.reactivestreams.client.MapReducePublisher;
 import org.bson.BsonDocument;
-import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.conversions.Bson;
 import org.reactivestreams.Publisher;
 
@@ -47,11 +42,8 @@ import java.util.concurrent.TimeUnit;
 import static com.mongodb.ReadPreference.primary;
 import static com.mongodb.assertions.Assertions.notNull;
 
-final class MapReducePublisherImpl<D, T> extends BatchCursorPublisherImpl<T> implements MapReducePublisher<T> {
+final class MapReducePublisherImpl<T> extends BatchCursorPublisherImpl<T> implements MapReducePublisher<T> {
 
-    private final AsyncOperations<D> operations;
-    private final MongoNamespace namespace;
-    private final Class<T> resultClass;
     private final String mapFunction;
     private final String reduceFunction;
 
@@ -72,22 +64,12 @@ final class MapReducePublisherImpl<D, T> extends BatchCursorPublisherImpl<T> imp
     private Boolean bypassDocumentValidation;
     private Collation collation;
 
-    MapReducePublisherImpl(@Nullable final ClientSession clientSession,
-                           final MongoNamespace namespace,
-                           final Class<D> documentClass,
-                           final Class<T> resultClass,
-                           final CodecRegistry codecRegistry,
-                           final ReadPreference readPreference,
-                           final ReadConcern readConcern,
-                           final WriteConcern writeConcern,
-                           final OperationExecutor executor,
-                           final String mapFunction,
-                           final String reduceFunction) {
-        super(clientSession, executor, readConcern, readPreference, false);
-        this.operations = new AsyncOperations<>(namespace, documentClass, readPreference, codecRegistry, readConcern, writeConcern,
-                                                false, false);
-        this.namespace = notNull("namespace", namespace);
-        this.resultClass = notNull("resultClass", resultClass);
+    MapReducePublisherImpl(
+            @Nullable final ClientSession clientSession,
+            final MongoOperationPublisher<T> mongoOperationPublisher,
+            final String mapFunction,
+            final String reduceFunction) {
+        super(clientSession, mongoOperationPublisher);
         this.mapFunction = notNull("mapFunction", mapFunction);
         this.reduceFunction = notNull("reduceFunction", reduceFunction);
     }
@@ -191,10 +173,7 @@ final class MapReducePublisherImpl<D, T> extends BatchCursorPublisherImpl<T> imp
         if (inline) {
             throw new IllegalStateException("The options must specify a non-inline result");
         }
-//        return createWriteOperationMono(() -> createMapReduceToCollectionOperation().getOperation(),
-//                                        getClientSession(), getReadConcern(), getExecutor()).then();
-        // TODO
-        return null;
+        return getMongoOperationPublisher().createWriteOperationMono(this::createMapReduceToCollectionOperation, getClientSession());
     }
 
     @Override
@@ -222,27 +201,27 @@ final class MapReducePublisherImpl<D, T> extends BatchCursorPublisherImpl<T> imp
     }
 
     private WrappedMapReduceReadOperation<T> createMapReduceInlineOperation() {
-        return new WrappedMapReduceReadOperation<T>(operations.mapReduce(mapFunction, reduceFunction, finalizeFunction,
-                                                                         resultClass, filter, limit, maxTimeMS, jsMode, scope, sort,
-                                                                         verbose, collation));
+        return new WrappedMapReduceReadOperation<T>(getOperations().mapReduce(mapFunction, reduceFunction, finalizeFunction,
+                                                                              getDocumentClass(), filter, limit, maxTimeMS, jsMode, scope,
+                                                                              sort, verbose, collation));
     }
 
     private WrappedMapReduceWriteOperation createMapReduceToCollectionOperation() {
-        return new WrappedMapReduceWriteOperation(operations.mapReduceToCollection(databaseName, collectionName, mapFunction,
-                                                                                   reduceFunction, finalizeFunction, filter, limit,
-                                                                                   maxTimeMS, jsMode, scope, sort, verbose, action,
-                                                                                   nonAtomic, sharded,
-                                                                                   bypassDocumentValidation, collation));
+        return new WrappedMapReduceWriteOperation(getOperations().mapReduceToCollection(databaseName, collectionName, mapFunction,
+                                                                                        reduceFunction, finalizeFunction, filter, limit,
+                                                                                        maxTimeMS, jsMode, scope, sort, verbose, action,
+                                                                                        nonAtomic, sharded,
+                                                                                        bypassDocumentValidation, collation));
     }
 
     private AsyncReadOperation<AsyncBatchCursor<T>> createFindOperation() {
-        String dbName = databaseName != null ? databaseName : namespace.getDatabaseName();
+        String dbName = databaseName != null ? databaseName : getNamespace().getDatabaseName();
         FindOptions findOptions = new FindOptions().collation(collation);
         Integer batchSize = getBatchSize();
         if (batchSize != null) {
             findOptions.batchSize(batchSize);
         }
-        return operations.find(new MongoNamespace(dbName, collectionName), new BsonDocument(), resultClass, findOptions);
+        return getOperations().find(new MongoNamespace(dbName, collectionName), new BsonDocument(), getDocumentClass(), findOptions);
     }
 
     // this could be inlined, but giving it a name so that it's unit-testable

@@ -16,41 +16,30 @@
 
 package com.mongodb.reactivestreams.client.internal;
 
-import com.mongodb.MongoNamespace;
-import com.mongodb.ReadConcern;
-import com.mongodb.ReadPreference;
 import com.mongodb.client.model.Collation;
 import com.mongodb.internal.async.AsyncBatchCursor;
-import com.mongodb.internal.async.client.OperationExecutor;
-import com.mongodb.internal.operation.AsyncOperations;
 import com.mongodb.internal.operation.AsyncReadOperation;
 import com.mongodb.lang.Nullable;
 import com.mongodb.reactivestreams.client.ClientSession;
 import com.mongodb.reactivestreams.client.DistinctPublisher;
-import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.conversions.Bson;
 
 import java.util.concurrent.TimeUnit;
 
 import static com.mongodb.assertions.Assertions.notNull;
 
-final class DistinctPublisherImpl<D, T> extends BatchCursorPublisherImpl<T> implements DistinctPublisher<T> {
+final class DistinctPublisherImpl<T> extends BatchCursorPublisherImpl<T> implements DistinctPublisher<T> {
 
-    private final AsyncOperations<D> operations;
-    private final Class<T> resultClass;
     private final String fieldName;
-
     private Bson filter;
     private long maxTimeMS;
     private Collation collation;
 
-    DistinctPublisherImpl(@Nullable final ClientSession clientSession, final MongoNamespace namespace,
-                          final Class<D> documentClass, final Class<T> resultClass, final CodecRegistry codecRegistry,
-                          final ReadPreference readPreference, final ReadConcern readConcern, final OperationExecutor executor,
-                          final String fieldName, final Bson filter, final boolean retryReads) {
-        super(clientSession, executor, readConcern, readPreference, retryReads);
-        this.operations = new AsyncOperations<>(namespace, documentClass, readPreference, codecRegistry, retryReads);
-        this.resultClass = notNull("resultClass", resultClass);
+    DistinctPublisherImpl(
+            @Nullable final ClientSession clientSession,
+            final MongoOperationPublisher<T> mongoOperationPublisher,
+            final String fieldName, final Bson filter) {
+        super(clientSession, mongoOperationPublisher);
         this.fieldName = notNull("fieldName", fieldName);
         this.filter = notNull("filter", filter);
     }
@@ -82,6 +71,6 @@ final class DistinctPublisherImpl<D, T> extends BatchCursorPublisherImpl<T> impl
 
     @Override
     AsyncReadOperation<AsyncBatchCursor<T>> asAsyncReadOperation() {
-        return operations.distinct(fieldName, filter, resultClass, maxTimeMS, collation);
+        return getOperations().distinct(fieldName, filter, getDocumentClass(), maxTimeMS, collation);
     }
 }

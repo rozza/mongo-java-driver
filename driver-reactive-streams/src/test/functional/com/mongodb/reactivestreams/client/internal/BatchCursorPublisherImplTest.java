@@ -38,6 +38,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
 
+import static com.mongodb.reactivestreams.client.internal.TestHelper.OPERATION_PUBLISHER;
 import static java.lang.String.format;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
@@ -57,8 +58,6 @@ public class BatchCursorPublisherImplTest {
     private AsyncReadOperation<AsyncBatchCursor<Document>> readOperation;
     @Mock
     private AsyncBatchCursor<Document> batchCursor;
-    @Mock
-    private OperationExecutor executor;
 
     @Test
     public void testBatchCursor() {
@@ -143,6 +142,20 @@ public class BatchCursorPublisherImplTest {
     BatchCursorPublisherImpl<Document> createVerifiableBatchCursor(final List<Document> expected, final int batchSize,
                                                                     final boolean errorCreatingCursor, final boolean errorOnEmpty) {
 
+        BatchCursorPublisherImpl<Document> publisher = new BatchCursorPublisherImpl<Document>(
+                null, OPERATION_PUBLISHER) {
+            @Override
+            AsyncReadOperation<AsyncBatchCursor<Document>> asAsyncReadOperation() {
+                return readOperation;
+            }
+        };
+
+        OperationExecutor executor = OPERATION_PUBLISHER.getExecutor();
+
+        if (batchSize > 0) {
+            publisher.batchSize(batchSize);
+        }
+
         if (errorCreatingCursor) {
             Mockito.doAnswer(invocation -> {
                 invocation.getArgument(4, SingleResultCallback.class).onResult(null, new Exception(ERROR_CREATING_CURSOR));
@@ -183,17 +196,6 @@ public class BatchCursorPublisherImplTest {
             }).when(batchCursor).next(any(SingleResultCallback.class));
         }
 
-        BatchCursorPublisherImpl<Document> publisher = new BatchCursorPublisherImpl<Document>(
-                null, executor, ReadConcern.DEFAULT, ReadPreference.primary(), true) {
-            @Override
-            AsyncReadOperation<AsyncBatchCursor<Document>> asAsyncReadOperation() {
-                return readOperation;
-            }
-        };
-
-        if (batchSize > 0) {
-            publisher.batchSize(batchSize);
-        }
         return publisher;
     }
 

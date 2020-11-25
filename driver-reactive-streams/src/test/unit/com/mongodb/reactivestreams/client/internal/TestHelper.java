@@ -16,17 +16,25 @@
 
 package com.mongodb.reactivestreams.client.internal;
 
+import com.mongodb.MongoNamespace;
+import com.mongodb.ReadConcern;
+import com.mongodb.ReadPreference;
+import com.mongodb.WriteConcern;
+import com.mongodb.client.model.Collation;
 import com.mongodb.internal.async.AsyncBatchCursor;
 import com.mongodb.internal.async.SingleResultCallback;
+import com.mongodb.internal.async.client.OperationExecutor;
 import com.mongodb.internal.bulk.IndexRequest;
 import com.mongodb.internal.bulk.WriteRequest;
 import com.mongodb.internal.client.model.FindOptions;
-import com.mongodb.internal.operation.AsyncOperations;
 import com.mongodb.internal.operation.AsyncReadOperation;
 import com.mongodb.internal.operation.AsyncWriteOperation;
 import com.mongodb.internal.operation.Operations;
 import com.mongodb.lang.Nullable;
 import org.bson.Document;
+import org.bson.UuidRepresentation;
+import org.bson.codecs.BsonValueCodecProvider;
+import org.bson.codecs.configuration.CodecRegistry;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -45,11 +53,14 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 
+import static com.mongodb.reactivestreams.client.MongoClients.getDefaultCodecRegistry;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
+import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
 
 @SuppressWarnings("unchecked")
 @ExtendWith(MockitoExtension.class)
@@ -61,17 +72,32 @@ public class TestHelper {
     TestHelper() {
     }
 
+
+    static final MongoNamespace NAMESPACE = new MongoNamespace("db", "coll");
+    static final Collation COLLATION = Collation.builder().locale("de").build();
+
+    static final MongoOperationPublisher<Document> OPERATION_PUBLISHER = createMongoOperationPublisher(mock(OperationExecutor.class));
+
+    static final CodecRegistry BSON_CODEC_REGISTRY = fromProviders(new BsonValueCodecProvider());
+
+    static MongoOperationPublisher<Document> createMongoOperationPublisher(final OperationExecutor executor) {
+        return new MongoOperationPublisher<>(NAMESPACE, Document.class,
+                                             getDefaultCodecRegistry(), ReadPreference.primary(), ReadConcern.DEFAULT,
+                                             WriteConcern.ACKNOWLEDGED, true, true,
+                                             UuidRepresentation.STANDARD, executor);
+    }
+
+
     public static void assertOperationIsTheSameAs(@Nullable final Object expectedOperation, @Nullable final Object actualOperation) {
-        assertTrue(expectedOperation instanceof AsyncReadOperation || expectedOperation instanceof AsyncWriteOperation,
-                   "Must be a read or write operation");
+
         if (expectedOperation instanceof AsyncReadOperation) {
             assertTrue(actualOperation instanceof AsyncReadOperation, "Both async read operations");
         } else {
             assertTrue(actualOperation instanceof AsyncWriteOperation, "Both async write operations");
         }
 
-        Map<String, Object> expectedMap = getClassGetterValues(expectedOperation);
-        Map<String, Object> actualMap = getClassGetterValues(actualOperation);
+        Map<String, Object> expectedMap = getClassGetterValues(unwrapOperation(expectedOperation));
+        Map<String, Object> actualMap = getClassGetterValues(unwrapOperation(actualOperation));
         assertEquals(expectedMap, actualMap);
     }
 
@@ -84,6 +110,17 @@ public class TestHelper {
         Map<String, Optional<Object>> expectedMap = getClassPrivateFieldValues(getRootSource(expectedPublisher));
         Map<String, Optional<Object>> actualMap = getClassPrivateFieldValues(getRootSource(actualPublisher));
         assertEquals(expectedMap, actualMap, message);
+    }
+
+    private static Object unwrapOperation(@Nullable final Object operation) {
+        assertTrue(operation instanceof AsyncReadOperation || operation instanceof AsyncWriteOperation,
+                   "Must be a read or write operation");
+        if (operation instanceof MapReducePublisherImpl.WrappedMapReduceReadOperation) {
+            return ((MapReducePublisherImpl.WrappedMapReduceReadOperation<?>) operation).getOperation();
+        } else if (operation instanceof MapReducePublisherImpl.WrappedMapReduceWriteOperation) {
+            return ((MapReducePublisherImpl.WrappedMapReduceWriteOperation) operation).getOperation();
+        }
+        return operation;
     }
 
     @NotNull
@@ -120,8 +157,6 @@ public class TestHelper {
     private static Object checkValueTypes(final Object instance) {
         Object actual = instance instanceof Optional ? ((Optional<Object>) instance).orElse(instance) : instance;
         if (actual instanceof AsyncReadOperation || actual instanceof AsyncWriteOperation) {
-            return getClassPrivateFieldValues(actual);
-        } else if (actual instanceof AsyncOperations) {
             return getClassPrivateFieldValues(actual);
         } else if (actual instanceof Operations) {
             return getClassPrivateFieldValues(actual);
@@ -192,10 +227,16 @@ public class TestHelper {
         }
     }
 
+    TestOperationExecutor createOperationExecutor(final List<Object> responses) {
+        configureBatchCursor();
+        return new TestOperationExecutor(responses);
+    }
+
+
     void configureBatchCursor() {
         AtomicBoolean isClosed = new AtomicBoolean(false);
-        Mockito.doAnswer(i -> isClosed.get()).when(getBatchCursor()).isClosed();
-        Mockito.doAnswer(invocation -> {
+        Mockito.lenient().doAnswer(i -> isClosed.get()).when(getBatchCursor()).isClosed();
+        Mockito.lenient().doAnswer(invocation -> {
             isClosed.set(true);
             invocation.getArgument(0, SingleResultCallback.class).onResult(null, null);
             return null;

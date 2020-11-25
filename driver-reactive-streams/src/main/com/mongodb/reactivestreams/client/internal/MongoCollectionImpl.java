@@ -45,7 +45,6 @@ import com.mongodb.client.result.UpdateResult;
 import com.mongodb.internal.async.client.OperationExecutor;
 import com.mongodb.internal.client.model.AggregationLevel;
 import com.mongodb.internal.client.model.changestream.ChangeStreamLevel;
-import com.mongodb.internal.operation.AsyncOperations;
 import com.mongodb.reactivestreams.client.AggregatePublisher;
 import com.mongodb.reactivestreams.client.ChangeStreamPublisher;
 import com.mongodb.reactivestreams.client.ClientSession;
@@ -56,7 +55,6 @@ import com.mongodb.reactivestreams.client.MapReducePublisher;
 import com.mongodb.reactivestreams.client.MongoCollection;
 import org.bson.BsonDocument;
 import org.bson.Document;
-import org.bson.UuidRepresentation;
 import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.conversions.Bson;
 import org.reactivestreams.Publisher;
@@ -65,124 +63,80 @@ import java.util.Collections;
 import java.util.List;
 
 import static com.mongodb.assertions.Assertions.notNull;
-import static org.bson.internal.CodecRegistryHelper.createRegistry;
 
 
 final class MongoCollectionImpl<T> implements MongoCollection<T> {
-    private final MongoNamespace namespace;
-    private final Class<T> documentClass;
-    private final ReadPreference readPreference;
-    private final CodecRegistry codecRegistry;
-    private final WriteConcern writeConcern;
-    private final boolean retryWrites;
-    private final boolean retryReads;
-    private final ReadConcern readConcern;
-    private final UuidRepresentation uuidRepresentation;
-    private final OperationExecutor executor;
-    private final AsyncOperations<T> operations;
-    private final PublisherHelper<T> publisherHelper;
+    private final MongoOperationPublisher<T> mongoOperationPublisher;
 
-    MongoCollectionImpl(final MongoNamespace namespace,
-                        final Class<T> documentClass,
-                        final CodecRegistry codecRegistry,
-                        final ReadPreference readPreference,
-                        final ReadConcern readConcern,
-                        final WriteConcern writeConcern,
-                        final OperationExecutor executor,
-                        final boolean retryReads,
-                        final boolean retryWrites,
-                        final UuidRepresentation uuidRepresentation) {
-        this.namespace = notNull("namespace", namespace);
-        this.documentClass = notNull("documentClass", documentClass);
-        this.codecRegistry = notNull("codecRegistry", codecRegistry);
-        this.readPreference = notNull("readPreference", readPreference);
-        this.writeConcern = notNull("writeConcern", writeConcern);
-        this.retryWrites = retryWrites;
-        this.retryReads = retryReads;
-        this.readConcern = notNull("readConcern", readConcern);
-        this.uuidRepresentation = notNull("uuidRepresentation", uuidRepresentation);
-        this.executor = notNull("executor", executor);
-        this.operations = new AsyncOperations<>(namespace, documentClass, readPreference, codecRegistry, readConcern, writeConcern,
-                                                retryWrites, retryReads);
-        this.publisherHelper = new PublisherHelper<>(namespace, documentClass, readPreference, codecRegistry, readConcern, writeConcern,
-                                                     retryWrites, retryReads, executor);
-
+    MongoCollectionImpl(final MongoOperationPublisher<T> mongoOperationPublisher) {
+        this.mongoOperationPublisher = notNull("mongoOperationPublisher", mongoOperationPublisher);
     }
 
     @Override
     public MongoNamespace getNamespace() {
-        return namespace;
+        return mongoOperationPublisher.getNamespace();
     }
 
     @Override
     public Class<T> getDocumentClass() {
-        return documentClass;
+        return mongoOperationPublisher.getDocumentClass();
     }
 
     @Override
     public CodecRegistry getCodecRegistry() {
-        return codecRegistry;
+        return mongoOperationPublisher.getCodecRegistry();
     }
 
     @Override
     public ReadPreference getReadPreference() {
-        return readPreference;
+        return mongoOperationPublisher.getReadPreference();
     }
 
     @Override
     public WriteConcern getWriteConcern() {
-        return writeConcern;
+        return mongoOperationPublisher.getWriteConcern();
     }
 
     @Override
     public ReadConcern getReadConcern() {
-        return readConcern;
+        return mongoOperationPublisher.getReadConcern();
     }
 
-    OperationExecutor getExecutor() {
-        return executor;
+    public OperationExecutor getExecutor() {
+        return mongoOperationPublisher.getExecutor();
     }
 
-    boolean getRetryReads() {
-        return retryReads;
+    public boolean getRetryReads() {
+        return mongoOperationPublisher.getRetryReads();
     }
 
-    public AsyncOperations<T> getOperations() {
-        return operations;
-    }
-
-    PublisherHelper<T> getPublisherHelper() {
-        return publisherHelper;
+    MongoOperationPublisher<T> getPublisherHelper() {
+        return mongoOperationPublisher;
     }
 
     @Override
     public <D> MongoCollection<D> withDocumentClass(final Class<D> newDocumentClass) {
-        return new MongoCollectionImpl<>(namespace, newDocumentClass, codecRegistry,
-                                         readPreference, readConcern, writeConcern, executor, retryReads, retryWrites, uuidRepresentation);
+        return new MongoCollectionImpl<>(mongoOperationPublisher.withDocumentClass(newDocumentClass));
     }
 
     @Override
     public MongoCollection<T> withCodecRegistry(final CodecRegistry codecRegistry) {
-        return new MongoCollectionImpl<>(namespace, documentClass, createRegistry(codecRegistry, uuidRepresentation),
-                                         readPreference, readConcern, writeConcern, executor, retryReads, retryWrites, uuidRepresentation);
+        return new MongoCollectionImpl<>(mongoOperationPublisher.withCodecRegistry(codecRegistry));
     }
 
     @Override
     public MongoCollection<T> withReadPreference(final ReadPreference readPreference) {
-        return new MongoCollectionImpl<>(namespace, documentClass, codecRegistry,
-                                         readPreference, readConcern, writeConcern, executor, retryReads, retryWrites, uuidRepresentation);
+        return new MongoCollectionImpl<>(mongoOperationPublisher.withReadPreference(readPreference));
     }
 
     @Override
     public MongoCollection<T> withWriteConcern(final WriteConcern writeConcern) {
-        return new MongoCollectionImpl<>(namespace, documentClass, codecRegistry,
-                                         readPreference, readConcern, writeConcern, executor, retryReads, retryWrites, uuidRepresentation);
+        return new MongoCollectionImpl<>(mongoOperationPublisher.withWriteConcern(writeConcern));
     }
 
     @Override
     public MongoCollection<T> withReadConcern(final ReadConcern readConcern) {
-        return new MongoCollectionImpl<>(namespace, documentClass, codecRegistry,
-                                         readPreference, readConcern, writeConcern, executor, retryReads, retryWrites, uuidRepresentation);
+        return new MongoCollectionImpl<>(mongoOperationPublisher.withReadConcern(readConcern));
     }
 
     @Override
@@ -192,7 +146,7 @@ final class MongoCollectionImpl<T> implements MongoCollection<T> {
 
     @Override
     public Publisher<Long> estimatedDocumentCount(final EstimatedDocumentCountOptions options) {
-        return publisherHelper.estimatedDocumentCount(options);
+        return mongoOperationPublisher.estimatedDocumentCount(options);
     }
 
     @Override
@@ -207,7 +161,7 @@ final class MongoCollectionImpl<T> implements MongoCollection<T> {
 
     @Override
     public Publisher<Long> countDocuments(final Bson filter, final CountOptions options) {
-        return publisherHelper.countDocuments(null, filter, options);
+        return mongoOperationPublisher.countDocuments(null, filter, options);
     }
 
     @Override
@@ -222,7 +176,7 @@ final class MongoCollectionImpl<T> implements MongoCollection<T> {
 
     @Override
     public Publisher<Long> countDocuments(final ClientSession clientSession, final Bson filter, final CountOptions options) {
-        return publisherHelper.countDocuments(notNull("clientSession", clientSession), filter, options);
+        return mongoOperationPublisher.countDocuments(notNull("clientSession", clientSession), filter, options);
     }
 
     @Override
@@ -232,8 +186,7 @@ final class MongoCollectionImpl<T> implements MongoCollection<T> {
 
     @Override
     public <TResult> DistinctPublisher<TResult> distinct(final String fieldName, final Bson filter, final Class<TResult> resultClass) {
-        return new DistinctPublisherImpl<>(null, namespace, documentClass, resultClass, codecRegistry, readPreference, readConcern,
-                                           executor, fieldName, filter, retryReads);
+        return new DistinctPublisherImpl<>(null, mongoOperationPublisher.withDocumentClass(resultClass), fieldName, filter);
     }
 
     @Override
@@ -245,8 +198,8 @@ final class MongoCollectionImpl<T> implements MongoCollection<T> {
     @Override
     public <TResult> DistinctPublisher<TResult> distinct(final ClientSession clientSession, final String fieldName, final Bson filter,
                                                          final Class<TResult> resultClass) {
-        return new DistinctPublisherImpl<>(notNull("clientSession", clientSession), namespace, documentClass, resultClass,
-                                           codecRegistry, readPreference, readConcern, executor, fieldName, filter, retryReads);
+        return new DistinctPublisherImpl<>(notNull("clientSession", clientSession),
+                                           mongoOperationPublisher.withDocumentClass(resultClass), fieldName, filter);
     }
 
     @Override
@@ -255,8 +208,8 @@ final class MongoCollectionImpl<T> implements MongoCollection<T> {
     }
 
     @Override
-    public <TResult> FindPublisher<TResult> find(final Class<TResult> clazz) {
-        return find(new BsonDocument(), clazz);
+    public <TResult> FindPublisher<TResult> find(final Class<TResult> resultClass) {
+        return find(new BsonDocument(), resultClass);
     }
 
     @Override
@@ -265,9 +218,8 @@ final class MongoCollectionImpl<T> implements MongoCollection<T> {
     }
 
     @Override
-    public <TResult> FindPublisher<TResult> find(final Bson filter, final Class<TResult> clazz) {
-        return new FindPublisherImpl<>(null, namespace, documentClass, clazz, codecRegistry,
-                                       readPreference, readConcern, executor, filter, retryReads);
+    public <TResult> FindPublisher<TResult> find(final Bson filter, final Class<TResult> resultClass) {
+        return new FindPublisherImpl<>(null, mongoOperationPublisher.withDocumentClass(resultClass), filter);
     }
 
     @Override
@@ -276,8 +228,8 @@ final class MongoCollectionImpl<T> implements MongoCollection<T> {
     }
 
     @Override
-    public <TResult> FindPublisher<TResult> find(final ClientSession clientSession, final Class<TResult> clazz) {
-        return find(clientSession, new BsonDocument(), clazz);
+    public <TResult> FindPublisher<TResult> find(final ClientSession clientSession, final Class<TResult> resultClass) {
+        return find(clientSession, new BsonDocument(), resultClass);
     }
 
     @Override
@@ -286,9 +238,9 @@ final class MongoCollectionImpl<T> implements MongoCollection<T> {
     }
 
     @Override
-    public <TResult> FindPublisher<TResult> find(final ClientSession clientSession, final Bson filter, final Class<TResult> clazz) {
-        return new FindPublisherImpl<>(notNull("clientSession", clientSession), namespace, documentClass, clazz, codecRegistry,
-                                       readPreference, readConcern, executor, filter, retryReads);
+    public <TResult> FindPublisher<TResult> find(final ClientSession clientSession, final Bson filter, final Class<TResult> resultClass) {
+        return new FindPublisherImpl<>(notNull("clientSession", clientSession),
+                                       mongoOperationPublisher.withDocumentClass(resultClass), filter);
     }
 
     @Override
@@ -297,9 +249,9 @@ final class MongoCollectionImpl<T> implements MongoCollection<T> {
     }
 
     @Override
-    public <TResult> AggregatePublisher<TResult> aggregate(final List<? extends Bson> pipeline, final Class<TResult> clazz) {
-        return new AggregatePublisherImpl<>(null, namespace, documentClass, clazz, codecRegistry, readPreference,
-                                            readConcern, writeConcern, executor, pipeline, AggregationLevel.COLLECTION, retryReads);
+    public <TResult> AggregatePublisher<TResult> aggregate(final List<? extends Bson> pipeline, final Class<TResult> resultClass) {
+        return new AggregatePublisherImpl<>(null, mongoOperationPublisher.withDocumentClass(resultClass), pipeline,
+                                            AggregationLevel.COLLECTION);
     }
 
     @Override
@@ -309,10 +261,9 @@ final class MongoCollectionImpl<T> implements MongoCollection<T> {
 
     @Override
     public <TResult> AggregatePublisher<TResult> aggregate(final ClientSession clientSession, final List<? extends Bson> pipeline,
-                                                           final Class<TResult> clazz) {
-        return new AggregatePublisherImpl<>(notNull("clientSession", clientSession), namespace, documentClass, clazz, codecRegistry,
-                                            readPreference, readConcern, writeConcern, executor, pipeline, AggregationLevel.COLLECTION,
-                                            retryReads);
+                                                           final Class<TResult> resultClass) {
+        return new AggregatePublisherImpl<>(notNull("clientSession", clientSession),
+                                            mongoOperationPublisher.withDocumentClass(resultClass), pipeline, AggregationLevel.COLLECTION);
     }
 
     @Override
@@ -332,8 +283,8 @@ final class MongoCollectionImpl<T> implements MongoCollection<T> {
 
     @Override
     public <TResult> ChangeStreamPublisher<TResult> watch(final List<? extends Bson> pipeline, final Class<TResult> resultClass) {
-        return new ChangeStreamPublisherImpl<>(null, namespace, resultClass, codecRegistry, readPreference,
-                                               readConcern, executor, pipeline, ChangeStreamLevel.COLLECTION, retryReads);
+        return new ChangeStreamPublisherImpl<>(null, mongoOperationPublisher, resultClass, pipeline,
+                                               ChangeStreamLevel.COLLECTION);
     }
 
     @Override
@@ -354,8 +305,8 @@ final class MongoCollectionImpl<T> implements MongoCollection<T> {
     @Override
     public <TResult> ChangeStreamPublisher<TResult> watch(final ClientSession clientSession, final List<? extends Bson> pipeline,
                                                           final Class<TResult> resultClass) {
-        return new ChangeStreamPublisherImpl<>(notNull("clientSession", clientSession), namespace, resultClass, codecRegistry,
-                                               readPreference, readConcern, executor, pipeline, ChangeStreamLevel.COLLECTION, retryReads);
+        return new ChangeStreamPublisherImpl<>(notNull("clientSession", clientSession), mongoOperationPublisher, resultClass,
+                                               pipeline, ChangeStreamLevel.COLLECTION);
     }
 
     @Override
@@ -365,9 +316,9 @@ final class MongoCollectionImpl<T> implements MongoCollection<T> {
 
     @Override
     public <TResult> MapReducePublisher<TResult> mapReduce(final String mapFunction, final String reduceFunction,
-                                                           final Class<TResult> clazz) {
-        return new MapReducePublisherImpl<>(null, namespace, documentClass, clazz, codecRegistry, readPreference,
-                                            readConcern, writeConcern, executor, mapFunction, reduceFunction);
+                                                           final Class<TResult> resultClass) {
+        return new MapReducePublisherImpl<>(null, mongoOperationPublisher.withDocumentClass(resultClass), mapFunction,
+                                            reduceFunction);
     }
 
     @Override
@@ -378,9 +329,9 @@ final class MongoCollectionImpl<T> implements MongoCollection<T> {
 
     @Override
     public <TResult> MapReducePublisher<TResult> mapReduce(final ClientSession clientSession, final String mapFunction,
-                                                           final String reduceFunction, final Class<TResult> clazz) {
-        return new MapReducePublisherImpl<>(notNull("clientSession", clientSession), namespace, documentClass, clazz, codecRegistry,
-                                            readPreference, readConcern, writeConcern, executor, mapFunction, reduceFunction);
+                                                           final String reduceFunction, final Class<TResult> resultClass) {
+        return new MapReducePublisherImpl<>(notNull("clientSession", clientSession),
+                                            mongoOperationPublisher.withDocumentClass(resultClass), mapFunction, reduceFunction);
     }
 
     @Override
@@ -391,7 +342,7 @@ final class MongoCollectionImpl<T> implements MongoCollection<T> {
     @Override
     public Publisher<BulkWriteResult> bulkWrite(final List<? extends WriteModel<? extends T>> requests,
                                                 final BulkWriteOptions options) {
-        return publisherHelper.bulkWrite(null, requests, options);
+        return mongoOperationPublisher.bulkWrite(null, requests, options);
     }
 
     @Override
@@ -404,7 +355,7 @@ final class MongoCollectionImpl<T> implements MongoCollection<T> {
     public Publisher<BulkWriteResult> bulkWrite(final ClientSession clientSession,
                                                 final List<? extends WriteModel<? extends T>> requests,
                                                 final BulkWriteOptions options) {
-        return publisherHelper.bulkWrite(notNull("clientSession", clientSession), requests, options);
+        return mongoOperationPublisher.bulkWrite(notNull("clientSession", clientSession), requests, options);
     }
 
     @Override
@@ -414,7 +365,7 @@ final class MongoCollectionImpl<T> implements MongoCollection<T> {
 
     @Override
     public Publisher<InsertOneResult> insertOne(final T document, final InsertOneOptions options) {
-        return publisherHelper.insertOne(null, document, options);
+        return mongoOperationPublisher.insertOne(null, document, options);
     }
 
     @Override
@@ -425,7 +376,7 @@ final class MongoCollectionImpl<T> implements MongoCollection<T> {
     @Override
     public Publisher<InsertOneResult> insertOne(final ClientSession clientSession, final T document,
                                                 final InsertOneOptions options) {
-        return publisherHelper.insertOne(notNull("clientSession", clientSession), document, options);
+        return mongoOperationPublisher.insertOne(notNull("clientSession", clientSession), document, options);
     }
 
     @Override
@@ -435,7 +386,7 @@ final class MongoCollectionImpl<T> implements MongoCollection<T> {
 
     @Override
     public Publisher<InsertManyResult> insertMany(final List<? extends T> documents, final InsertManyOptions options) {
-        return publisherHelper.insertMany(null, documents, options);
+        return mongoOperationPublisher.insertMany(null, documents, options);
     }
 
     @Override
@@ -446,7 +397,7 @@ final class MongoCollectionImpl<T> implements MongoCollection<T> {
     @Override
     public Publisher<InsertManyResult> insertMany(final ClientSession clientSession, final List<? extends T> documents,
                                                   final InsertManyOptions options) {
-        return publisherHelper.insertMany(notNull("clientSession", clientSession), documents, options);
+        return mongoOperationPublisher.insertMany(notNull("clientSession", clientSession), documents, options);
     }
 
     @Override
@@ -456,7 +407,7 @@ final class MongoCollectionImpl<T> implements MongoCollection<T> {
 
     @Override
     public Publisher<DeleteResult> deleteOne(final Bson filter, final DeleteOptions options) {
-        return publisherHelper.deleteOne(null, filter, options);
+        return mongoOperationPublisher.deleteOne(null, filter, options);
     }
 
     @Override
@@ -466,7 +417,7 @@ final class MongoCollectionImpl<T> implements MongoCollection<T> {
 
     @Override
     public Publisher<DeleteResult> deleteOne(final ClientSession clientSession, final Bson filter, final DeleteOptions options) {
-        return publisherHelper.deleteOne(notNull("clientSession", clientSession), filter, options);
+        return mongoOperationPublisher.deleteOne(notNull("clientSession", clientSession), filter, options);
     }
 
     @Override
@@ -476,7 +427,7 @@ final class MongoCollectionImpl<T> implements MongoCollection<T> {
 
     @Override
     public Publisher<DeleteResult> deleteMany(final Bson filter, final DeleteOptions options) {
-        return publisherHelper.deleteMany(null, filter, options);
+        return mongoOperationPublisher.deleteMany(null, filter, options);
     }
 
     @Override
@@ -486,7 +437,7 @@ final class MongoCollectionImpl<T> implements MongoCollection<T> {
 
     @Override
     public Publisher<DeleteResult> deleteMany(final ClientSession clientSession, final Bson filter, final DeleteOptions options) {
-        return publisherHelper.deleteMany(notNull("clientSession", clientSession), filter, options);
+        return mongoOperationPublisher.deleteMany(notNull("clientSession", clientSession), filter, options);
     }
 
     @Override
@@ -496,7 +447,7 @@ final class MongoCollectionImpl<T> implements MongoCollection<T> {
 
     @Override
     public Publisher<UpdateResult> replaceOne(final Bson filter, final T replacement, final ReplaceOptions options) {
-        return publisherHelper.replaceOne(null, filter, replacement, options);
+        return mongoOperationPublisher.replaceOne(null, filter, replacement, options);
     }
 
     @Override
@@ -507,7 +458,7 @@ final class MongoCollectionImpl<T> implements MongoCollection<T> {
     @Override
     public Publisher<UpdateResult> replaceOne(final ClientSession clientSession, final Bson filter, final T replacement,
                                               final ReplaceOptions options) {
-        return publisherHelper.replaceOne(notNull("clientSession", clientSession), filter, replacement, options);
+        return mongoOperationPublisher.replaceOne(notNull("clientSession", clientSession), filter, replacement, options);
     }
 
     @Override
@@ -517,7 +468,7 @@ final class MongoCollectionImpl<T> implements MongoCollection<T> {
 
     @Override
     public Publisher<UpdateResult> updateOne(final Bson filter, final Bson update, final UpdateOptions options) {
-        return publisherHelper.updateOne(null, filter, update, options);
+        return mongoOperationPublisher.updateOne(null, filter, update, options);
     }
 
     @Override
@@ -528,7 +479,7 @@ final class MongoCollectionImpl<T> implements MongoCollection<T> {
     @Override
     public Publisher<UpdateResult> updateOne(final ClientSession clientSession, final Bson filter, final Bson update,
                                              final UpdateOptions options) {
-        return publisherHelper.updateOne(notNull("clientSession", clientSession), filter, update, options);
+        return mongoOperationPublisher.updateOne(notNull("clientSession", clientSession), filter, update, options);
     }
 
     @Override
@@ -538,7 +489,7 @@ final class MongoCollectionImpl<T> implements MongoCollection<T> {
 
     @Override
     public Publisher<UpdateResult> updateOne(final Bson filter, final List<? extends Bson> update, final UpdateOptions options) {
-        return publisherHelper.updateOne(null, filter, update, options);
+        return mongoOperationPublisher.updateOne(null, filter, update, options);
     }
 
     @Override
@@ -549,7 +500,7 @@ final class MongoCollectionImpl<T> implements MongoCollection<T> {
     @Override
     public Publisher<UpdateResult> updateOne(final ClientSession clientSession, final Bson filter, final List<? extends Bson> update,
                                              final UpdateOptions options) {
-        return publisherHelper.updateOne(notNull("clientSession", clientSession), filter, update, options);
+        return mongoOperationPublisher.updateOne(notNull("clientSession", clientSession), filter, update, options);
     }
 
     @Override
@@ -559,7 +510,7 @@ final class MongoCollectionImpl<T> implements MongoCollection<T> {
 
     @Override
     public Publisher<UpdateResult> updateMany(final Bson filter, final Bson update, final UpdateOptions options) {
-        return publisherHelper.updateMany(null, filter, update, options);
+        return mongoOperationPublisher.updateMany(null, filter, update, options);
     }
 
     @Override
@@ -570,7 +521,7 @@ final class MongoCollectionImpl<T> implements MongoCollection<T> {
     @Override
     public Publisher<UpdateResult> updateMany(final ClientSession clientSession, final Bson filter, final Bson update,
                                               final UpdateOptions options) {
-        return publisherHelper.updateMany(notNull("clientSession", clientSession), filter, update, options);
+        return mongoOperationPublisher.updateMany(notNull("clientSession", clientSession), filter, update, options);
     }
 
     @Override
@@ -580,7 +531,7 @@ final class MongoCollectionImpl<T> implements MongoCollection<T> {
 
     @Override
     public Publisher<UpdateResult> updateMany(final Bson filter, final List<? extends Bson> update, final UpdateOptions options) {
-        return publisherHelper.updateMany(null, filter, update, options);
+        return mongoOperationPublisher.updateMany(null, filter, update, options);
     }
 
     @Override
@@ -591,7 +542,7 @@ final class MongoCollectionImpl<T> implements MongoCollection<T> {
     @Override
     public Publisher<UpdateResult> updateMany(final ClientSession clientSession, final Bson filter, final List<? extends Bson> update,
                                               final UpdateOptions options) {
-        return publisherHelper.updateMany(notNull("clientSession", clientSession), filter, update, options);
+        return mongoOperationPublisher.updateMany(notNull("clientSession", clientSession), filter, update, options);
     }
 
     @Override
@@ -601,7 +552,7 @@ final class MongoCollectionImpl<T> implements MongoCollection<T> {
 
     @Override
     public Publisher<T> findOneAndDelete(final Bson filter, final FindOneAndDeleteOptions options) {
-        return publisherHelper.findOneAndDelete(null, filter, options);
+        return mongoOperationPublisher.findOneAndDelete(null, filter, options);
     }
 
     @Override
@@ -612,7 +563,7 @@ final class MongoCollectionImpl<T> implements MongoCollection<T> {
     @Override
     public Publisher<T> findOneAndDelete(final ClientSession clientSession, final Bson filter,
                                          final FindOneAndDeleteOptions options) {
-        return publisherHelper.findOneAndDelete(notNull("clientSession", clientSession), filter, options);
+        return mongoOperationPublisher.findOneAndDelete(notNull("clientSession", clientSession), filter, options);
     }
 
     @Override
@@ -622,7 +573,7 @@ final class MongoCollectionImpl<T> implements MongoCollection<T> {
 
     @Override
     public Publisher<T> findOneAndReplace(final Bson filter, final T replacement, final FindOneAndReplaceOptions options) {
-        return publisherHelper.findOneAndReplace(null, filter, replacement, options);
+        return mongoOperationPublisher.findOneAndReplace(null, filter, replacement, options);
     }
 
     @Override
@@ -633,7 +584,7 @@ final class MongoCollectionImpl<T> implements MongoCollection<T> {
     @Override
     public Publisher<T> findOneAndReplace(final ClientSession clientSession, final Bson filter, final T replacement,
                                           final FindOneAndReplaceOptions options) {
-        return publisherHelper.findOneAndReplace(notNull("clientSession", clientSession), filter, replacement, options);
+        return mongoOperationPublisher.findOneAndReplace(notNull("clientSession", clientSession), filter, replacement, options);
     }
 
     @Override
@@ -643,7 +594,7 @@ final class MongoCollectionImpl<T> implements MongoCollection<T> {
 
     @Override
     public Publisher<T> findOneAndUpdate(final Bson filter, final Bson update, final FindOneAndUpdateOptions options) {
-        return publisherHelper.findOneAndUpdate(null, filter, update, options);
+        return mongoOperationPublisher.findOneAndUpdate(null, filter, update, options);
     }
 
     @Override
@@ -654,7 +605,7 @@ final class MongoCollectionImpl<T> implements MongoCollection<T> {
     @Override
     public Publisher<T> findOneAndUpdate(final ClientSession clientSession, final Bson filter, final Bson update,
                                          final FindOneAndUpdateOptions options) {
-        return publisherHelper.findOneAndUpdate(notNull("clientSession", clientSession), filter, update, options);
+        return mongoOperationPublisher.findOneAndUpdate(notNull("clientSession", clientSession), filter, update, options);
     }
 
     @Override
@@ -665,7 +616,7 @@ final class MongoCollectionImpl<T> implements MongoCollection<T> {
     @Override
     public Publisher<T> findOneAndUpdate(final Bson filter, final List<? extends Bson> update,
                                          final FindOneAndUpdateOptions options) {
-        return publisherHelper.findOneAndUpdate(null, filter, update, options);
+        return mongoOperationPublisher.findOneAndUpdate(null, filter, update, options);
     }
 
     @Override
@@ -677,17 +628,17 @@ final class MongoCollectionImpl<T> implements MongoCollection<T> {
     @Override
     public Publisher<T> findOneAndUpdate(final ClientSession clientSession, final Bson filter,
                                          final List<? extends Bson> update, final FindOneAndUpdateOptions options) {
-        return publisherHelper.findOneAndUpdate(notNull("clientSession", clientSession), filter, update, options);
+        return mongoOperationPublisher.findOneAndUpdate(notNull("clientSession", clientSession), filter, update, options);
     }
 
     @Override
     public Publisher<Void> drop() {
-        return publisherHelper.dropCollection(null);
+        return mongoOperationPublisher.dropCollection(null);
     }
 
     @Override
     public Publisher<Void> drop(final ClientSession clientSession) {
-        return publisherHelper.dropCollection(notNull("clientSession", clientSession));
+        return mongoOperationPublisher.dropCollection(notNull("clientSession", clientSession));
     }
 
     @Override
@@ -697,7 +648,7 @@ final class MongoCollectionImpl<T> implements MongoCollection<T> {
 
     @Override
     public Publisher<String> createIndex(final Bson key, final IndexOptions options) {
-        return publisherHelper.createIndex(null, key, options);
+        return mongoOperationPublisher.createIndex(null, key, options);
     }
 
     @Override
@@ -707,7 +658,7 @@ final class MongoCollectionImpl<T> implements MongoCollection<T> {
 
     @Override
     public Publisher<String> createIndex(final ClientSession clientSession, final Bson key, final IndexOptions options) {
-        return publisherHelper.createIndex(notNull("clientSession", clientSession), key, options);
+        return mongoOperationPublisher.createIndex(notNull("clientSession", clientSession), key, options);
     }
 
     @Override
@@ -717,7 +668,7 @@ final class MongoCollectionImpl<T> implements MongoCollection<T> {
 
     @Override
     public Publisher<String> createIndexes(final List<IndexModel> indexes, final CreateIndexOptions options) {
-        return publisherHelper.createIndexes(null, indexes, options);
+        return mongoOperationPublisher.createIndexes(null, indexes, options);
     }
 
     @Override
@@ -728,7 +679,7 @@ final class MongoCollectionImpl<T> implements MongoCollection<T> {
     @Override
     public Publisher<String> createIndexes(final ClientSession clientSession, final List<IndexModel> indexes,
             final CreateIndexOptions options) {
-        return publisherHelper.createIndexes(notNull("clientSession", clientSession), indexes, options);
+        return mongoOperationPublisher.createIndexes(notNull("clientSession", clientSession), indexes, options);
     }
 
     @Override
@@ -737,9 +688,8 @@ final class MongoCollectionImpl<T> implements MongoCollection<T> {
     }
 
     @Override
-    public <TResult> ListIndexesPublisher<TResult> listIndexes(final Class<TResult> clazz) {
-        return new ListIndexesPublisherImpl<>(null, getNamespace(), clazz, getCodecRegistry(), getReadPreference(), getExecutor(),
-                                              getRetryReads());
+    public <TResult> ListIndexesPublisher<TResult> listIndexes(final Class<TResult> resultClass) {
+        return new ListIndexesPublisherImpl<>(null, mongoOperationPublisher.withDocumentClass(resultClass));
     }
 
     @Override
@@ -748,9 +698,9 @@ final class MongoCollectionImpl<T> implements MongoCollection<T> {
     }
 
     @Override
-    public <TResult> ListIndexesPublisher<TResult> listIndexes(final ClientSession clientSession, final Class<TResult> clazz) {
-        return new ListIndexesPublisherImpl<>(notNull("clientSession", clientSession), namespace, clazz, codecRegistry,
-                                              readPreference, executor, retryReads);
+    public <TResult> ListIndexesPublisher<TResult> listIndexes(final ClientSession clientSession, final Class<TResult> resultClass) {
+        return new ListIndexesPublisherImpl<>(notNull("clientSession", clientSession),
+                                              mongoOperationPublisher.withDocumentClass(resultClass));
     }
 
     @Override
@@ -765,12 +715,12 @@ final class MongoCollectionImpl<T> implements MongoCollection<T> {
 
     @Override
     public Publisher<Void> dropIndex(final String indexName, final DropIndexOptions dropIndexOptions) {
-        return publisherHelper.dropIndex(null, indexName, dropIndexOptions);
+        return mongoOperationPublisher.dropIndex(null, indexName, dropIndexOptions);
     }
 
     @Override
     public Publisher<Void> dropIndex(final Bson keys, final DropIndexOptions dropIndexOptions) {
-        return publisherHelper.dropIndex(null, keys, dropIndexOptions);
+        return mongoOperationPublisher.dropIndex(null, keys, dropIndexOptions);
     }
 
     @Override
@@ -786,12 +736,12 @@ final class MongoCollectionImpl<T> implements MongoCollection<T> {
     @Override
     public Publisher<Void> dropIndex(final ClientSession clientSession, final String indexName,
                                      final DropIndexOptions options) {
-        return publisherHelper.dropIndex(notNull("clientSession", clientSession), indexName, options);
+        return mongoOperationPublisher.dropIndex(notNull("clientSession", clientSession), indexName, options);
     }
 
     @Override
     public Publisher<Void> dropIndex(final ClientSession clientSession, final Bson keys, final DropIndexOptions options) {
-        return publisherHelper.dropIndex(notNull("clientSession", clientSession), keys, options);
+        return mongoOperationPublisher.dropIndex(notNull("clientSession", clientSession), keys, options);
     }
 
     @Override
@@ -801,7 +751,7 @@ final class MongoCollectionImpl<T> implements MongoCollection<T> {
 
     @Override
     public Publisher<Void> dropIndexes(final DropIndexOptions options) {
-        return publisherHelper.dropIndexes(null, options);
+        return mongoOperationPublisher.dropIndexes(null, options);
     }
 
     @Override
@@ -811,7 +761,7 @@ final class MongoCollectionImpl<T> implements MongoCollection<T> {
 
     @Override
     public Publisher<Void> dropIndexes(final ClientSession clientSession, final DropIndexOptions options) {
-        return publisherHelper.dropIndexes(notNull("clientSession", clientSession), options);
+        return mongoOperationPublisher.dropIndexes(notNull("clientSession", clientSession), options);
     }
 
     @Override
@@ -821,7 +771,7 @@ final class MongoCollectionImpl<T> implements MongoCollection<T> {
 
     @Override
     public Publisher<Void> renameCollection(final MongoNamespace newCollectionNamespace, final RenameCollectionOptions options) {
-        return publisherHelper.renameCollection(null, newCollectionNamespace, options);
+        return mongoOperationPublisher.renameCollection(null, newCollectionNamespace, options);
     }
 
     @Override
@@ -832,7 +782,7 @@ final class MongoCollectionImpl<T> implements MongoCollection<T> {
     @Override
     public Publisher<Void> renameCollection(final ClientSession clientSession, final MongoNamespace newCollectionNamespace,
                                             final RenameCollectionOptions options) {
-        return publisherHelper.renameCollection(notNull("clientSession", clientSession), newCollectionNamespace, options);
+        return mongoOperationPublisher.renameCollection(notNull("clientSession", clientSession), newCollectionNamespace, options);
     }
 
 

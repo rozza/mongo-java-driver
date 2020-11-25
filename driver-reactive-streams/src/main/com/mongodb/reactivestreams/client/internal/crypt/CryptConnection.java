@@ -57,7 +57,7 @@ import java.util.Map;
 import java.util.function.Function;
 
 import static com.mongodb.internal.operation.ServerVersionHelper.serverIsLessThanVersionFourDotTwo;
-import static com.mongodb.reactivestreams.client.internal.PublisherHelper.sinkToCallback;
+import static com.mongodb.reactivestreams.client.internal.MongoOperationPublisher.sinkToCallback;
 import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
 
 class CryptConnection implements AsyncConnection {

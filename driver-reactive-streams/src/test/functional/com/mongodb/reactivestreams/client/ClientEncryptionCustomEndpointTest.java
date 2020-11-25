@@ -246,7 +246,7 @@ public class ClientEncryptionCustomEndpointTest {
     private void testEndpoint(final ClientEncryption clientEncryption,
                               @Nullable final Class<? extends RuntimeException> exceptionClass,
                               @Nullable final Class<? extends RuntimeException> wrappedExceptionClass,
-                              @Nullable final String messageContainedInException) throws Throwable {
+                              @Nullable final String messageContainedInException) {
         try {
             BsonBinary dataKeyId = Mono.from(clientEncryption.createDataKey(provider, new DataKeyOptions().masterKey(masterKey)))
                     .block(TIMEOUT_DURATION);
