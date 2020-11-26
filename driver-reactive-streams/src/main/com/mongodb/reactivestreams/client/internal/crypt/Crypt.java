@@ -189,7 +189,7 @@ public class Crypt implements Closeable {
                     .doFinally(s -> cryptContext.close())
                     .onErrorMap(t -> {
                         LOGGER.error(format("Crypt error: %s", t.getMessage()));
-                        return t;
+                        return wrapInClientException(t);
                     });
         } catch (MongoCryptException e) {
             return Mono.error(wrapInClientException(e));
@@ -246,9 +246,9 @@ public class Crypt implements Closeable {
                       @Nullable final String databaseName,
                       final MonoSink<RawBsonDocument> sink) {
         if (commandMarker == null) {
-            sink.error(wrapInClientException(new MongoInternalException("Missing command marker")));
+            sink.error(new MongoInternalException("Missing command marker"));
         } else if (databaseName == null) {
-            sink.error(wrapInClientException(new IllegalStateException("Missing database name")));
+            sink.error(new IllegalStateException("Missing database name"));
         } else {
             commandMarker.mark(databaseName, cryptContext.getMongoOperation())
                     .doOnSuccess(result -> {
@@ -256,7 +256,7 @@ public class Crypt implements Closeable {
                         cryptContext.completeMongoOperation();
                         executeStateMachineWithSink(cryptContext, databaseName, sink);
                     })
-                    .doOnError(t -> sink.error(wrapInClientException(t)))
+                    .doOnError(sink::error)
                     .subscribe();
         }
     }
@@ -283,12 +283,12 @@ public class Crypt implements Closeable {
         if (keyDecryptor != null) {
             keyManagementService.decryptKey(keyDecryptor)
                     .doOnSuccess(r -> decryptKeys(cryptContext, databaseName, sink))
-                    .doOnError(t -> sink.error(wrapInClientException(t)))
+                    .doOnError(sink::error)
                     .subscribe();
         } else {
             Mono.fromRunnable(cryptContext::completeKeyDecryptors)
                     .doOnSuccess(r -> executeStateMachineWithSink(cryptContext, databaseName, sink))
-                    .doOnError(t -> sink.error(wrapInClientException(t)))
+                    .doOnError(sink::error)
                     .subscribe();
         }
     }

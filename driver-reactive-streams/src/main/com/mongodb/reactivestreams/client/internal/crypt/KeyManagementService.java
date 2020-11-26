@@ -60,7 +60,7 @@ class KeyManagementService {
     }
 
     Mono<Void> decryptKey(final MongoKeyDecryptor keyDecryptor) {
-        return Mono.create(sink -> {
+        return Mono.<Void>create(sink -> {
             ServerAddress serverAddress = keyDecryptor.getHostName().contains(":")
                     ? new ServerAddress(keyDecryptor.getHostName())
                     : new ServerAddress(keyDecryptor.getHostName(), defaultPort);
@@ -77,7 +77,7 @@ class KeyManagementService {
                     sink.error(t);
                 }
             });
-        });
+        }).onErrorMap(this::unWrapException);
     }
 
     private void streamWrite(final Stream stream, final MongoKeyDecryptor keyDecryptor, final MonoSink<Void> sink) {
@@ -129,7 +129,7 @@ class KeyManagementService {
         }
     }
 
-    private Throwable wrapException(final Throwable t) {
+    private Throwable unWrapException(final Throwable t) {
         return t instanceof MongoSocketException ? t.getCause() : t;
     }
 }

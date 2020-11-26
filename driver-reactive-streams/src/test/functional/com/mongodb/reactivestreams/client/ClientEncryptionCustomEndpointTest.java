@@ -35,6 +35,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import reactor.core.publisher.Mono;
 
+import java.net.ConnectException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -193,7 +194,7 @@ public class ClientEncryptionCustomEndpointTest {
                         + "  key: \"arn:aws:kms:us-east-1:579766882180:key/89fcc2c4-08b0-4bd9-9f25-e30687b580d0\",\n"
                         + "  endpoint: \"kms.us-east-1.amazonaws.com:12345\"\n"
                         + "}"),
-                false, MongoClientException.class, MongoSocketOpenException.class, "Exception opening socket"});
+                false, MongoClientException.class, ConnectException.class, "Connection refused"});
         data.add(new Object[]{"5. [aws] invalid endpoint host",
                 "aws",
                 BsonDocument.parse("{\n"
