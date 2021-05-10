@@ -34,8 +34,13 @@ import org.bson.BsonDocument
 import org.bson.BsonDouble
 import spock.lang.Specification
 
+import java.util.concurrent.TimeUnit
+
 import static Fixture.getMongoClient
 import static com.mongodb.CustomMatchers.isTheSameAs
+import static com.mongodb.Fixture.CSOT_FACTORY_NO_TIMEOUT
+import static com.mongodb.Fixture.CSOT_FACTORY_TIMEOUT
+import static com.mongodb.Fixture.TIMEOUT_MS
 import static com.mongodb.MongoClientSettings.getDefaultCodecRegistry
 import static spock.util.matcher.HamcrestSupport.expect
 
@@ -69,6 +74,33 @@ class DBSpecification extends Specification {
         db.readConcern == ReadConcern.DEFAULT
     }
 
+    def 'should get and set timeout'() {
+        when:
+        def db = new DB(getMongoClient(), 'myDatabase', new TestOperationExecutor([]))
+        db.setTimeout(123, TimeUnit.MILLISECONDS)
+
+        then:
+        db.getTimeout(TimeUnit.MILLISECONDS) == 123
+
+        when:
+        db.setTimeout(0, TimeUnit.MILLISECONDS)
+
+        then:
+        db.getTimeout(TimeUnit.MILLISECONDS) == 0
+
+        when:
+        db.setTimeout(-1, TimeUnit.MILLISECONDS)
+
+        then:
+        thrown(IllegalArgumentException)
+
+        when:
+        db.setTimeout(2, null)
+
+        then:
+        thrown(IllegalArgumentException)
+    }
+
     def 'should execute CreateCollectionOperation'() {
         given:
         def mongo = Stub(MongoClient)
@@ -77,13 +109,14 @@ class DBSpecification extends Specification {
         def db = new DB(mongo, 'test', executor)
         db.setReadConcern(ReadConcern.MAJORITY)
         db.setWriteConcern(WriteConcern.MAJORITY)
+        db.setTimeout(TIMEOUT_MS, TimeUnit.MILLISECONDS)
 
         when:
         db.createCollection('ctest', new BasicDBObject())
 
         then:
         def operation = executor.getWriteOperation() as CreateCollectionOperation
-        expect operation, isTheSameAs(new CreateCollectionOperation('test', 'ctest', db.getWriteConcern()))
+        expect operation, isTheSameAs(new CreateCollectionOperation(CSOT_FACTORY_TIMEOUT, 'test', 'ctest', db.getWriteConcern()))
         executor.getReadConcern() == ReadConcern.MAJORITY
 
         when:
@@ -103,7 +136,7 @@ class DBSpecification extends Specification {
         operation = executor.getWriteOperation() as CreateCollectionOperation
 
         then:
-        expect operation, isTheSameAs(new CreateCollectionOperation('test', 'ctest', db.getWriteConcern())
+        expect operation, isTheSameAs(new CreateCollectionOperation(CSOT_FACTORY_TIMEOUT, 'test', 'ctest', db.getWriteConcern())
                 .sizeInBytes(100000)
                 .maxDocuments(2000)
                 .capped(true)
@@ -131,7 +164,8 @@ class DBSpecification extends Specification {
         operation = executor.getWriteOperation() as CreateCollectionOperation
 
         then:
-        expect operation, isTheSameAs(new CreateCollectionOperation('test', 'ctest', db.getWriteConcern()).collation(collation))
+        expect operation, isTheSameAs(new CreateCollectionOperation(CSOT_FACTORY_TIMEOUT, 'test', 'ctest', db.getWriteConcern())
+                .collation(collation))
         executor.getReadConcern() == ReadConcern.MAJORITY
     }
 
@@ -159,7 +193,7 @@ class DBSpecification extends Specification {
 
         then:
         def operation = executor.getWriteOperation() as CreateViewOperation
-        expect operation, isTheSameAs(new CreateViewOperation(databaseName, viewName, viewOn,
+        expect operation, isTheSameAs(new CreateViewOperation(CSOT_FACTORY_NO_TIMEOUT, databaseName, viewName, viewOn,
                 [new BsonDocument('$match', new BsonDocument('x', BsonBoolean.TRUE))], writeConcern))
         executor.getReadConcern() == ReadConcern.MAJORITY
 
@@ -168,7 +202,7 @@ class DBSpecification extends Specification {
         operation = executor.getWriteOperation() as CreateViewOperation
 
         then:
-        expect operation, isTheSameAs(new CreateViewOperation(databaseName, viewName, viewOn,
+        expect operation, isTheSameAs(new CreateViewOperation(CSOT_FACTORY_NO_TIMEOUT, databaseName, viewName, viewOn,
                 [new BsonDocument('$match', new BsonDocument('x', BsonBoolean.TRUE))], writeConcern).collation(collation))
         executor.getReadConcern() == ReadConcern.MAJORITY
     }
@@ -188,16 +222,16 @@ class DBSpecification extends Specification {
         def operation = executor.getReadOperation() as ListCollectionsOperation
 
         then:
-        expect operation, isTheSameAs(new ListCollectionsOperation(databaseName, new DBObjectCodec(getDefaultCodecRegistry()))
-                .nameOnly(true))
+        expect operation, isTheSameAs(new ListCollectionsOperation(CSOT_FACTORY_NO_TIMEOUT, databaseName,
+                new DBObjectCodec(getDefaultCodecRegistry())).nameOnly(true))
 
         when:
         db.collectionExists('someCollection')
         operation = executor.getReadOperation() as ListCollectionsOperation
 
         then:
-        expect operation, isTheSameAs(new ListCollectionsOperation(databaseName, new DBObjectCodec(getDefaultCodecRegistry()))
-                .nameOnly(true))
+        expect operation, isTheSameAs(new ListCollectionsOperation(CSOT_FACTORY_NO_TIMEOUT, databaseName,
+                new DBObjectCodec(getDefaultCodecRegistry())).nameOnly(true))
     }
 
     def 'should use provided read preference for obedient commands'() {
