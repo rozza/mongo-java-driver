@@ -89,7 +89,9 @@ public interface ChangeStreamPublisher<TResult> extends Publisher<ChangeStreamDo
      *                      default value
      * @param timeUnit the time unit, which may not be null
      * @return this
+     * @deprecated prefer {@code MongoCollection.withTimeout(long, TimeUnit)} instead
      */
+    @Deprecated
     ChangeStreamPublisher<TResult>  maxAwaitTime(long maxAwaitTime, TimeUnit timeUnit);
 
     /**

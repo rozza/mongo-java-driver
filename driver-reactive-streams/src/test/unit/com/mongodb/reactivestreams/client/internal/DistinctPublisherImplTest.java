@@ -30,6 +30,7 @@ import reactor.core.publisher.Flux;
 
 import static com.mongodb.reactivestreams.client.MongoClients.getDefaultCodecRegistry;
 import static java.util.Arrays.asList;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -43,7 +44,7 @@ public class DistinctPublisherImplTest extends TestHelper {
         DistinctPublisher<Document> publisher =
                 new DistinctPublisherImpl<>(null, createMongoOperationPublisher(executor), fieldName, new Document());
 
-        DistinctOperation<Document> expectedOperation = new DistinctOperation<>(NAMESPACE, fieldName,
+        DistinctOperation<Document> expectedOperation = new DistinctOperation<>(CSOT_FACTORY_NO_TIMEOUT, NAMESPACE, fieldName,
                                                                                 getDefaultCodecRegistry().get(Document.class))
                 .retryReads(true).filter(new BsonDocument());
 
@@ -58,9 +59,12 @@ public class DistinctPublisherImplTest extends TestHelper {
         publisher
                 .batchSize(100)
                 .collation(COLLATION)
+                .maxTime(99, MILLISECONDS)
                 .filter(filter);
 
-        expectedOperation
+        expectedOperation =  new DistinctOperation<>(CSOT_FACTORY_MAX_AWAIT_TIME, NAMESPACE, fieldName,
+                getDefaultCodecRegistry().get(Document.class))
+                .retryReads(true)
                 .collation(COLLATION)
                 .filter(filter);
 

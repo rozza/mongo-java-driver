@@ -101,6 +101,7 @@ class SyncChangeStreamIterable<T> extends SyncMongoIterable<ChangeStreamDocument
         return this;
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     public ChangeStreamIterable<T> maxAwaitTime(final long maxAwaitTime, final TimeUnit timeUnit) {
         wrapped.maxAwaitTime(maxAwaitTime, timeUnit);
