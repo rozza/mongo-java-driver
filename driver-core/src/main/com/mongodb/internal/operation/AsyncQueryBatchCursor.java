@@ -21,6 +21,7 @@ import com.mongodb.MongoException;
 import com.mongodb.MongoNamespace;
 import com.mongodb.ReadPreference;
 import com.mongodb.ServerCursor;
+import com.mongodb.internal.ClientSideOperationTimeout;
 import com.mongodb.internal.async.AsyncAggregateResponseBatchCursor;
 import com.mongodb.internal.async.SingleResultCallback;
 import com.mongodb.internal.binding.AsyncConnectionSource;
@@ -29,7 +30,6 @@ import com.mongodb.internal.connection.QueryResult;
 import com.mongodb.internal.validator.NoOpFieldNameValidator;
 import org.bson.BsonArray;
 import org.bson.BsonDocument;
-import org.bson.BsonInt32;
 import org.bson.BsonInt64;
 import org.bson.BsonString;
 import org.bson.BsonTimestamp;
@@ -42,10 +42,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static com.mongodb.assertions.Assertions.assertFalse;
-import static com.mongodb.assertions.Assertions.isTrueArgument;
 import static com.mongodb.assertions.Assertions.notNull;
 import static com.mongodb.internal.async.ErrorHandlingResultCallback.errorHandlingCallback;
 import static com.mongodb.internal.operation.CursorHelper.getNumberToReturn;
+import static com.mongodb.internal.operation.DocumentHelper.putIfNotZero;
 import static com.mongodb.internal.operation.OperationHelper.LOGGER;
 import static com.mongodb.internal.operation.OperationHelper.getMoreCursorDocumentToQueryResult;
 import static com.mongodb.internal.operation.QueryHelper.translateCommandException;
@@ -59,10 +59,10 @@ class AsyncQueryBatchCursor<T> implements AsyncAggregateResponseBatchCursor<T> {
     private static final String POST_BATCH_RESUME_TOKEN = "postBatchResumeToken";
     private static final String OPERATION_TIME = "operationTime";
 
+    private final ClientSideOperationTimeout clientSideOperationTimeout;
     private final MongoNamespace namespace;
     private final int limit;
     private final Decoder<T> decoder;
-    private final long maxTimeMS;
     private final AsyncConnectionSource connectionSource;
     private final AtomicReference<ServerCursor> cursor;
     private volatile QueryResult<T> firstBatch;
@@ -72,6 +72,7 @@ class AsyncQueryBatchCursor<T> implements AsyncAggregateResponseBatchCursor<T> {
     private final BsonTimestamp operationTime;
     private final boolean firstBatchEmpty;
     private final int maxWireVersion;
+    private final boolean isTailable;
 
     /* protected by `this` */
     private boolean isOperationInProgress = false;
@@ -79,16 +80,28 @@ class AsyncQueryBatchCursor<T> implements AsyncAggregateResponseBatchCursor<T> {
     /* protected by `this` */
     private volatile boolean isClosePending = false;
 
-    AsyncQueryBatchCursor(final QueryResult<T> firstBatch, final int limit, final int batchSize, final long maxTimeMS,
-                          final Decoder<T> decoder, final AsyncConnectionSource connectionSource, final AsyncConnection connection) {
-        this(firstBatch, limit, batchSize, maxTimeMS, decoder, connectionSource, connection, null);
+    AsyncQueryBatchCursor(final ClientSideOperationTimeout clientSideOperationTimeout, final QueryResult<T> firstBatch, final int limit,
+                          final int batchSize, final Decoder<T> decoder, final AsyncConnectionSource connectionSource,
+                          final AsyncConnection connection) {
+        this(clientSideOperationTimeout, firstBatch, limit, batchSize, decoder, connectionSource, connection, null);
     }
 
-    AsyncQueryBatchCursor(final QueryResult<T> firstBatch, final int limit, final int batchSize, final long maxTimeMS,
-                          final Decoder<T> decoder, final AsyncConnectionSource connectionSource, final AsyncConnection connection,
-                          final BsonDocument result) {
-        isTrueArgument("maxTimeMS >= 0", maxTimeMS >= 0);
-        this.maxTimeMS = maxTimeMS;
+    AsyncQueryBatchCursor(final ClientSideOperationTimeout clientSideOperationTimeout, final QueryResult<T> firstBatch, final int limit,
+                          final int batchSize, final Decoder<T> decoder, final AsyncConnectionSource connectionSource,
+                          final AsyncConnection connection, final boolean isTailable) {
+        this(clientSideOperationTimeout, firstBatch, limit, batchSize, decoder, connectionSource, connection, null, isTailable);
+    }
+
+    AsyncQueryBatchCursor(final ClientSideOperationTimeout clientSideOperationTimeout, final QueryResult<T> firstBatch, final int limit,
+                          final int batchSize, final Decoder<T> decoder, final AsyncConnectionSource connectionSource,
+                          final AsyncConnection connection, final BsonDocument result) {
+        this(clientSideOperationTimeout, firstBatch, limit, batchSize, decoder, connectionSource, connection, result, false);
+    }
+
+    AsyncQueryBatchCursor(final ClientSideOperationTimeout clientSideOperationTimeout, final QueryResult<T> firstBatch, final int limit,
+                          final int batchSize, final Decoder<T> decoder, final AsyncConnectionSource connectionSource,
+                          final AsyncConnection connection, final BsonDocument result, final boolean isTailable) {
+        this.clientSideOperationTimeout = clientSideOperationTimeout;
         this.namespace = firstBatch.getNamespace();
         this.firstBatch = firstBatch;
         this.limit = limit;
@@ -112,6 +125,7 @@ class AsyncQueryBatchCursor<T> implements AsyncAggregateResponseBatchCursor<T> {
             }
         }
         this.maxWireVersion = connection == null ? 0 : connection.getDescription().getMaxWireVersion();
+        this.isTailable = isTailable;
     }
 
     /**
@@ -139,6 +153,11 @@ class AsyncQueryBatchCursor<T> implements AsyncAggregateResponseBatchCursor<T> {
         if (doClose) {
             killCursorOnClose();
         }
+    }
+
+    @Override
+    public ClientSideOperationTimeout getClientSideOperationTimeout() {
+        return clientSideOperationTimeout;
     }
 
     @Override
@@ -257,17 +276,15 @@ class AsyncQueryBatchCursor<T> implements AsyncAggregateResponseBatchCursor<T> {
     }
 
     private BsonDocument asGetMoreCommandDocument(final long cursorId) {
-        BsonDocument document = new BsonDocument("getMore", new BsonInt64(cursorId))
+        BsonDocument command = new BsonDocument("getMore", new BsonInt64(cursorId))
                 .append("collection", new BsonString(namespace.getCollectionName()));
 
         int batchSizeForGetMoreCommand = Math.abs(getNumberToReturn(limit, this.batchSize, count.get()));
-        if (batchSizeForGetMoreCommand != 0) {
-            document.append("batchSize", new BsonInt32(batchSizeForGetMoreCommand));
+        putIfNotZero(command, "batchSize", batchSizeForGetMoreCommand);
+        if (isTailable) {
+            putIfNotZero(command, "maxTimeMS", clientSideOperationTimeout.getMaxAwaitTimeMS());
         }
-        if (maxTimeMS != 0) {
-            document.append("maxTimeMS", new BsonInt64(maxTimeMS));
-        }
-        return document;
+        return command;
     }
 
     private void killCursorOnClose() {

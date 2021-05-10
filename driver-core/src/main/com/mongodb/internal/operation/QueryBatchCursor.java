@@ -24,13 +24,13 @@ import com.mongodb.ReadPreference;
 import com.mongodb.ServerAddress;
 import com.mongodb.ServerCursor;
 import com.mongodb.connection.ServerType;
+import com.mongodb.internal.ClientSideOperationTimeout;
 import com.mongodb.internal.binding.ConnectionSource;
 import com.mongodb.internal.connection.Connection;
 import com.mongodb.internal.connection.QueryResult;
 import com.mongodb.internal.validator.NoOpFieldNameValidator;
 import org.bson.BsonArray;
 import org.bson.BsonDocument;
-import org.bson.BsonInt32;
 import org.bson.BsonInt64;
 import org.bson.BsonString;
 import org.bson.BsonTimestamp;
@@ -42,9 +42,9 @@ import java.util.List;
 import java.util.NoSuchElementException;
 
 import static com.mongodb.assertions.Assertions.assertNotNull;
-import static com.mongodb.assertions.Assertions.isTrueArgument;
 import static com.mongodb.assertions.Assertions.notNull;
 import static com.mongodb.internal.operation.CursorHelper.getNumberToReturn;
+import static com.mongodb.internal.operation.DocumentHelper.putIfNotZero;
 import static com.mongodb.internal.operation.OperationHelper.getMoreCursorDocumentToQueryResult;
 import static com.mongodb.internal.operation.QueryHelper.translateCommandException;
 import static com.mongodb.internal.operation.ServerVersionHelper.serverIsAtLeastVersionThreeDotTwo;
@@ -56,11 +56,11 @@ class QueryBatchCursor<T> implements AggregateResponseBatchCursor<T> {
     private static final String POST_BATCH_RESUME_TOKEN = "postBatchResumeToken";
     private static final String OPERATION_TIME = "operationTime";
 
+    private final ClientSideOperationTimeout clientSideOperationTimeout;
     private final MongoNamespace namespace;
     private final ServerAddress serverAddress;
     private final int limit;
     private final Decoder<T> decoder;
-    private final long maxTimeMS;
     private int batchSize;
     private ConnectionSource connectionSource;
     private Connection connection;
@@ -73,26 +73,40 @@ class QueryBatchCursor<T> implements AggregateResponseBatchCursor<T> {
     private final boolean firstBatchEmpty;
     private int maxWireVersion = 0;
     private boolean killCursorOnClose = true;
+    private final boolean isTailable;
 
-    QueryBatchCursor(final QueryResult<T> firstQueryResult, final int limit, final int batchSize, final Decoder<T> decoder) {
-        this(firstQueryResult, limit, batchSize, decoder, null);
+    QueryBatchCursor(final ClientSideOperationTimeout clientSideOperationTimeout, final QueryResult<T> firstQueryResult,
+                     final int limit, final int batchSize, final Decoder<T> decoder) {
+        this(clientSideOperationTimeout, firstQueryResult, limit, batchSize, decoder, null);
     }
 
-    QueryBatchCursor(final QueryResult<T> firstQueryResult, final int limit, final int batchSize,
-                     final Decoder<T> decoder, final ConnectionSource connectionSource) {
-        this(firstQueryResult, limit, batchSize, 0, decoder, connectionSource, null, null);
+    QueryBatchCursor(final ClientSideOperationTimeout clientSideOperationTimeout, final QueryResult<T> firstQueryResult,
+                     final int limit, final int batchSize, final Decoder<T> decoder, final ConnectionSource connectionSource) {
+        this(clientSideOperationTimeout, firstQueryResult, limit, batchSize, decoder, connectionSource, null, null);
     }
 
-    QueryBatchCursor(final QueryResult<T> firstQueryResult, final int limit, final int batchSize, final long maxTimeMS,
-                     final Decoder<T> decoder, final ConnectionSource connectionSource, final Connection connection) {
-        this(firstQueryResult, limit, batchSize, maxTimeMS, decoder, connectionSource, connection, null);
+    QueryBatchCursor(final ClientSideOperationTimeout clientSideOperationTimeout, final QueryResult<T> firstQueryResult,
+                     final int limit, final int batchSize, final Decoder<T> decoder, final ConnectionSource connectionSource,
+                     final Connection connection) {
+        this(clientSideOperationTimeout, firstQueryResult, limit, batchSize, decoder, connectionSource, connection, null);
     }
 
-    QueryBatchCursor(final QueryResult<T> firstQueryResult, final int limit, final int batchSize, final long maxTimeMS,
-                     final Decoder<T> decoder, final ConnectionSource connectionSource, final Connection connection,
-                     final BsonDocument result) {
-        isTrueArgument("maxTimeMS >= 0", maxTimeMS >= 0);
-        this.maxTimeMS = maxTimeMS;
+    QueryBatchCursor(final ClientSideOperationTimeout clientSideOperationTimeout, final QueryResult<T> firstQueryResult,
+                     final int limit, final int batchSize, final Decoder<T> decoder, final ConnectionSource connectionSource,
+                     final Connection connection, final boolean isTailable) {
+        this(clientSideOperationTimeout, firstQueryResult, limit, batchSize, decoder, connectionSource, connection, null, isTailable);
+    }
+
+    QueryBatchCursor(final ClientSideOperationTimeout clientSideOperationTimeout, final QueryResult<T> firstQueryResult,
+                     final int limit, final int batchSize, final Decoder<T> decoder, final ConnectionSource connectionSource,
+                     final Connection connection, final BsonDocument result) {
+        this(clientSideOperationTimeout, firstQueryResult, limit, batchSize, decoder, connectionSource, connection, result, false);
+    }
+
+    QueryBatchCursor(final ClientSideOperationTimeout clientSideOperationTimeout, final QueryResult<T> firstQueryResult,
+                     final int limit, final int batchSize, final Decoder<T> decoder, final ConnectionSource connectionSource,
+                     final Connection connection, final BsonDocument result, final boolean isTailable) {
+        this.clientSideOperationTimeout = clientSideOperationTimeout;
         this.namespace = firstQueryResult.getNamespace();
         this.serverAddress = firstQueryResult.getAddress();
         this.limit = limit;
@@ -124,6 +138,7 @@ class QueryBatchCursor<T> implements AggregateResponseBatchCursor<T> {
                 }
             }
         }
+        this.isTailable = isTailable;
         releaseConnectionAndSourceIfNoServerCursor();
     }
 
@@ -243,6 +258,11 @@ class QueryBatchCursor<T> implements AggregateResponseBatchCursor<T> {
     }
 
     @Override
+    public ClientSideOperationTimeout getClientSideOperationTimeout() {
+        return clientSideOperationTimeout;
+    }
+
+    @Override
     public BsonDocument getPostBatchResumeToken() {
         return postBatchResumeToken;
     }
@@ -306,18 +326,14 @@ class QueryBatchCursor<T> implements AggregateResponseBatchCursor<T> {
     }
 
     private BsonDocument asGetMoreCommandDocument() {
-        BsonDocument document = new BsonDocument("getMore", new BsonInt64(serverCursor.getId()))
+        BsonDocument command = new BsonDocument("getMore", new BsonInt64(serverCursor.getId()))
                                 .append("collection", new BsonString(namespace.getCollectionName()));
-
         int batchSizeForGetMoreCommand = Math.abs(getNumberToReturn(limit, this.batchSize, count));
-        if (batchSizeForGetMoreCommand != 0) {
-            document.append("batchSize", new BsonInt32(batchSizeForGetMoreCommand));
+        putIfNotZero(command, "batchSize", batchSizeForGetMoreCommand);
+        if (isTailable) {
+            putIfNotZero(command, "maxTimeMS", clientSideOperationTimeout.getMaxAwaitTimeMS());
         }
-        if (maxTimeMS != 0) {
-            document.append("maxTimeMS", new BsonInt64(maxTimeMS));
-        }
-
-        return document;
+        return command;
     }
 
     private void initFromQueryResult(final QueryResult<T> queryResult) {
