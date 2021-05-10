@@ -27,6 +27,7 @@ import com.mongodb.client.MongoIterable;
 import com.mongodb.client.model.Collation;
 import com.mongodb.client.model.changestream.ChangeStreamDocument;
 import com.mongodb.client.model.changestream.FullDocument;
+import com.mongodb.internal.ClientSideOperationTimeoutFactories;
 import com.mongodb.internal.client.model.changestream.ChangeStreamLevel;
 import com.mongodb.internal.operation.BatchCursor;
 import com.mongodb.internal.operation.ChangeStreamOperation;
@@ -68,16 +69,17 @@ public class ChangeStreamIterableImpl<TResult> extends MongoIterableImpl<ChangeS
     public ChangeStreamIterableImpl(@Nullable final ClientSession clientSession, final String databaseName,
                                     final CodecRegistry codecRegistry, final ReadPreference readPreference, final ReadConcern readConcern,
                                     final OperationExecutor executor, final List<? extends Bson> pipeline, final Class<TResult> resultClass,
-                                    final ChangeStreamLevel changeStreamLevel, final boolean retryReads) {
+                                    final ChangeStreamLevel changeStreamLevel, final boolean retryReads,
+                                    @Nullable final Long timeoutMS) {
         this(clientSession, new MongoNamespace(databaseName, "ignored"), codecRegistry, readPreference, readConcern, executor, pipeline,
-                resultClass, changeStreamLevel, retryReads);
+                resultClass, changeStreamLevel, retryReads, timeoutMS);
     }
 
     public ChangeStreamIterableImpl(@Nullable final ClientSession clientSession, final MongoNamespace namespace,
                                     final CodecRegistry codecRegistry, final ReadPreference readPreference, final ReadConcern readConcern,
                                     final OperationExecutor executor, final List<? extends Bson> pipeline, final Class<TResult> resultClass,
-                                    final ChangeStreamLevel changeStreamLevel, final boolean retryReads) {
-        super(clientSession, executor, readConcern, readPreference, retryReads);
+                                    final ChangeStreamLevel changeStreamLevel, final boolean retryReads, @Nullable final Long timeoutMS) {
+        super(clientSession, executor, readConcern, readPreference, retryReads, timeoutMS);
         this.namespace = notNull("namespace", namespace);
         this.codecRegistry = notNull("codecRegistry", codecRegistry);
         this.pipeline = notNull("pipeline", pipeline);
@@ -103,6 +105,7 @@ public class ChangeStreamIterableImpl<TResult> extends MongoIterableImpl<ChangeS
         return this;
     }
 
+    @Deprecated
     @Override
     public ChangeStreamIterable<TResult> maxAwaitTime(final long maxAwaitTime, final TimeUnit timeUnit) {
         notNull("timeUnit", timeUnit);
@@ -118,7 +121,8 @@ public class ChangeStreamIterableImpl<TResult> extends MongoIterableImpl<ChangeS
 
     @Override
     public <TDocument> MongoIterable<TDocument> withDocumentClass(final Class<TDocument> clazz) {
-        return new MongoIterableImpl<TDocument>(getClientSession(), getExecutor(), getReadConcern(), getReadPreference(), getRetryReads()) {
+        return new MongoIterableImpl<TDocument>(getClientSession(), getExecutor(), getReadConcern(), getReadPreference(),
+                getRetryReads(), getTimeoutMS()) {
             @Override
             public MongoCursor<TDocument> iterator() {
                 return cursor();
@@ -178,11 +182,11 @@ public class ChangeStreamIterableImpl<TResult> extends MongoIterableImpl<ChangeS
     }
 
     private ReadOperation<BatchCursor<RawBsonDocument>> createChangeStreamOperation() {
-        return new ChangeStreamOperation<RawBsonDocument>(namespace, fullDocument,  createBsonDocumentList(pipeline),
-                new RawBsonDocumentCodec(), changeStreamLevel)
+        return new ChangeStreamOperation<>(ClientSideOperationTimeoutFactories.create(getTimeoutMS(), 0, maxAwaitTimeMS),
+                namespace, fullDocument, createBsonDocumentList(pipeline),
+                                                          new RawBsonDocumentCodec(), changeStreamLevel)
                         .batchSize(getBatchSize())
                         .collation(collation)
-                        .maxAwaitTime(maxAwaitTimeMS, MILLISECONDS)
                         .resumeAfter(resumeToken)
                         .startAtOperationTime(startAtOperationTime)
                         .startAfter(startAfter)

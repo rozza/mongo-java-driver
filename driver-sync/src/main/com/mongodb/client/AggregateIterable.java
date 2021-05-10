@@ -59,6 +59,7 @@ public interface AggregateIterable<TResult> extends MongoIterable<TResult> {
      * @return this
      * @mongodb.driver.manual reference/method/cursor.batchSize/#cursor.batchSize Batch Size
      */
+    @Override
     AggregateIterable<TResult> batchSize(int batchSize);
 
     /**
@@ -68,7 +69,9 @@ public interface AggregateIterable<TResult> extends MongoIterable<TResult> {
      * @param timeUnit the time unit, which may not be null
      * @return this
      * @mongodb.driver.manual reference/method/cursor.maxTimeMS/#cursor.maxTimeMS Max Time
+     * @deprecated prefer {@code MongoCollection.withTimeout(long, TimeUnit)} instead
      */
+    @Deprecated
     AggregateIterable<TResult> maxTime(long maxTime, TimeUnit timeUnit);
 
     /**
@@ -81,7 +84,9 @@ public interface AggregateIterable<TResult> extends MongoIterable<TResult> {
      * @return the maximum await execution time in the given time unit
      * @mongodb.server.release 3.6
      * @since 3.6
+     * @deprecated prefer {@code MongoCollection.withTimeout(long, TimeUnit)} instead
      */
+    @Deprecated
     AggregateIterable<TResult> maxAwaitTime(long maxAwaitTime, TimeUnit timeUnit);
 
     /**

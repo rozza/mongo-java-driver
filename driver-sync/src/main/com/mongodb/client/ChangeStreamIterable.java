@@ -78,7 +78,9 @@ public interface ChangeStreamIterable<TResult> extends MongoIterable<ChangeStrea
      *                      default value
      * @param timeUnit the time unit, which may not be null
      * @return this
+     * @deprecated prefer {@code MongoCollection.withTimeout(long, TimeUnit)} instead
      */
+    @Deprecated
     ChangeStreamIterable<TResult>  maxAwaitTime(long maxAwaitTime, TimeUnit timeUnit);
 
     /**
