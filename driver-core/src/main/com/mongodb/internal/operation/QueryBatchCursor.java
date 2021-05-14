@@ -20,6 +20,7 @@ import com.mongodb.MongoCommandException;
 import com.mongodb.MongoException;
 import com.mongodb.MongoNamespace;
 import com.mongodb.MongoSocketException;
+import com.mongodb.MongoTimeoutException;
 import com.mongodb.ReadPreference;
 import com.mongodb.ServerAddress;
 import com.mongodb.ServerCursor;
@@ -48,6 +49,7 @@ import static com.mongodb.internal.operation.CursorHelper.getNumberToReturn;
 import static com.mongodb.internal.operation.OperationHelper.getMoreCursorDocumentToQueryResult;
 import static com.mongodb.internal.operation.QueryHelper.translateCommandException;
 import static com.mongodb.internal.operation.ServerVersionHelper.serverIsAtLeastVersionThreeDotTwo;
+import static java.lang.String.format;
 import static java.util.Collections.singletonList;
 
 class QueryBatchCursor<T> implements AggregateResponseBatchCursor<T> {
@@ -269,6 +271,11 @@ class QueryBatchCursor<T> implements AggregateResponseBatchCursor<T> {
     }
 
     private void getMore() {
+        if (!clientSideOperationTimeout.canCallGetMore()) {
+            close();
+            throw new MongoTimeoutException(format("The timeoutMS '%d' has been exceeded.", clientSideOperationTimeout.getTimeoutMS()));
+        }
+
         Connection connection = getConnection();
         try {
             if (serverIsAtLeastVersionThreeDotTwo(connection.getDescription())) {

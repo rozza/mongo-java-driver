@@ -17,6 +17,7 @@
 package com.mongodb.client;
 
 import com.mongodb.client.model.Collation;
+import com.mongodb.client.model.TimeoutMode;
 import com.mongodb.lang.Nullable;
 import org.bson.conversions.Bson;
 
@@ -58,6 +59,18 @@ public interface DistinctIterable<TResult> extends MongoIterable<TResult> {
      * @mongodb.driver.manual reference/method/cursor.batchSize/#cursor.batchSize Batch Size
      */
     DistinctIterable<TResult> batchSize(int batchSize);
+
+    /**
+     * Sets the timeout mode.
+     *
+     * <p>For use with {@code timeoutMS} via {@link MongoCollection#withTimeout(long, TimeUnit)}.</p>
+     *
+     * @param timeoutMode the timeoutMode type
+     * @return this
+     * @since 4.x
+     */
+    @Override
+    DistinctIterable<TResult> timeoutMode(TimeoutMode timeoutMode);
 
     /**
      * Sets the collation options

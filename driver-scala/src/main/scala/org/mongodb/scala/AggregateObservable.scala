@@ -22,7 +22,7 @@ import java.util.concurrent.TimeUnit
 import com.mongodb.reactivestreams.client.AggregatePublisher
 import org.mongodb.scala.bson.DefaultHelper.DefaultsTo
 import org.mongodb.scala.bson.conversions.Bson
-import org.mongodb.scala.model.Collation
+import org.mongodb.scala.model.{ Collation, TimeoutMode }
 
 import scala.concurrent.duration.Duration
 import scala.reflect.ClassTag
@@ -141,6 +141,20 @@ case class AggregateObservable[TResult](private val wrapped: AggregatePublisher[
    */
   def batchSize(batchSize: Int): AggregateObservable[TResult] = {
     wrapped.batchSize(batchSize)
+    this
+  }
+
+  /**
+   * Sets the timeout mode for cursor based results.
+   *
+   * For use with `timeoutMS` via `MongoCollection.withTimeout`.</p>
+   *
+   * @param timeoutMode the timeoutMode type
+   * @return this
+   * @since 4.x
+   */
+  def timeoutMode(timeoutMode: TimeoutMode): AggregateObservable[TResult] = {
+    wrapped.timeoutMode(timeoutMode)
     this
   }
 

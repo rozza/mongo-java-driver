@@ -22,6 +22,9 @@ import com.mongodb.ReadPreference;
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoIterable;
+import com.mongodb.client.model.TimeoutMode;
+import com.mongodb.internal.ClientSideOperationTimeout;
+import com.mongodb.internal.ClientSideOperationTimeouts;
 import com.mongodb.internal.operation.BatchCursor;
 import com.mongodb.internal.operation.ReadOperation;
 import com.mongodb.lang.Nullable;
@@ -44,6 +47,8 @@ public abstract class MongoIterableImpl<TResult> implements MongoIterable<TResul
     private final Long timeoutMS;
     private final boolean retryReads;
     private Integer batchSize;
+
+    private TimeoutMode timeoutMode = TimeoutMode.DEFAULT;
 
     public MongoIterableImpl(@Nullable final ClientSession clientSession, final OperationExecutor executor, final ReadConcern readConcern,
                              final ReadPreference readPreference, final boolean retryReads, final @Nullable Long timeoutMS) {
@@ -94,6 +99,16 @@ public abstract class MongoIterableImpl<TResult> implements MongoIterable<TResul
         return this;
     }
 
+    public TimeoutMode getTimeoutMode() {
+        return timeoutMode;
+    }
+
+    @Override
+    public MongoIterable<TResult> timeoutMode(final TimeoutMode timeoutMode) {
+        this.timeoutMode = notNull("timeoutMode", timeoutMode);
+        return this;
+    }
+
     @Override
     public MongoCursor<TResult> iterator() {
         return new MongoBatchCursorAdapter<TResult>(execute());
@@ -140,5 +155,22 @@ public abstract class MongoIterableImpl<TResult> implements MongoIterable<TResul
 
     private BatchCursor<TResult> execute() {
         return executor.execute(asReadOperation(), readPreference, readConcern, clientSession);
+    }
+
+    public ClientSideOperationTimeout getClientSideOperationTimeout() {
+        return ClientSideOperationTimeouts.create(timeoutMS, getTimeoutMode());
+    }
+
+    public ClientSideOperationTimeout getClientSideOperationTimeout(final long maxTimeMS) {
+        return ClientSideOperationTimeouts.create(timeoutMS, getTimeoutMode(), maxTimeMS);
+    }
+
+    public ClientSideOperationTimeout getClientSideOperationTimeout(final TimeoutMode timeoutMode, final long maxTimeMS) {
+        return ClientSideOperationTimeouts.create(timeoutMS, timeoutMode, maxTimeMS);
+    }
+
+    public ClientSideOperationTimeout getClientSideOperationTimeout(final long maxTimeMS,
+                                                                    final long maxAwaitTimeMS) {
+        return ClientSideOperationTimeouts.create(timeoutMS, timeoutMode, maxTimeMS, maxAwaitTimeMS);
     }
 }

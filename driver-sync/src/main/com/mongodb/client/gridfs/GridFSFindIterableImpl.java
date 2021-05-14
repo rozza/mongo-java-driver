@@ -22,6 +22,7 @@ import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoIterable;
 import com.mongodb.client.gridfs.model.GridFSFile;
 import com.mongodb.client.model.Collation;
+import com.mongodb.client.model.TimeoutMode;
 import com.mongodb.lang.Nullable;
 import org.bson.conversions.Bson;
 
@@ -70,6 +71,12 @@ class GridFSFindIterableImpl implements GridFSFindIterable {
     @Override
     public GridFSFindIterable batchSize(final int batchSize) {
         underlying.batchSize(batchSize);
+        return this;
+    }
+
+    @Override
+    public GridFSFindIterable timeoutMode(final TimeoutMode timeoutMode) {
+        underlying.timeoutMode(timeoutMode);
         return this;
     }
 

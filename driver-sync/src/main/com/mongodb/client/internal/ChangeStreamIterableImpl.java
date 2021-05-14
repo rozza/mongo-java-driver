@@ -25,6 +25,7 @@ import com.mongodb.client.MongoChangeStreamCursor;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoIterable;
 import com.mongodb.client.model.Collation;
+import com.mongodb.client.model.TimeoutMode;
 import com.mongodb.client.model.changestream.ChangeStreamDocument;
 import com.mongodb.client.model.changestream.FullDocument;
 import com.mongodb.internal.ClientSideOperationTimeouts;
@@ -103,6 +104,11 @@ public class ChangeStreamIterableImpl<TResult> extends MongoIterableImpl<ChangeS
     public ChangeStreamIterable<TResult> batchSize(final int batchSize) {
         super.batchSize(batchSize);
         return this;
+    }
+
+    @Override
+    public ChangeStreamIterable<TResult> timeoutMode(final TimeoutMode timeoutMode) {
+        throw new UnsupportedOperationException("Change streams do not support timeout mode configuration.");
     }
 
     @Override

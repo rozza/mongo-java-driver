@@ -19,6 +19,7 @@ package com.mongodb.reactivestreams.client.syncadapter;
 import com.mongodb.Function;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoIterable;
+import com.mongodb.client.model.TimeoutMode;
 import com.mongodb.lang.Nullable;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Mono;
@@ -80,5 +81,10 @@ class SyncMongoIterable<T> implements MongoIterable<T> {
     public MongoIterable<T> batchSize(final int batchSize) {
         this.batchSize = batchSize;
         return this;
+    }
+
+    @Override
+    public MongoIterable<T> timeoutMode(final TimeoutMode timeoutMode) {
+        throw new UnsupportedOperationException("The MongoIterable wrapper should implement this method");
     }
 }

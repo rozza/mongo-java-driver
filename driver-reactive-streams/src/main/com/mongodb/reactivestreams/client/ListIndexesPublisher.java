@@ -16,6 +16,7 @@
 
 package com.mongodb.reactivestreams.client;
 
+import com.mongodb.client.model.TimeoutMode;
 import org.reactivestreams.Publisher;
 
 import java.util.concurrent.TimeUnit;
@@ -52,6 +53,18 @@ public interface ListIndexesPublisher<TResult> extends Publisher<TResult> {
      * @mongodb.driver.manual reference/method/cursor.batchSize/#cursor.batchSize Batch Size
      */
     ListIndexesPublisher<TResult> batchSize(int batchSize);
+
+    /**
+     * Sets the timeout mode for cursor based results.
+     *
+     * <p>For use with {@code timeoutMS} via {@link MongoCollection#withTimeout(long, TimeUnit)}.</p>
+     *
+     * @param timeoutMode the timeoutMode type
+     * @return this
+     * @see TimeoutMode
+     * @since 4.x
+     */
+    ListIndexesPublisher<TResult> timeoutMode(TimeoutMode timeoutMode);
 
     /**
      * Helper to return a publisher limited to the first result.

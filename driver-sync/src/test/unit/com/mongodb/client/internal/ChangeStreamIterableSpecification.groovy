@@ -22,6 +22,7 @@ import com.mongodb.MongoNamespace
 import com.mongodb.ReadConcern
 import com.mongodb.client.ClientSession
 import com.mongodb.client.model.Collation
+import com.mongodb.client.model.TimeoutMode
 import com.mongodb.client.model.changestream.ChangeStreamDocument
 import com.mongodb.client.model.changestream.FullDocument
 import com.mongodb.internal.client.model.changestream.ChangeStreamLevel
@@ -262,6 +263,16 @@ class ChangeStreamIterableSpecification extends Specification {
 
         then:
         mongoIterable.getBatchSize() == batchSize
+    }
+
+    def 'should throw an error if timeoutMode is used'() {
+        when:
+        new ChangeStreamIterableImpl(null, namespace, codecRegistry, readPreference, readConcern,
+                new TestOperationExecutor([]), [], Document, ChangeStreamLevel.COLLECTION, true, null)
+        .timeoutMode(TimeoutMode.CURSOR_LIFETIME)
+
+        then:
+        thrown(UnsupportedOperationException)
     }
 
     def cursor(List<?> cannedResults) {

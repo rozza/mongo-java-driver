@@ -20,7 +20,7 @@ import com.mongodb.ReadConcern;
 import com.mongodb.ReadPreference;
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.ListCollectionsIterable;
-import com.mongodb.internal.ClientSideOperationTimeouts;
+import com.mongodb.client.model.TimeoutMode;
 import com.mongodb.internal.operation.BatchCursor;
 import com.mongodb.internal.operation.ReadOperation;
 import com.mongodb.internal.operation.SyncOperations;
@@ -80,8 +80,14 @@ class ListCollectionsIterableImpl<TResult> extends MongoIterableImpl<TResult> im
     }
 
     @Override
+    public ListCollectionsIterable<TResult> timeoutMode(final TimeoutMode timeoutMode) {
+        super.timeoutMode(timeoutMode);
+        return this;
+    }
+
+    @Override
     public ReadOperation<BatchCursor<TResult>> asReadOperation() {
-        return operations.listCollections(ClientSideOperationTimeouts.create(getTimeoutMS(), maxTimeMS), databaseName,
-                                          resultClass, filter, collectionNamesOnly, getBatchSize());
+        return operations.listCollections(getClientSideOperationTimeout(maxTimeMS), databaseName, resultClass, filter, collectionNamesOnly,
+                getBatchSize());
     }
 }

@@ -19,6 +19,7 @@ package com.mongodb.internal.operation;
 import com.mongodb.MongoCommandException;
 import com.mongodb.MongoException;
 import com.mongodb.MongoNamespace;
+import com.mongodb.MongoTimeoutException;
 import com.mongodb.ReadPreference;
 import com.mongodb.ServerCursor;
 import com.mongodb.internal.ClientSideOperationTimeout;
@@ -234,17 +235,24 @@ class AsyncQueryBatchCursor<T> implements AsyncAggregateResponseBatchCursor<T> {
     }
 
     private void getMore(final ServerCursor cursor, final SingleResultCallback<List<T>> callback, final boolean tryNext) {
-        connectionSource.getConnection(new SingleResultCallback<AsyncConnection>() {
-            @Override
-            public void onResult(final AsyncConnection connection, final Throwable t) {
-                if (t != null) {
+        if (!clientSideOperationTimeout.canCallGetMore()) {
+            endOperationInProgress();
+            callback.onResult(null, createMongoTimeoutException());
+        } else {
+            connectionSource.getConnection((connection, t) -> {
+                if (t != null || clientSideOperationTimeout.expired()) {
                     endOperationInProgress();
-                    callback.onResult(null, t);
+                    Throwable error = t != null ? t : createMongoTimeoutException();
+                    callback.onResult(null, error);
                 } else {
                     getMore(connection, cursor, callback, tryNext);
                 }
-            }
-        });
+            });
+        }
+    }
+
+    private MongoTimeoutException createMongoTimeoutException() {
+        return new MongoTimeoutException(format("The timeoutMS '%d' has been exceeded.", clientSideOperationTimeout.getTimeoutMS()));
     }
 
     private void getMore(final AsyncConnection connection, final ServerCursor cursor, final SingleResultCallback<List<T>> callback,

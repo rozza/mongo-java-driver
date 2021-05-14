@@ -57,6 +57,7 @@ import spock.lang.IgnoreIf
 
 import static com.mongodb.ClusterFixture.CSOT_MAX_TIME
 import static com.mongodb.ClusterFixture.CSOT_MAX_TIME_AND_MAX_AWAIT_TIME
+import static com.mongodb.ClusterFixture.CSOT_MAX_TIME_AND_MAX_AWAIT_TIME_ITERATION
 import static com.mongodb.ClusterFixture.CSOT_NO_TIMEOUT
 import static com.mongodb.ClusterFixture.CSOT_TIMEOUT
 import static com.mongodb.ClusterFixture.TIMEOUT_DURATION
@@ -712,8 +713,8 @@ class FindOperationSpecification extends OperationFunctionalSpecification {
     def 'should pass tailable and await data flags through'() {
         given:
         collectionHelper.create(getCollectionName(), new CreateCollectionOptions().capped(true).sizeInBytes(1000))
-        def operation = new FindOperation<BsonDocument>(expectedClientSideOperationTimeout as ClientSideOperationTimeout, namespace, new BsonDocumentCodec())
-                .cursorType(cursorType as CursorType)
+        def operation = new FindOperation<BsonDocument>(expectedClientSideOperationTimeout as ClientSideOperationTimeout, namespace,
+                new BsonDocumentCodec()).cursorType(cursorType as CursorType)
 
         when:
         def cursor = execute(operation, async)
@@ -721,6 +722,7 @@ class FindOperationSpecification extends OperationFunctionalSpecification {
 
         then:
         expectedClientSideOperationTimeout.hasTimeoutMS() == clientSideOperationTimeout.hasTimeoutMS()
+        expectedClientSideOperationTimeout.getTimeoutMode() == clientSideOperationTimeout.getTimeoutMode()
         expectedClientSideOperationTimeout.getMaxTimeMS() == clientSideOperationTimeout.getMaxTimeMS()
         expectedClientSideOperationTimeout.getMaxAwaitTimeMS() == clientSideOperationTimeout.getMaxAwaitTimeMS()
         expectedClientSideOperationTimeout.getMaxCommitTimeMS() == clientSideOperationTimeout.getMaxCommitTimeMS()
@@ -731,7 +733,8 @@ class FindOperationSpecification extends OperationFunctionalSpecification {
                 [NonTailable, Tailable, TailableAwait],
                 [CSOT_NO_TIMEOUT,
                  CSOT_MAX_TIME,
-                 CSOT_MAX_TIME_AND_MAX_AWAIT_TIME]
+                 CSOT_MAX_TIME_AND_MAX_AWAIT_TIME,
+                 CSOT_MAX_TIME_AND_MAX_AWAIT_TIME_ITERATION]
         ].combinations()
     }
 

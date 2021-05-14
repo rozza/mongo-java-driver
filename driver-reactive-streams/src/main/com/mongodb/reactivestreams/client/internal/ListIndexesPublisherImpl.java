@@ -16,6 +16,7 @@
 
 package com.mongodb.reactivestreams.client.internal;
 
+import com.mongodb.client.model.TimeoutMode;
 import com.mongodb.internal.async.AsyncBatchCursor;
 import com.mongodb.internal.operation.AsyncReadOperation;
 import com.mongodb.lang.Nullable;
@@ -46,6 +47,12 @@ final class ListIndexesPublisherImpl<T> extends BatchCursorPublisher<T> implemen
 
     public ListIndexesPublisherImpl<T> batchSize(final int batchSize) {
         super.batchSize(batchSize);
+        return this;
+    }
+
+    @Override
+    public ListIndexesPublisherImpl<T> timeoutMode(final TimeoutMode timeoutMode) {
+        super.timeoutMode(timeoutMode);
         return this;
     }
 

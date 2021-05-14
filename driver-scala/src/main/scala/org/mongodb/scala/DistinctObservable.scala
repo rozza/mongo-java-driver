@@ -17,10 +17,9 @@
 package org.mongodb.scala
 
 import java.util.concurrent.TimeUnit
-
 import com.mongodb.reactivestreams.client.DistinctPublisher
 import org.mongodb.scala.bson.conversions.Bson
-import org.mongodb.scala.model.Collation
+import org.mongodb.scala.model.{ Collation, TimeoutMode }
 
 import scala.concurrent.duration.Duration
 
@@ -81,6 +80,20 @@ case class DistinctObservable[TResult](private val wrapped: DistinctPublisher[TR
    */
   def batchSize(batchSize: Int): DistinctObservable[TResult] = {
     wrapped.batchSize(batchSize)
+    this
+  }
+
+  /**
+   * Sets the timeout mode for cursor based results.
+   *
+   * For use with `timeoutMS` via `MongoCollection.withTimeout`.</p>
+   *
+   * @param timeoutMode the timeoutMode type
+   * @return this
+   * @since 4.x
+   */
+  def timeoutMode(timeoutMode: TimeoutMode): DistinctObservable[TResult] = {
+    wrapped.timeoutMode(timeoutMode)
     this
   }
 

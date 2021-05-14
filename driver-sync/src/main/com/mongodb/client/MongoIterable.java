@@ -17,9 +17,11 @@
 package com.mongodb.client;
 
 import com.mongodb.Function;
+import com.mongodb.client.model.TimeoutMode;
 import com.mongodb.lang.Nullable;
 
 import java.util.Collection;
+import java.util.concurrent.TimeUnit;
 
 /**
  *The MongoIterable is the results from an operation, such as a query.
@@ -74,4 +76,16 @@ public interface MongoIterable<TResult> extends Iterable<TResult> {
      * @mongodb.driver.manual reference/method/cursor.batchSize/#cursor.batchSize Batch Size
      */
     MongoIterable<TResult> batchSize(int batchSize);
+
+    /**
+     * Sets the timeout mode for cursor based results.
+     *
+     * <p>For use with {@code timeoutMS} via {@link MongoCollection#withTimeout(long, TimeUnit)}.</p>
+     *
+     * @param timeoutMode the timeoutMode type
+     * @return this
+     * @see TimeoutMode
+     * @since 4.x
+     */
+    MongoIterable<TResult> timeoutMode(TimeoutMode timeoutMode);
 }

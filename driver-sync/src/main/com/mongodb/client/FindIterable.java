@@ -19,6 +19,7 @@ package com.mongodb.client;
 import com.mongodb.CursorType;
 import com.mongodb.ExplainVerbosity;
 import com.mongodb.client.model.Collation;
+import com.mongodb.client.model.TimeoutMode;
 import com.mongodb.lang.Nullable;
 import org.bson.Document;
 import org.bson.conversions.Bson;
@@ -137,14 +138,6 @@ public interface FindIterable<TResult> extends MongoIterable<TResult> {
     FindIterable<TResult> partial(boolean partial);
 
     /**
-     * Sets the cursor type.
-     *
-     * @param cursorType the cursor type
-     * @return this
-     */
-    FindIterable<TResult> cursorType(CursorType cursorType);
-
-    /**
      * Sets the number of documents to return per batch.
      *
      * @param batchSize the batch size
@@ -153,6 +146,27 @@ public interface FindIterable<TResult> extends MongoIterable<TResult> {
      */
     @Override
     FindIterable<TResult> batchSize(int batchSize);
+
+    /**
+     * Sets the cursor type.
+     *
+     * @param cursorType the cursor type
+     * @return this
+     * @since 4.x
+     */
+    FindIterable<TResult> cursorType(CursorType cursorType);
+
+    /**
+     * Sets the timeout mode.
+     *
+     * <p>For use with {@code timeoutMS} via {@link MongoCollection#withTimeout(long, TimeUnit)}.</p>
+     *
+     * @param timeoutMode the timeoutMode type
+     * @return this
+     * @since 4.x
+     */
+    @Override
+    FindIterable<TResult> timeoutMode(TimeoutMode timeoutMode);
 
     /**
      * Sets the collation options

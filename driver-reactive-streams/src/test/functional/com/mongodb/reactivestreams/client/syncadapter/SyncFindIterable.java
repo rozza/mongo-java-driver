@@ -20,6 +20,7 @@ import com.mongodb.CursorType;
 import com.mongodb.ExplainVerbosity;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.model.Collation;
+import com.mongodb.client.model.TimeoutMode;
 import com.mongodb.lang.Nullable;
 import com.mongodb.reactivestreams.client.FindPublisher;
 import org.bson.Document;
@@ -110,6 +111,12 @@ class SyncFindIterable<T> extends SyncMongoIterable<T> implements FindIterable<T
     @Override
     public FindIterable<T> batchSize(final int batchSize) {
         wrapped.batchSize(batchSize);
+        return this;
+    }
+
+    @Override
+    public FindIterable<T> timeoutMode(final TimeoutMode timeoutMode) {
+        wrapped.timeoutMode(timeoutMode);
         return this;
     }
 

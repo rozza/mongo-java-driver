@@ -16,6 +16,7 @@
 
 package com.mongodb.client;
 
+import com.mongodb.client.model.TimeoutMode;
 import com.mongodb.lang.Nullable;
 import org.bson.conversions.Bson;
 
@@ -59,4 +60,16 @@ public interface ListCollectionsIterable<TResult> extends MongoIterable<TResult>
      */
     @Override
     ListCollectionsIterable<TResult> batchSize(int batchSize);
+
+    /**
+     * Sets the timeout mode.
+     *
+     * <p>For use with {@code timeoutMS} via {@link MongoCollection#withTimeout(long, TimeUnit)}.</p>
+     *
+     * @param timeoutMode the timeoutMode type
+     * @return this
+     * @since 4.x
+     */
+    @Override
+    ListCollectionsIterable<TResult> timeoutMode(TimeoutMode timeoutMode);
 }

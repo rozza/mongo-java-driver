@@ -19,6 +19,7 @@ package com.mongodb.reactivestreams.client.syncadapter;
 import com.mongodb.client.MapReduceIterable;
 import com.mongodb.client.model.Collation;
 import com.mongodb.client.model.MapReduceAction;
+import com.mongodb.client.model.TimeoutMode;
 import com.mongodb.lang.Nullable;
 import com.mongodb.reactivestreams.client.MapReducePublisher;
 import org.bson.conversions.Bson;
@@ -124,6 +125,12 @@ class SyncMapReduceIterable<T> extends SyncMongoIterable<T> implements MapReduce
     @Override
     public MapReduceIterable<T> batchSize(final int batchSize) {
         wrapped.batchSize(batchSize);
+        return this;
+    }
+
+    @Override
+    public MapReduceIterable<T> timeoutMode(final TimeoutMode timeoutMode) {
+        wrapped.timeoutMode(timeoutMode);
         return this;
     }
 

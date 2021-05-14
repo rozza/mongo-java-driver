@@ -18,6 +18,7 @@ package com.mongodb.client;
 
 import com.mongodb.ExplainVerbosity;
 import com.mongodb.client.model.Collation;
+import com.mongodb.client.model.TimeoutMode;
 import com.mongodb.lang.Nullable;
 import org.bson.Document;
 import org.bson.conversions.Bson;
@@ -61,6 +62,18 @@ public interface AggregateIterable<TResult> extends MongoIterable<TResult> {
      */
     @Override
     AggregateIterable<TResult> batchSize(int batchSize);
+
+    /**
+     * Sets the timeout mode.
+     *
+     * <p>For use with {@code timeoutMS} via {@link MongoCollection#withTimeout(long, TimeUnit)}.</p>
+     *
+     * @param timeoutMode the timeoutMode type
+     * @return this
+     * @since 4.x
+     */
+    @Override
+    AggregateIterable<TResult> timeoutMode(TimeoutMode timeoutMode);
 
     /**
      * Sets the maximum execution time on the server for this operation.

@@ -16,9 +16,11 @@
 
 package com.mongodb.client.gridfs;
 
+import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoIterable;
 import com.mongodb.client.gridfs.model.GridFSFile;
 import com.mongodb.client.model.Collation;
+import com.mongodb.client.model.TimeoutMode;
 import com.mongodb.lang.Nullable;
 import org.bson.conversions.Bson;
 
@@ -106,6 +108,18 @@ public interface GridFSFindIterable extends MongoIterable<GridFSFile> {
      */
     @Override
     GridFSFindIterable batchSize(int batchSize);
+
+    /**
+     * Sets the timeout mode.
+     *
+     * <p>For use with {@code timeoutMS} via {@link MongoCollection#withTimeout(long, TimeUnit)}.</p>
+     *
+     * @param timeoutMode the timeoutMode type
+     * @return this
+     * @since 4.x
+     */
+    @Override
+    GridFSFindIterable timeoutMode(TimeoutMode timeoutMode);
 
     /**
      * Sets the collation options

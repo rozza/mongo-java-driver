@@ -16,6 +16,7 @@
 
 package com.mongodb.client;
 
+import com.mongodb.client.model.TimeoutMode;
 import com.mongodb.lang.Nullable;
 import org.bson.conversions.Bson;
 
@@ -48,6 +49,18 @@ public interface ListDatabasesIterable<TResult> extends MongoIterable<TResult> {
      */
     @Override
     ListDatabasesIterable<TResult> batchSize(int batchSize);
+
+    /**
+     * Sets the timeout mode.
+     *
+     * <p>For use with {@code timeoutMS} via {@link MongoCollection#withTimeout(long, TimeUnit)}.</p>
+     *
+     * @param timeoutMode the timeoutMode type
+     * @return this
+     * @since 4.x
+     */
+    @Override
+    ListDatabasesIterable<TResult> timeoutMode(TimeoutMode timeoutMode);
 
     /**
      * Sets the query filter to apply to the returned database names.

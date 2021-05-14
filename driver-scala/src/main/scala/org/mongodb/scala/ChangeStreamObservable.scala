@@ -17,10 +17,9 @@
 package org.mongodb.scala
 
 import java.util.concurrent.TimeUnit
-
 import com.mongodb.reactivestreams.client.ChangeStreamPublisher
 import org.mongodb.scala.bson.BsonTimestamp
-import org.mongodb.scala.model.Collation
+import org.mongodb.scala.model.{ Collation, TimeoutMode }
 import org.mongodb.scala.model.changestream.{ ChangeStreamDocument, FullDocument }
 
 import scala.concurrent.duration.Duration

@@ -22,7 +22,7 @@ import com.mongodb.ReadPreference;
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.DistinctIterable;
 import com.mongodb.client.model.Collation;
-import com.mongodb.internal.ClientSideOperationTimeouts;
+import com.mongodb.client.model.TimeoutMode;
 import com.mongodb.internal.operation.BatchCursor;
 import com.mongodb.internal.operation.ReadOperation;
 import com.mongodb.internal.operation.SyncOperations;
@@ -79,6 +79,12 @@ class DistinctIterableImpl<TDocument, TResult> extends MongoIterableImpl<TResult
     }
 
     @Override
+    public DistinctIterable<TResult> timeoutMode(final TimeoutMode timeoutMode) {
+        super.timeoutMode(timeoutMode);
+        return this;
+    }
+
+    @Override
     public DistinctIterable<TResult> batchSize(final int batchSize) {
         super.batchSize(batchSize);
         return this;
@@ -92,7 +98,6 @@ class DistinctIterableImpl<TDocument, TResult> extends MongoIterableImpl<TResult
 
     @Override
     public ReadOperation<BatchCursor<TResult>> asReadOperation() {
-        return operations.distinct(ClientSideOperationTimeouts.create(getTimeoutMS(), maxTimeMS), fieldName, filter, resultClass,
-                                   collation);
+        return operations.distinct(getClientSideOperationTimeout(maxTimeMS), fieldName, filter, resultClass, collation);
     }
 }

@@ -46,6 +46,7 @@ import com.mongodb.client.model.InsertManyOptions;
 import com.mongodb.client.model.InsertOneOptions;
 import com.mongodb.client.model.RenameCollectionOptions;
 import com.mongodb.client.model.ReplaceOptions;
+import com.mongodb.client.model.TimeoutMode;
 import com.mongodb.client.model.UpdateOptions;
 import com.mongodb.client.model.ValidationOptions;
 import com.mongodb.client.model.WriteModel;
@@ -581,8 +582,13 @@ public final class MongoOperationPublisher<T> {
         return ClientSideOperationTimeouts.create(timeoutMS, maxTimeMS);
     }
 
-    public ClientSideOperationTimeout getClientSideOperationTimeout(final long maxTimeMS, final long maxAwaitTimeMS) {
-        return ClientSideOperationTimeouts.create(timeoutMS, maxTimeMS, maxAwaitTimeMS);
+    public ClientSideOperationTimeout getClientSideOperationTimeout(final TimeoutMode timeoutMode, final long maxTimeMS) {
+        return ClientSideOperationTimeouts.create(timeoutMS, timeoutMode, maxTimeMS);
+    }
+
+    public ClientSideOperationTimeout getClientSideOperationTimeout(final TimeoutMode timeoutMode, final long maxTimeMS,
+                                                                    final long maxAwaitTimeMS) {
+        return ClientSideOperationTimeouts.create(timeoutMS, timeoutMode, maxTimeMS, maxAwaitTimeMS);
     }
 
     public static <T> SingleResultCallback<T> sinkToCallback(final MonoSink<T> sink) {

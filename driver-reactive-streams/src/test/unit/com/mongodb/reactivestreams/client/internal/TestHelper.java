@@ -21,6 +21,7 @@ import com.mongodb.ReadConcern;
 import com.mongodb.ReadPreference;
 import com.mongodb.WriteConcern;
 import com.mongodb.client.model.Collation;
+import com.mongodb.client.model.TimeoutMode;
 import com.mongodb.internal.ClientSideOperationTimeout;
 import com.mongodb.internal.ClientSideOperationTimeouts;
 import com.mongodb.internal.async.AsyncBatchCursor;
@@ -95,11 +96,14 @@ public class TestHelper {
     static final CodecRegistry BSON_CODEC_REGISTRY = fromProviders(new BsonValueCodecProvider());
 
     public static final long TIMEOUT_MS = 60000;
+
     public static final ClientSideOperationTimeout CSOT_NO_TIMEOUT = ClientSideOperationTimeouts.NO_TIMEOUT;
     public static final ClientSideOperationTimeout CSOT_TIMEOUT = ClientSideOperationTimeouts.create(TIMEOUT_MS);
     public static final ClientSideOperationTimeout CSOT_MAX_TIME = ClientSideOperationTimeouts.create(null, 99);
     public static final ClientSideOperationTimeout CSOT_MAX_AWAIT_TIME = ClientSideOperationTimeouts.create(null, 0, 999L);
     public static final ClientSideOperationTimeout CSOT_MAX_TIME_AND_MAX_AWAIT_TIME = ClientSideOperationTimeouts.create(null, 99, 999L);
+    public static final ClientSideOperationTimeout CSOT_MAX_TIME_AND_MAX_AWAIT_TIME_ITERATION = ClientSideOperationTimeouts.create(null,
+            TimeoutMode.ITERATION, 99, 999L);
 
     static MongoOperationPublisher<Document> createMongoOperationPublisher(final OperationExecutor executor) {
         return createMongoOperationPublisher(executor, null);

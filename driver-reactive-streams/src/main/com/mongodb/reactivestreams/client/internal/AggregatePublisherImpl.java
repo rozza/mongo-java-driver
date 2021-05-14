@@ -19,6 +19,7 @@ package com.mongodb.reactivestreams.client.internal;
 import com.mongodb.ExplainVerbosity;
 import com.mongodb.MongoNamespace;
 import com.mongodb.client.model.Collation;
+import com.mongodb.client.model.TimeoutMode;
 import com.mongodb.internal.ClientSideOperationTimeout;
 import com.mongodb.internal.async.AsyncBatchCursor;
 import com.mongodb.internal.client.model.AggregationLevel;
@@ -70,6 +71,12 @@ final class AggregatePublisherImpl<T> extends BatchCursorPublisher<T> implements
     @Override
     public AggregatePublisher<T> batchSize(final int batchSize) {
         super.batchSize(batchSize);
+        return this;
+    }
+
+    @Override
+    public AggregatePublisher<T> timeoutMode(final TimeoutMode timeoutMode) {
+        super.timeoutMode(timeoutMode);
         return this;
     }
 
@@ -152,8 +159,11 @@ final class AggregatePublisherImpl<T> extends BatchCursorPublisher<T> implements
     @Override
     AsyncReadOperation<AsyncBatchCursor<T>> asAsyncReadOperation(final int initialBatchSize) {
         MongoNamespace outNamespace = getOutNamespace();
-
         if (outNamespace != null) {
+            if (getTimeoutMode().equals(TimeoutMode.ITERATION)) {
+                throw new IllegalStateException("Aggregations to a collection via $out or $merge do not support TimeoutMode.ITERATION");
+            }
+
             ClientSideOperationTimeout clientSideOperationTimeout = getClientSideOperationTimeout(maxTimeMS, maxAwaitTimeMS);
             AsyncWriteOperation<Void> aggregateToCollectionOperation = getAggregateToCollectionOperation(clientSideOperationTimeout);
 

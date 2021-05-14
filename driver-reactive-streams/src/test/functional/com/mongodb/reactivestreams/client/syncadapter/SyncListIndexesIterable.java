@@ -17,6 +17,7 @@
 package com.mongodb.reactivestreams.client.syncadapter;
 
 import com.mongodb.client.ListIndexesIterable;
+import com.mongodb.client.model.TimeoutMode;
 import com.mongodb.reactivestreams.client.ListIndexesPublisher;
 
 import java.util.concurrent.TimeUnit;
@@ -39,6 +40,12 @@ class SyncListIndexesIterable<T> extends SyncMongoIterable<T> implements ListInd
     @Override
     public ListIndexesIterable<T> batchSize(final int batchSize) {
         wrapped.batchSize(batchSize);
+        return this;
+    }
+
+    @Override
+    public ListIndexesIterable<T> timeoutMode(final TimeoutMode timeoutMode) {
+        wrapped.timeoutMode(timeoutMode);
         return this;
     }
 }

@@ -18,6 +18,7 @@ package com.mongodb.client;
 
 import com.mongodb.client.model.Collation;
 import com.mongodb.client.model.MapReduceAction;
+import com.mongodb.client.model.TimeoutMode;
 import com.mongodb.lang.Nullable;
 import org.bson.conversions.Bson;
 
@@ -180,6 +181,18 @@ public interface MapReduceIterable<TResult> extends MongoIterable<TResult> {
      */
     @Override
     MapReduceIterable<TResult> batchSize(int batchSize);
+
+    /**
+     * Sets the timeout mode.
+     *
+     * <p>For use with {@code timeoutMS} via {@link MongoCollection#withTimeout(long, TimeUnit)}.</p>
+     *
+     * @param timeoutMode the timeoutMode type
+     * @return this
+     * @since 4.x
+     */
+    @Override
+    MapReduceIterable<TResult> timeoutMode(TimeoutMode timeoutMode);
 
     /**
      * Sets the bypass document level validation flag.

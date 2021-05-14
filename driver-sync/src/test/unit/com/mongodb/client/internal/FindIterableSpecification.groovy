@@ -41,6 +41,7 @@ import java.util.function.Consumer
 import static com.mongodb.CustomMatchers.isTheSameAs
 import static com.mongodb.ReadPreference.secondary
 import static com.mongodb.client.internal.TestHelper.CSOT_MAX_TIME_AND_MAX_AWAIT_TIME
+import static com.mongodb.client.internal.TestHelper.CSOT_MAX_TIME_AND_MAX_AWAIT_TIME_ITERATION
 import static com.mongodb.client.internal.TestHelper.CSOT_NO_TIMEOUT
 import static com.mongodb.client.internal.TestHelper.CSOT_TIMEOUT
 import static java.util.concurrent.TimeUnit.MILLISECONDS
@@ -132,7 +133,8 @@ class FindIterableSpecification extends Specification {
         operation = executor.getReadOperation() as FindOperation<Document>
 
         then: 'should use the overrides'
-        expect operation, isTheSameAs(new FindOperation<Document>(CSOT_MAX_TIME_AND_MAX_AWAIT_TIME, namespace, new DocumentCodec())
+        expect operation, isTheSameAs(new FindOperation<Document>(CSOT_MAX_TIME_AND_MAX_AWAIT_TIME_ITERATION, namespace,
+                new DocumentCodec())
                 .filter(new BsonDocument('filter', new BsonInt32(2)))
                 .sort(new BsonDocument('sort', new BsonInt32(2)))
                 .projection(new BsonDocument('projection', new BsonInt32(2)))

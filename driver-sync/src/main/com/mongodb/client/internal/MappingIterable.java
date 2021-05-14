@@ -19,6 +19,7 @@ package com.mongodb.client.internal;
 import com.mongodb.Function;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoIterable;
+import com.mongodb.client.model.TimeoutMode;
 import com.mongodb.lang.Nullable;
 
 import java.util.Collection;
@@ -78,6 +79,12 @@ class MappingIterable<U, V> implements MongoIterable<V> {
     @Override
     public MappingIterable<U, V> batchSize(final int batchSize) {
         iterable.batchSize(batchSize);
+        return this;
+    }
+
+    @Override
+    public MongoIterable<V> timeoutMode(final TimeoutMode timeoutMode) {
+        iterable.timeoutMode(timeoutMode);
         return this;
     }
 

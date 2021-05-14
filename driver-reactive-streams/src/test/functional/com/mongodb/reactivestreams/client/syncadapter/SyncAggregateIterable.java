@@ -18,6 +18,7 @@ package com.mongodb.reactivestreams.client.syncadapter;
 import com.mongodb.ExplainVerbosity;
 import com.mongodb.client.AggregateIterable;
 import com.mongodb.client.model.Collation;
+import com.mongodb.client.model.TimeoutMode;
 import com.mongodb.lang.Nullable;
 import com.mongodb.reactivestreams.client.AggregatePublisher;
 import org.bson.Document;
@@ -51,6 +52,12 @@ class SyncAggregateIterable<T> extends SyncMongoIterable<T> implements Aggregate
     @Override
     public AggregateIterable<T> batchSize(final int batchSize) {
         wrapped.batchSize(batchSize);
+        return this;
+    }
+
+    @Override
+    public AggregateIterable<T> timeoutMode(final TimeoutMode timeoutMode) {
+        wrapped.timeoutMode(timeoutMode);
         return this;
     }
 

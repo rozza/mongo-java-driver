@@ -23,6 +23,7 @@ import com.mongodb.ReadConcern
 import com.mongodb.WriteConcern
 import com.mongodb.client.ClientSession
 import com.mongodb.client.model.Collation
+import com.mongodb.client.model.TimeoutMode
 import com.mongodb.internal.client.model.AggregationLevel
 import com.mongodb.internal.operation.AggregateOperation
 import com.mongodb.internal.operation.AggregateToCollectionOperation
@@ -43,14 +44,13 @@ import java.util.function.Consumer
 
 import static com.mongodb.CustomMatchers.isTheSameAs
 import static com.mongodb.ReadPreference.secondary
-import static com.mongodb.client.internal.TestHelper.CSOT_TIMEOUT
-import static com.mongodb.client.internal.TestHelper.CSOT_MAX_TIME_AND_MAX_AWAIT_TIME
-import static com.mongodb.client.internal.TestHelper.CSOT_NO_TIMEOUT
 import static com.mongodb.client.internal.TestHelper.CSOT_MAX_TIME
+import static com.mongodb.client.internal.TestHelper.CSOT_MAX_TIME_AND_MAX_AWAIT_TIME_ITERATION
+import static com.mongodb.client.internal.TestHelper.CSOT_NO_TIMEOUT
+import static com.mongodb.client.internal.TestHelper.CSOT_TIMEOUT
 import static java.util.concurrent.TimeUnit.MILLISECONDS
 import static org.bson.codecs.configuration.CodecRegistries.fromProviders
 import static spock.util.matcher.HamcrestSupport.expect
-
 
 class AggregateIterableSpecification extends Specification {
 
@@ -87,12 +87,14 @@ class AggregateIterableSpecification extends Specification {
                 .collation(collation)
                 .hint(new Document('a', 1))
                 .comment('this is a comment')
+                .timeoutMode(TimeoutMode.ITERATION)
                 .iterator()
 
         operation = executor.getReadOperation() as AggregateOperation<Document>
 
         then: 'should use the overrides'
-        expect operation, isTheSameAs(new AggregateOperation<Document>(CSOT_MAX_TIME_AND_MAX_AWAIT_TIME, namespace,
+
+        expect operation, isTheSameAs(new AggregateOperation<Document>(CSOT_MAX_TIME_AND_MAX_AWAIT_TIME_ITERATION, namespace,
                 [new BsonDocument('$match', new BsonInt32(1))], new DocumentCodec())
                 .retryReads(true)
                 .collation(collation)
@@ -192,6 +194,15 @@ class AggregateIterableSpecification extends Specification {
                 .collation(collation)
                 .hint(new BsonDocument('a', new BsonInt32(1)))
                 .comment('this is a comment'))
+
+        when: 'Using $out cannot use TimeoutMode.ITERATION'
+        new AggregateIterableImpl(null, namespace, Document, Document, codecRegistry, readPreference, readConcern,
+                writeConcern, executor, pipeline, AggregationLevel.DATABASE, false, null)
+                .timeoutMode(TimeoutMode.ITERATION)
+                .iterator()
+
+        then:
+        thrown(IllegalStateException)
     }
 
     def 'should build the expected AggregateToCollectionOperation for $merge'() {
@@ -328,6 +339,15 @@ class AggregateIterableSpecification extends Specification {
                 .collation(collation)
                 .hint(new BsonDocument('a', new BsonInt32(1)))
                 .comment('this is a comment'))
+
+        when: 'Using $merge cannot use TimeoutMode.ITERATION'
+        new AggregateIterableImpl(null, namespace, Document, Document, codecRegistry, readPreference, readConcern,
+                writeConcern, executor, pipeline, AggregationLevel.DATABASE, false, null)
+                .timeoutMode(TimeoutMode.ITERATION)
+                .iterator()
+
+        then:
+        thrown(IllegalStateException)
     }
 
     def 'should build the expected AggregateToCollectionOperation for $out as a document'() {

@@ -161,7 +161,15 @@ class MapReduceIterableSpecification extends Specification {
         operation.getCollation() == collation
 
         when: 'toCollection should work as expected'
-        mapReduceIterable.toCollection()
+        expectedOperation = new MapReduceToCollectionOperation(CSOT_TIMEOUT, namespace, new BsonJavaScript('map'),
+                new BsonJavaScript('reduce'), 'collName', writeConcern)
+                .databaseName(collectionNamespace.getDatabaseName())
+        new MapReduceIterableImpl(null, namespace, Document, Document, codecRegistry, readPreference, readConcern,
+                writeConcern, executor, 'map', 'reduce', 60000)
+                .collectionName(collectionNamespace.getCollectionName())
+                .databaseName(collectionNamespace.getDatabaseName())
+                .verbose(false)
+                .toCollection()
 
         operation = executor.getWriteOperation() as MapReduceToCollectionOperation
 

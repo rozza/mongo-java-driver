@@ -19,6 +19,7 @@ package com.mongodb.reactivestreams.client;
 import com.mongodb.CursorType;
 import com.mongodb.ExplainVerbosity;
 import com.mongodb.client.model.Collation;
+import com.mongodb.client.model.TimeoutMode;
 import com.mongodb.lang.Nullable;
 import org.bson.Document;
 import org.bson.conversions.Bson;
@@ -237,6 +238,18 @@ public interface FindPublisher<TResult> extends Publisher<TResult> {
      * @mongodb.driver.manual reference/method/cursor.batchSize/#cursor.batchSize Batch Size
      */
     FindPublisher<TResult> batchSize(int batchSize);
+
+    /**
+     * Sets the timeout mode for cursor based results.
+     *
+     * <p>For use with {@code timeoutMS} via {@link MongoCollection#withTimeout(long, TimeUnit)}.</p>
+     *
+     * @param timeoutMode the timeoutMode type
+     * @return this
+     * @see TimeoutMode
+     * @since 4.x
+     */
+    FindPublisher<TResult> timeoutMode(TimeoutMode timeoutMode);
 
     /**
      * Enables writing to temporary files on the server. When set to true, the server

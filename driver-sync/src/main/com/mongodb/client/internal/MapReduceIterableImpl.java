@@ -24,8 +24,7 @@ import com.mongodb.client.ClientSession;
 import com.mongodb.client.MapReduceIterable;
 import com.mongodb.client.model.Collation;
 import com.mongodb.client.model.MapReduceAction;
-
-import com.mongodb.internal.ClientSideOperationTimeouts;
+import com.mongodb.client.model.TimeoutMode;
 import com.mongodb.internal.ClientSideOperationTimeout;
 import com.mongodb.internal.binding.ReadBinding;
 import com.mongodb.internal.client.model.FindOptions;
@@ -87,7 +86,7 @@ class MapReduceIterableImpl<TDocument, TResult> extends MongoIterableImpl<TResul
         if (inline) {
             throw new IllegalStateException("The options must specify a non-inline result");
         }
-        getExecutor().execute(createMapReduceToCollectionOperation(createClientSideOperationTimeout()), getReadConcern(),
+        getExecutor().execute(createMapReduceToCollectionOperation(getClientSideOperationTimeout(maxTimeMS)), getReadConcern(),
                 getClientSession());
     }
 
@@ -179,6 +178,12 @@ class MapReduceIterableImpl<TDocument, TResult> extends MongoIterableImpl<TResul
     }
 
     @Override
+    public MapReduceIterable<TResult> timeoutMode(final TimeoutMode timeoutMode) {
+        super.timeoutMode(timeoutMode);
+        return this;
+    }
+
+    @Override
     public MapReduceIterable<TResult> bypassDocumentValidation(@Nullable final Boolean bypassDocumentValidation) {
         this.bypassDocumentValidation = bypassDocumentValidation;
         return this;
@@ -201,7 +206,7 @@ class MapReduceIterableImpl<TDocument, TResult> extends MongoIterableImpl<TResul
 
     @Override
     public ReadOperation<BatchCursor<TResult>> asReadOperation() {
-        ClientSideOperationTimeout clientSideOperationTimeout = createClientSideOperationTimeout();
+        ClientSideOperationTimeout clientSideOperationTimeout = getClientSideOperationTimeout(maxTimeMS);
         if (inline) {
             ReadOperation<MapReduceBatchCursor<TResult>> operation = operations.mapReduce(clientSideOperationTimeout, mapFunction,
                     reduceFunction, finalizeFunction, resultClass, filter, limit, jsMode, scope, sort, verbose, collation);
@@ -220,10 +225,6 @@ class MapReduceIterableImpl<TDocument, TResult> extends MongoIterableImpl<TResul
             return operations.find(clientSideOperationTimeout, new MongoNamespace(dbName, collectionName), new BsonDocument(), resultClass,
                     findOptions);
         }
-    }
-
-    private ClientSideOperationTimeout createClientSideOperationTimeout() {
-        return ClientSideOperationTimeouts.create(getTimeoutMS(), maxTimeMS);
     }
 
     private WriteOperation<MapReduceStatistics> createMapReduceToCollectionOperation(

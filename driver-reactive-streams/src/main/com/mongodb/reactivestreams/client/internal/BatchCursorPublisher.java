@@ -19,6 +19,7 @@ package com.mongodb.reactivestreams.client.internal;
 import com.mongodb.MongoNamespace;
 import com.mongodb.ReadPreference;
 import com.mongodb.internal.ClientSideOperationTimeout;
+import com.mongodb.client.model.TimeoutMode;
 import com.mongodb.internal.async.AsyncBatchCursor;
 import com.mongodb.internal.operation.AsyncReadOperation;
 import com.mongodb.internal.operation.Operations;
@@ -33,10 +34,12 @@ import java.util.function.Supplier;
 
 import static com.mongodb.assertions.Assertions.notNull;
 
-abstract class BatchCursorPublisher<T> implements Publisher<T> {
+public abstract class BatchCursorPublisher<T> implements Publisher<T> {
     private final ClientSession clientSession;
     private final MongoOperationPublisher<T> mongoOperationPublisher;
     private Integer batchSize;
+
+    private TimeoutMode timeoutMode = TimeoutMode.DEFAULT;
 
     BatchCursorPublisher(@Nullable final ClientSession clientSession, final MongoOperationPublisher<T> mongoOperationPublisher) {
         this.clientSession = clientSession;
@@ -62,12 +65,13 @@ abstract class BatchCursorPublisher<T> implements Publisher<T> {
         return mongoOperationPublisher.getOperations();
     }
 
+
     ClientSideOperationTimeout getClientSideOperationTimeout(final long maxTimeMS) {
-        return mongoOperationPublisher.getClientSideOperationTimeout(maxTimeMS);
+        return mongoOperationPublisher.getClientSideOperationTimeout(getTimeoutMode(), maxTimeMS);
     }
 
     ClientSideOperationTimeout getClientSideOperationTimeout(final long maxTimeMS, final long maxAwaitTimeMS) {
-        return mongoOperationPublisher.getClientSideOperationTimeout(maxTimeMS, maxAwaitTimeMS);
+        return mongoOperationPublisher.getClientSideOperationTimeout(getTimeoutMode(), maxTimeMS, maxAwaitTimeMS);
     }
 
     MongoNamespace getNamespace() {
@@ -98,6 +102,15 @@ abstract class BatchCursorPublisher<T> implements Publisher<T> {
 
     public Publisher<T> batchSize(final int batchSize) {
         this.batchSize = batchSize;
+        return this;
+    }
+
+    public TimeoutMode getTimeoutMode() {
+        return timeoutMode;
+    }
+
+    public Publisher<T> timeoutMode(final TimeoutMode timeoutMode) {
+        this.timeoutMode = notNull("timeoutMode", timeoutMode);
         return this;
     }
 

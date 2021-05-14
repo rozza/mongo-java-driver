@@ -24,7 +24,7 @@ import com.mongodb.ReadPreference;
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.model.Collation;
-import com.mongodb.internal.ClientSideOperationTimeouts;
+import com.mongodb.client.model.TimeoutMode;
 import com.mongodb.internal.client.model.FindOptions;
 import com.mongodb.internal.operation.BatchCursor;
 import com.mongodb.internal.operation.ExplainableReadOperation;
@@ -153,6 +153,12 @@ class FindIterableImpl<TDocument, TResult> extends MongoIterableImpl<TResult> im
     }
 
     @Override
+    public FindIterable<TResult> timeoutMode(final TimeoutMode timeoutMode) {
+        super.timeoutMode(timeoutMode);
+        return this;
+    }
+
+    @Override
     public FindIterable<TResult> comment(@Nullable final String comment) {
         findOptions.comment(comment);
         return this;
@@ -203,16 +209,10 @@ class FindIterableImpl<TDocument, TResult> extends MongoIterableImpl<TResult> im
     @Nullable
     @Override
     public TResult first() {
-        BatchCursor<TResult> batchCursor =
-                getExecutor().execute(operations.findFirst(
-                        ClientSideOperationTimeouts.create(getTimeoutMS(), maxTimeMS, maxAwaitTimeMS),
-                        filter, resultClass, findOptions),
-                getReadPreference(), getReadConcern(),
-                getClientSession());
-        try {
+        try (BatchCursor<TResult> batchCursor = getExecutor().execute(operations.findFirst(
+                getClientSideOperationTimeout(maxTimeMS, maxAwaitTimeMS), filter, resultClass, findOptions), getReadPreference(),
+                getReadConcern(), getClientSession())) {
             return batchCursor.hasNext() ? batchCursor.next().iterator().next() : null;
-        } finally {
-            batchCursor.close();
         }
     }
 
@@ -243,7 +243,7 @@ class FindIterableImpl<TDocument, TResult> extends MongoIterableImpl<TResult> im
     }
 
     public ExplainableReadOperation<BatchCursor<TResult>> asReadOperation() {
-        return operations.find(ClientSideOperationTimeouts.create(getTimeoutMS(), maxTimeMS, maxAwaitTimeMS), filter,
-                               resultClass, findOptions);
+        return operations.find(getClientSideOperationTimeout(maxTimeMS, maxAwaitTimeMS), filter, resultClass, findOptions);
     }
+
 }

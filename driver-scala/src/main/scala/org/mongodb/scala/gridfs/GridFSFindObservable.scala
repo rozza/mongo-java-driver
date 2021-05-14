@@ -17,10 +17,10 @@
 package org.mongodb.scala.gridfs
 
 import java.util.concurrent.TimeUnit
-
 import com.mongodb.reactivestreams.client.gridfs.GridFSFindPublisher
 import org.mongodb.scala.bson.conversions.Bson
-import org.mongodb.scala.{ Observable, Observer, SingleObservable }
+import org.mongodb.scala.model.TimeoutMode
+import org.mongodb.scala.{ AggregateObservable, Observable, Observer, SingleObservable }
 
 import scala.concurrent.duration.Duration
 
@@ -120,6 +120,20 @@ case class GridFSFindObservable(private val wrapped: GridFSFindPublisher) extend
    */
   def batchSize(batchSize: Int): GridFSFindObservable = {
     wrapped.batchSize(batchSize)
+    this
+  }
+
+  /**
+   * Sets the timeout mode for cursor based results.
+   *
+   * For use with `timeoutMS` via `MongoCollection.withTimeout`.</p>
+   *
+   * @param timeoutMode the timeoutMode type
+   * @return this
+   * @since 4.x
+   */
+  def timeoutMode(timeoutMode: TimeoutMode): GridFSFindObservable = {
+    wrapped.timeoutMode(timeoutMode)
     this
   }
 

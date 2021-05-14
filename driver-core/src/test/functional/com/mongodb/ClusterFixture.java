@@ -17,6 +17,7 @@
 package com.mongodb;
 
 import com.mongodb.async.FutureResultCallback;
+import com.mongodb.client.model.TimeoutMode;
 import com.mongodb.connection.AsynchronousSocketChannelStreamFactory;
 import com.mongodb.connection.ClusterSettings;
 import com.mongodb.connection.ClusterType;
@@ -108,10 +109,10 @@ public final class ClusterFixture {
 
     public static final ClientSideOperationTimeout CSOT_NO_TIMEOUT = ClientSideOperationTimeouts.NO_TIMEOUT;
     public static final ClientSideOperationTimeout CSOT_TIMEOUT = ClientSideOperationTimeouts.create(TIMEOUT_DURATION.toMillis());
-    public static final ClientSideOperationTimeout CSOT_MAX_TIME =
-            ClientSideOperationTimeouts.create(null, TIMEOUT_DURATION.toMillis(), 0, 0);
-    public static final ClientSideOperationTimeout CSOT_MAX_TIME_AND_MAX_AWAIT_TIME =
-            ClientSideOperationTimeouts.create(null, 999, 9999, 0);
+    public static final ClientSideOperationTimeout CSOT_MAX_TIME = ClientSideOperationTimeouts.create(null, TIMEOUT_DURATION.toMillis());
+    public static final ClientSideOperationTimeout CSOT_MAX_TIME_AND_MAX_AWAIT_TIME = ClientSideOperationTimeouts.create(null, 999, 9999);
+    public static final ClientSideOperationTimeout CSOT_MAX_TIME_AND_MAX_AWAIT_TIME_ITERATION =
+            ClientSideOperationTimeouts.create(null, TimeoutMode.ITERATION, 999, 9999);
 
     private static ConnectionString connectionString;
     private static Cluster cluster;

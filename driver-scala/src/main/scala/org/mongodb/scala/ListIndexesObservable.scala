@@ -17,8 +17,8 @@
 package org.mongodb.scala
 
 import java.util.concurrent.TimeUnit
-
 import com.mongodb.reactivestreams.client.ListIndexesPublisher
+import org.mongodb.scala.model.TimeoutMode
 
 import scala.concurrent.duration.Duration
 
@@ -53,6 +53,20 @@ case class ListIndexesObservable[TResult](wrapped: ListIndexesPublisher[TResult]
    */
   def batchSize(batchSize: Int): ListIndexesObservable[TResult] = {
     wrapped.batchSize(batchSize)
+    this
+  }
+
+  /**
+   * Sets the timeout mode for cursor based results.
+   *
+   * For use with `timeoutMS` via `MongoCollection.withTimeout`.</p>
+   *
+   * @param timeoutMode the timeoutMode type
+   * @return this
+   * @since 4.x
+   */
+  def timeoutMode(timeoutMode: TimeoutMode): ListIndexesObservable[TResult] = {
+    wrapped.timeoutMode(timeoutMode)
     this
   }
 

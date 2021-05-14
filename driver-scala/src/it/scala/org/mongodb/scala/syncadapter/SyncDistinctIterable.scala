@@ -16,12 +16,12 @@
 
 package org.mongodb.scala.syncadapter
 
-import java.util.concurrent.TimeUnit
-
 import com.mongodb.client.DistinctIterable
-import com.mongodb.client.model.Collation
+import com.mongodb.client.model.{ Collation, TimeoutMode }
 import org.bson.conversions.Bson
 import org.mongodb.scala.DistinctObservable
+
+import java.util.concurrent.TimeUnit
 
 case class SyncDistinctIterable[T](wrapped: DistinctObservable[T])
     extends SyncMongoIterable[T]
@@ -38,6 +38,11 @@ case class SyncDistinctIterable[T](wrapped: DistinctObservable[T])
 
   override def batchSize(batchSize: Int): DistinctIterable[T] = {
     wrapped.batchSize(batchSize)
+    this
+  }
+
+  override def timeoutMode(timeoutMode: TimeoutMode): DistinctIterable[T] = {
+    wrapped.timeoutMode(timeoutMode)
     this
   }
 

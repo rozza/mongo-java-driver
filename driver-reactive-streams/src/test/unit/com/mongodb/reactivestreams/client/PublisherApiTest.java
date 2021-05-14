@@ -82,6 +82,8 @@ public class PublisherApiTest {
                 .map(Method::getName)
                 .distinct()
                 .filter(n -> !SYNC_ONLY_APIS.contains(n) && !PUBLISHER_ONLY_APIS.contains(n))
+                // ChangeStreamPublisher doesn't have a timeoutMode due to spec. ChangeStreamIterable only does due to inheritance.
+                .filter(n -> !clazz.equals(ChangeStreamIterable.class) || !n.equals("timeoutMode"))
                 .sorted()
                 .collect(Collectors.toList());
     }

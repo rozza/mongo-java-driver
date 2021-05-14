@@ -21,7 +21,7 @@ import com.mongodb.{ CursorType, ExplainVerbosity }
 import com.mongodb.reactivestreams.client.FindPublisher
 import org.mongodb.scala.bson.DefaultHelper.DefaultsTo
 import org.mongodb.scala.bson.conversions.Bson
-import org.mongodb.scala.model.Collation
+import org.mongodb.scala.model.{ Collation, TimeoutMode }
 
 import scala.concurrent.duration.Duration
 import scala.reflect.ClassTag
@@ -292,6 +292,20 @@ case class FindObservable[TResult](private val wrapped: FindPublisher[TResult]) 
    */
   def batchSize(batchSize: Int): FindObservable[TResult] = {
     wrapped.batchSize(batchSize)
+    this
+  }
+
+  /**
+   * Sets the timeout mode for cursor based results.
+   *
+   * For use with `timeoutMS` via `MongoCollection.withTimeout`.</p>
+   *
+   * @param timeoutMode the timeoutMode type
+   * @return this
+   * @since 4.x
+   */
+  def timeoutMode(timeoutMode: TimeoutMode): FindObservable[TResult] = {
+    wrapped.timeoutMode(timeoutMode)
     this
   }
 

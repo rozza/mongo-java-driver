@@ -17,10 +17,9 @@
 package org.mongodb.scala.syncadapter
 
 import java.util.concurrent.TimeUnit
-
 import com.mongodb.{ ServerAddress, ServerCursor }
-import com.mongodb.client.{ ChangeStreamIterable, MongoChangeStreamCursor }
-import com.mongodb.client.model.Collation
+import com.mongodb.client.{ AggregateIterable, ChangeStreamIterable, MongoChangeStreamCursor, MongoIterable }
+import com.mongodb.client.model.{ Collation, TimeoutMode }
 import com.mongodb.client.model.changestream.{ ChangeStreamDocument, FullDocument }
 import org.bson.{ BsonDocument, BsonTimestamp }
 import org.mongodb.scala.ChangeStreamObservable
@@ -78,4 +77,7 @@ case class SyncChangeStreamIterable[T](wrapped: ChangeStreamObservable[T])
     wrapped.startAfter(startAfter)
     this
   }
+
+  override def timeoutMode(timeoutMode: TimeoutMode): MongoIterable[ChangeStreamDocument[T]] =
+    throw new UnsupportedOperationException
 }

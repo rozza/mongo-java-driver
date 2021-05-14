@@ -17,6 +17,7 @@
 package com.mongodb.reactivestreams.client.syncadapter;
 
 import com.mongodb.client.ListCollectionsIterable;
+import com.mongodb.client.model.TimeoutMode;
 import com.mongodb.lang.Nullable;
 import com.mongodb.reactivestreams.client.ListCollectionsPublisher;
 import org.bson.conversions.Bson;
@@ -47,6 +48,12 @@ class SyncListCollectionsIterable<T> extends SyncMongoIterable<T> implements Lis
     @Override
     public ListCollectionsIterable<T> batchSize(final int batchSize) {
         wrapped.batchSize(batchSize);
+        return this;
+    }
+
+    @Override
+    public ListCollectionsIterable<T> timeoutMode(final TimeoutMode timeoutMode) {
+        wrapped.timeoutMode(timeoutMode);
         return this;
     }
 }

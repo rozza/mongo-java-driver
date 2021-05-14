@@ -16,6 +16,8 @@
 
 package com.mongodb.client;
 
+import com.mongodb.client.model.TimeoutMode;
+
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -47,4 +49,16 @@ public interface ListIndexesIterable<TResult> extends MongoIterable<TResult> {
      */
     @Override
     ListIndexesIterable<TResult> batchSize(int batchSize);
+
+    /**
+     * Sets the timeout mode.
+     *
+     * <p>For use with {@code timeoutMS} via {@link MongoCollection#withTimeout(long, TimeUnit)}.</p>
+     *
+     * @param timeoutMode the timeoutMode type
+     * @return this
+     * @since 4.x
+     */
+    @Override
+    ListIndexesIterable<TResult> timeoutMode(TimeoutMode timeoutMode);
 }

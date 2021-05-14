@@ -19,6 +19,7 @@ package com.mongodb.reactivestreams.client.internal;
 import com.mongodb.CursorType;
 import com.mongodb.ExplainVerbosity;
 import com.mongodb.client.model.Collation;
+import com.mongodb.client.model.TimeoutMode;
 import com.mongodb.internal.async.AsyncBatchCursor;
 import com.mongodb.internal.client.model.FindOptions;
 import com.mongodb.internal.operation.AsyncExplainableReadOperation;
@@ -84,6 +85,12 @@ final class FindPublisherImpl<T> extends BatchCursorPublisher<T> implements Find
     public FindPublisher<T> batchSize(final int batchSize) {
         super.batchSize(batchSize);
         findOptions.batchSize(batchSize);
+        return this;
+    }
+
+    @Override
+    public FindPublisher<T> timeoutMode(final TimeoutMode timeoutMode) {
+        super.timeoutMode(timeoutMode);
         return this;
     }
 

@@ -21,6 +21,7 @@ import com.mongodb.ReadPreference;
 import com.mongodb.client.model.Collation;
 import com.mongodb.client.model.MapReduceAction;
 import com.mongodb.internal.ClientSideOperationTimeout;
+import com.mongodb.client.model.TimeoutMode;
 import com.mongodb.internal.async.AsyncBatchCursor;
 import com.mongodb.internal.async.SingleResultCallback;
 import com.mongodb.internal.binding.AsyncReadBinding;
@@ -164,6 +165,12 @@ final class MapReducePublisherImpl<T> extends BatchCursorPublisher<T> implements
     }
 
     @Override
+    public MapReducePublisher<T> timeoutMode(final TimeoutMode timeoutMode) {
+        super.timeoutMode(timeoutMode);
+        return this;
+    }
+
+    @Override
     public MapReducePublisher<T> bypassDocumentValidation(@Nullable final Boolean bypassDocumentValidation) {
         this.bypassDocumentValidation = bypassDocumentValidation;
         return this;
@@ -205,7 +212,7 @@ final class MapReducePublisherImpl<T> extends BatchCursorPublisher<T> implements
     }
 
     private WrappedMapReduceReadOperation<T> createMapReduceInlineOperation() {
-        return new WrappedMapReduceReadOperation<T>(getOperations().mapReduce(
+        return new WrappedMapReduceReadOperation<>(getOperations().mapReduce(
                 getClientSideOperationTimeout(maxTimeMS), mapFunction, reduceFunction, finalizeFunction,
                 getDocumentClass(), filter, limit, jsMode, scope, sort, verbose, collation));
     }

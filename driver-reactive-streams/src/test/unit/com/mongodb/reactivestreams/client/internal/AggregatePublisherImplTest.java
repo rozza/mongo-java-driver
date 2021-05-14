@@ -21,6 +21,7 @@ import com.mongodb.MongoNamespace;
 import com.mongodb.ReadConcern;
 import com.mongodb.ReadPreference;
 import com.mongodb.WriteConcern;
+import com.mongodb.client.model.TimeoutMode;
 import com.mongodb.internal.client.model.AggregationLevel;
 import com.mongodb.internal.operation.AggregateOperation;
 import com.mongodb.internal.operation.AggregateToCollectionOperation;
@@ -76,9 +77,10 @@ public class AggregatePublisherImplTest extends TestHelper {
                 .comment("my comment")
                 .hint(BsonDocument.parse("{a: 1}"))
                 .maxTime(99, MILLISECONDS)
-                .maxAwaitTime(999, MILLISECONDS);
+                .maxAwaitTime(999, MILLISECONDS)
+                .timeoutMode(TimeoutMode.ITERATION);
 
-        expectedOperation = new AggregateOperation<>(CSOT_MAX_TIME_AND_MAX_AWAIT_TIME, NAMESPACE, pipeline,
+        expectedOperation = new AggregateOperation<>(CSOT_MAX_TIME_AND_MAX_AWAIT_TIME_ITERATION, NAMESPACE, pipeline,
                 getDefaultCodecRegistry().get(Document.class))
                 .retryReads(true)
                 .allowDiskUse(true)
@@ -100,7 +102,8 @@ public class AggregatePublisherImplTest extends TestHelper {
                                              BsonDocument.parse(format("{'$out': '%s'}", collectionName)));
         MongoNamespace collectionNamespace = new MongoNamespace(NAMESPACE.getDatabaseName(), collectionName);
 
-        TestOperationExecutor executor = createOperationExecutor(asList(getBatchCursor(), getBatchCursor(), getBatchCursor(), null));
+        TestOperationExecutor executor = createOperationExecutor(asList(getBatchCursor(), getBatchCursor(), getBatchCursor(), null,
+                getBatchCursor()));
         AggregatePublisher<Document> publisher =
                 new AggregatePublisherImpl<>(null, createMongoOperationPublisher(executor), pipeline, AggregationLevel.COLLECTION);
 
@@ -168,6 +171,15 @@ public class AggregatePublisherImplTest extends TestHelper {
         // default input should be as expected
         Flux.from(publisher.toCollection()).blockFirst();
         assertOperationIsTheSameAs(expectedOperation, executor.getWriteOperation());
+
+        // Should throw when using $out and TimeoutMode.ITERATION
+        Publisher<Document> iterationModePublisher = new AggregatePublisherImpl<>(null, createMongoOperationPublisher(executor), pipeline,
+                AggregationLevel.COLLECTION).timeoutMode(TimeoutMode.ITERATION);
+
+        assertThrows(IllegalStateException.class, () -> {
+            Flux.from(iterationModePublisher).blockFirst();
+            executor.getReadOperation();
+        });
     }
 
     @DisplayName("Should build the expected AggregateOperation for $out as document")

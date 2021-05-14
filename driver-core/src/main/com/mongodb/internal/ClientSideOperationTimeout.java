@@ -15,6 +15,7 @@
  */
 package com.mongodb.internal;
 
+import com.mongodb.client.model.TimeoutMode;
 import com.mongodb.lang.Nullable;
 
 import java.util.Objects;
@@ -30,6 +31,7 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 public class ClientSideOperationTimeout {
 
     private final Long timeoutMS;
+    private final TimeoutMode timeoutMode;
     private final long maxAwaitTimeMS;
 
     // Deprecated operation based operation timeouts
@@ -40,21 +42,16 @@ public class ClientSideOperationTimeout {
     private Timeout timeout;
 
     public ClientSideOperationTimeout(@Nullable final Long timeoutMS,
+                                      final TimeoutMode timeoutMode,
                                       final long maxAwaitTimeMS,
                                       final long maxTimeMS,
                                       final long maxCommitTimeMS) {
         this.timeoutMS = timeoutMS;
+        this.timeoutMode = timeoutMode;
         this.maxAwaitTimeMS = maxAwaitTimeMS;
         this.maxTimeMS = timeoutMS == null ? maxTimeMS : 0;
         this.maxCommitTimeMS = timeoutMS == null ? maxCommitTimeMS : 0;
-
-        if (timeoutMS != null) {
-            if (timeoutMS == 0) {
-                this.timeout = Timeout.infinite();
-            } else {
-                this.timeout = Timeout.startNow(timeoutMS, MILLISECONDS);
-            }
-        }
+        setTimeout();
     }
 
     /**
@@ -73,6 +70,18 @@ public class ClientSideOperationTimeout {
      */
     public boolean expired() {
         return timeout != null && timeout.expired();
+    }
+
+    /**
+     * Checks if a cursor can getMore.
+     *
+     * <p>Resets the timeoutMS if the timeout mode is TimeoutMode.ITERATION</p>
+     *
+     * @return true if the cursor can call get more.
+     */
+    public boolean canCallGetMore() {
+        resetTimeout();
+        return !expired();
     }
 
     /**
@@ -109,8 +118,25 @@ public class ClientSideOperationTimeout {
         }
     }
 
+    /**
+     * Gets the maxAwaitTimeMS
+     *
+     * <p>
+     *  0 is the default unset value. If greater than 0 getMore calls will use this value as the {@code maxTimeMS} value in the command.
+     * </p>
+     * @return the maxAwaitTimeMS
+     */
     public long getMaxAwaitTimeMS() {
         return maxAwaitTimeMS;
+    }
+
+    public TimeoutMode getTimeoutMode() {
+        return timeoutMode;
+    }
+
+    @Nullable
+    public Long getTimeoutMS() {
+        return timeoutMS;
     }
 
     public long getMaxTimeMS() {
@@ -119,6 +145,22 @@ public class ClientSideOperationTimeout {
 
     public long getMaxCommitTimeMS() {
         return timeoutOrAlternative(maxCommitTimeMS);
+    }
+
+    private void setTimeout() {
+        if (timeoutMS != null) {
+            if (timeoutMS == 0) {
+                this.timeout = Timeout.infinite();
+            } else {
+                this.timeout = Timeout.startNow(timeoutMS, MILLISECONDS);
+            }
+        }
+    }
+
+    private void resetTimeout() {
+        if (timeoutMode.equals(TimeoutMode.ITERATION)) {
+            setTimeout();
+        }
     }
 
     private long timeoutRemainingMS() {
@@ -130,6 +172,7 @@ public class ClientSideOperationTimeout {
     public String toString() {
         return "ClientSideOperationTimeout{"
                 + "timeoutMS=" + timeoutMS
+                + ", timeoutMode=" + timeoutMode
                 + ", maxAwaitTimeMS=" + maxAwaitTimeMS
                 + ", maxTimeMS=" + maxTimeMS
                 + ", maxCommitTimeMS=" + maxCommitTimeMS

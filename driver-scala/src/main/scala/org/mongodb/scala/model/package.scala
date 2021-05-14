@@ -100,6 +100,11 @@ package object model {
   }
 
   /**
+   * The cursor timeout mode
+   */
+  type TimeoutMode = com.mongodb.client.model.TimeoutMode
+
+  /**
    * The collation options.
    */
   type Collation = com.mongodb.client.model.Collation
