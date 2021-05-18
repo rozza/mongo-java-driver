@@ -27,6 +27,7 @@ import com.mongodb.client.model.DBCollectionFindOptions;
 import com.mongodb.client.model.DBCollectionRemoveOptions;
 import com.mongodb.client.model.DBCollectionUpdateOptions;
 import com.mongodb.connection.BufferProvider;
+import com.mongodb.internal.ClientSideOperationTimeout;
 import com.mongodb.internal.ClientSideOperationTimeoutFactories;
 import com.mongodb.internal.ClientSideOperationTimeoutFactory;
 import com.mongodb.internal.bulk.DeleteRequest;
@@ -2095,7 +2096,7 @@ public class DBCollection {
                                               final WriteConcern writeConcern) {
         try {
             return translateBulkWriteResult(executor.execute(new MixedBulkWriteOperation(
-                    ClientSideOperationTimeoutFactories.create(getTimeout(MILLISECONDS)),
+                    ClientSideOperationTimeout.create(getTimeout(MILLISECONDS)),
                     getNamespace(), translateWriteRequestsToNew(writeRequests), ordered, writeConcern, false)
                     .bypassDocumentValidation(bypassDocumentValidation), getReadConcern()), getObjectCodec());
         } catch (MongoBulkWriteException e) {

@@ -37,6 +37,10 @@ public class ClientSideOperationTimeout {
     @Nullable
     private Timeout timeout;
 
+    public static ClientSideOperationTimeout create(@Nullable final Long timeoutMS) {
+        return new ClientSideOperationTimeout(timeoutMS, 0, 0, 0);
+    }
+
     public ClientSideOperationTimeout(@Nullable final Long timeoutMS,
                                       final long maxAwaitTimeMS,
                                       final long maxTimeMS,

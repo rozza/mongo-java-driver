@@ -43,6 +43,7 @@ import com.mongodb.client.model.UpdateManyModel;
 import com.mongodb.client.model.UpdateOneModel;
 import com.mongodb.client.model.UpdateOptions;
 import com.mongodb.client.model.WriteModel;
+import com.mongodb.internal.ClientSideOperationTimeout;
 import com.mongodb.internal.ClientSideOperationTimeoutFactory;
 import com.mongodb.internal.bulk.DeleteRequest;
 import com.mongodb.internal.bulk.IndexRequest;
@@ -345,56 +346,56 @@ public final class Operations<TDocument> {
     }
 
 
-    public MixedBulkWriteOperation insertOne(final ClientSideOperationTimeoutFactory clientSideOperationTimeoutFactory,
+    public MixedBulkWriteOperation insertOne(final ClientSideOperationTimeout clientSideOperationTimeout,
                                              final TDocument document, final InsertOneOptions options) {
-        return bulkWrite(clientSideOperationTimeoutFactory, singletonList(new InsertOneModel<TDocument>(document)),
+        return bulkWrite(clientSideOperationTimeout, singletonList(new InsertOneModel<TDocument>(document)),
                 new BulkWriteOptions().bypassDocumentValidation(options.getBypassDocumentValidation()));
     }
 
 
-    public MixedBulkWriteOperation replaceOne(final ClientSideOperationTimeoutFactory clientSideOperationTimeoutFactory,
+    public MixedBulkWriteOperation replaceOne(final ClientSideOperationTimeout clientSideOperationTimeout,
                                               final Bson filter, final TDocument replacement, final ReplaceOptions options) {
-        return bulkWrite(clientSideOperationTimeoutFactory, singletonList(new ReplaceOneModel<TDocument>(filter, replacement, options)),
+        return bulkWrite(clientSideOperationTimeout, singletonList(new ReplaceOneModel<TDocument>(filter, replacement, options)),
                 new BulkWriteOptions().bypassDocumentValidation(options.getBypassDocumentValidation()));
     }
 
-    public MixedBulkWriteOperation deleteOne(final ClientSideOperationTimeoutFactory clientSideOperationTimeoutFactory,
+    public MixedBulkWriteOperation deleteOne(final ClientSideOperationTimeout clientSideOperationTimeout,
                                              final Bson filter, final DeleteOptions options) {
-        return bulkWrite(clientSideOperationTimeoutFactory, singletonList(new DeleteOneModel<TDocument>(filter, options)),
+        return bulkWrite(clientSideOperationTimeout, singletonList(new DeleteOneModel<TDocument>(filter, options)),
                 new BulkWriteOptions());
     }
 
-    public MixedBulkWriteOperation deleteMany(final ClientSideOperationTimeoutFactory clientSideOperationTimeoutFactory,
+    public MixedBulkWriteOperation deleteMany(final ClientSideOperationTimeout clientSideOperationTimeout,
                                               final Bson filter, final DeleteOptions options) {
-        return bulkWrite(clientSideOperationTimeoutFactory, singletonList(new DeleteManyModel<TDocument>(filter, options)),
+        return bulkWrite(clientSideOperationTimeout, singletonList(new DeleteManyModel<TDocument>(filter, options)),
                 new BulkWriteOptions());
     }
 
-    public MixedBulkWriteOperation updateOne(final ClientSideOperationTimeoutFactory clientSideOperationTimeoutFactory,
+    public MixedBulkWriteOperation updateOne(final ClientSideOperationTimeout clientSideOperationTimeout,
                                              final Bson filter, final Bson update, final UpdateOptions updateOptions) {
-        return bulkWrite(clientSideOperationTimeoutFactory, singletonList(new UpdateOneModel<TDocument>(filter, update, updateOptions)),
+        return bulkWrite(clientSideOperationTimeout, singletonList(new UpdateOneModel<TDocument>(filter, update, updateOptions)),
                 new BulkWriteOptions().bypassDocumentValidation(updateOptions.getBypassDocumentValidation()));
     }
 
-    public MixedBulkWriteOperation updateOne(final ClientSideOperationTimeoutFactory clientSideOperationTimeoutFactory,
+    public MixedBulkWriteOperation updateOne(final ClientSideOperationTimeout clientSideOperationTimeout,
                                              final Bson filter, final List<? extends Bson> update, final UpdateOptions updateOptions) {
-        return bulkWrite(clientSideOperationTimeoutFactory, singletonList(new UpdateOneModel<TDocument>(filter, update, updateOptions)),
+        return bulkWrite(clientSideOperationTimeout, singletonList(new UpdateOneModel<TDocument>(filter, update, updateOptions)),
                 new BulkWriteOptions().bypassDocumentValidation(updateOptions.getBypassDocumentValidation()));
     }
 
-    public MixedBulkWriteOperation updateMany(final ClientSideOperationTimeoutFactory clientSideOperationTimeoutFactory,
+    public MixedBulkWriteOperation updateMany(final ClientSideOperationTimeout clientSideOperationTimeout,
                                               final Bson filter, final Bson update, final UpdateOptions updateOptions) {
-        return bulkWrite(clientSideOperationTimeoutFactory, singletonList(new UpdateManyModel<TDocument>(filter, update, updateOptions)),
+        return bulkWrite(clientSideOperationTimeout, singletonList(new UpdateManyModel<TDocument>(filter, update, updateOptions)),
                 new BulkWriteOptions().bypassDocumentValidation(updateOptions.getBypassDocumentValidation()));
     }
 
-    public MixedBulkWriteOperation updateMany(final ClientSideOperationTimeoutFactory clientSideOperationTimeoutFactory,
+    public MixedBulkWriteOperation updateMany(final ClientSideOperationTimeout clientSideOperationTimeout,
                                               final Bson filter, final List<? extends Bson> update, final UpdateOptions updateOptions) {
-        return bulkWrite(clientSideOperationTimeoutFactory, singletonList(new UpdateManyModel<TDocument>(filter, update, updateOptions)),
+        return bulkWrite(clientSideOperationTimeout, singletonList(new UpdateManyModel<TDocument>(filter, update, updateOptions)),
                 new BulkWriteOptions().bypassDocumentValidation(updateOptions.getBypassDocumentValidation()));
     }
 
-    public MixedBulkWriteOperation insertMany(final ClientSideOperationTimeoutFactory clientSideOperationTimeoutFactory,
+    public MixedBulkWriteOperation insertMany(final ClientSideOperationTimeout clientSideOperationTimeout,
                                               final List<? extends TDocument> documents,
                                               final InsertManyOptions options) {
         notNull("documents", documents);
@@ -409,12 +410,12 @@ public final class Operations<TDocument> {
             requests.add(new InsertRequest(documentToBsonDocument(document)));
         }
 
-        return new MixedBulkWriteOperation(clientSideOperationTimeoutFactory, namespace, requests, options.isOrdered(), writeConcern,
+        return new MixedBulkWriteOperation(clientSideOperationTimeout, namespace, requests, options.isOrdered(), writeConcern,
                 retryWrites).bypassDocumentValidation(options.getBypassDocumentValidation());
     }
 
     @SuppressWarnings("unchecked")
-    public MixedBulkWriteOperation bulkWrite(final ClientSideOperationTimeoutFactory clientSideOperationTimeoutFactory,
+    public MixedBulkWriteOperation bulkWrite(final ClientSideOperationTimeout clientSideOperationTimeout,
                                              final List<? extends WriteModel<? extends TDocument>> requests,
                                              final BulkWriteOptions options) {
         notNull("requests", requests);
@@ -477,7 +478,7 @@ public final class Operations<TDocument> {
             }
             writeRequests.add(writeRequest);
         }
-        return new MixedBulkWriteOperation(clientSideOperationTimeoutFactory, namespace, writeRequests, options.isOrdered(), writeConcern,
+        return new MixedBulkWriteOperation(clientSideOperationTimeout, namespace, writeRequests, options.isOrdered(), writeConcern,
                 retryWrites).bypassDocumentValidation(options.getBypassDocumentValidation());
     }
 

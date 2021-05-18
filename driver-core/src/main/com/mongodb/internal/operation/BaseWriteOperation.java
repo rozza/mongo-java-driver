@@ -169,7 +169,7 @@ public abstract class BaseWriteOperation implements AsyncWriteOperation<WriteCon
     }
 
     private MixedBulkWriteOperation getMixedBulkOperation() {
-        return new MixedBulkWriteOperation(clientSideOperationTimeoutFactory, namespace, getWriteRequests(), ordered, writeConcern,
+        return new MixedBulkWriteOperation(clientSideOperationTimeoutFactory.create(), namespace, getWriteRequests(), ordered, writeConcern,
                 retryWrites).bypassDocumentValidation(bypassDocumentValidation);
     }
 

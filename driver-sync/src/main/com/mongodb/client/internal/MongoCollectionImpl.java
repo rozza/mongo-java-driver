@@ -57,6 +57,7 @@ import com.mongodb.client.result.DeleteResult;
 import com.mongodb.client.result.InsertManyResult;
 import com.mongodb.client.result.InsertOneResult;
 import com.mongodb.client.result.UpdateResult;
+import com.mongodb.internal.ClientSideOperationTimeout;
 import com.mongodb.internal.ClientSideOperationTimeoutFactories;
 import com.mongodb.internal.bulk.WriteRequest;
 import com.mongodb.internal.client.model.AggregationLevel;
@@ -462,7 +463,7 @@ class MongoCollectionImpl<TDocument> implements MongoCollection<TDocument> {
                                              final List<? extends WriteModel<? extends TDocument>> requests,
                                              final BulkWriteOptions options) {
         notNull("requests", requests);
-        return executor.execute(operations.bulkWrite(ClientSideOperationTimeoutFactories.create(timeoutMS), requests, options),
+        return executor.execute(operations.bulkWrite(ClientSideOperationTimeout.create(timeoutMS), requests, options),
                 readConcern, clientSession);
     }
 
@@ -492,7 +493,7 @@ class MongoCollectionImpl<TDocument> implements MongoCollection<TDocument> {
     private InsertOneResult executeInsertOne(@Nullable final ClientSession clientSession, final TDocument document,
                                              final InsertOneOptions options) {
         return toInsertOneResult(executeSingleWriteRequest(clientSession,
-                operations.insertOne(ClientSideOperationTimeoutFactories.create(timeoutMS), document, options), INSERT));
+                operations.insertOne(ClientSideOperationTimeout.create(timeoutMS), document, options), INSERT));
     }
 
     @Override
@@ -520,7 +521,7 @@ class MongoCollectionImpl<TDocument> implements MongoCollection<TDocument> {
 
     private InsertManyResult executeInsertMany(@Nullable final ClientSession clientSession, final List<? extends TDocument> documents,
                                    final InsertManyOptions options) {
-        return toInsertManyResult(executor.execute(operations.insertMany(ClientSideOperationTimeoutFactories.create(timeoutMS), documents,
+        return toInsertManyResult(executor.execute(operations.insertMany(ClientSideOperationTimeout.create(timeoutMS), documents,
                                                                          options), readConcern, clientSession));
     }
 
@@ -591,7 +592,7 @@ class MongoCollectionImpl<TDocument> implements MongoCollection<TDocument> {
     private UpdateResult executeReplaceOne(@Nullable final ClientSession clientSession, final Bson filter, final TDocument replacement,
                                            final ReplaceOptions replaceOptions) {
         return toUpdateResult(executeSingleWriteRequest(clientSession, operations.replaceOne(
-                ClientSideOperationTimeoutFactories.create(timeoutMS), filter, replacement, replaceOptions), REPLACE));
+                ClientSideOperationTimeout.create(timeoutMS), filter, replacement, replaceOptions), REPLACE));
     }
 
     @Override
@@ -1019,8 +1020,8 @@ class MongoCollectionImpl<TDocument> implements MongoCollection<TDocument> {
     private DeleteResult executeDelete(@Nullable final ClientSession clientSession, final Bson filter, final DeleteOptions deleteOptions,
                                        final boolean multi) {
         com.mongodb.bulk.BulkWriteResult result = executeSingleWriteRequest(clientSession,
-                multi ? operations.deleteMany(ClientSideOperationTimeoutFactories.create(timeoutMS), filter, deleteOptions)
-                        : operations.deleteOne(ClientSideOperationTimeoutFactories.create(timeoutMS), filter, deleteOptions),
+                multi ? operations.deleteMany(ClientSideOperationTimeout.create(timeoutMS), filter, deleteOptions)
+                        : operations.deleteOne(ClientSideOperationTimeout.create(timeoutMS), filter, deleteOptions),
                 DELETE);
         if (result.wasAcknowledged()) {
             return DeleteResult.acknowledged(result.getDeletedCount());
@@ -1032,16 +1033,16 @@ class MongoCollectionImpl<TDocument> implements MongoCollection<TDocument> {
     private UpdateResult executeUpdate(@Nullable final ClientSession clientSession, final Bson filter, final Bson update,
                                        final UpdateOptions updateOptions, final boolean multi) {
         return toUpdateResult(executeSingleWriteRequest(clientSession,
-                multi ? operations.updateMany(ClientSideOperationTimeoutFactories.create(timeoutMS), filter, update, updateOptions)
-                        : operations.updateOne(ClientSideOperationTimeoutFactories.create(timeoutMS), filter, update, updateOptions),
+                multi ? operations.updateMany(ClientSideOperationTimeout.create(timeoutMS), filter, update, updateOptions)
+                        : operations.updateOne(ClientSideOperationTimeout.create(timeoutMS), filter, update, updateOptions),
                 UPDATE));
     }
 
     private UpdateResult executeUpdate(@Nullable final ClientSession clientSession, final Bson filter,
                                        final List<? extends Bson> update, final UpdateOptions updateOptions, final boolean multi) {
         return toUpdateResult(executeSingleWriteRequest(clientSession,
-                multi ? operations.updateMany(ClientSideOperationTimeoutFactories.create(timeoutMS), filter, update, updateOptions)
-                        : operations.updateOne(ClientSideOperationTimeoutFactories.create(timeoutMS), filter, update, updateOptions),
+                multi ? operations.updateMany(ClientSideOperationTimeout.create(timeoutMS), filter, update, updateOptions)
+                        : operations.updateOne(ClientSideOperationTimeout.create(timeoutMS), filter, update, updateOptions),
                 UPDATE));
     }
 

@@ -252,7 +252,7 @@ public final class CollectionHelper<T> {
     }
 
     public void updateOne(final Bson filter, final Bson update, final boolean isUpsert) {
-        new MixedBulkWriteOperation(DEFAULT_CSOT_FACTORY, namespace,
+        new MixedBulkWriteOperation(DEFAULT_CSOT_FACTORY.create(), namespace,
                                     singletonList(new UpdateRequest(filter.toBsonDocument(Document.class, registry),
                                                                     update.toBsonDocument(Document.class, registry),
                                                                     WriteRequest.Type.UPDATE)
@@ -262,7 +262,7 @@ public final class CollectionHelper<T> {
     }
 
     public void replaceOne(final Bson filter, final Bson update, final boolean isUpsert) {
-        new MixedBulkWriteOperation(DEFAULT_CSOT_FACTORY, namespace,
+        new MixedBulkWriteOperation(DEFAULT_CSOT_FACTORY.create(), namespace,
                 singletonList(new UpdateRequest(filter.toBsonDocument(Document.class, registry),
                         update.toBsonDocument(Document.class, registry),
                         WriteRequest.Type.REPLACE)
@@ -272,7 +272,7 @@ public final class CollectionHelper<T> {
     }
 
     public void deleteOne(final Bson filter) {
-        new MixedBulkWriteOperation(DEFAULT_CSOT_FACTORY, namespace,
+        new MixedBulkWriteOperation(DEFAULT_CSOT_FACTORY.create(), namespace,
                 singletonList(new DeleteRequest(filter.toBsonDocument(Document.class, registry))),
                 true, WriteConcern.ACKNOWLEDGED, false)
                 .execute(getBinding());

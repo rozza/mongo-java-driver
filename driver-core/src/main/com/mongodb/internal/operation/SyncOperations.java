@@ -37,6 +37,7 @@ import com.mongodb.client.model.RenameCollectionOptions;
 import com.mongodb.client.model.ReplaceOptions;
 import com.mongodb.client.model.UpdateOptions;
 import com.mongodb.client.model.WriteModel;
+import com.mongodb.internal.ClientSideOperationTimeout;
 import com.mongodb.internal.ClientSideOperationTimeoutFactory;
 import com.mongodb.internal.client.model.AggregationLevel;
 import com.mongodb.internal.client.model.FindOptions;
@@ -168,59 +169,59 @@ public final class SyncOperations<TDocument> {
         return operations.findOneAndUpdate(clientSideOperationTimeoutFactory, filter, update, options);
     }
 
-    public WriteOperation<BulkWriteResult> insertOne(final ClientSideOperationTimeoutFactory clientSideOperationTimeoutFactory,
+    public WriteOperation<BulkWriteResult> insertOne(final ClientSideOperationTimeout clientSideOperationTimeout,
                                                      final TDocument document, final InsertOneOptions options) {
-        return operations.insertOne(clientSideOperationTimeoutFactory, document, options);
+        return operations.insertOne(clientSideOperationTimeout, document, options);
     }
 
 
-    public WriteOperation<BulkWriteResult> replaceOne(final ClientSideOperationTimeoutFactory clientSideOperationTimeoutFactory,
+    public WriteOperation<BulkWriteResult> replaceOne(final ClientSideOperationTimeout clientSideOperationTimeout,
                                                       final Bson filter, final TDocument replacement, final ReplaceOptions options) {
-        return operations.replaceOne(clientSideOperationTimeoutFactory, filter, replacement, options);
+        return operations.replaceOne(clientSideOperationTimeout, filter, replacement, options);
     }
 
-    public WriteOperation<BulkWriteResult> deleteOne(final ClientSideOperationTimeoutFactory clientSideOperationTimeoutFactory,
+    public WriteOperation<BulkWriteResult> deleteOne(final ClientSideOperationTimeout clientSideOperationTimeout,
                                                      final Bson filter, final DeleteOptions options) {
-        return operations.deleteOne(clientSideOperationTimeoutFactory, filter, options);
+        return operations.deleteOne(clientSideOperationTimeout, filter, options);
     }
 
-    public WriteOperation<BulkWriteResult> deleteMany(final ClientSideOperationTimeoutFactory clientSideOperationTimeoutFactory,
+    public WriteOperation<BulkWriteResult> deleteMany(final ClientSideOperationTimeout clientSideOperationTimeout,
                                                       final Bson filter, final DeleteOptions options) {
-        return operations.deleteMany(clientSideOperationTimeoutFactory, filter, options);
+        return operations.deleteMany(clientSideOperationTimeout, filter, options);
     }
 
-    public WriteOperation<BulkWriteResult> updateOne(final ClientSideOperationTimeoutFactory clientSideOperationTimeoutFactory,
+    public WriteOperation<BulkWriteResult> updateOne(final ClientSideOperationTimeout clientSideOperationTimeout,
                                                      final Bson filter, final Bson update, final UpdateOptions updateOptions) {
-        return operations.updateOne(clientSideOperationTimeoutFactory, filter, update, updateOptions);
+        return operations.updateOne(clientSideOperationTimeout, filter, update, updateOptions);
     }
 
-    public WriteOperation<BulkWriteResult> updateOne(final ClientSideOperationTimeoutFactory clientSideOperationTimeoutFactory,
+    public WriteOperation<BulkWriteResult> updateOne(final ClientSideOperationTimeout clientSideOperationTimeout,
                                                      final Bson filter, final List<? extends Bson> update,
                                                      final UpdateOptions updateOptions) {
-        return operations.updateOne(clientSideOperationTimeoutFactory, filter, update, updateOptions);
+        return operations.updateOne(clientSideOperationTimeout, filter, update, updateOptions);
     }
 
-    public WriteOperation<BulkWriteResult> updateMany(final ClientSideOperationTimeoutFactory clientSideOperationTimeoutFactory,
+    public WriteOperation<BulkWriteResult> updateMany(final ClientSideOperationTimeout clientSideOperationTimeout,
                                                       final Bson filter, final Bson update, final UpdateOptions updateOptions) {
-        return operations.updateMany(clientSideOperationTimeoutFactory, filter, update, updateOptions);
+        return operations.updateMany(clientSideOperationTimeout, filter, update, updateOptions);
     }
 
-    public WriteOperation<BulkWriteResult> updateMany(final ClientSideOperationTimeoutFactory clientSideOperationTimeoutFactory,
+    public WriteOperation<BulkWriteResult> updateMany(final ClientSideOperationTimeout clientSideOperationTimeout,
                                                       final Bson filter, final List<? extends Bson> update,
                                                       final UpdateOptions updateOptions) {
-        return operations.updateMany(clientSideOperationTimeoutFactory, filter, update, updateOptions);
+        return operations.updateMany(clientSideOperationTimeout, filter, update, updateOptions);
     }
 
-    public WriteOperation<BulkWriteResult> insertMany(final ClientSideOperationTimeoutFactory clientSideOperationTimeoutFactory,
+    public WriteOperation<BulkWriteResult> insertMany(final ClientSideOperationTimeout clientSideOperationTimeout,
                                                       final List<? extends TDocument> documents, final InsertManyOptions options) {
-        return operations.insertMany(clientSideOperationTimeoutFactory, documents, options);
+        return operations.insertMany(clientSideOperationTimeout, documents, options);
     }
 
     @SuppressWarnings("unchecked")
-    public WriteOperation<BulkWriteResult> bulkWrite(final ClientSideOperationTimeoutFactory clientSideOperationTimeoutFactory,
+    public WriteOperation<BulkWriteResult> bulkWrite(final ClientSideOperationTimeout clientSideOperationTimeout,
                                                      final List<? extends WriteModel<? extends TDocument>> requests,
                                                      final BulkWriteOptions options) {
-        return operations.bulkWrite(clientSideOperationTimeoutFactory, requests, options);
+        return operations.bulkWrite(clientSideOperationTimeout, requests, options);
     }
 
 

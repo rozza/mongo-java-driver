@@ -53,6 +53,7 @@ import com.mongodb.client.result.DeleteResult;
 import com.mongodb.client.result.InsertManyResult;
 import com.mongodb.client.result.InsertOneResult;
 import com.mongodb.client.result.UpdateResult;
+import com.mongodb.internal.ClientSideOperationTimeout;
 import com.mongodb.internal.ClientSideOperationTimeoutFactories;
 import com.mongodb.internal.ClientSideOperationTimeoutFactory;
 import com.mongodb.internal.async.SingleResultCallback;
@@ -317,13 +318,13 @@ public final class MongoOperationPublisher<T> {
             @Nullable final ClientSession clientSession,
             final List<? extends WriteModel<? extends T>> requests, final BulkWriteOptions options) {
         return createWriteOperationMono(() -> operations.bulkWrite(
-                getClientSideOperationTimeoutFactory(), notNull("requests", requests),
+                ClientSideOperationTimeout.create(timeoutMS), notNull("requests", requests),
                 notNull("options", options)), clientSession);
     }
 
     Publisher<InsertOneResult> insertOne(@Nullable final ClientSession clientSession, final T document, final InsertOneOptions options) {
         return createSingleWriteRequestMono(() -> operations.insertOne(
-                getClientSideOperationTimeoutFactory(), notNull("document", document),
+                ClientSideOperationTimeout.create(timeoutMS), notNull("document", document),
                 notNull("options", options)), clientSession, WriteRequest.Type.INSERT)
                 .map(INSERT_ONE_RESULT_MAPPER);
     }
@@ -332,21 +333,21 @@ public final class MongoOperationPublisher<T> {
             @Nullable final ClientSession clientSession, final List<? extends T> documents,
             final InsertManyOptions options) {
         return createWriteOperationMono(() -> operations.insertMany(
-                getClientSideOperationTimeoutFactory(),
+                ClientSideOperationTimeout.create(timeoutMS),
                 notNull("documents", documents), notNull("options", options)), clientSession)
                 .map(INSERT_MANY_RESULT_MAPPER);
     }
 
     Publisher<DeleteResult> deleteOne(@Nullable final ClientSession clientSession, final Bson filter, final DeleteOptions options) {
         return createSingleWriteRequestMono(() -> operations.deleteOne(
-                getClientSideOperationTimeoutFactory(),
+                ClientSideOperationTimeout.create(timeoutMS),
                 notNull("filter", filter), notNull("options", options)), clientSession, WriteRequest.Type.DELETE)
                 .map(DELETE_RESULT_MAPPER);
     }
 
     Publisher<DeleteResult> deleteMany(@Nullable final ClientSession clientSession, final Bson filter, final DeleteOptions options) {
         return createSingleWriteRequestMono(() -> operations.deleteMany(
-                getClientSideOperationTimeoutFactory(),
+                ClientSideOperationTimeout.create(timeoutMS),
                 notNull("filter", filter), notNull("options", options)), clientSession, WriteRequest.Type.DELETE)
                 .map(DELETE_RESULT_MAPPER);
     }
@@ -355,7 +356,7 @@ public final class MongoOperationPublisher<T> {
             @Nullable final ClientSession clientSession, final Bson filter, final T replacement,
             final ReplaceOptions options) {
         return createSingleWriteRequestMono(() -> operations.replaceOne(
-                getClientSideOperationTimeoutFactory(),
+                ClientSideOperationTimeout.create(timeoutMS),
                 notNull("filter", filter), notNull("replacement", replacement), notNull("options", options)),
                 clientSession, WriteRequest.Type.REPLACE)
                 .map(UPDATE_RESULT_MAPPER);
@@ -365,7 +366,7 @@ public final class MongoOperationPublisher<T> {
             @Nullable final ClientSession clientSession, final Bson filter, final Bson update,
             final UpdateOptions options) {
         return createSingleWriteRequestMono(() -> operations.updateOne(
-                getClientSideOperationTimeoutFactory(),
+                ClientSideOperationTimeout.create(timeoutMS),
                 notNull("filter", filter), notNull("update", update), notNull("options", options)),
                 clientSession, WriteRequest.Type.UPDATE)
                 .map(UPDATE_RESULT_MAPPER);
@@ -375,7 +376,7 @@ public final class MongoOperationPublisher<T> {
             @Nullable final ClientSession clientSession, final Bson filter, final List<? extends Bson> update,
             final UpdateOptions options) {
         return createSingleWriteRequestMono(() -> operations.updateOne(
-                getClientSideOperationTimeoutFactory(),
+                ClientSideOperationTimeout.create(timeoutMS),
                 notNull("filter", filter), notNull("update", update), notNull("options", options)),
                 clientSession, WriteRequest.Type.UPDATE)
                 .map(UPDATE_RESULT_MAPPER);
@@ -385,7 +386,7 @@ public final class MongoOperationPublisher<T> {
             @Nullable final ClientSession clientSession, final Bson filter, final Bson update,
             final UpdateOptions options) {
         return createSingleWriteRequestMono(() -> operations.updateMany(
-                getClientSideOperationTimeoutFactory(),
+                ClientSideOperationTimeout.create(timeoutMS),
                 notNull("filter", filter), notNull("update", update), notNull("options", options)),
                 clientSession, WriteRequest.Type.UPDATE)
                 .map(UPDATE_RESULT_MAPPER);
@@ -395,7 +396,7 @@ public final class MongoOperationPublisher<T> {
             @Nullable final ClientSession clientSession, final Bson filter, final List<? extends Bson> update,
             final UpdateOptions options) {
         return createSingleWriteRequestMono(() -> operations.updateMany(
-                getClientSideOperationTimeoutFactory(),
+                ClientSideOperationTimeout.create(timeoutMS),
                 notNull("filter", filter), notNull("update", update), notNull("options", options)),
                 clientSession, WriteRequest.Type.UPDATE)
                 .map(UPDATE_RESULT_MAPPER);
