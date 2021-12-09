@@ -19,8 +19,12 @@ plugins {
     id("project.settings.java")
     id("project.settings.publish.java")
 }
+
+apply(plugin = "java")
+
 jar {
     baseName = "bson"
 }
-description = "The BSON library"
+    description = "The BSON library"
+
 

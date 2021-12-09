@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package project.settings
+package project.settings.publish
 
 import org.gradle.api.Project
 import org.gradle.api.Plugin
@@ -29,7 +29,7 @@ import org.gradle.jvm.tasks.Jar
 /**
  * Java configuration plugin
  */
-class PublishJava: Plugin<Project> {
+class Java: Plugin<Project> {
     override fun apply(project: Project) {
         project.pluginManager.apply("maven-publish")
         project.pluginManager.apply("signing")

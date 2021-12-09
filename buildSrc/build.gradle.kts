@@ -45,7 +45,7 @@ gradlePlugin {
     }
     val publishJava by plugins.creating {
         id = "project.settings.publish.java"
-        implementationClass = "project.settings.PublishJava"
+        implementationClass = "project.settings.publish.Java"
     }
 }
 
