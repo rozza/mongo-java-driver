@@ -63,18 +63,18 @@ def javaMainProjects = javaProjects - utilProjects
 def javaCodeCheckedProjects = javaMainProjects.findAll { !['driver-benchmarks', 'driver-workload-executor'].contains(it.name) }
 def javaAndScalaTestedProjects = javaCodeCheckedProjects + scalaProjects
 
-configure(coreProjects) {
-    apply plugin: 'idea'
-
-    group = 'org.mongodb'
-    version = '4.5.0-SNAPSHOT'
-
-    repositories {
-        mavenLocal()
-        google()
-        mavenCentral()
-    }
-}
+//configure(coreProjects) {
+//    apply plugin: 'idea'
+//
+////    group = 'org.mongodb'
+////    version = '4.5.0-SNAPSHOT'
+//
+////    repositories {
+////        mavenLocal()
+////        google()
+////        mavenCentral()
+////    }
+//}
 
 configure(javaProjects) {
     apply plugin: 'java-library'
