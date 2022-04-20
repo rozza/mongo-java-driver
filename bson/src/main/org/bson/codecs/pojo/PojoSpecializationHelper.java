@@ -25,7 +25,7 @@ final class PojoSpecializationHelper {
     @SuppressWarnings("unchecked")
     static <V> TypeData<V> specializeTypeData(final TypeData<V> typeData, final List<TypeData<?>> typeParameters,
                                               final TypeParameterMap typeParameterMap) {
-        if (!typeParameterMap.hasTypeParameters() || typeParameters.isEmpty()) {
+        if (typeData.isSpecialized() || !typeParameterMap.hasTypeParameters() || typeParameters.isEmpty()) {
             return typeData;
         }
 

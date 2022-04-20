@@ -535,7 +535,7 @@ public final class PojoRoundTripTest extends PojoTestCase {
 
     private static final PojoCodecProvider.Builder AUTOMATIC_BUILDER = PojoCodecProvider.builder().automatic(true);
     private static final PojoCodecProvider.Builder PACKAGE_BUILDER = PojoCodecProvider.builder().register("org.bson.codecs.pojo.entities",
-            "org.bson.codecs.pojo.entities.conventions");
+            "org.bson.codecs.pojo.entities.conventions", "org.bson.codecs.pojo.entities.help");
 
     private static class TestData {
         private final String name;

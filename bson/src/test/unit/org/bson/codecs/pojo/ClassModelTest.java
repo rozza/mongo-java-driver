@@ -26,6 +26,7 @@ import org.bson.codecs.pojo.entities.ListMapGenericExtendedModel;
 import org.bson.codecs.pojo.entities.MapGenericExtendedModel;
 import org.bson.codecs.pojo.entities.MapListGenericExtendedModel;
 import org.bson.codecs.pojo.entities.MapMapGenericExtendedModel;
+import org.bson.codecs.pojo.entities.PassedThroughGenericModel;
 import org.bson.codecs.pojo.entities.MultipleBoundsModel;
 import org.bson.codecs.pojo.entities.NestedGenericHolderMapModel;
 import org.bson.codecs.pojo.entities.PropertySelectionModel;
@@ -256,6 +257,14 @@ public final class ClassModelTest {
         assertEquals(createTypeData(Double.class), classModel.getPropertyModel("level1").getTypeData());
         assertEquals(createTypeData(List.class, Integer.class), classModel.getPropertyModel("level2").getTypeData());
         assertEquals(createTypeData(Map.class, String.class, String.class), classModel.getPropertyModel("level3").getTypeData());
+    }
+
+    @Test
+    public void testPassedThroughGenericModel() {
+        ClassModel<?> classModel = ClassModel.builder(PassedThroughGenericModel.class).build();
+
+        assertEquals(1, classModel.getPropertyModels().size());
+        assertEquals(createTypeData(List.class, String.class), classModel.getPropertyModel("level3").getTypeData());
     }
 
     @Test

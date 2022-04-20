@@ -13,14 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.bson.codecs.pojo.entities;
 
-public class MultipleBoundsLevel3<S> extends MultipleBoundsLevel3Impl<S> {
-    public MultipleBoundsLevel3() {
+import java.util.List;
+
+public class PassedThroughGenericModel extends MultipleBoundsLevel3<List<String>> {
+    public PassedThroughGenericModel() {
     }
 
-    public MultipleBoundsLevel3(final S level3) {
+    public PassedThroughGenericModel(final List<String> level3) {
         super(level3);
     }
 }

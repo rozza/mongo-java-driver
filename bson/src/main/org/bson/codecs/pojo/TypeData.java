@@ -106,6 +106,14 @@ final class TypeData<T> implements TypeWithTypeParameters<T> {
     }
 
     /**
+     * @return true if already specialized
+     */
+    public boolean isSpecialized() {
+        return false;
+//        return !(getType() == Object.class && getTypeParameters().stream().anyMatch(t -> !t.isSpecialized()));
+    }
+
+    /**
      * A builder for TypeData
      *
      * @param <T> the main type

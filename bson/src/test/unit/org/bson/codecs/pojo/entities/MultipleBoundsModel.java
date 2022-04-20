@@ -19,13 +19,13 @@ package org.bson.codecs.pojo.entities;
 import java.util.List;
 import java.util.Map;
 
-public final class MultipleBoundsModel extends MultipleBoundsLevel1<Double> {
+public final class MultipleBoundsModel extends MultipleBoundsLevel1<Double, List<Integer>, Map<String, String>> {
 
     public MultipleBoundsModel() {
         super();
     }
 
-    public MultipleBoundsModel(final Map<String, String> level3, final List<Integer> level2, final Double level1) {
-        super(level3, level2, level1);
+    public MultipleBoundsModel(final Double level1, final List<Integer> level2, final Map<String, String> level3) {
+        super(level1, level2, level3);
     }
 }

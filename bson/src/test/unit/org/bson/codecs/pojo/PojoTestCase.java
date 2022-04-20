@@ -355,7 +355,7 @@ abstract class PojoTestCase {
         HashMap<String, String> map = new HashMap<String, String>();
         map.put("key", "value");
         List<Integer> list = asList(1, 2, 3);
-        return new MultipleBoundsModel(map, list, 2.2);
+        return new MultipleBoundsModel(2.2, list, map);
     }
 
     static NestedGenericHolderFieldWithMultipleTypeParamsModel getNestedGenericHolderFieldWithMultipleTypeParamsModel() {

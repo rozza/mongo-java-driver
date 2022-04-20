@@ -16,26 +16,25 @@
 
 package org.bson.codecs.pojo.entities;
 
-import java.util.List;
-import java.util.Map;
+import java.util.Objects;
 
-public class MultipleBoundsLevel2<T> extends MultipleBoundsLevel3<String> {
-    private List<T> level2;
+public class MultipleBoundsLevel2<R, S> extends MultipleBoundsLevel3<S> {
+    private R level2;
 
     public MultipleBoundsLevel2() {
         super();
     }
 
-    public MultipleBoundsLevel2(final Map<String, String> level3, final List<T> level2) {
+    public MultipleBoundsLevel2(final R level2, final S level3) {
         super(level3);
         this.level2 = level2;
     }
 
-    public List<T> getLevel2() {
+    public R getLevel2() {
         return level2;
     }
 
-    public void setLevel2(final List<T> level2) {
+    public void setLevel2(final R level2) {
         this.level2 = level2;
     }
 
@@ -50,20 +49,12 @@ public class MultipleBoundsLevel2<T> extends MultipleBoundsLevel3<String> {
         if (!super.equals(o)) {
             return false;
         }
-
-        MultipleBoundsLevel2<?> that = (MultipleBoundsLevel2<?>) o;
-
-        if (level2 != null ? !level2.equals(that.level2) : that.level2 != null) {
-            return false;
-        }
-
-        return true;
+        final MultipleBoundsLevel2<?, ?> that = (MultipleBoundsLevel2<?, ?>) o;
+        return Objects.equals(level2, that.level2);
     }
 
     @Override
     public int hashCode() {
-        int result = super.hashCode();
-        result = 31 * result + (level2 != null ? level2.hashCode() : 0);
-        return result;
+        return Objects.hash(super.hashCode(), level2);
     }
 }

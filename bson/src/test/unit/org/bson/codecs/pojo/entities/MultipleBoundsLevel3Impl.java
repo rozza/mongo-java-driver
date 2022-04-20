@@ -18,24 +18,22 @@ package org.bson.codecs.pojo.entities;
 
 import java.util.Objects;
 
-public class MultipleBoundsLevel1<T, R, S> extends MultipleBoundsLevel2<R, S> {
-    private T level1;
+public class MultipleBoundsLevel3Impl<S> {
+    private S level3;
 
-    public MultipleBoundsLevel1() {
-        super();
+    public MultipleBoundsLevel3Impl() {
     }
 
-    public MultipleBoundsLevel1(final T level1, final R level2, final S level3) {
-        super(level2, level3);
-        this.level1 = level1;
+    public MultipleBoundsLevel3Impl(final S level3) {
+        this.level3 = level3;
     }
 
-    public T getLevel1() {
-        return level1;
+    public S getLevel3() {
+        return level3;
     }
 
-    public void setLevel1(final T level1) {
-        this.level1 = level1;
+    public void setLevel3(final S level3) {
+        this.level3 = level3;
     }
 
     @Override
@@ -46,18 +44,13 @@ public class MultipleBoundsLevel1<T, R, S> extends MultipleBoundsLevel2<R, S> {
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
-        if (!super.equals(o)) {
-            return false;
-        }
 
-        MultipleBoundsLevel1<?, ?, ?> that = (MultipleBoundsLevel1<?, ?, ?>) o;
-        return Objects.equals(level1, that.level1);
+        MultipleBoundsLevel3Impl<?> that = (MultipleBoundsLevel3Impl<?>) o;
+        return Objects.equals(level3, that.level3);
     }
 
     @Override
     public int hashCode() {
-        int result = super.hashCode();
-        result = 31 * result + (level1 != null ? level1.hashCode() : 0);
-        return result;
+        return level3 != null ? level3.hashCode() : 0;
     }
 }
