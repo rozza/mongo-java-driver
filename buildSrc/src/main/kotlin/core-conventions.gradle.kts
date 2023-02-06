@@ -14,12 +14,24 @@
  * limitations under the License.
  */
 
-archivesBaseName = 'bson'
-description = 'The BSON library'
+import org.gradle.accessors.dm.LibrariesForLibs
+import org.gradle.kotlin.dsl.the
 
-ext {
-    pomName = 'BSON'
-    pomURL = 'https://bsonspec.org'
+val libs = the<LibrariesForLibs>()
+
+group = "org.mongodb"
+version = libs.versions.driver
+
+repositories {
+    mavenLocal()
+    google()
+    mavenCentral()
+
+    // Uncomment this to test with a snapshot build of mongodb-crypt
+//        maven {
+//            url 'https://oss.sonatype.org/content/repositories/snapshots'
+//            content {
+//                includeGroup "org.mongodb"
+//            }
+//        }
 }
-
-jar.manifest.attributes['Import-Package'] = 'org.slf4j.*;resolution:=optional'

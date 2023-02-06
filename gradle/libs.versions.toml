@@ -1,0 +1,52 @@
+# Copyright 2008-present MongoDB, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+[versions]
+driver = "4.9.0-SNAPSHOT"
+slf4j = "1.7.6"
+jnrUnixsocket = "0.38.17"
+netty = "4.1.84.Final"
+snappy = "1.1.8.4"
+zstd = "1.5.2-5"
+awsSdkV2 = "2.18.9"
+awsSdkV1 = "1.12.337"
+mongoCrypt = "1.7.1"
+projectReactor = "2022.0.0"
+
+junitBom = "5.8.2"
+
+spotbugs = "5.0.13"
+nebulaOptionalBase = "1.12.0"
+testLogger = "3.2.0"
+findBugs = "1.3.9"
+
+[libraries]
+slf4jApi = { group = "org.slf4j", name = "slf4j-api", version.ref = "slf4j" }
+
+junitBom = { group = "org.junit", name = "junit-bom", version.ref = "junitBom" }
+junitJupiter = { group = "org.junit.jupiter", name = "junit-jupiter" }
+junitJupiterParams = { group = "org.junit.jupiter", name = "junit-jupiter-params" }
+junitJupiterEngine = { group = "org.junit.jupiter", name = "junit-jupiter-engine" }
+junitVintageEngine = { group = "org.junit.vintage", name = "junit-vintage-engine" }
+
+findBugs = { group = "com.google.code.findbugs", name = "jsr305", version.ref = "findBugs" }
+
+
+[bundles]
+
+[plugins]
+optional = { id = "nebula.nebula-optional-base", version.ref = "nebulaOptionalBase" }
+testLogger = { id = "com.adarshr.test-logger", version.ref = "testLogger" }
+
+
