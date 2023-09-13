@@ -112,7 +112,7 @@ public final class ClusterFixture {
     private static final String MONGODB_OCSP_SHOULD_SUCCEED = "org.mongodb.test.ocsp.tls.should.succeed";
     private static final String DEFAULT_DATABASE_NAME = "JavaDriverTest";
     private static final int COMMAND_NOT_FOUND_ERROR_CODE = 59;
-    public static final long TIMEOUT = 60L;
+    public static final long TIMEOUT = 10L;
     public static final Duration TIMEOUT_DURATION = Duration.ofMinutes(1);
     public static final String LEGACY_HELLO = "isMaster";
 
@@ -716,7 +716,7 @@ public final class ClusterFixture {
                 if (System.currentTimeMillis() > startTime + 5000) {
                     return count;
                 }
-                sleep(10);
+                sleep(100);
                 count = referenceCounted.getCount();
             } catch (InterruptedException e) {
                 throw interruptAndCreateMongoInterruptedException("Interrupted", e);

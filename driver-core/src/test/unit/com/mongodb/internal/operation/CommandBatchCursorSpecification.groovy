@@ -28,19 +28,17 @@ import com.mongodb.connection.ServerType
 import com.mongodb.connection.ServerVersion
 import com.mongodb.internal.binding.ConnectionSource
 import com.mongodb.internal.connection.Connection
-import com.mongodb.internal.connection.QueryResult
 import org.bson.BsonDocument
 import org.bson.BsonInt32
 import org.bson.BsonInt64
 import org.bson.BsonString
 import org.bson.Document
-import org.bson.codecs.BsonDocumentCodec
 import org.bson.codecs.DocumentCodec
 import spock.lang.Specification
 
 import static com.mongodb.internal.operation.OperationUnitSpecification.getMaxWireVersionForServerVersion
 
-class QueryBatchCursorSpecification extends Specification {
+class CommandBatchCursorSpecification extends Specification {
     private static final MongoNamespace NAMESPACE = new MongoNamespace('db', 'coll')
     private static final ServerAddress SERVER_ADDRESS = new ServerAddress()
 
@@ -58,10 +56,9 @@ class QueryBatchCursorSpecification extends Specification {
         connectionSource.retain() >> connectionSource
 
         def cursorId = 42
-
-        def firstBatch = new QueryResult(NAMESPACE, [], cursorId, SERVER_ADDRESS)
-        def cursor = new QueryBatchCursor<Document>(firstBatch, 0, batchSize, maxTimeMS, new BsonDocumentCodec(), null, connectionSource,
-                                                    connection)
+        def initialResults = createCommandResult([], cursorId)
+        def cursor = new CommandBatchCursor<Document>(SERVER_ADDRESS, initialResults, 0, batchSize, maxTimeMS, new DocumentCodec(),
+                null, connectionSource, connection)
         def expectedCommand = new BsonDocument('getMore': new BsonInt64(cursorId))
                 .append('collection', new BsonString(NAMESPACE.getCollectionName()))
         if (batchSize != 0) {
@@ -71,11 +68,7 @@ class QueryBatchCursorSpecification extends Specification {
             expectedCommand.append('maxTimeMS', new BsonInt64(expectedMaxTimeFieldValue))
         }
 
-        def reply = new BsonDocument('ok', new BsonInt32(1))
-                .append('cursor',
-                        new BsonDocument('id', new BsonInt64(0))
-                                .append('ns', new BsonString(NAMESPACE.getFullName()))
-                                .append('nextBatch', new BsonArrayWrapper([])))
+        def reply = getMoreResponse([], 0)
 
         when:
         cursor.hasNext()
@@ -107,8 +100,9 @@ class QueryBatchCursorSpecification extends Specification {
         }
         connectionSource.retain() >> connectionSource
 
-        def firstBatch = new QueryResult(NAMESPACE, [], 42, SERVER_ADDRESS)
-        def cursor = new QueryBatchCursor<Document>(firstBatch, 0, 2, 100, new DocumentCodec(), null, connectionSource, connection)
+        def initialResults = createCommandResult([])
+        def cursor = new CommandBatchCursor<Document>(SERVER_ADDRESS, initialResults, 0, 2, 100, new DocumentCodec(),
+                null, connectionSource, connection)
 
         when:
         cursor.close()
@@ -136,8 +130,9 @@ class QueryBatchCursorSpecification extends Specification {
         }
         connectionSource.retain() >> connectionSource
 
-        def firstBatch = new QueryResult(NAMESPACE, [], 42, SERVER_ADDRESS)
-        def cursor = new QueryBatchCursor<Document>(firstBatch, 0, 2, 100, new DocumentCodec(), null, connectionSource, connection)
+        def initialResults = createCommandResult([])
+        def cursor = new CommandBatchCursor<Document>(SERVER_ADDRESS, initialResults, 0, 2, 100, new DocumentCodec(),
+                null, connectionSource, connection)
 
         when:
         cursor.close()
@@ -154,21 +149,19 @@ class QueryBatchCursorSpecification extends Specification {
 
     def 'should close cursor after getMore finishes if cursor was closed while getMore was in progress and getMore returns a response'() {
         given:
-        Connection conn = mockConnection(serverVersion)
-        ConnectionSource connSource
+        def serverVersion =  new ServerVersion([3, 6, 0])
+        Connection connection = mockConnection(serverVersion)
+        ConnectionSource connectionSource
         if (serverType == ServerType.LOAD_BALANCER) {
-            connSource = mockConnectionSource(SERVER_ADDRESS, serverType)
+            connectionSource = mockConnectionSource(SERVER_ADDRESS, serverType, connection)
         } else {
-            connSource = mockConnectionSource(SERVER_ADDRESS, serverType, conn, mockConnection(serverVersion))
+            connectionSource = mockConnectionSource(SERVER_ADDRESS, serverType, connection, mockConnection(serverVersion))
         }
         List<Document> firstBatch = [new Document()]
-        QueryResult<Document> initialResult = new QueryResult<>(NAMESPACE, firstBatch, 1, SERVER_ADDRESS)
-        Object getMoreResponse = useCommand
-                ? emptyGetMoreCommandResponse(NAMESPACE, getMoreResponseHasCursor ? 42 : 0)
-                : emptyGetMoreQueryResponse(NAMESPACE, SERVER_ADDRESS, getMoreResponseHasCursor ? 42 : 0)
-
+        def initialResults = createCommandResult(firstBatch)
         when:
-        QueryBatchCursor<Document> cursor = new QueryBatchCursor<>(initialResult, 0, 0, 0, new DocumentCodec(), null, connSource, conn)
+        CommandBatchCursor<Document> cursor = new CommandBatchCursor<>(SERVER_ADDRESS, initialResults, 0, 0, 0, new DocumentCodec(),
+                null, connectionSource, connection)
         List<Document> batch = cursor.next()
 
         then:
@@ -179,24 +172,14 @@ class QueryBatchCursorSpecification extends Specification {
 
         then:
         // simulate the user calling `close` while `getMore` is in flight
-        if (useCommand) {
-            // in LB mode the same connection is used to execute both `getMore` and `killCursors`
-            int numberOfInvocations = serverType == ServerType.LOAD_BALANCER
-                    ? getMoreResponseHasCursor ? 2 : 1
-                    : 1
-            numberOfInvocations * conn.command(*_) >> {
-                // `getMore` command
-                cursor.close()
-                getMoreResponse
-            } >> {
-                // `killCursors` command
-                null
-            }
-        } else {
-            1 * conn.getMore(*_) >> {
-                cursor.close()
-                getMoreResponse
-            }
+        // in LB mode the same connection is used to execute both `getMore` and `killCursors`
+        numberOfInvocations * connection.command(*_) >> {
+            // `getMore` command
+            cursor.close()
+            response
+        } >> {
+            // `killCursors` command
+            response2
         }
 
         then:
@@ -204,32 +187,33 @@ class QueryBatchCursorSpecification extends Specification {
         e.getMessage() == 'Cursor has been closed'
 
         then:
-        conn.getCount() == 1
-        connSource.getCount() == 1
+        connection.getCount() == 1
+        connectionSource.getCount() == 1
 
         where:
-        serverVersion                | useCommand | getMoreResponseHasCursor | serverType
-        new ServerVersion([5, 0, 0]) | true       | true                     | ServerType.LOAD_BALANCER
-        new ServerVersion([5, 0, 0]) | true       | false                    | ServerType.LOAD_BALANCER
-        new ServerVersion([3, 2, 0]) | true       | true                     | ServerType.STANDALONE
-        new ServerVersion([3, 2, 0]) | true       | false                    | ServerType.STANDALONE
+        response               | response2              | getMoreResponseHasCursor | serverType               | numberOfInvocations
+        getMoreResponse([])    | getMoreResponse([], 0) | true                     | ServerType.LOAD_BALANCER | 2
+        getMoreResponse([], 0) | null                   | false                    | ServerType.LOAD_BALANCER | 1
+        getMoreResponse([])    | getMoreResponse([], 0) | true                     | ServerType.STANDALONE    | 1
+        getMoreResponse([], 0) | null                   | false                    | ServerType.STANDALONE    | 1
     }
 
     def 'should close cursor after getMore finishes if cursor was closed while getMore was in progress and getMore throws exception'() {
         given:
-        Connection conn = mockConnection(serverVersion)
-        ConnectionSource connSource
+        Connection connection = mockConnection(serverVersion)
+        ConnectionSource connectionSource
         if (serverType == ServerType.LOAD_BALANCER) {
-            connSource = mockConnectionSource(SERVER_ADDRESS, serverType)
+            connectionSource = mockConnectionSource(SERVER_ADDRESS, serverType)
         } else {
-            connSource = mockConnectionSource(SERVER_ADDRESS, serverType, conn, mockConnection(serverVersion))
+            connectionSource = mockConnectionSource(SERVER_ADDRESS, serverType, connection, mockConnection(serverVersion))
         }
         List<Document> firstBatch = [new Document()]
-        QueryResult<Document> initialResult = new QueryResult<>(NAMESPACE, firstBatch, 1, SERVER_ADDRESS)
+        def initialResults = createCommandResult(firstBatch)
         String exceptionMessage = 'test'
 
         when:
-        QueryBatchCursor<Document> cursor = new QueryBatchCursor<>(initialResult, 0, 0, 0, new DocumentCodec(), null, connSource, conn)
+        CommandBatchCursor<Document> cursor = new CommandBatchCursor<>(SERVER_ADDRESS, initialResults, 0, 0, 0, new DocumentCodec(),
+                null, connectionSource, connection)
         List<Document> batch = cursor.next()
 
         then:
@@ -243,7 +227,7 @@ class QueryBatchCursorSpecification extends Specification {
         if (useCommand) {
             // in LB mode the same connection is used to execute both `getMore` and `killCursors`
             int numberOfInvocations = serverType == ServerType.LOAD_BALANCER ? 2 : 1
-            numberOfInvocations * conn.command(*_) >> {
+            numberOfInvocations * connection.command(*_) >> {
                 // `getMore` command
                 cursor.close()
                 throw new MongoException(exceptionMessage)
@@ -252,7 +236,7 @@ class QueryBatchCursorSpecification extends Specification {
                 null
             }
         } else {
-            1 * conn.getMore(*_) >> {
+            1 * connection.getMore(*_) >> {
                 cursor.close()
                 throw new MongoException(exceptionMessage)
             }
@@ -263,8 +247,8 @@ class QueryBatchCursorSpecification extends Specification {
         e.getMessage() == exceptionMessage
 
         then:
-        conn.getCount() == 1
-        connSource.getCount() == 1
+        connection.getCount() == 1
+        connectionSource.getCount() == 1
 
         where:
         serverVersion                | useCommand | serverType
@@ -344,14 +328,16 @@ class QueryBatchCursorSpecification extends Specification {
         mockConnectionSource
     }
 
-    private static BsonDocument emptyGetMoreCommandResponse(MongoNamespace namespace, long cursorId) {
-        new BsonDocument('ok', new BsonInt32(1))
-                .append('cursor', new BsonDocument('id', new BsonInt64(cursorId))
-                        .append('ns', new BsonString(namespace.getFullName()))
-                        .append('nextBatch', new BsonArrayWrapper([])))
+    private static BsonDocument getMoreResponse(results, cursorId = 42) {
+        createCommandResult(results, cursorId, "nextBatch")
     }
 
-    private static <T> QueryResult<T> emptyGetMoreQueryResponse(MongoNamespace namespace, ServerAddress serverAddress, long cursorId) {
-        new QueryResult(namespace, [], cursorId, serverAddress)
+    private static BsonDocument createCommandResult(List<?> results, Long cursorId = 42, String fieldNameContainingBatch = "firstBatch") {
+        new BsonDocument("ok", new BsonInt32(1))
+                        .append('cursor', new BsonDocument('id', new BsonInt64(cursorId))
+                        .append("ns", new BsonString(NAMESPACE.fullName))
+                        .append("id", new BsonInt64(cursorId))
+                        .append(fieldNameContainingBatch, new BsonArrayWrapper(results)))
     }
+
 }
