@@ -61,7 +61,7 @@ class LoggingCommandEventSenderSpecification extends Specification {
         def logger = Stub(Logger) {
             isDebugEnabled() >> debugLoggingEnabled
         }
-        def context = new OperationContext()
+        def context = new OperationIdContext()
         def sender = new LoggingCommandEventSender([] as Set, [] as Set, connectionDescription, commandListener,
                 IgnorableRequestContext.INSTANCE, context, message, bsonOutput, new StructuredLogger(logger),
                 LoggerSettings.builder().build())
@@ -106,7 +106,7 @@ class LoggingCommandEventSenderSpecification extends Specification {
         def logger = Mock(Logger) {
             isDebugEnabled() >> true
         }
-        def operationContext = new OperationContext()
+        def operationContext = new OperationIdContext()
         def sender = new LoggingCommandEventSender([] as Set, [] as Set, connectionDescription, commandListener,
                 IgnorableRequestContext.INSTANCE, operationContext, message, bsonOutput, new StructuredLogger(logger),
                 LoggerSettings.builder().build())
@@ -162,7 +162,7 @@ class LoggingCommandEventSenderSpecification extends Specification {
         def logger = Mock(Logger) {
             isDebugEnabled() >> true
         }
-        def operationContext = new OperationContext()
+        def operationContext = new OperationIdContext()
 
         def sender = new LoggingCommandEventSender([] as Set, [] as Set, connectionDescription, null, null,
                 operationContext, message, bsonOutput, new StructuredLogger(logger), LoggerSettings.builder().build())
@@ -195,7 +195,7 @@ class LoggingCommandEventSenderSpecification extends Specification {
         def logger = Mock(Logger) {
             isDebugEnabled() >> true
         }
-        def operationContext = new OperationContext()
+        def operationContext = new OperationIdContext()
         def sender = new LoggingCommandEventSender(['createUser'] as Set, [] as Set, connectionDescription, null,
                 IgnorableRequestContext.INSTANCE, operationContext, message, bsonOutput, new StructuredLogger(logger),
                 LoggerSettings.builder().build())

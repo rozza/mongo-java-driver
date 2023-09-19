@@ -19,7 +19,7 @@ package com.mongodb.internal.operation;
 import com.mongodb.MongoCommandException;
 import com.mongodb.MongoNamespace;
 import com.mongodb.WriteConcern;
-import com.mongodb.internal.ClientSideOperationTimeout;
+import com.mongodb.internal.TimeoutContext;
 import com.mongodb.internal.async.SingleResultCallback;
 import com.mongodb.internal.binding.AsyncReadWriteBinding;
 import com.mongodb.internal.binding.AsyncWriteBinding;
@@ -62,13 +62,13 @@ import static java.util.Collections.singletonList;
 public class DropCollectionOperation implements AsyncWriteOperation<Void>, WriteOperation<Void> {
     private static final String ENCRYPT_PREFIX = "enxcol_.";
     private static final BsonValueCodec BSON_VALUE_CODEC = new BsonValueCodec();
-    private final ClientSideOperationTimeout clientSideOperationTimeout;
+    private final TimeoutContext clientSideOperationTimeout;
     private final MongoNamespace namespace;
     private final WriteConcern writeConcern;
     private BsonDocument encryptedFields;
     private boolean autoEncryptedFields;
 
-    public DropCollectionOperation(final ClientSideOperationTimeout clientSideOperationTimeout, final MongoNamespace namespace,
+    public DropCollectionOperation(final TimeoutContext clientSideOperationTimeout, final MongoNamespace namespace,
             @Nullable final WriteConcern writeConcern) {
         this.clientSideOperationTimeout = notNull("clientSideOperationTimeout", clientSideOperationTimeout);
         this.namespace = notNull("namespace", namespace);

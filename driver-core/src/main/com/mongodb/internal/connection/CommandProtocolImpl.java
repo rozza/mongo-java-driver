@@ -45,13 +45,13 @@ class CommandProtocolImpl<T> implements CommandProtocol<T> {
     private final RequestContext requestContext;
     private SessionContext sessionContext;
     private final ServerApi serverApi;
-    private final OperationContext operationContext;
+    private final OperationIdContext operationIdContext;
 
     CommandProtocolImpl(final String database, final BsonDocument command, final FieldNameValidator commandFieldNameValidator,
             @Nullable final ReadPreference readPreference, final Decoder<T> commandResultDecoder, final boolean responseExpected,
             @Nullable final SplittablePayload payload, @Nullable final FieldNameValidator payloadFieldNameValidator,
             final ClusterConnectionMode clusterConnectionMode, @Nullable final ServerApi serverApi, final RequestContext requestContext,
-            final OperationContext operationContext) {
+            final OperationIdContext operationIdContext) {
         notNull("database", database);
         this.namespace = new MongoNamespace(notNull("database", database), MongoNamespace.COMMAND_COLLECTION_NAME);
         this.command = notNull("command", command);
@@ -64,7 +64,7 @@ class CommandProtocolImpl<T> implements CommandProtocol<T> {
         this.clusterConnectionMode = notNull("clusterConnectionMode", clusterConnectionMode);
         this.serverApi = serverApi;
         this.requestContext = notNull("requestContext", requestContext);
-        this.operationContext = operationContext;
+        this.operationIdContext = operationIdContext;
 
         isTrueArgument("payloadFieldNameValidator cannot be null if there is a payload.",
                 payload == null || payloadFieldNameValidator != null);
@@ -74,14 +74,14 @@ class CommandProtocolImpl<T> implements CommandProtocol<T> {
     @Override
     public T execute(final InternalConnection connection) {
         return connection.sendAndReceive(getCommandMessage(connection), commandResultDecoder, sessionContext, requestContext,
-                operationContext);
+                                         operationIdContext);
     }
 
     @Override
     public void executeAsync(final InternalConnection connection, final SingleResultCallback<T> callback) {
         try {
             connection.sendAndReceiveAsync(getCommandMessage(connection), commandResultDecoder, sessionContext, requestContext,
-                    operationContext, (result, t) -> {
+                                           operationIdContext, (result, t) -> {
                         if (t != null) {
                             callback.onResult(null, t);
                         } else {

@@ -66,7 +66,7 @@ class LoggingCommandEventSender implements CommandEventSender {
     @Nullable
     private final CommandListener commandListener;
     private final RequestContext requestContext;
-    private final OperationContext operationContext;
+    private final OperationIdContext operationIdContext;
     private final StructuredLogger logger;
     private final LoggerSettings loggerSettings;
     private final long startTimeNanos;
@@ -77,13 +77,13 @@ class LoggingCommandEventSender implements CommandEventSender {
 
     LoggingCommandEventSender(final Set<String> securitySensitiveCommands, final Set<String> securitySensitiveHelloCommands,
             final ConnectionDescription description,
-            @Nullable final CommandListener commandListener, final RequestContext requestContext, final OperationContext operationContext,
+            @Nullable final CommandListener commandListener, final RequestContext requestContext, final OperationIdContext operationIdContext,
             final CommandMessage message, final ByteBufferBsonOutput bsonOutput, final StructuredLogger logger,
             final LoggerSettings loggerSettings) {
         this.description = description;
         this.commandListener = commandListener;
         this.requestContext = requestContext;
-        this.operationContext = operationContext;
+        this.operationIdContext = operationIdContext;
         this.logger = logger;
         this.loggerSettings = loggerSettings;
         this.startTimeNanos = System.nanoTime();
@@ -112,7 +112,7 @@ class LoggingCommandEventSender implements CommandEventSender {
                     ? new BsonDocument() : commandDocument;
 
             sendCommandStartedEvent(message, message.getNamespace().getDatabaseName(), commandName, commandDocumentForEvent, description,
-                    assertNotNull(commandListener), requestContext, operationContext);
+                                    assertNotNull(commandListener), requestContext, operationIdContext);
         }
         // the buffer underlying the command document may be released after the started event, so set to null to ensure it's not used
         // when sending the failed or succeeded event
@@ -143,7 +143,7 @@ class LoggingCommandEventSender implements CommandEventSender {
 
         if (eventRequired()) {
             sendCommandFailedEvent(message, commandName, description, elapsedTimeNanos, commandEventException, commandListener,
-                    requestContext, operationContext);
+                                   requestContext, operationIdContext);
         }
     }
 
@@ -179,7 +179,7 @@ class LoggingCommandEventSender implements CommandEventSender {
         if (eventRequired()) {
             BsonDocument responseDocumentForEvent = redactionRequired ? new BsonDocument() : reply;
             sendCommandSucceededEvent(message, commandName, responseDocumentForEvent, description,
-                    elapsedTimeNanos, commandListener, requestContext, operationContext);
+                                      elapsedTimeNanos, commandListener, requestContext, operationIdContext);
         }
     }
 
@@ -217,7 +217,7 @@ class LoggingCommandEventSender implements CommandEventSender {
         entries.add(new Entry(SERVER_PORT, description.getServerAddress().getPort()));
         entries.add(new Entry(SERVICE_ID, description.getServiceId()));
         entries.add(new Entry(REQUEST_ID, message.getId()));
-        entries.add(new Entry(OPERATION_ID, operationContext.getId()));
+        entries.add(new Entry(OPERATION_ID, operationIdContext.getId()));
         suffixEntriesMutator.accept(entries);
         logger.log(new LogMessage(COMMAND, DEBUG, messageId, getClusterId(), exception, entries, format));
     }

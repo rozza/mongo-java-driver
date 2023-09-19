@@ -175,7 +175,7 @@ class UsageTrackingConnectionSpecification extends Specification {
         connection.sendAndReceive(new CommandMessage(new MongoNamespace('test.coll'),
                 new BsonDocument('ping', new BsonInt32(1)), new NoOpFieldNameValidator(), primary(),
                 MessageSettings.builder().build(), SINGLE, null),
-                new BsonDocumentCodec(), NoOpSessionContext.INSTANCE, IgnorableRequestContext.INSTANCE, new OperationContext())
+                new BsonDocumentCodec(), NoOpSessionContext.INSTANCE, IgnorableRequestContext.INSTANCE, new OperationIdContext())
 
         then:
         connection.lastUsedAt >= openedLastUsedAt
@@ -193,7 +193,7 @@ class UsageTrackingConnectionSpecification extends Specification {
         connection.sendAndReceiveAsync(new CommandMessage(new MongoNamespace('test.coll'),
                 new BsonDocument('ping', new BsonInt32(1)), new NoOpFieldNameValidator(), primary(),
                 MessageSettings.builder().build(), SINGLE, null),
-                new BsonDocumentCodec(), NoOpSessionContext.INSTANCE, IgnorableRequestContext.INSTANCE, new OperationContext(),
+                new BsonDocumentCodec(), NoOpSessionContext.INSTANCE, IgnorableRequestContext.INSTANCE, new OperationIdContext(),
                 futureResultCallback)
         futureResultCallback.get()
 

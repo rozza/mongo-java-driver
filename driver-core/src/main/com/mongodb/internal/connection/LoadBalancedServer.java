@@ -125,16 +125,16 @@ public class LoadBalancedServer implements ClusterableServer {
     }
 
     @Override
-    public Connection getConnection(final OperationContext operationContext) {
+    public Connection getConnection(final OperationIdContext operationIdContext) {
         isTrue("open", !isClosed());
-        return connectionFactory.create(connectionPool.get(operationContext), new LoadBalancedServerProtocolExecutor(),
-                ClusterConnectionMode.LOAD_BALANCED);
+        return connectionFactory.create(connectionPool.get(operationIdContext), new LoadBalancedServerProtocolExecutor(),
+                                        ClusterConnectionMode.LOAD_BALANCED);
     }
 
     @Override
-    public void getConnectionAsync(final OperationContext operationContext, final SingleResultCallback<AsyncConnection> callback) {
+    public void getConnectionAsync(final OperationIdContext operationIdContext, final SingleResultCallback<AsyncConnection> callback) {
         isTrue("open", !isClosed());
-        connectionPool.getAsync(operationContext, (result, t) -> {
+        connectionPool.getAsync(operationIdContext, (result, t) -> {
             if (t != null) {
                 callback.onResult(null, t);
             } else {

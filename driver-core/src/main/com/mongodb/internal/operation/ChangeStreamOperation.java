@@ -20,7 +20,7 @@ import com.mongodb.MongoNamespace;
 import com.mongodb.client.model.Collation;
 import com.mongodb.client.model.changestream.FullDocument;
 import com.mongodb.client.model.changestream.FullDocumentBeforeChange;
-import com.mongodb.internal.ClientSideOperationTimeout;
+import com.mongodb.internal.TimeoutContext;
 import com.mongodb.internal.async.AsyncAggregateResponseBatchCursor;
 import com.mongodb.internal.async.AsyncBatchCursor;
 import com.mongodb.internal.async.SingleResultCallback;
@@ -65,13 +65,13 @@ public class ChangeStreamOperation<T> implements AsyncReadOperation<AsyncBatchCu
     private boolean showExpandedEvents;
 
 
-    public ChangeStreamOperation(final ClientSideOperationTimeout clientSideOperationTimeout, final MongoNamespace namespace,
+    public ChangeStreamOperation(final TimeoutContext clientSideOperationTimeout, final MongoNamespace namespace,
             final FullDocument fullDocument, final FullDocumentBeforeChange fullDocumentBeforeChange,
             final List<BsonDocument> pipeline, final Decoder<T> decoder) {
         this(clientSideOperationTimeout, namespace, fullDocument, fullDocumentBeforeChange, pipeline, decoder, ChangeStreamLevel.COLLECTION);
     }
 
-    public ChangeStreamOperation(final ClientSideOperationTimeout clientSideOperationTimeout, final MongoNamespace namespace,
+    public ChangeStreamOperation(final TimeoutContext clientSideOperationTimeout, final MongoNamespace namespace,
             final FullDocument fullDocument, final FullDocumentBeforeChange fullDocumentBeforeChange, final List<BsonDocument> pipeline,
             final Decoder<T> decoder, final ChangeStreamLevel changeStreamLevel) {
         this.wrapped = new AggregateOperationImpl<>(clientSideOperationTimeout, namespace, pipeline, RAW_BSON_DOCUMENT_CODEC,

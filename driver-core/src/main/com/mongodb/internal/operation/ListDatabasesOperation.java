@@ -17,7 +17,7 @@
 package com.mongodb.internal.operation;
 
 import com.mongodb.connection.ConnectionDescription;
-import com.mongodb.internal.ClientSideOperationTimeout;
+import com.mongodb.internal.TimeoutContext;
 import com.mongodb.internal.async.AsyncBatchCursor;
 import com.mongodb.internal.async.SingleResultCallback;
 import com.mongodb.internal.binding.AsyncReadBinding;
@@ -47,7 +47,7 @@ import static com.mongodb.internal.operation.SyncOperationHelper.executeRetryabl
  * <p>This class is not part of the public API and may be removed or changed at any time</p>
  */
 public class ListDatabasesOperation<T> implements AsyncReadOperation<AsyncBatchCursor<T>>, ReadOperation<BatchCursor<T>> {
-    private final ClientSideOperationTimeout clientSideOperationTimeout;
+    private final TimeoutContext clientSideOperationTimeout;
     private final Decoder<T> decoder;
     private boolean retryReads;
     private BsonDocument filter;
@@ -55,7 +55,7 @@ public class ListDatabasesOperation<T> implements AsyncReadOperation<AsyncBatchC
     private Boolean authorizedDatabasesOnly;
     private BsonValue comment;
 
-    public ListDatabasesOperation(final ClientSideOperationTimeout clientSideOperationTimeout, final Decoder<T> decoder) {
+    public ListDatabasesOperation(final TimeoutContext clientSideOperationTimeout, final Decoder<T> decoder) {
         this.clientSideOperationTimeout = notNull("clientSideOperationTimeout", clientSideOperationTimeout);
         this.decoder = notNull("decoder", decoder);
     }

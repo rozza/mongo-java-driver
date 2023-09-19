@@ -35,10 +35,10 @@ public interface Server {
      * <p> Implementations of this method will likely pool the underlying connection, so the effect of closing the returned connection will
      * be to return the connection to the pool. </p>
      *
-     * @param operationContext operation context
+     * @param operationIdContext operation context
      * @return a connection this server
      */
-    Connection getConnection(OperationContext operationContext);
+    Connection getConnection(OperationIdContext operationIdContext);
 
     /**
      * <p>Gets a connection to this server asynchronously.  The connection should be released after the caller is done with it.</p>
@@ -46,10 +46,10 @@ public interface Server {
      * <p> Implementations of this method will likely pool the underlying connection, so the effect of closing the returned connection will
      * be to return the connection to the pool. </p>
      *
-     * @param operationContext operation context
+     * @param operationIdContext operation context
      * @param callback         the callback to execute when the connection is available or an error occurs
      */
-    void getConnectionAsync(OperationContext operationContext, SingleResultCallback<AsyncConnection> callback);
+    void getConnectionAsync(OperationIdContext operationIdContext, SingleResultCallback<AsyncConnection> callback);
 
     /**
      * An approximation of the

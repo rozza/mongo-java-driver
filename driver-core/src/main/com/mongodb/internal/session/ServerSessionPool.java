@@ -25,7 +25,7 @@ import com.mongodb.internal.binding.StaticBindingContext;
 import com.mongodb.internal.connection.Cluster;
 import com.mongodb.internal.connection.Connection;
 import com.mongodb.internal.connection.NoOpSessionContext;
-import com.mongodb.internal.connection.OperationContext;
+import com.mongodb.internal.connection.OperationIdContext;
 import com.mongodb.internal.selector.ReadPreferenceServerSelector;
 import com.mongodb.internal.validator.NoOpFieldNameValidator;
 import com.mongodb.lang.Nullable;
@@ -123,7 +123,7 @@ public class ServerSessionPool {
         Connection connection = null;
         try {
             StaticBindingContext context = new StaticBindingContext(NoOpSessionContext.INSTANCE, serverApi,
-                    IgnorableRequestContext.INSTANCE, new OperationContext());
+                    IgnorableRequestContext.INSTANCE, new OperationIdContext());
             connection = cluster.selectServer(clusterDescription -> {
                 for (ServerDescription cur : clusterDescription.getServerDescriptions()) {
                     if (cur.getAddress().equals(primaryPreferred.get(0).getAddress())) {

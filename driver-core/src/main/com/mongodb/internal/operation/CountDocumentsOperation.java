@@ -18,7 +18,8 @@ package com.mongodb.internal.operation;
 
 import com.mongodb.MongoNamespace;
 import com.mongodb.client.model.Collation;
-import com.mongodb.internal.ClientSideOperationTimeout;
+import com.mongodb.internal.TimeoutContext;
+import com.mongodb.internal.TimeoutSettings;
 import com.mongodb.internal.async.SingleResultCallback;
 import com.mongodb.internal.binding.AsyncReadBinding;
 import com.mongodb.internal.binding.ReadBinding;
@@ -40,7 +41,7 @@ import static com.mongodb.assertions.Assertions.notNull;
  */
 public class CountDocumentsOperation implements AsyncReadOperation<Long>, ReadOperation<Long> {
     private static final Decoder<BsonDocument> DECODER = new BsonDocumentCodec();
-    private final ClientSideOperationTimeout clientSideOperationTimeout;
+    private final TimeoutSettings timeoutSettings;
     private final MongoNamespace namespace;
     private boolean retryReads;
     private BsonDocument filter;
@@ -50,8 +51,8 @@ public class CountDocumentsOperation implements AsyncReadOperation<Long>, ReadOp
     private long limit;
     private Collation collation;
 
-    public CountDocumentsOperation(final ClientSideOperationTimeout clientSideOperationTimeout, final MongoNamespace namespace) {
-        this.clientSideOperationTimeout =  notNull("clientSideOperationTimeout", clientSideOperationTimeout);
+    public CountDocumentsOperation(final TimeoutSettings timeoutSettings, final MongoNamespace namespace) {
+        this.timeoutSettings = notNull("timeoutSettings", timeoutSettings);
         this.namespace = notNull("namespace", namespace);
     }
 
@@ -129,6 +130,11 @@ public class CountDocumentsOperation implements AsyncReadOperation<Long>, ReadOp
     }
 
     @Override
+    public TimeoutSettings getTimeoutSettings() {
+        return timeoutSettings;
+    }
+
+    @Override
     public void executeAsync(final AsyncReadBinding binding, final SingleResultCallback<Long> callback) {
         getAggregateOperation().executeAsync(binding, (result, t) -> {
             if (t != null) {
@@ -146,7 +152,7 @@ public class CountDocumentsOperation implements AsyncReadOperation<Long>, ReadOp
     }
 
     private AggregateOperation<BsonDocument> getAggregateOperation() {
-        return new AggregateOperation<>(clientSideOperationTimeout, namespace, getPipeline(), DECODER)
+        return new AggregateOperation<>(timeoutSettings, namespace, getPipeline(), DECODER)
                 .retryReads(retryReads)
                 .collation(collation)
                 .comment(comment)

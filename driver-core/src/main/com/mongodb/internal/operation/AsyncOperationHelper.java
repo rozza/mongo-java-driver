@@ -22,7 +22,7 @@ import com.mongodb.MongoNamespace;
 import com.mongodb.ReadPreference;
 import com.mongodb.ServerAddress;
 import com.mongodb.assertions.Assertions;
-import com.mongodb.internal.ClientSideOperationTimeout;
+import com.mongodb.internal.TimeoutContext;
 import com.mongodb.internal.async.AsyncBatchCursor;
 import com.mongodb.internal.async.SingleResultCallback;
 import com.mongodb.internal.async.function.AsyncCallbackBiFunction;
@@ -35,7 +35,7 @@ import com.mongodb.internal.binding.AsyncReadBinding;
 import com.mongodb.internal.binding.AsyncWriteBinding;
 import com.mongodb.internal.binding.ReferenceCounted;
 import com.mongodb.internal.connection.AsyncConnection;
-import com.mongodb.internal.connection.OperationContext;
+import com.mongodb.internal.connection.OperationIdContext;
 import com.mongodb.internal.connection.QueryResult;
 import com.mongodb.internal.operation.retry.AttachmentKeys;
 import com.mongodb.internal.validator.NoOpFieldNameValidator;
@@ -154,7 +154,7 @@ final class AsyncOperationHelper {
     }
 
     static <D, T> void executeRetryableReadAsync(
-            final ClientSideOperationTimeout clientSideOperationTimeout,
+            final TimeoutContext clientSideOperationTimeout,
             final AsyncReadBinding binding,
             final String database,
             final CommandCreator commandCreator,
@@ -167,7 +167,7 @@ final class AsyncOperationHelper {
     }
 
     static <D, T> void executeRetryableReadAsync(
-            final ClientSideOperationTimeout clientSideOperationTimeout,
+            final TimeoutContext clientSideOperationTimeout,
             final AsyncReadBinding binding,
             final AsyncCallbackSupplier<AsyncConnectionSource> sourceAsyncSupplier,
             final String database,
@@ -209,7 +209,7 @@ final class AsyncOperationHelper {
     }
 
     static <T, R> void executeRetryableWriteAsync(
-            final ClientSideOperationTimeout clientSideOperationTimeout,
+            final TimeoutContext clientSideOperationTimeout,
             final AsyncWriteBinding binding,
             final String database,
             @Nullable final ReadPreference readPreference,
@@ -263,7 +263,7 @@ final class AsyncOperationHelper {
     }
 
     static <D, T> void createReadCommandAndExecuteAsync(
-            final ClientSideOperationTimeout clientSideOperationTimeout,
+            final TimeoutContext clientSideOperationTimeout,
             final RetryState retryState,
             final AsyncReadBinding binding,
             final AsyncConnectionSource source,
@@ -285,20 +285,20 @@ final class AsyncOperationHelper {
                 binding, transformingReadCallback(transformer, source, connection, callback));
     }
 
-    static <R> AsyncCallbackSupplier<R> decorateReadWithRetriesAsync(final RetryState retryState, final OperationContext operationContext,
+    static <R> AsyncCallbackSupplier<R> decorateReadWithRetriesAsync(final RetryState retryState, final OperationIdContext operationIdContext,
             final AsyncCallbackSupplier<R> asyncReadFunction) {
         return new RetryingAsyncCallbackSupplier<>(retryState, CommandOperationHelper::chooseRetryableReadException,
                 CommandOperationHelper::shouldAttemptToRetryRead, callback -> {
-            logRetryExecute(retryState, operationContext);
+            logRetryExecute(retryState, operationIdContext);
             asyncReadFunction.get(callback);
         });
     }
 
-    static <R> AsyncCallbackSupplier<R> decorateWriteWithRetriesAsync(final RetryState retryState, final OperationContext operationContext,
+    static <R> AsyncCallbackSupplier<R> decorateWriteWithRetriesAsync(final RetryState retryState, final OperationIdContext operationIdContext,
             final AsyncCallbackSupplier<R> asyncWriteFunction) {
         return new RetryingAsyncCallbackSupplier<>(retryState, CommandOperationHelper::chooseRetryableWriteException,
                 CommandOperationHelper::shouldAttemptToRetryWrite, callback -> {
-            logRetryExecute(retryState, operationContext);
+            logRetryExecute(retryState, operationIdContext);
             asyncWriteFunction.get(callback);
         });
     }

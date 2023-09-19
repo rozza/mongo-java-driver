@@ -26,7 +26,7 @@ import com.mongodb.connection.ServerDescription;
 import com.mongodb.internal.async.SingleResultCallback;
 import com.mongodb.internal.connection.AsyncConnection;
 import com.mongodb.internal.connection.Cluster;
-import com.mongodb.internal.connection.OperationContext;
+import com.mongodb.internal.connection.OperationIdContext;
 import com.mongodb.internal.connection.ReadConcernAwareNoOpSessionContext;
 import com.mongodb.internal.connection.Server;
 import com.mongodb.internal.selector.ReadPreferenceServerSelector;
@@ -52,7 +52,7 @@ public class AsyncClusterBinding extends AbstractReferenceCounted implements Asy
     @Nullable
     private final ServerApi serverApi;
     private final RequestContext requestContext;
-    private final OperationContext operationContext;
+    private final OperationIdContext operationIdContext;
 
     /**
      * Creates an instance.
@@ -71,7 +71,7 @@ public class AsyncClusterBinding extends AbstractReferenceCounted implements Asy
         this.readConcern = (notNull("readConcern", readConcern));
         this.serverApi = serverApi;
         this.requestContext = notNull("requestContext", requestContext);
-        operationContext = new OperationContext();
+        operationIdContext = new OperationIdContext();
     }
 
     @Override
@@ -107,8 +107,8 @@ public class AsyncClusterBinding extends AbstractReferenceCounted implements Asy
     }
 
     @Override
-    public OperationContext getOperationContext() {
-        return operationContext;
+    public OperationIdContext getOperationContext() {
+        return operationIdContext;
     }
 
     @Override
@@ -125,7 +125,7 @@ public class AsyncClusterBinding extends AbstractReferenceCounted implements Asy
         } else {
             ReadPreferenceWithFallbackServerSelector readPreferenceWithFallbackServerSelector
                     = new ReadPreferenceWithFallbackServerSelector(readPreference, minWireVersion, fallbackReadPreference);
-            cluster.selectServerAsync(readPreferenceWithFallbackServerSelector, operationContext, (result, t) -> {
+            cluster.selectServerAsync(readPreferenceWithFallbackServerSelector, operationIdContext, (result, t) -> {
                 if (t != null) {
                     callback.onResult(null, t);
                 } else {
@@ -148,7 +148,7 @@ public class AsyncClusterBinding extends AbstractReferenceCounted implements Asy
 
     private void getAsyncClusterBindingConnectionSource(final ServerSelector serverSelector,
                                                         final SingleResultCallback<AsyncConnectionSource> callback) {
-        cluster.selectServerAsync(serverSelector, operationContext, (result, t) -> {
+        cluster.selectServerAsync(serverSelector, operationIdContext, (result, t) -> {
             if (t != null) {
                 callback.onResult(null, t);
             } else {
@@ -193,8 +193,8 @@ public class AsyncClusterBinding extends AbstractReferenceCounted implements Asy
         }
 
         @Override
-        public OperationContext getOperationContext() {
-            return operationContext;
+        public OperationIdContext getOperationContext() {
+            return operationIdContext;
         }
 
         @Override
@@ -204,7 +204,7 @@ public class AsyncClusterBinding extends AbstractReferenceCounted implements Asy
 
         @Override
         public void getConnection(final SingleResultCallback<AsyncConnection> callback) {
-            server.getConnectionAsync(operationContext, callback);
+            server.getConnectionAsync(operationIdContext, callback);
         }
 
         public AsyncConnectionSource retain() {

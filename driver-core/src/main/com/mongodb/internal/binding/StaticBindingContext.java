@@ -18,7 +18,7 @@ package com.mongodb.internal.binding;
 
 import com.mongodb.RequestContext;
 import com.mongodb.ServerApi;
-import com.mongodb.internal.connection.OperationContext;
+import com.mongodb.internal.connection.OperationIdContext;
 import com.mongodb.internal.session.SessionContext;
 import com.mongodb.lang.Nullable;
 
@@ -26,18 +26,18 @@ import com.mongodb.lang.Nullable;
  *
  * <p>This class is not part of the public API and may be removed or changed at any time</p>
  */
-public class StaticBindingContext implements BindingContext {
+public class StaticBindingContext implements OperationContextSupplier {
     private final SessionContext sessionContext;
     private final ServerApi serverApi;
     private final RequestContext requestContext;
-    private final OperationContext operationContext;
+    private final OperationIdContext operationIdContext;
 
     public StaticBindingContext(final SessionContext sessionContext, @Nullable final ServerApi serverApi,
-            final RequestContext requestContext, final OperationContext operationContext) {
+            final RequestContext requestContext, final OperationIdContext operationIdContext) {
         this.sessionContext = sessionContext;
         this.serverApi = serverApi;
         this.requestContext = requestContext;
-        this.operationContext = operationContext;
+        this.operationIdContext = operationIdContext;
     }
 
     @Override
@@ -57,7 +57,7 @@ public class StaticBindingContext implements BindingContext {
     }
 
     @Override
-    public OperationContext getOperationContext() {
-        return operationContext;
+    public OperationIdContext getOperationContext() {
+        return operationIdContext;
     }
 }

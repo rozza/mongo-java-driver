@@ -26,7 +26,7 @@ import com.mongodb.internal.connection.AsyncConnection;
  *
  * <p>This class is not part of the public API and may be removed or changed at any time</p>
  */
-public interface AsyncConnectionSource extends BindingContext, ReferenceCounted {
+public interface AsyncConnectionSource extends OperationContextSupplier, ReferenceCounted {
 
     /**
      * Gets the current description of this source.

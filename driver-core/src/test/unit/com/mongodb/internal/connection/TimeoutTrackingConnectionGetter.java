@@ -37,7 +37,7 @@ class TimeoutTrackingConnectionGetter implements Runnable {
     @Override
     public void run() {
         try {
-            InternalConnection connection = connectionPool.get(new OperationContext());
+            InternalConnection connection = connectionPool.get(new OperationIdContext());
             connection.close();
         } catch (MongoTimeoutException e) {
             gotTimeout = true;

@@ -17,7 +17,7 @@
 package com.mongodb.internal.operation;
 
 import com.mongodb.WriteConcern;
-import com.mongodb.internal.ClientSideOperationTimeout;
+import com.mongodb.internal.TimeoutContext;
 import com.mongodb.internal.async.SingleResultCallback;
 import com.mongodb.internal.binding.AsyncWriteBinding;
 import com.mongodb.internal.binding.WriteBinding;
@@ -44,11 +44,11 @@ import static com.mongodb.internal.operation.WriteConcernHelper.appendWriteConce
  * <p>This class is not part of the public API and may be removed or changed at any time</p>
  */
 public class DropDatabaseOperation implements AsyncWriteOperation<Void>, WriteOperation<Void> {
-    private final ClientSideOperationTimeout clientSideOperationTimeout;
+    private final TimeoutContext clientSideOperationTimeout;
     private final String databaseName;
     private final WriteConcern writeConcern;
 
-    public DropDatabaseOperation(final ClientSideOperationTimeout clientSideOperationTimeout,
+    public DropDatabaseOperation(final TimeoutContext clientSideOperationTimeout,
             final String databaseName, @Nullable final WriteConcern writeConcern) {
         this.clientSideOperationTimeout = notNull("clientSideOperationTimeout", clientSideOperationTimeout);
         this.databaseName = notNull("databaseName", databaseName);

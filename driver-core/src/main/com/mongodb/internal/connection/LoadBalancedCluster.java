@@ -204,7 +204,7 @@ final class LoadBalancedCluster implements Cluster {
     }
 
     @Override
-    public ServerTuple selectServer(final ServerSelector serverSelector, final OperationContext operationContext) {
+    public ServerTuple selectServer(final ServerSelector serverSelector, final OperationIdContext operationIdContext) {
         isTrue("open", !isClosed());
         waitForSrv();
         if (srvRecordResolvedToMultipleHosts) {
@@ -239,7 +239,7 @@ final class LoadBalancedCluster implements Cluster {
     }
 
     @Override
-    public void selectServerAsync(final ServerSelector serverSelector, final OperationContext operationContext,
+    public void selectServerAsync(final ServerSelector serverSelector, final OperationIdContext operationIdContext,
             final SingleResultCallback<ServerTuple> callback) {
         if (isClosed()) {
             callback.onResult(null, createShutdownException());

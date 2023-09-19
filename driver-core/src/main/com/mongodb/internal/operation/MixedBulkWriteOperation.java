@@ -22,7 +22,7 @@ import com.mongodb.WriteConcern;
 import com.mongodb.assertions.Assertions;
 import com.mongodb.bulk.BulkWriteResult;
 import com.mongodb.connection.ConnectionDescription;
-import com.mongodb.internal.ClientSideOperationTimeout;
+import com.mongodb.internal.TimeoutContext;
 import com.mongodb.internal.async.SingleResultCallback;
 import com.mongodb.internal.async.function.AsyncCallbackLoop;
 import com.mongodb.internal.async.function.AsyncCallbackRunnable;
@@ -37,7 +37,7 @@ import com.mongodb.internal.bulk.WriteRequest;
 import com.mongodb.internal.connection.AsyncConnection;
 import com.mongodb.internal.connection.Connection;
 import com.mongodb.internal.connection.MongoWriteConcernWithResponseException;
-import com.mongodb.internal.connection.OperationContext;
+import com.mongodb.internal.connection.OperationIdContext;
 import com.mongodb.internal.connection.ProtocolHelper;
 import com.mongodb.internal.operation.retry.AttachmentKeys;
 import com.mongodb.internal.session.SessionContext;
@@ -77,7 +77,7 @@ import static com.mongodb.internal.operation.SyncOperationHelper.withSourceAndCo
  */
 public class MixedBulkWriteOperation implements AsyncWriteOperation<BulkWriteResult>, WriteOperation<BulkWriteResult> {
     private static final FieldNameValidator NO_OP_FIELD_NAME_VALIDATOR = new NoOpFieldNameValidator();
-    private final ClientSideOperationTimeout clientSideOperationTimeout;
+    private final TimeoutContext clientSideOperationTimeout;
     private final MongoNamespace namespace;
     private final List<? extends WriteRequest> writeRequests;
     private final boolean ordered;
@@ -87,7 +87,7 @@ public class MixedBulkWriteOperation implements AsyncWriteOperation<BulkWriteRes
     private BsonValue comment;
     private BsonDocument variables;
 
-    public MixedBulkWriteOperation(final ClientSideOperationTimeout clientSideOperationTimeout, final MongoNamespace namespace,
+    public MixedBulkWriteOperation(final TimeoutContext clientSideOperationTimeout, final MongoNamespace namespace,
             final List<? extends WriteRequest> writeRequests, final boolean ordered, final WriteConcern writeConcern,
             final boolean retryWrites) {
         this.clientSideOperationTimeout = notNull("clientSideOperationTimeout", clientSideOperationTimeout);
@@ -142,20 +142,20 @@ public class MixedBulkWriteOperation implements AsyncWriteOperation<BulkWriteRes
         return retryWrites;
     }
 
-    private <R> Supplier<R> decorateWriteWithRetries(final RetryState retryState, final OperationContext operationContext,
+    private <R> Supplier<R> decorateWriteWithRetries(final RetryState retryState, final OperationIdContext operationIdContext,
             final Supplier<R> writeFunction) {
         return new RetryingSyncSupplier<>(retryState, CommandOperationHelper::chooseRetryableWriteException,
                 this::shouldAttemptToRetryWrite, () -> {
-            logRetryExecute(retryState, operationContext);
+            logRetryExecute(retryState, operationIdContext);
             return writeFunction.get();
         });
     }
 
-    private <R> AsyncCallbackSupplier<R> decorateWriteWithRetries(final RetryState retryState, final OperationContext operationContext,
+    private <R> AsyncCallbackSupplier<R> decorateWriteWithRetries(final RetryState retryState, final OperationIdContext operationIdContext,
             final AsyncCallbackSupplier<R> writeFunction) {
         return new RetryingAsyncCallbackSupplier<>(retryState, CommandOperationHelper::chooseRetryableWriteException,
                 this::shouldAttemptToRetryWrite, callback -> {
-            logRetryExecute(retryState, operationContext);
+            logRetryExecute(retryState, operationIdContext);
             writeFunction.get(callback);
         });
     }

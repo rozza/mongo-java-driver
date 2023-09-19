@@ -26,7 +26,7 @@ import com.mongodb.client.model.DBCollectionFindAndModifyOptions;
 import com.mongodb.client.model.DBCollectionFindOptions;
 import com.mongodb.client.model.DBCollectionRemoveOptions;
 import com.mongodb.client.model.DBCollectionUpdateOptions;
-import com.mongodb.internal.ClientSideOperationTimeout;
+import com.mongodb.internal.TimeoutContext;
 import com.mongodb.internal.ClientSideOperationTimeouts;
 import com.mongodb.internal.bulk.DeleteRequest;
 import com.mongodb.internal.bulk.IndexRequest;
@@ -1651,7 +1651,7 @@ public class DBCollection {
         WriteConcern optionsWriteConcern = options.getWriteConcern();
         WriteConcern writeConcern = optionsWriteConcern != null ? optionsWriteConcern : getWriteConcern();
         WriteOperation<DBObject> operation;
-        ClientSideOperationTimeout clientSideOperationTimeout = getClientSideOperationTimeout(options.getMaxTime(MILLISECONDS));
+        TimeoutContext clientSideOperationTimeout = getClientSideOperationTimeout(options.getMaxTime(MILLISECONDS));
         if (options.isRemove()) {
             operation = new FindAndDeleteOperation<>(clientSideOperationTimeout, getNamespace(), writeConcern, retryWrites, objectCodec)
                         .filter(wrapAllowNull(query))
@@ -2211,15 +2211,15 @@ public class DBCollection {
         }
     }
 
-    private ClientSideOperationTimeout getClientSideOperationTimeout(){
+    private TimeoutContext getClientSideOperationTimeout(){
        return ClientSideOperationTimeouts.create(database.getTimeoutMS());
     }
 
-    private ClientSideOperationTimeout getClientSideOperationTimeout(final long maxTimeMS){
+    private TimeoutContext getClientSideOperationTimeout(final long maxTimeMS){
         return ClientSideOperationTimeouts.create(database.getTimeoutMS(), maxTimeMS);
     }
 
-    ClientSideOperationTimeout getClientSideOperationTimeout(final long maxTimeMS, final long maxAwaitTimeMS){
+    TimeoutContext getClientSideOperationTimeout(final long maxTimeMS, final long maxAwaitTimeMS){
         return ClientSideOperationTimeouts.create(database.getTimeoutMS(), maxTimeMS, maxAwaitTimeMS);
     }
 

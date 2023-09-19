@@ -71,7 +71,7 @@ class DefaultServerSpecification extends Specification {
                 Mock(SdamServerDescriptionManager), Mock(ServerListener), Mock(CommandListener), new ClusterClock(), false)
 
         when:
-        def receivedConnection = server.getConnection(new OperationContext())
+        def receivedConnection = server.getConnection(new OperationIdContext())
 
         then:
         receivedConnection
@@ -97,7 +97,7 @@ class DefaultServerSpecification extends Specification {
 
         when:
         def callback = new SupplyingCallback<AsyncConnection>()
-        server.getConnectionAsync(new OperationContext(), callback)
+        server.getConnectionAsync(new OperationIdContext(), callback)
 
         then:
         callback.get() == connection
@@ -114,7 +114,7 @@ class DefaultServerSpecification extends Specification {
         server.close()
 
         when:
-        server.getConnection(new OperationContext())
+        server.getConnection(new OperationIdContext())
 
         then:
         def ex = thrown(MongoServerUnavailableException)
@@ -124,7 +124,7 @@ class DefaultServerSpecification extends Specification {
         def latch = new CountDownLatch(1)
         def receivedConnection = null
         def receivedThrowable = null
-        server.getConnectionAsync(new OperationContext()) {
+        server.getConnectionAsync(new OperationIdContext()) {
             result, throwable ->
                 receivedConnection = result; receivedThrowable = throwable; latch.countDown()
         }
@@ -166,7 +166,7 @@ class DefaultServerSpecification extends Specification {
         given:
         def connectionPool = Mock(ConnectionPool)
         def serverMonitor = Mock(ServerMonitor)
-        connectionPool.get(new OperationContext()) >> { throw exceptionToThrow }
+        connectionPool.get(new OperationIdContext()) >> { throw exceptionToThrow }
 
         def server = defaultServer(connectionPool, serverMonitor)
         server.close()
@@ -187,7 +187,7 @@ class DefaultServerSpecification extends Specification {
         def server = defaultServer(connectionPool, serverMonitor)
 
         when:
-        server.getConnection(new OperationContext())
+        server.getConnection(new OperationIdContext())
 
         then:
         def e = thrown(MongoException)
@@ -212,7 +212,7 @@ class DefaultServerSpecification extends Specification {
         def server = defaultServer(connectionPool, serverMonitor)
 
         when:
-        server.getConnection(new OperationContext())
+        server.getConnection(new OperationIdContext())
 
         then:
         def e = thrown(MongoSecurityException)
@@ -237,7 +237,7 @@ class DefaultServerSpecification extends Specification {
         def latch = new CountDownLatch(1)
         def receivedConnection = null
         def receivedThrowable = null
-        server.getConnectionAsync(new OperationContext()) {
+        server.getConnectionAsync(new OperationIdContext()) {
             result, throwable ->
                 receivedConnection = result; receivedThrowable = throwable; latch.countDown()
         }
@@ -270,7 +270,7 @@ class DefaultServerSpecification extends Specification {
         def latch = new CountDownLatch(1)
         def receivedConnection = null
         def receivedThrowable = null
-        server.getConnectionAsync(new OperationContext()) {
+        server.getConnectionAsync(new OperationIdContext()) {
             result, throwable ->
                 receivedConnection = result; receivedThrowable = throwable; latch.countDown()
         }
@@ -306,7 +306,7 @@ class DefaultServerSpecification extends Specification {
                           ''')
         def protocol = new TestCommandProtocol(response)
         testConnection.enqueueProtocol(protocol)
-        def context = new StaticBindingContext(sessionContext, getServerApi(), IgnorableRequestContext.INSTANCE, new OperationContext())
+        def context = new StaticBindingContext(sessionContext, getServerApi(), IgnorableRequestContext.INSTANCE, new OperationIdContext())
 
         when:
         if (async) {

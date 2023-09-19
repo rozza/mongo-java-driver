@@ -20,7 +20,7 @@ import com.mongodb.MongoClientException;
 import com.mongodb.ReadPreference;
 import com.mongodb.connection.ConnectionDescription;
 import com.mongodb.internal.async.SingleResultCallback;
-import com.mongodb.internal.binding.BindingContext;
+import com.mongodb.internal.binding.OperationContextSupplier;
 import com.mongodb.internal.connection.AsyncConnection;
 import com.mongodb.internal.connection.Connection;
 import com.mongodb.internal.connection.MessageSettings;
@@ -90,7 +90,7 @@ class CryptConnection implements AsyncConnection {
     @Override
     public <T> void commandAsync(final String database, final BsonDocument command, final FieldNameValidator fieldNameValidator,
                                  @Nullable final ReadPreference readPreference, final Decoder<T> commandResultDecoder,
-                                 final BindingContext context, final SingleResultCallback<T> callback) {
+                                 final OperationContextSupplier context, final SingleResultCallback<T> callback) {
         commandAsync(database, command, fieldNameValidator, readPreference, commandResultDecoder,
                 context, true, null, null, callback);
     }
@@ -98,7 +98,7 @@ class CryptConnection implements AsyncConnection {
     @Override
     public <T> void commandAsync(final String database, final BsonDocument command, final FieldNameValidator commandFieldNameValidator,
                                  @Nullable final ReadPreference readPreference, final Decoder<T> commandResultDecoder,
-            final BindingContext context, final boolean responseExpected, @Nullable final SplittablePayload payload,
+            final OperationContextSupplier context, final boolean responseExpected, @Nullable final SplittablePayload payload,
                                  @Nullable final FieldNameValidator payloadFieldNameValidator, final SingleResultCallback<T> callback) {
 
         if (serverIsLessThanVersionFourDotTwo(wrapped.getDescription())) {

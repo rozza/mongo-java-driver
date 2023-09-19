@@ -25,7 +25,7 @@ import com.mongodb.internal.connection.Connection;
  *
  * <p>This class is not part of the public API and may be removed or changed at any time</p>
  */
-public interface ConnectionSource extends BindingContext, ReferenceCounted {
+public interface ConnectionSource extends OperationContextSupplier, ReferenceCounted {
 
     ServerDescription getServerDescription();
 

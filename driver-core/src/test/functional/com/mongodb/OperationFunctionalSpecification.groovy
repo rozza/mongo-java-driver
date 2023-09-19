@@ -45,7 +45,7 @@ import com.mongodb.internal.binding.WriteBinding
 import com.mongodb.internal.bulk.InsertRequest
 import com.mongodb.internal.connection.AsyncConnection
 import com.mongodb.internal.connection.Connection
-import com.mongodb.internal.connection.OperationContext
+import com.mongodb.internal.connection.OperationIdContext
 import com.mongodb.internal.connection.ServerHelper
 import com.mongodb.internal.connection.SplittablePayload
 import com.mongodb.internal.operation.AsyncReadOperation
@@ -279,7 +279,7 @@ class OperationFunctionalSpecification extends Specification {
                           BsonDocument expectedCommand=null, Boolean checkSecondaryOk=false,
                           ReadPreference readPreference=ReadPreference.primary(), Boolean retryable = false,
                           ServerType serverType = ServerType.STANDALONE, Boolean activeTransaction = false) {
-        def operationContext = new OperationContext()
+        def operationContext = new OperationIdContext()
         def connection = Mock(Connection) {
             _ * getDescription() >> Stub(ConnectionDescription) {
                 getMaxWireVersion() >> getMaxWireVersionForServerVersion(serverVersion)
@@ -365,7 +365,7 @@ class OperationFunctionalSpecification extends Specification {
                            Boolean checkCommand = true, BsonDocument expectedCommand = null, Boolean checkSecondaryOk = false,
                            ReadPreference readPreference = ReadPreference.primary(), Boolean retryable = false,
                            ServerType serverType = ServerType.STANDALONE, Boolean activeTransaction = false) {
-        def operationContext = new OperationContext()
+        def operationContext = new OperationIdContext()
         def connection = Mock(AsyncConnection) {
             _ * getDescription() >> Stub(ConnectionDescription) {
                 getMaxWireVersion() >> getMaxWireVersionForServerVersion(serverVersion)

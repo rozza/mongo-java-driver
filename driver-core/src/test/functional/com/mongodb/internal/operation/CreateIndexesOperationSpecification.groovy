@@ -24,7 +24,7 @@ import com.mongodb.MongoExecutionTimeoutException
 import com.mongodb.MongoWriteConcernException
 import com.mongodb.OperationFunctionalSpecification
 import com.mongodb.WriteConcern
-import com.mongodb.internal.ClientSideOperationTimeout
+import com.mongodb.internal.TimeoutContext
 import com.mongodb.internal.bulk.IndexRequest
 import org.bson.BsonBoolean
 import org.bson.BsonDocument
@@ -578,7 +578,7 @@ class CreateIndexesOperationSpecification extends OperationFunctionalSpecificati
         createOperation(CSOT_NO_TIMEOUT.get(), requests)
     }
 
-    def createOperation(final ClientSideOperationTimeout clientSideOperationTimeout, final List<IndexRequest> requests) {
+    def createOperation(final TimeoutContext clientSideOperationTimeout, final List<IndexRequest> requests) {
         new CreateIndexesOperation(clientSideOperationTimeout, getNamespace(), requests, null)
     }
 

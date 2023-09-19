@@ -31,14 +31,14 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.DynamicTest.dynamicTest;
 
-final class ClientSideOperationTimeoutsTest {
+final class TimeoutsTestContext {
 
 
     @TestFactory
     Collection<DynamicTest> clientSideOperationTimeoutsTest() {
         return asList(
                 dynamicTest("test defaults", () -> {
-                    ClientSideOperationTimeout clientSideOperationTimeout = NO_TIMEOUT;
+                    TimeoutContext clientSideOperationTimeout = NO_TIMEOUT;
                     assertAll(
                             () -> assertFalse(clientSideOperationTimeout.hasTimeoutMS()),
                             () -> assertEquals(0, clientSideOperationTimeout.getMaxTimeMS()),
@@ -48,7 +48,7 @@ final class ClientSideOperationTimeoutsTest {
                 }),
                 dynamicTest("Uses timeoutMS if set", () -> {
                     long altTimeout = 9;
-                    ClientSideOperationTimeout clientSideOperationTimeout = create(99999999L, altTimeout, altTimeout, altTimeout);
+                    TimeoutContext clientSideOperationTimeout = create(99999999L, altTimeout, altTimeout, altTimeout);
                     assertAll(
                             () -> assertTrue(clientSideOperationTimeout.hasTimeoutMS()),
                             () -> assertTrue(clientSideOperationTimeout.getMaxTimeMS() > 0),
@@ -57,7 +57,7 @@ final class ClientSideOperationTimeoutsTest {
                     );
                 }),
                 dynamicTest("MaxTimeMS set", () -> {
-                    ClientSideOperationTimeout clientSideOperationTimeout = create(null, 9);
+                    TimeoutContext clientSideOperationTimeout = create(null, 9);
                     assertAll(
                             () -> assertEquals(9, clientSideOperationTimeout.getMaxTimeMS()),
                             () -> assertEquals(0, clientSideOperationTimeout.getMaxAwaitTimeMS()),
@@ -65,7 +65,7 @@ final class ClientSideOperationTimeoutsTest {
                     );
                 }),
                 dynamicTest("MaxTimeMS and MaxAwaitTimeMS set", () -> {
-                    ClientSideOperationTimeout clientSideOperationTimeout = create(null, 9, 99);
+                    TimeoutContext clientSideOperationTimeout = create(null, 9, 99);
                     assertAll(
                             () -> assertEquals(9, clientSideOperationTimeout.getMaxTimeMS()),
                             () -> assertEquals(99, clientSideOperationTimeout.getMaxAwaitTimeMS()),
@@ -73,7 +73,7 @@ final class ClientSideOperationTimeoutsTest {
                     );
                 }),
                 dynamicTest("MaxCommitTimeMS set", () -> {
-                    ClientSideOperationTimeout clientSideOperationTimeout = withMaxCommitMS(null, 9L);
+                    TimeoutContext clientSideOperationTimeout = withMaxCommitMS(null, 9L);
                     assertAll(
                             () -> assertEquals(0, clientSideOperationTimeout.getMaxTimeMS()),
                             () -> assertEquals(0, clientSideOperationTimeout.getMaxAwaitTimeMS()),
@@ -81,7 +81,7 @@ final class ClientSideOperationTimeoutsTest {
                     );
                 }),
                 dynamicTest("All deprecated options set", () -> {
-                    ClientSideOperationTimeout clientSideOperationTimeout = create(null, 99, 9L, 999);
+                    TimeoutContext clientSideOperationTimeout = create(null, 99, 9L, 999);
                     assertAll(
                             () -> assertEquals(9, clientSideOperationTimeout.getMaxAwaitTimeMS()),
                             () -> assertEquals(99, clientSideOperationTimeout.getMaxTimeMS()),
@@ -101,9 +101,9 @@ final class ClientSideOperationTimeoutsTest {
                         () -> assertTrue(ClientSideOperationTimeouts.create(999L).calculateMin(999999) <= 999)
                 )),
                 dynamicTest("Expired works as expected", () -> {
-                    ClientSideOperationTimeout smallTimeout = ClientSideOperationTimeouts.create(1L);
-                    ClientSideOperationTimeout longTimeout = ClientSideOperationTimeouts.create(999999999L);
-                    ClientSideOperationTimeout noTimeout = NO_TIMEOUT;
+                    TimeoutContext smallTimeout = ClientSideOperationTimeouts.create(1L);
+                    TimeoutContext longTimeout = ClientSideOperationTimeouts.create(999999999L);
+                    TimeoutContext noTimeout = NO_TIMEOUT;
                     sleep(100);
                     assertAll(
                             () -> assertFalse(noTimeout.expired()),
@@ -114,6 +114,6 @@ final class ClientSideOperationTimeoutsTest {
         );
     }
 
-    private ClientSideOperationTimeoutsTest() {
+    private TimeoutsTestContext() {
     }
 }

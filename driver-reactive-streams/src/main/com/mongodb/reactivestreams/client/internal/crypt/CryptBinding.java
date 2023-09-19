@@ -26,7 +26,7 @@ import com.mongodb.internal.binding.AsyncClusterAwareReadWriteBinding;
 import com.mongodb.internal.binding.AsyncConnectionSource;
 import com.mongodb.internal.connection.AsyncConnection;
 import com.mongodb.internal.connection.Cluster;
-import com.mongodb.internal.connection.OperationContext;
+import com.mongodb.internal.connection.OperationIdContext;
 import com.mongodb.internal.session.SessionContext;
 import com.mongodb.lang.Nullable;
 
@@ -76,7 +76,7 @@ public class CryptBinding implements AsyncClusterAwareReadWriteBinding {
     }
 
     @Override
-    public OperationContext getOperationContext() {
+    public OperationIdContext getOperationContext() {
         return wrapped.getOperationContext();
     }
 
@@ -167,7 +167,7 @@ public class CryptBinding implements AsyncClusterAwareReadWriteBinding {
         }
 
         @Override
-        public OperationContext getOperationContext() {
+        public OperationIdContext getOperationContext() {
             return wrapped.getOperationContext();
         }
 

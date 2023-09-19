@@ -22,7 +22,7 @@ import com.mongodb.RequestContext;
 import com.mongodb.ServerApi;
 import com.mongodb.client.ClientSession;
 import com.mongodb.connection.ClusterType;
-import com.mongodb.internal.connection.OperationContext;
+import com.mongodb.internal.connection.OperationIdContext;
 import com.mongodb.connection.ServerDescription;
 import com.mongodb.internal.binding.AbstractReferenceCounted;
 import com.mongodb.internal.binding.ClusterAwareReadWriteBinding;
@@ -127,7 +127,7 @@ public class ClientSessionBinding extends AbstractReferenceCounted implements Re
     }
 
     @Override
-    public OperationContext getOperationContext() {
+    public OperationIdContext getOperationContext() {
         return wrapped.getOperationContext();
     }
 
@@ -169,7 +169,7 @@ public class ClientSessionBinding extends AbstractReferenceCounted implements Re
         }
 
         @Override
-        public OperationContext getOperationContext() {
+        public OperationIdContext getOperationContext() {
             return wrapped.getOperationContext();
         }
 

@@ -87,7 +87,7 @@ class BaseClusterSpecification extends Specification {
         thrown(MongoTimeoutException)
 
         when: 'a server is selected before initialization'
-        cluster.selectServer({ def clusterDescription -> [] }, new OperationContext())
+        cluster.selectServer({ def clusterDescription -> [] }, new OperationIdContext())
 
         then: 'a MongoTimeoutException is thrown'
         thrown(MongoTimeoutException)
@@ -120,7 +120,7 @@ class BaseClusterSpecification extends Specification {
         factory.sendNotification(thirdServer, REPLICA_SET_PRIMARY, allServers)
 
         expect:
-        cluster.selectServer(new ReadPreferenceServerSelector(ReadPreference.secondary()), new OperationContext())
+        cluster.selectServer(new ReadPreferenceServerSelector(ReadPreference.secondary()), new OperationIdContext())
                 .serverDescription.address == firstServer
     }
 
@@ -137,7 +137,7 @@ class BaseClusterSpecification extends Specification {
         factory.sendNotification(thirdServer, REPLICA_SET_PRIMARY, allServers)
 
         expect:
-        cluster.selectServer(new ServerAddressSelector(firstServer), new OperationContext()).serverDescription.address == firstServer
+        cluster.selectServer(new ServerAddressSelector(firstServer), new OperationIdContext()).serverDescription.address == firstServer
     }
 
     def 'should apply local threshold when custom server selector is present'() {
@@ -155,7 +155,7 @@ class BaseClusterSpecification extends Specification {
         factory.sendNotification(thirdServer, 1, REPLICA_SET_PRIMARY, allServers)
 
         expect:
-        cluster.selectServer(new ReadPreferenceServerSelector(ReadPreference.nearest()), new OperationContext())
+        cluster.selectServer(new ReadPreferenceServerSelector(ReadPreference.nearest()), new OperationIdContext())
                 .serverDescription.address == firstServer
     }
 
@@ -173,7 +173,7 @@ class BaseClusterSpecification extends Specification {
         factory.sendNotification(thirdServer, 1, REPLICA_SET_PRIMARY, allServers)
 
         expect: // firstServer is the only secondary within the latency threshold
-        cluster.selectServer(new ReadPreferenceServerSelector(ReadPreference.secondary()), new OperationContext())
+        cluster.selectServer(new ReadPreferenceServerSelector(ReadPreference.secondary()), new OperationIdContext())
                 .serverDescription.address == firstServer
     }
 
@@ -204,7 +204,7 @@ class BaseClusterSpecification extends Specification {
         e.getMessage().contains('{address=localhost:27018, type=UNKNOWN, state=CONNECTING}')
 
         when:
-        cluster.selectServer(new WritableServerSelector(), new OperationContext())
+        cluster.selectServer(new WritableServerSelector(), new OperationIdContext())
 
         then:
         e = thrown(MongoTimeoutException)
@@ -231,7 +231,7 @@ class BaseClusterSpecification extends Specification {
         factory.sendNotification(thirdServer, REPLICA_SET_PRIMARY, allServers)
 
         expect:
-        cluster.selectServer(new ReadPreferenceServerSelector(ReadPreference.primary()), new OperationContext())
+        cluster.selectServer(new ReadPreferenceServerSelector(ReadPreference.primary()), new OperationIdContext())
                 .serverDescription.address == thirdServer
 
         cleanup:
@@ -255,7 +255,7 @@ class BaseClusterSpecification extends Specification {
         def latch = new CountDownLatch(1)
         def thread = new Thread({
             try {
-                cluster.selectServer(new ReadPreferenceServerSelector(ReadPreference.primary()), new OperationContext())
+                cluster.selectServer(new ReadPreferenceServerSelector(ReadPreference.primary()), new OperationIdContext())
             } catch (MongoInterruptedException e) {
                 latch.countDown()
             }
@@ -401,7 +401,7 @@ class BaseClusterSpecification extends Specification {
 
     def selectServerAsync(BaseCluster cluster, ServerAddress serverAddress) {
         def serverLatch = new ServerLatch()
-        cluster.selectServerAsync(new ServerAddressSelector(serverAddress), new OperationContext()) {
+        cluster.selectServerAsync(new ServerAddressSelector(serverAddress), new OperationIdContext()) {
             ServerTuple result, MongoException e ->
                 serverLatch.server = result != null ? result.getServer() : null
                 serverLatch.serverDescription = result != null ? result.serverDescription : null

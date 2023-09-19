@@ -21,7 +21,7 @@ import com.mongodb.ReadConcern;
 import com.mongodb.ReadPreference;
 import com.mongodb.WriteConcern;
 import com.mongodb.client.model.Collation;
-import com.mongodb.internal.ClientSideOperationTimeout;
+import com.mongodb.internal.TimeoutContext;
 import com.mongodb.internal.async.SingleResultCallback;
 import com.mongodb.internal.binding.AsyncReadBinding;
 import com.mongodb.internal.binding.ReadBinding;
@@ -56,7 +56,7 @@ import static com.mongodb.internal.operation.WriteConcernHelper.throwOnWriteConc
  * <p>This class is not part of the public API and may be removed or changed at any time</p>
  */
 public class AggregateToCollectionOperation implements AsyncReadOperation<Void>, ReadOperation<Void> {
-    private final ClientSideOperationTimeout clientSideOperationTimeout;
+    private final TimeoutContext clientSideOperationTimeout;
     private final MongoNamespace namespace;
     private final List<BsonDocument> pipeline;
     private final WriteConcern writeConcern;
@@ -70,12 +70,12 @@ public class AggregateToCollectionOperation implements AsyncReadOperation<Void>,
     private BsonValue hint;
     private BsonDocument variables;
 
-    public AggregateToCollectionOperation(final ClientSideOperationTimeout clientSideOperationTimeout, final MongoNamespace namespace,
+    public AggregateToCollectionOperation(final TimeoutContext clientSideOperationTimeout, final MongoNamespace namespace,
             final List<BsonDocument> pipeline, final ReadConcern readConcern, final WriteConcern writeConcern) {
         this(clientSideOperationTimeout, namespace, pipeline, readConcern, writeConcern, AggregationLevel.COLLECTION);
     }
 
-    public AggregateToCollectionOperation(final ClientSideOperationTimeout clientSideOperationTimeout, final MongoNamespace namespace,
+    public AggregateToCollectionOperation(final TimeoutContext clientSideOperationTimeout, final MongoNamespace namespace,
             final List<BsonDocument> pipeline, @Nullable final ReadConcern readConcern, @Nullable final WriteConcern writeConcern,
             final AggregationLevel aggregationLevel) {
         this.clientSideOperationTimeout = notNull("clientSideOperationTimeout", clientSideOperationTimeout);

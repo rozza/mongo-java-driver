@@ -19,7 +19,7 @@ package com.mongodb.internal.binding;
 import com.mongodb.ReadPreference;
 import com.mongodb.RequestContext;
 import com.mongodb.ServerApi;
-import com.mongodb.internal.connection.OperationContext;
+import com.mongodb.internal.connection.OperationIdContext;
 import com.mongodb.connection.ServerDescription;
 import com.mongodb.internal.connection.Connection;
 import com.mongodb.internal.session.SessionContext;
@@ -84,7 +84,7 @@ public class SessionBinding implements ReadWriteBinding {
     }
 
     @Override
-    public OperationContext getOperationContext() {
+    public OperationIdContext getOperationContext() {
         return wrapped.getOperationContext();
     }
 
@@ -111,7 +111,7 @@ public class SessionBinding implements ReadWriteBinding {
         }
 
         @Override
-        public OperationContext getOperationContext() {
+        public OperationIdContext getOperationContext() {
             return wrapped.getOperationContext();
         }
 

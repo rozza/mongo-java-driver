@@ -19,7 +19,7 @@ package com.mongodb.internal.operation;
 import com.mongodb.MongoException;
 import com.mongodb.ReadPreference;
 import com.mongodb.ServerAddress;
-import com.mongodb.internal.ClientSideOperationTimeout;
+import com.mongodb.internal.TimeoutContext;
 import com.mongodb.internal.VisibleForTesting;
 import com.mongodb.internal.async.SingleResultCallback;
 import com.mongodb.internal.async.function.AsyncCallbackBiFunction;
@@ -32,7 +32,7 @@ import com.mongodb.internal.binding.ReadBinding;
 import com.mongodb.internal.binding.ReferenceCounted;
 import com.mongodb.internal.binding.WriteBinding;
 import com.mongodb.internal.connection.Connection;
-import com.mongodb.internal.connection.OperationContext;
+import com.mongodb.internal.connection.OperationIdContext;
 import com.mongodb.internal.connection.QueryResult;
 import com.mongodb.internal.operation.retry.AttachmentKeys;
 import com.mongodb.internal.validator.NoOpFieldNameValidator;
@@ -168,7 +168,7 @@ final class SyncOperationHelper {
     }
 
     static <D, T> T executeRetryableRead(
-            final ClientSideOperationTimeout clientSideOperationTimeout,
+            final TimeoutContext clientSideOperationTimeout,
             final ReadBinding binding,
             final String database,
             final CommandCreator commandCreator,
@@ -180,7 +180,7 @@ final class SyncOperationHelper {
     }
 
     static <D, T> T executeRetryableRead(
-            final ClientSideOperationTimeout clientSideOperationTimeout,
+            final TimeoutContext clientSideOperationTimeout,
             final ReadBinding binding,
             final Supplier<ConnectionSource> readConnectionSourceSupplier,
             final String database,
@@ -217,7 +217,7 @@ final class SyncOperationHelper {
     }
 
     static <T, R> R executeRetryableWrite(
-            final ClientSideOperationTimeout clientSideOperationTimeout,
+            final TimeoutContext clientSideOperationTimeout,
             final WriteBinding binding,
             final String database,
             @Nullable final ReadPreference readPreference,
@@ -266,7 +266,7 @@ final class SyncOperationHelper {
 
     @Nullable
     static <D, T> T createReadCommandAndExecute(
-            final ClientSideOperationTimeout clientSideOperationTimeout,
+            final TimeoutContext clientSideOperationTimeout,
             final RetryState retryState,
             final ReadBinding binding,
             final ConnectionSource source,
@@ -283,19 +283,19 @@ final class SyncOperationHelper {
 
 
     static <R> Supplier<R> decorateWriteWithRetries(final RetryState retryState,
-            final OperationContext operationContext, final Supplier<R> writeFunction) {
+            final OperationIdContext operationIdContext, final Supplier<R> writeFunction) {
         return new RetryingSyncSupplier<>(retryState, CommandOperationHelper::chooseRetryableWriteException,
                 CommandOperationHelper::shouldAttemptToRetryWrite, () -> {
-            logRetryExecute(retryState, operationContext);
+            logRetryExecute(retryState, operationIdContext);
             return writeFunction.get();
         });
     }
 
-    static <R> Supplier<R> decorateReadWithRetries(final RetryState retryState, final OperationContext operationContext,
+    static <R> Supplier<R> decorateReadWithRetries(final RetryState retryState, final OperationIdContext operationIdContext,
             final Supplier<R> readFunction) {
         return new RetryingSyncSupplier<>(retryState, CommandOperationHelper::chooseRetryableReadException,
                 CommandOperationHelper::shouldAttemptToRetryRead, () -> {
-            logRetryExecute(retryState, operationContext);
+            logRetryExecute(retryState, operationIdContext);
             return readFunction.get();
         });
     }

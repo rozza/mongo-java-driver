@@ -21,7 +21,7 @@ import com.mongodb.MongoNamespace;
 import com.mongodb.WriteConcern;
 import com.mongodb.client.model.Collation;
 import com.mongodb.connection.ConnectionDescription;
-import com.mongodb.internal.ClientSideOperationTimeout;
+import com.mongodb.internal.TimeoutContext;
 import com.mongodb.internal.async.SingleResultCallback;
 import com.mongodb.internal.binding.AsyncWriteBinding;
 import com.mongodb.internal.binding.WriteBinding;
@@ -65,7 +65,7 @@ import static java.util.Arrays.asList;
  */
 public class
 MapReduceToCollectionOperation implements AsyncWriteOperation<MapReduceStatistics>, WriteOperation<MapReduceStatistics> {
-    private final ClientSideOperationTimeout clientSideOperationTimeout;
+    private final TimeoutContext clientSideOperationTimeout;
     private final MongoNamespace namespace;
     private final BsonJavaScript mapFunction;
     private final BsonJavaScript reduceFunction;
@@ -86,7 +86,7 @@ MapReduceToCollectionOperation implements AsyncWriteOperation<MapReduceStatistic
     private Collation collation;
     private static final List<String> VALID_ACTIONS = asList("replace", "merge", "reduce");
 
-    public MapReduceToCollectionOperation(final ClientSideOperationTimeout clientSideOperationTimeout, final MongoNamespace namespace,
+    public MapReduceToCollectionOperation(final TimeoutContext clientSideOperationTimeout, final MongoNamespace namespace,
             final BsonJavaScript mapFunction, final BsonJavaScript reduceFunction, @Nullable final String collectionName,
             @Nullable final WriteConcern writeConcern) {
         this.clientSideOperationTimeout = notNull("clientSideOperationTimeout", clientSideOperationTimeout);

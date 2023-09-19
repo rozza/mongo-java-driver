@@ -32,7 +32,7 @@ import com.mongodb.connection.StreamFactory;
 import com.mongodb.connection.StreamFactoryFactory;
 import com.mongodb.connection.TlsChannelStreamFactoryFactory;
 import com.mongodb.connection.netty.NettyStreamFactoryFactory;
-import com.mongodb.internal.ClientSideOperationTimeout;
+import com.mongodb.internal.TimeoutContext;
 import com.mongodb.internal.ClientSideOperationTimeouts;
 import com.mongodb.internal.IgnorableRequestContext;
 import com.mongodb.internal.async.AsyncBatchCursor;
@@ -117,14 +117,14 @@ public final class ClusterFixture {
     public static final long TIMEOUT = 60L;
     public static final Duration TIMEOUT_DURATION = Duration.ofSeconds(TIMEOUT);
 
-    public static final Supplier<ClientSideOperationTimeout> CSOT_NO_TIMEOUT = () -> ClientSideOperationTimeouts.NO_TIMEOUT;
-    public static final Supplier<ClientSideOperationTimeout> CSOT_TIMEOUT =
+    public static final Supplier<TimeoutContext> CSOT_NO_TIMEOUT = () -> ClientSideOperationTimeouts.NO_TIMEOUT;
+    public static final Supplier<TimeoutContext> CSOT_TIMEOUT =
             () -> ClientSideOperationTimeouts.create(TIMEOUT_DURATION.toMillis());
-    public static final Supplier<ClientSideOperationTimeout> CSOT_MAX_TIME = () ->
+    public static final Supplier<TimeoutContext> CSOT_MAX_TIME = () ->
             ClientSideOperationTimeouts.create(null, 100, 0, 0);
-    public static final Supplier<ClientSideOperationTimeout> CSOT_MAX_AWAIT_TIME = () ->
+    public static final Supplier<TimeoutContext> CSOT_MAX_AWAIT_TIME = () ->
             ClientSideOperationTimeouts.create(null, 0, 101, 0);
-    public static final Supplier<ClientSideOperationTimeout> CSOT_MAX_TIME_AND_MAX_AWAIT_TIME = () ->
+    public static final Supplier<TimeoutContext> CSOT_MAX_TIME_AND_MAX_AWAIT_TIME = () ->
             ClientSideOperationTimeouts.create(null, 101, 1001, 0);
     public static final String LEGACY_HELLO = "isMaster";
 

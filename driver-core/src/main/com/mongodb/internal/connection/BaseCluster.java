@@ -99,7 +99,7 @@ abstract class BaseCluster implements Cluster {
     }
 
     @Override
-    public ServerTuple selectServer(final ServerSelector serverSelector, final OperationContext operationContext) {
+    public ServerTuple selectServer(final ServerSelector serverSelector, final OperationIdContext operationIdContext) {
         isTrue("open", !isClosed());
 
         try {
@@ -147,7 +147,7 @@ abstract class BaseCluster implements Cluster {
     }
 
     @Override
-    public void selectServerAsync(final ServerSelector serverSelector, final OperationContext operationContext,
+    public void selectServerAsync(final ServerSelector serverSelector, final OperationIdContext operationIdContext,
             final SingleResultCallback<ServerTuple> callback) {
         isTrue("open", !isClosed());
 

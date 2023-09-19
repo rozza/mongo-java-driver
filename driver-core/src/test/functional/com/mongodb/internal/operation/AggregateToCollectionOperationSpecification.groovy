@@ -29,7 +29,7 @@ import com.mongodb.client.model.CreateCollectionOptions
 import com.mongodb.client.model.Filters
 import com.mongodb.client.model.ValidationOptions
 import com.mongodb.client.test.CollectionHelper
-import com.mongodb.internal.ClientSideOperationTimeout
+import com.mongodb.internal.TimeoutContext
 import com.mongodb.internal.client.model.AggregationLevel
 import org.bson.BsonArray
 import org.bson.BsonBoolean
@@ -328,18 +328,18 @@ class AggregateToCollectionOperationSpecification extends OperationFunctionalSpe
         async << [true, false]
     }
 
-    def createOperation(final ClientSideOperationTimeout clientSideOperationTimeout, final MongoNamespace namespace,
-            final List<BsonDocument> pipeline) {
+    def createOperation(final TimeoutContext clientSideOperationTimeout, final MongoNamespace namespace,
+                        final List<BsonDocument> pipeline) {
         new AggregateToCollectionOperation(clientSideOperationTimeout, namespace, pipeline, null, null, AggregationLevel.COLLECTION)
     }
 
-    def createOperation(final ClientSideOperationTimeout clientSideOperationTimeout, final MongoNamespace namespace,
-            final List<BsonDocument> pipeline, final WriteConcern writeConcern) {
+    def createOperation(final TimeoutContext clientSideOperationTimeout, final MongoNamespace namespace,
+                        final List<BsonDocument> pipeline, final WriteConcern writeConcern) {
         new AggregateToCollectionOperation(clientSideOperationTimeout, namespace, pipeline, null, writeConcern, AggregationLevel.COLLECTION)
     }
 
-    def createOperation(final ClientSideOperationTimeout clientSideOperationTimeout, final MongoNamespace namespace,
-            final List<BsonDocument> pipeline, final ReadConcern readConcern) {
+    def createOperation(final TimeoutContext clientSideOperationTimeout, final MongoNamespace namespace,
+                        final List<BsonDocument> pipeline, final ReadConcern readConcern) {
         new AggregateToCollectionOperation(clientSideOperationTimeout, namespace, pipeline, readConcern, null, AggregationLevel.COLLECTION)
     }
 

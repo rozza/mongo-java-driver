@@ -23,7 +23,7 @@ import com.mongodb.ReadPreference;
  *
  * <p>This class is not part of the public API and may be removed or changed at any time</p>
  */
-public interface ReadBinding extends BindingContext, ReferenceCounted {
+public interface ReadBinding extends OperationContextSupplier, ReferenceCounted {
     ReadPreference getReadPreference();
 
     /**

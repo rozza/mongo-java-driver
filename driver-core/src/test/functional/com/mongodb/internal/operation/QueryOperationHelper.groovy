@@ -27,7 +27,7 @@ import com.mongodb.internal.binding.ConnectionSource
 import com.mongodb.internal.binding.StaticBindingContext
 import com.mongodb.internal.connection.Connection
 import com.mongodb.internal.connection.NoOpSessionContext
-import com.mongodb.internal.connection.OperationContext
+import com.mongodb.internal.connection.OperationIdContext
 import com.mongodb.internal.validator.NoOpFieldNameValidator
 import org.bson.BsonDocument
 import org.bson.BsonInt64
@@ -71,7 +71,7 @@ class QueryOperationHelper {
                     new NoOpFieldNameValidator(), ReadPreference.primary(),
                     new BsonDocumentCodec(),
                     new StaticBindingContext(new NoOpSessionContext(), getServerApi(), IgnorableRequestContext.INSTANCE,
-                            new OperationContext()))
+                            new OperationIdContext()))
         } catch (MongoCommandException e) {
             if (e.getErrorCode() == 43) {
                 throw new MongoCursorNotFoundException(serverCursor.getId(), e.getResponse(), serverCursor.getAddress())

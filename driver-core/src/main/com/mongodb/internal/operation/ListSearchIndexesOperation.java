@@ -20,7 +20,7 @@ import com.mongodb.ExplainVerbosity;
 import com.mongodb.MongoCommandException;
 import com.mongodb.MongoNamespace;
 import com.mongodb.client.model.Collation;
-import com.mongodb.internal.ClientSideOperationTimeout;
+import com.mongodb.internal.TimeoutContext;
 import com.mongodb.internal.async.AsyncBatchCursor;
 import com.mongodb.internal.async.SingleResultCallback;
 import com.mongodb.internal.binding.AsyncReadBinding;
@@ -45,7 +45,7 @@ import static java.util.Collections.singletonList;
 final class ListSearchIndexesOperation<T>
         implements AsyncExplainableReadOperation<AsyncBatchCursor<T>>, ExplainableReadOperation<BatchCursor<T>> {
     private static final String STAGE_LIST_SEARCH_INDEXES = "$listSearchIndexes";
-    private final ClientSideOperationTimeout clientSideOperationTimeout;
+    private final TimeoutContext clientSideOperationTimeout;
     private final MongoNamespace namespace;
     private final Decoder<T> decoder;
     @Nullable
@@ -60,7 +60,7 @@ final class ListSearchIndexesOperation<T>
     private final String indexName;
     private final boolean retryReads;
 
-    ListSearchIndexesOperation(final ClientSideOperationTimeout clientSideOperationTimeout, final MongoNamespace namespace,
+    ListSearchIndexesOperation(final TimeoutContext clientSideOperationTimeout, final MongoNamespace namespace,
             final Decoder<T> decoder, @Nullable final String indexName, @Nullable final Integer batchSize,
             @Nullable final Collation collation, @Nullable final BsonValue comment, @Nullable final Boolean allowDiskUse,
             final boolean retryReads) {

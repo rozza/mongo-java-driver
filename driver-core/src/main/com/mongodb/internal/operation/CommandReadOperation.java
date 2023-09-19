@@ -16,7 +16,7 @@
 
 package com.mongodb.internal.operation;
 
-import com.mongodb.internal.ClientSideOperationTimeout;
+import com.mongodb.internal.TimeoutContext;
 import com.mongodb.internal.async.SingleResultCallback;
 import com.mongodb.internal.binding.AsyncReadBinding;
 import com.mongodb.internal.binding.ReadBinding;
@@ -34,12 +34,12 @@ import static com.mongodb.internal.operation.SyncOperationHelper.executeRetryabl
  * <p>This class is not part of the public API and may be removed or changed at any time</p>
  */
 public class CommandReadOperation<T> implements AsyncReadOperation<T>, ReadOperation<T> {
-    private final ClientSideOperationTimeout clientSideOperationTimeout;
+    private final TimeoutContext clientSideOperationTimeout;
     private final String databaseName;
     private final BsonDocument command;
     private final Decoder<T> decoder;
 
-    public CommandReadOperation(final ClientSideOperationTimeout clientSideOperationTimeout, final String databaseName,
+    public CommandReadOperation(final TimeoutContext clientSideOperationTimeout, final String databaseName,
             final BsonDocument command, final Decoder<T> decoder) {
         this.clientSideOperationTimeout = notNull("clientSideOperationTimeout", clientSideOperationTimeout);
         this.databaseName = notNull("databaseName", databaseName);

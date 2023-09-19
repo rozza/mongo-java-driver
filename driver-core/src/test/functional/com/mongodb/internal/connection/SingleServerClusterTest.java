@@ -103,7 +103,7 @@ public class SingleServerClusterTest {
         setUpCluster(getPrimary());
 
         // when
-        ServerTuple serverTuple = cluster.selectServer(clusterDescription -> getPrimaries(clusterDescription), new OperationContext());
+        ServerTuple serverTuple = cluster.selectServer(clusterDescription -> getPrimaries(clusterDescription), new OperationIdContext());
 
         // then
         assertTrue(serverTuple.getServerDescription().isOk());
@@ -115,14 +115,14 @@ public class SingleServerClusterTest {
         ServerAddress secondary = getSecondary();
         setUpCluster(secondary);
         String collectionName = getClass().getName();
-        Connection connection = cluster.selectServer(new ServerAddressSelector(secondary), new OperationContext()).getServer()
-                .getConnection(new OperationContext());
+        Connection connection = cluster.selectServer(new ServerAddressSelector(secondary), new OperationIdContext()).getServer()
+                .getConnection(new OperationIdContext());
 
         // when
         BsonDocument result = connection.command(getDefaultDatabaseName(), new BsonDocument("count", new BsonString(collectionName)),
                 new NoOpFieldNameValidator(), ReadPreference.primary(), new BsonDocumentCodec(),
                 new StaticBindingContext(NoOpSessionContext.INSTANCE, getServerApi(), IgnorableRequestContext.INSTANCE,
-                        new OperationContext()));
+                        new OperationIdContext()));
 
         // then
         assertEquals(new BsonDouble(1.0).intValue(), result.getNumber("ok").intValue());

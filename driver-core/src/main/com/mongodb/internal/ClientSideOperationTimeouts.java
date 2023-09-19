@@ -18,34 +18,34 @@ package com.mongodb.internal;
 import com.mongodb.lang.Nullable;
 
 /**
- * A factory for creating {@link ClientSideOperationTimeout} instances
+ * A factory for creating {@link TimeoutContext} instances
  */
 public final class ClientSideOperationTimeouts {
 
-    public static final ClientSideOperationTimeout NO_TIMEOUT = create(null, 0, 0, 0);
+    public static final TimeoutContext NO_TIMEOUT = create(null, 0, 0, 0);
 
-    public static ClientSideOperationTimeout create(@Nullable final Long timeoutMS) {
+    public static TimeoutContext create(@Nullable final Long timeoutMS) {
         return create(timeoutMS, 0);
     }
 
-    public static ClientSideOperationTimeout create(@Nullable final Long timeoutMS, final long maxTimeMS) {
+    public static TimeoutContext create(@Nullable final Long timeoutMS, final long maxTimeMS) {
         return create(timeoutMS, maxTimeMS, 0);
     }
 
-    public static ClientSideOperationTimeout create(@Nullable final Long timeoutMS,
+    public static TimeoutContext create(@Nullable final Long timeoutMS,
                                                     final long maxTimeMS,
                                                     final long maxAwaitTimeMS) {
-        return new ClientSideOperationTimeout(timeoutMS, maxAwaitTimeMS, maxTimeMS, 0);
+        return new TimeoutContext(timeoutMS, maxAwaitTimeMS, maxTimeMS, 0);
     }
 
-    public static ClientSideOperationTimeout create(@Nullable final Long timeoutMS,
+    public static TimeoutContext create(@Nullable final Long timeoutMS,
                                                     final long maxTimeMS,
                                                     final long maxAwaitTimeMS,
                                                     final long maxCommitMS) {
-        return new ClientSideOperationTimeout(timeoutMS, maxAwaitTimeMS, maxTimeMS, maxCommitMS);
+        return new TimeoutContext(timeoutMS, maxAwaitTimeMS, maxTimeMS, maxCommitMS);
     }
 
-    public static ClientSideOperationTimeout withMaxCommitMS(@Nullable final Long timeoutMS,
+    public static TimeoutContext withMaxCommitMS(@Nullable final Long timeoutMS,
                                                              @Nullable final Long maxCommitMS) {
         return create(timeoutMS, 0, 0, maxCommitMS != null ? maxCommitMS : 0);
     }

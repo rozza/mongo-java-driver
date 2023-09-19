@@ -19,7 +19,7 @@ package com.mongodb.internal.operation;
 import com.mongodb.ExplainVerbosity;
 import com.mongodb.MongoNamespace;
 import com.mongodb.client.model.Collation;
-import com.mongodb.internal.ClientSideOperationTimeout;
+import com.mongodb.internal.TimeoutContext;
 import com.mongodb.internal.async.AsyncBatchCursor;
 import com.mongodb.internal.async.SingleResultCallback;
 import com.mongodb.internal.binding.AsyncReadBinding;
@@ -44,12 +44,12 @@ import static com.mongodb.internal.operation.ServerVersionHelper.MIN_WIRE_VERSIO
 public class AggregateOperation<T> implements AsyncExplainableReadOperation<AsyncBatchCursor<T>>, ExplainableReadOperation<BatchCursor<T>> {
     private final AggregateOperationImpl<T> wrapped;
 
-    public AggregateOperation(final ClientSideOperationTimeout clientSideOperationTimeout, final MongoNamespace namespace,
+    public AggregateOperation(final TimeoutContext clientSideOperationTimeout, final MongoNamespace namespace,
             final List<BsonDocument> pipeline, final Decoder<T> decoder) {
         this(clientSideOperationTimeout, namespace, pipeline, decoder, AggregationLevel.COLLECTION);
     }
 
-    public AggregateOperation(final ClientSideOperationTimeout clientSideOperationTimeout, final MongoNamespace namespace,
+    public AggregateOperation(final TimeoutContext clientSideOperationTimeout, final MongoNamespace namespace,
             final List<BsonDocument> pipeline, final Decoder<T> decoder, final AggregationLevel aggregationLevel) {
         this.wrapped = new AggregateOperationImpl<>(clientSideOperationTimeout, namespace, pipeline, decoder, aggregationLevel);
     }

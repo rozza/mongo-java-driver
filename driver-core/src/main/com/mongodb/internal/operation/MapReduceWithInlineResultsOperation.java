@@ -20,7 +20,7 @@ import com.mongodb.ExplainVerbosity;
 import com.mongodb.MongoNamespace;
 import com.mongodb.client.model.Collation;
 import com.mongodb.connection.ConnectionDescription;
-import com.mongodb.internal.ClientSideOperationTimeout;
+import com.mongodb.internal.TimeoutContext;
 import com.mongodb.internal.async.SingleResultCallback;
 import com.mongodb.internal.binding.AsyncReadBinding;
 import com.mongodb.internal.binding.ReadBinding;
@@ -60,7 +60,7 @@ import static com.mongodb.internal.operation.SyncOperationHelper.executeRetryabl
  */
 public class MapReduceWithInlineResultsOperation<T> implements AsyncReadOperation<MapReduceAsyncBatchCursor<T>>,
                                                                ReadOperation<MapReduceBatchCursor<T>> {
-    private final ClientSideOperationTimeout clientSideOperationTimeout;
+    private final TimeoutContext clientSideOperationTimeout;
     private final MongoNamespace namespace;
     private final BsonJavaScript mapFunction;
     private final BsonJavaScript reduceFunction;
@@ -74,7 +74,7 @@ public class MapReduceWithInlineResultsOperation<T> implements AsyncReadOperatio
     private boolean verbose;
     private Collation collation;
 
-    public MapReduceWithInlineResultsOperation(final ClientSideOperationTimeout clientSideOperationTimeout, final MongoNamespace namespace,
+    public MapReduceWithInlineResultsOperation(final TimeoutContext clientSideOperationTimeout, final MongoNamespace namespace,
             final BsonJavaScript mapFunction, final BsonJavaScript reduceFunction, final Decoder<T> decoder) {
         this.clientSideOperationTimeout = notNull("clientSideOperationTimeout", clientSideOperationTimeout);
         this.namespace = notNull("namespace", namespace);
@@ -215,7 +215,7 @@ public class MapReduceWithInlineResultsOperation<T> implements AsyncReadOperatio
                 getCommand(clientSideOperationTimeout, sessionContext, connectionDescription.getMaxWireVersion());
     }
 
-    private BsonDocument getCommand(final ClientSideOperationTimeout clientSideOperationTimeout, final SessionContext sessionContext,
+    private BsonDocument getCommand(final TimeoutContext clientSideOperationTimeout, final SessionContext sessionContext,
             final int maxWireVersion) {
         BsonDocument commandDocument = new BsonDocument("mapreduce", new BsonString(namespace.getCollectionName()))
                                            .append("map", getMapFunction())

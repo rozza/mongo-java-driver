@@ -18,7 +18,7 @@ package com.mongodb.internal.operation;
 
 import com.mongodb.WriteConcern;
 import com.mongodb.client.model.Collation;
-import com.mongodb.internal.ClientSideOperationTimeout;
+import com.mongodb.internal.TimeoutContext;
 import com.mongodb.internal.async.SingleResultCallback;
 import com.mongodb.internal.binding.AsyncWriteBinding;
 import com.mongodb.internal.binding.WriteBinding;
@@ -48,7 +48,7 @@ import static com.mongodb.internal.operation.WriteConcernHelper.appendWriteConce
  * <p>This class is not part of the public API and may be removed or changed at any time</p>
  */
 public class CreateViewOperation implements AsyncWriteOperation<Void>, WriteOperation<Void> {
-    private final ClientSideOperationTimeout clientSideOperationTimeout;
+    private final TimeoutContext clientSideOperationTimeout;
     private final String databaseName;
     private final String viewName;
     private final String viewOn;
@@ -56,7 +56,7 @@ public class CreateViewOperation implements AsyncWriteOperation<Void>, WriteOper
     private final WriteConcern writeConcern;
     private Collation collation;
 
-    public CreateViewOperation(final ClientSideOperationTimeout clientSideOperationTimeout, final String databaseName,
+    public CreateViewOperation(final TimeoutContext clientSideOperationTimeout, final String databaseName,
             final String viewName, final String viewOn, final List<BsonDocument> pipeline, final WriteConcern writeConcern) {
         this.clientSideOperationTimeout = notNull("clientSideOperationTimeout", clientSideOperationTimeout);
         this.databaseName = notNull("databaseName", databaseName);

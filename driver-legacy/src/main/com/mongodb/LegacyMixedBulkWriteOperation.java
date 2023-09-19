@@ -19,7 +19,7 @@ package com.mongodb;
 import com.mongodb.bulk.BulkWriteError;
 import com.mongodb.bulk.BulkWriteResult;
 import com.mongodb.bulk.WriteConcernError;
-import com.mongodb.internal.ClientSideOperationTimeout;
+import com.mongodb.internal.TimeoutContext;
 import com.mongodb.internal.binding.WriteBinding;
 import com.mongodb.internal.bulk.DeleteRequest;
 import com.mongodb.internal.bulk.InsertRequest;
@@ -48,7 +48,7 @@ import static com.mongodb.internal.bulk.WriteRequest.Type.UPDATE;
  * Operation for bulk writes for the legacy API.
  */
 final class LegacyMixedBulkWriteOperation implements WriteOperation<WriteConcernResult> {
-    private final ClientSideOperationTimeout clientSideOperationTimeout;
+    private final TimeoutContext clientSideOperationTimeout;
     private final WriteConcern writeConcern;
     private final MongoNamespace namespace;
     private final List<? extends WriteRequest> writeRequests;
@@ -57,14 +57,14 @@ final class LegacyMixedBulkWriteOperation implements WriteOperation<WriteConcern
     private final boolean retryWrites;
     private Boolean bypassDocumentValidation;
 
-    static LegacyMixedBulkWriteOperation createBulkWriteOperationForInsert(final ClientSideOperationTimeout clientSideOperationTimeout,
+    static LegacyMixedBulkWriteOperation createBulkWriteOperationForInsert(final TimeoutContext clientSideOperationTimeout,
             final MongoNamespace namespace, final boolean ordered, final WriteConcern writeConcern, final boolean retryWrites,
             final List<InsertRequest> insertRequests) {
         return new LegacyMixedBulkWriteOperation(clientSideOperationTimeout, namespace, ordered, writeConcern, retryWrites, insertRequests,
                 INSERT);
     }
 
-    static LegacyMixedBulkWriteOperation createBulkWriteOperationForUpdate(final ClientSideOperationTimeout clientSideOperationTimeout,
+    static LegacyMixedBulkWriteOperation createBulkWriteOperationForUpdate(final TimeoutContext clientSideOperationTimeout,
             final MongoNamespace namespace, final boolean ordered, final WriteConcern writeConcern, final boolean retryWrites,
             final List<UpdateRequest> updateRequests) {
         assertTrue(updateRequests.stream().allMatch(updateRequest -> updateRequest.getType() == UPDATE));
@@ -72,7 +72,7 @@ final class LegacyMixedBulkWriteOperation implements WriteOperation<WriteConcern
                 UPDATE);
     }
 
-    static LegacyMixedBulkWriteOperation createBulkWriteOperationForReplace(final ClientSideOperationTimeout clientSideOperationTimeout,
+    static LegacyMixedBulkWriteOperation createBulkWriteOperationForReplace(final TimeoutContext clientSideOperationTimeout,
             final MongoNamespace namespace, final boolean ordered, final WriteConcern writeConcern, final boolean retryWrites,
             final List<UpdateRequest> replaceRequests) {
         assertTrue(replaceRequests.stream().allMatch(updateRequest -> updateRequest.getType() == REPLACE));
@@ -80,14 +80,14 @@ final class LegacyMixedBulkWriteOperation implements WriteOperation<WriteConcern
                 REPLACE);
     }
 
-    static LegacyMixedBulkWriteOperation createBulkWriteOperationForDelete(final ClientSideOperationTimeout clientSideOperationTimeout,
+    static LegacyMixedBulkWriteOperation createBulkWriteOperationForDelete(final TimeoutContext clientSideOperationTimeout,
             final MongoNamespace namespace, final boolean ordered, final WriteConcern writeConcern, final boolean retryWrites,
             final List<DeleteRequest> deleteRequests) {
         return new LegacyMixedBulkWriteOperation(clientSideOperationTimeout, namespace, ordered, writeConcern, retryWrites, deleteRequests,
                 DELETE);
     }
 
-    private LegacyMixedBulkWriteOperation(final ClientSideOperationTimeout clientSideOperationTimeout, final MongoNamespace namespace,
+    private LegacyMixedBulkWriteOperation(final TimeoutContext clientSideOperationTimeout, final MongoNamespace namespace,
             final boolean ordered, final WriteConcern writeConcern,
             final boolean retryWrites, final List<? extends WriteRequest> writeRequests, final WriteRequest.Type type) {
         isTrueArgument("writeRequests not empty", !writeRequests.isEmpty());

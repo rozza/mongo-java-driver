@@ -93,11 +93,11 @@ public interface InternalConnection extends BufferProvider {
      * @param message          the command message to send
      * @param sessionContext   the session context
      * @param requestContext   the request context
-     * @param operationContext the operation context
+     * @param operationIdContext the operation context
      */
     @Nullable
     <T> T sendAndReceive(CommandMessage message, Decoder<T> decoder, SessionContext sessionContext, RequestContext requestContext,
-            OperationContext operationContext);
+            OperationIdContext operationIdContext);
 
     <T> void send(CommandMessage message, Decoder<T> decoder, SessionContext sessionContext);
 
@@ -119,11 +119,11 @@ public interface InternalConnection extends BufferProvider {
      *
      * @param message          the command message to send
      * @param sessionContext   the session context
-     * @param operationContext the operation context
+     * @param operationIdContext the operation context
      * @param callback         the callback
      */
     <T> void sendAndReceiveAsync(CommandMessage message, Decoder<T> decoder, SessionContext sessionContext, RequestContext requestContext,
-            OperationContext operationContext, SingleResultCallback<T> callback);
+            OperationIdContext operationIdContext, SingleResultCallback<T> callback);
 
     /**
      * Send a message to the server. The connection may not make any attempt to validate the integrity of the message.

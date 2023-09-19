@@ -28,9 +28,9 @@ import com.mongodb.MongoSocketException;
 import com.mongodb.assertions.Assertions;
 import com.mongodb.connection.ConnectionDescription;
 import com.mongodb.connection.ServerDescription;
-import com.mongodb.internal.ClientSideOperationTimeout;
+import com.mongodb.internal.TimeoutContext;
 import com.mongodb.internal.async.function.RetryState;
-import com.mongodb.internal.connection.OperationContext;
+import com.mongodb.internal.connection.OperationIdContext;
 import com.mongodb.internal.operation.OperationHelper.ResourceSupplierInternalException;
 import com.mongodb.internal.operation.retry.AttachmentKeys;
 import com.mongodb.lang.Nullable;
@@ -49,7 +49,7 @@ final class CommandOperationHelper {
 
 
     interface CommandCreator {
-        BsonDocument create(ClientSideOperationTimeout clientSideOperationTimeout, ServerDescription serverDescription,
+        BsonDocument create(TimeoutContext clientSideOperationTimeout, ServerDescription serverDescription,
                 ConnectionDescription connectionDescription);
     }
 
@@ -186,12 +186,12 @@ final class CommandOperationHelper {
         }
     }
 
-    static void logRetryExecute(final RetryState retryState, final OperationContext operationContext) {
+    static void logRetryExecute(final RetryState retryState, final OperationIdContext operationIdContext) {
         if (LOGGER.isDebugEnabled() && !retryState.isFirstAttempt()) {
             String commandDescription = retryState.attachment(AttachmentKeys.commandDescriptionSupplier()).map(Supplier::get).orElse(null);
             Throwable exception = retryState.exception().orElseThrow(Assertions::fail);
             int oneBasedAttempt = retryState.attempt() + 1;
-            long operationId = operationContext.getId();
+            long operationId = operationIdContext.getId();
             LOGGER.debug(commandDescription == null
                     ? format("Retrying the operation with operation ID %s due to the error \"%s\". Attempt number: #%d",
                     operationId, exception, oneBasedAttempt)

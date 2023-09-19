@@ -18,7 +18,7 @@ package com.mongodb.internal.operation;
 
 import com.mongodb.Function;
 import com.mongodb.WriteConcern;
-import com.mongodb.internal.ClientSideOperationTimeout;
+import com.mongodb.internal.TimeoutContext;
 import com.mongodb.lang.Nullable;
 import org.bson.BsonDocument;
 
@@ -32,7 +32,7 @@ import static com.mongodb.internal.operation.CommandOperationHelper.CommandCreat
 public class AbortTransactionOperation extends TransactionOperation {
     private BsonDocument recoveryToken;
 
-    public AbortTransactionOperation(final ClientSideOperationTimeout clientSideOperationTimeout, final WriteConcern writeConcern) {
+    public AbortTransactionOperation(final TimeoutContext clientSideOperationTimeout, final WriteConcern writeConcern) {
         super(clientSideOperationTimeout, writeConcern);
     }
 

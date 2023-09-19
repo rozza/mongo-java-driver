@@ -29,7 +29,7 @@ import com.mongodb.event.ServerListener;
 import com.mongodb.event.ServerOpeningEvent;
 import com.mongodb.internal.VisibleForTesting;
 import com.mongodb.internal.async.SingleResultCallback;
-import com.mongodb.internal.binding.BindingContext;
+import com.mongodb.internal.binding.OperationContextSupplier;
 import com.mongodb.internal.connection.SdamServerDescriptionManager.SdamIssue;
 import com.mongodb.internal.diagnostics.logging.Logger;
 import com.mongodb.internal.diagnostics.logging.Loggers;
@@ -85,7 +85,7 @@ class DefaultServer implements ClusterableServer {
     }
 
     @Override
-    public Connection getConnection(final OperationContext operationContext) {
+    public Connection getConnection(final OperationIdContext operationIdContext) {
         if (isClosed) {
             throw new MongoServerUnavailableException(String.format("The server at %s is no longer available", serverId.getAddress()));
         }
@@ -93,7 +93,7 @@ class DefaultServer implements ClusterableServer {
         operationBegin();
         try {
             return OperationCountTrackingConnection.decorate(this,
-                    connectionFactory.create(connectionPool.get(operationContext), new DefaultServerProtocolExecutor(), clusterConnectionMode));
+                    connectionFactory.create(connectionPool.get(operationIdContext), new DefaultServerProtocolExecutor(), clusterConnectionMode));
         } catch (Throwable e) {
             operationEnd();
             if (e instanceof MongoException) {
@@ -104,7 +104,7 @@ class DefaultServer implements ClusterableServer {
     }
 
     @Override
-    public void getConnectionAsync(final OperationContext operationContext, final SingleResultCallback<AsyncConnection> callback) {
+    public void getConnectionAsync(final OperationIdContext operationIdContext, final SingleResultCallback<AsyncConnection> callback) {
         if (isClosed) {
             callback.onResult(null, new MongoServerUnavailableException(
                     String.format("The server at %s is no longer available", serverId.getAddress())));
@@ -112,7 +112,7 @@ class DefaultServer implements ClusterableServer {
         }
         SdamIssue.Context exceptionContext = sdam.context();
         operationBegin();
-        connectionPool.getAsync(operationContext, (result, t) -> {
+        connectionPool.getAsync(operationIdContext, (result, t) -> {
             if (t != null) {
                 try {
                     operationEnd();
@@ -283,14 +283,14 @@ class DefaultServer implements ClusterableServer {
         @Override
         public <T> T command(final String database, final BsonDocument command, final FieldNameValidator fieldNameValidator,
                 @Nullable final ReadPreference readPreference, final Decoder<T> commandResultDecoder,
-                final BindingContext context) {
+                final OperationContextSupplier context) {
             return wrapped.command(database, command, fieldNameValidator, readPreference, commandResultDecoder, context);
         }
 
         @Override
         public <T> T command(final String database, final BsonDocument command, final FieldNameValidator commandFieldNameValidator,
                 @Nullable final ReadPreference readPreference, final Decoder<T> commandResultDecoder,
-                final BindingContext context, final boolean responseExpected,
+                final OperationContextSupplier context, final boolean responseExpected,
                 @Nullable final SplittablePayload payload, @Nullable final FieldNameValidator payloadFieldNameValidator) {
             return wrapped.command(database, command, commandFieldNameValidator, readPreference, commandResultDecoder, context,
                     responseExpected, payload, payloadFieldNameValidator);
@@ -344,7 +344,7 @@ class DefaultServer implements ClusterableServer {
 
         @Override
         public <T> void commandAsync(final String database, final BsonDocument command, final FieldNameValidator fieldNameValidator,
-                @Nullable final ReadPreference readPreference, final Decoder<T> commandResultDecoder, final BindingContext context,
+                @Nullable final ReadPreference readPreference, final Decoder<T> commandResultDecoder, final OperationContextSupplier context,
                 final SingleResultCallback<T> callback) {
             wrapped.commandAsync(database, command, fieldNameValidator, readPreference, commandResultDecoder,
                     context, callback);
@@ -352,7 +352,7 @@ class DefaultServer implements ClusterableServer {
 
         @Override
         public <T> void commandAsync(final String database, final BsonDocument command, final FieldNameValidator commandFieldNameValidator,
-                @Nullable final ReadPreference readPreference, final Decoder<T> commandResultDecoder, final BindingContext context,
+                @Nullable final ReadPreference readPreference, final Decoder<T> commandResultDecoder, final OperationContextSupplier context,
                 final boolean responseExpected, @Nullable final SplittablePayload payload,
                 @Nullable final FieldNameValidator payloadFieldNameValidator, final SingleResultCallback<T> callback) {
             wrapped.commandAsync(database, command, commandFieldNameValidator, readPreference, commandResultDecoder,

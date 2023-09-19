@@ -32,6 +32,7 @@ import com.mongodb.WriteConcern;
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.SynchronousContextProvider;
 import com.mongodb.internal.IgnorableRequestContext;
+import com.mongodb.internal.TimeoutSettings;
 import com.mongodb.internal.binding.ClusterAwareReadWriteBinding;
 import com.mongodb.internal.binding.ClusterBinding;
 import com.mongodb.internal.binding.ReadBinding;
@@ -167,7 +168,7 @@ final class MongoClientDelegate {
             }
 
             ClientSession actualClientSession = getClientSession(session);
-            WriteBinding binding = getWriteBinding(readConcern, actualClientSession, session == null);
+            WriteBinding binding = getWriteBinding(readConcern, actualClientSession, operation.getTimeoutSettings(), session == null);
 
             try {
                 return operation.execute(binding);
@@ -180,7 +181,8 @@ final class MongoClientDelegate {
             }
         }
 
-        WriteBinding getWriteBinding(final ReadConcern readConcern, final ClientSession session, final boolean ownsSession) {
+        WriteBinding getWriteBinding(final ReadConcern readConcern, final ClientSession session,
+                final TimeoutSettings timeoutSettings, final boolean ownsSession) {
             return getReadWriteBinding(primary(), readConcern, session, ownsSession);
         }
 
@@ -190,9 +192,10 @@ final class MongoClientDelegate {
         }
 
         ReadWriteBinding getReadWriteBinding(final ReadPreference readPreference, final ReadConcern readConcern,
-                                             final ClientSession session, final boolean ownsSession) {
+                                             final ClientSession session, final TimeoutSettings timeoutSettings,
+                final boolean ownsSession) {
             ClusterAwareReadWriteBinding readWriteBinding = new ClusterBinding(cluster,
-                    getReadPreferenceForBinding(readPreference, session), readConcern, serverApi, getContext());
+                    getReadPreferenceForBinding(readPreference, session), readConcern, serverApi, getContext(timeoutSettings));
 
             if (crypt != null) {
                 readWriteBinding = new CryptBinding(readWriteBinding, crypt);

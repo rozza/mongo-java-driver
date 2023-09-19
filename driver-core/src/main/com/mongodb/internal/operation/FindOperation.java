@@ -22,7 +22,7 @@ import com.mongodb.MongoCommandException;
 import com.mongodb.MongoNamespace;
 import com.mongodb.MongoQueryException;
 import com.mongodb.client.model.Collation;
-import com.mongodb.internal.ClientSideOperationTimeout;
+import com.mongodb.internal.TimeoutContext;
 import com.mongodb.internal.async.AsyncBatchCursor;
 import com.mongodb.internal.async.SingleResultCallback;
 import com.mongodb.internal.async.function.AsyncCallbackSupplier;
@@ -72,7 +72,7 @@ import static com.mongodb.internal.operation.SyncOperationHelper.withSourceAndCo
 public class FindOperation<T> implements AsyncExplainableReadOperation<AsyncBatchCursor<T>>, ExplainableReadOperation<BatchCursor<T>> {
     private static final String FIRST_BATCH = "firstBatch";
 
-    private final ClientSideOperationTimeout clientSideOperationTimeout;
+    private final TimeoutContext clientSideOperationTimeout;
     private final MongoNamespace namespace;
     private final Decoder<T> decoder;
     private boolean retryReads;
@@ -96,7 +96,7 @@ public class FindOperation<T> implements AsyncExplainableReadOperation<AsyncBatc
     private boolean showRecordId;
     private Boolean allowDiskUse;
 
-    public FindOperation(final ClientSideOperationTimeout clientSideOperationTimeout, final MongoNamespace namespace,
+    public FindOperation(final TimeoutContext clientSideOperationTimeout, final MongoNamespace namespace,
             final Decoder<T> decoder) {
         this.clientSideOperationTimeout = notNull("clientSideOperationTimeout", clientSideOperationTimeout);
         this.namespace = notNull("namespace", namespace);
@@ -363,7 +363,7 @@ public class FindOperation<T> implements AsyncExplainableReadOperation<AsyncBatc
                 resultDecoder);
     }
 
-    private BsonDocument getCommand(final ClientSideOperationTimeout clientSideOperationTimeout, final SessionContext sessionContext,
+    private BsonDocument getCommand(final TimeoutContext clientSideOperationTimeout, final SessionContext sessionContext,
             final int maxWireVersion) {
         BsonDocument commandDocument = new BsonDocument("find", new BsonString(namespace.getCollectionName()));
 

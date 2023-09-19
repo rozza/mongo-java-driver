@@ -68,9 +68,9 @@ public interface Cluster extends Closeable {
      */
     ClusterClock getClock();
 
-    ServerTuple selectServer(ServerSelector serverSelector, OperationContext operationContext);
+    ServerTuple selectServer(ServerSelector serverSelector, OperationIdContext operationIdContext);
 
-    void selectServerAsync(ServerSelector serverSelector, OperationContext operationContext,
+    void selectServerAsync(ServerSelector serverSelector, OperationIdContext operationIdContext,
             SingleResultCallback<ServerTuple> callback);
 
     /**

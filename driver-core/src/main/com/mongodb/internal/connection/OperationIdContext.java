@@ -13,26 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package com.mongodb.internal.connection;
 
-package com.mongodb.internal.binding;
-
-import com.mongodb.RequestContext;
-import com.mongodb.ServerApi;
-import com.mongodb.internal.connection.OperationContext;
-import com.mongodb.internal.session.SessionContext;
-import com.mongodb.lang.Nullable;
-
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * <p>This class is not part of the public API and may be removed or changed at any time</p>
  */
-public interface BindingContext {
-    SessionContext getSessionContext();
+public class OperationIdContext {
+    private static final AtomicLong NEXT_ID = new AtomicLong(0);
+    private final long id;
 
-    @Nullable
-    ServerApi getServerApi();
+    public OperationIdContext() {
+        id = NEXT_ID.incrementAndGet();
+    }
 
-    RequestContext getRequestContext();
-
-    OperationContext getOperationContext();
+    public long getId() {
+        return id;
+    }
 }

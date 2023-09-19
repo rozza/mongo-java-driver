@@ -69,8 +69,8 @@ public final class CommandHelper {
                                     @Nullable final ServerApi serverApi, final InternalConnection internalConnection,
                                     final SingleResultCallback<BsonDocument> callback) {
         internalConnection.sendAndReceiveAsync(getCommandMessage(database, command, internalConnection, clusterConnectionMode, serverApi),
-                new BsonDocumentCodec(),
-                NoOpSessionContext.INSTANCE, IgnorableRequestContext.INSTANCE, new OperationContext(), (result, t) -> {
+                                               new BsonDocumentCodec(),
+                                               NoOpSessionContext.INSTANCE, IgnorableRequestContext.INSTANCE, new OperationIdContext(), (result, t) -> {
                     if (t != null) {
                         callback.onResult(null, t);
                     } else {
@@ -101,7 +101,7 @@ public final class CommandHelper {
                 : new ClusterClockAdvancingSessionContext(NoOpSessionContext.INSTANCE, clusterClock);
         return assertNotNull(internalConnection.sendAndReceive(getCommandMessage(database, command, internalConnection,
                         clusterConnectionMode, serverApi), new BsonDocumentCodec(), sessionContext, IgnorableRequestContext.INSTANCE,
-                new OperationContext()));
+                new OperationIdContext()));
     }
 
     private static CommandMessage getCommandMessage(final String database, final BsonDocument command,

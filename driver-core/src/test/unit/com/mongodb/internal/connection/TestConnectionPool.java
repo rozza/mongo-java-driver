@@ -40,7 +40,7 @@ public class TestConnectionPool implements ConnectionPool {
     }
 
     @Override
-    public InternalConnection get(final OperationContext operationContext) {
+    public InternalConnection get(final OperationIdContext operationIdContext) {
         return new InternalConnection() {
             @Override
             public ByteBuf getBuffer(final int capacity) {
@@ -54,7 +54,7 @@ public class TestConnectionPool implements ConnectionPool {
 
             @Override
             public <T> T sendAndReceive(final CommandMessage message, final Decoder<T> decoder, final SessionContext sessionContext,
-                    final RequestContext requestContext, final OperationContext operationContext) {
+                    final RequestContext requestContext, final OperationIdContext operationIdContext) {
                 throw new UnsupportedOperationException("Not implemented yet!");
             }
 
@@ -75,7 +75,7 @@ public class TestConnectionPool implements ConnectionPool {
 
             @Override
             public <T> void sendAndReceiveAsync(final CommandMessage message, final Decoder<T> decoder,
-                    final SessionContext sessionContext, final RequestContext requestContext, final OperationContext operationContext,
+                    final SessionContext sessionContext, final RequestContext requestContext, final OperationIdContext operationIdContext,
                     final SingleResultCallback<T> callback) {
                 throw new UnsupportedOperationException("Not implemented yet!");
             }
@@ -139,19 +139,19 @@ public class TestConnectionPool implements ConnectionPool {
     }
 
     @Override
-    public InternalConnection get(final OperationContext operationContext, final long timeout, final TimeUnit timeUnit) {
+    public InternalConnection get(final OperationIdContext operationIdContext, final long timeout, final TimeUnit timeUnit) {
         if (exceptionToThrow != null) {
             throw exceptionToThrow;
         }
-        return get(operationContext);
+        return get(operationIdContext);
     }
 
     @Override
-    public void getAsync(final OperationContext operationContext, final SingleResultCallback<InternalConnection> callback) {
+    public void getAsync(final OperationIdContext operationIdContext, final SingleResultCallback<InternalConnection> callback) {
         if (exceptionToThrow != null) {
             callback.onResult(null, exceptionToThrow);
         } else {
-            callback.onResult(get(new OperationContext()), null);
+            callback.onResult(get(new OperationIdContext()), null);
         }
     }
 

@@ -105,7 +105,7 @@ class TestInternalConnectionFactory implements InternalConnectionFactory {
 
         @Override
         public <T> T sendAndReceive(final CommandMessage message, final Decoder<T> decoder, final SessionContext sessionContext,
-                                    final RequestContext requestContext, final OperationContext operationContext) {
+                                    final RequestContext requestContext, final OperationIdContext operationIdContext) {
             return null;
         }
 
@@ -125,7 +125,7 @@ class TestInternalConnectionFactory implements InternalConnectionFactory {
 
         @Override
         public <T> void sendAndReceiveAsync(final CommandMessage message, final Decoder<T> decoder,
-                final SessionContext sessionContext, final RequestContext requestContext, final OperationContext operationContext,
+                final SessionContext sessionContext, final RequestContext requestContext, final OperationIdContext operationIdContext,
                 final SingleResultCallback<T> callback) {
             callback.onResult(null, null);
         }

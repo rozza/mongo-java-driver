@@ -28,7 +28,7 @@ import com.mongodb.internal.bulk.InsertRequest
 import com.mongodb.internal.bulk.WriteRequestWithIndex
 import com.mongodb.internal.connection.Connection
 import com.mongodb.internal.connection.NoOpSessionContext
-import com.mongodb.internal.connection.OperationContext
+import com.mongodb.internal.connection.OperationIdContext
 import com.mongodb.internal.connection.SplittablePayload
 import com.mongodb.internal.validator.NoOpFieldNameValidator
 import org.bson.BsonArray
@@ -73,7 +73,7 @@ class CryptConnectionSpecification extends Specification {
                 .append('cursor', new BsonDocument('firstBatch',
                 new BsonArray([new BsonDocument('_id', new BsonInt32(1))
                                        .append('ssid', new BsonString('555-55-5555'))]))))
-        def operationContext = new OperationContext()
+        def operationContext = new OperationIdContext()
         def context = new StaticBindingContext(NoOpSessionContext.INSTANCE, null, IgnorableRequestContext.INSTANCE, operationContext)
 
         when:
@@ -121,7 +121,7 @@ class CryptConnectionSpecification extends Specification {
 
         def encryptedResponse = toRaw(new BsonDocument('ok', new BsonInt32(1)))
         def decryptedResponse = encryptedResponse
-        def operationContext = new OperationContext()
+        def operationContext = new OperationIdContext()
         def context = new StaticBindingContext(NoOpSessionContext.INSTANCE, null, IgnorableRequestContext.INSTANCE, operationContext)
 
         when:
@@ -176,7 +176,7 @@ class CryptConnectionSpecification extends Specification {
 
         def encryptedResponse = toRaw(new BsonDocument('ok', new BsonInt32(1)))
         def decryptedResponse = encryptedResponse
-        def operationContext = new OperationContext()
+        def operationContext = new OperationIdContext()
         def context = new StaticBindingContext(NoOpSessionContext.INSTANCE, null, IgnorableRequestContext.INSTANCE, operationContext)
 
         when:

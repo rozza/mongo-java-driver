@@ -14,28 +14,14 @@
  * limitations under the License.
  */
 
-package com.mongodb.internal.operation;
+package com.mongodb.internal.binding;
 
-import com.mongodb.internal.TimeoutSettings;
-import com.mongodb.internal.async.SingleResultCallback;
-import com.mongodb.internal.binding.AsyncReadBinding;
+import com.mongodb.internal.connection.OperationContext;
+
 
 /**
- * An operation which asynchronously reads from a MongoDB server.
- *
- * @param <T> the operations result type.
- *
  * <p>This class is not part of the public API and may be removed or changed at any time</p>
  */
-public interface AsyncReadOperation<T> {
-
-    TimeoutSettings getTimeoutSettings();
-
-    /**
-     * General execute which can return anything of type T
-     *
-     * @param binding the binding to execute in the context of
-     * @param callback the callback to be called when the operation has been executed
-     */
-    void executeAsync(AsyncReadBinding binding, SingleResultCallback<T> callback);
+public interface OperationContextSupplier {
+     OperationContext getOperationContext();
 }

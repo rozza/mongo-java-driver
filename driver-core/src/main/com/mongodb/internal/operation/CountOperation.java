@@ -18,7 +18,7 @@ package com.mongodb.internal.operation;
 
 import com.mongodb.MongoNamespace;
 import com.mongodb.client.model.Collation;
-import com.mongodb.internal.ClientSideOperationTimeout;
+import com.mongodb.internal.TimeoutContext;
 import com.mongodb.internal.async.SingleResultCallback;
 import com.mongodb.internal.binding.AsyncReadBinding;
 import com.mongodb.internal.binding.ReadBinding;
@@ -45,7 +45,7 @@ import static com.mongodb.internal.operation.SyncOperationHelper.executeRetryabl
  */
 public class CountOperation implements AsyncReadOperation<Long>, ReadOperation<Long> {
     private static final Decoder<BsonDocument> DECODER = new BsonDocumentCodec();
-    private final ClientSideOperationTimeout clientSideOperationTimeout;
+    private final TimeoutContext clientSideOperationTimeout;
     private final MongoNamespace namespace;
     private boolean retryReads;
     private BsonDocument filter;
@@ -54,7 +54,7 @@ public class CountOperation implements AsyncReadOperation<Long>, ReadOperation<L
     private long limit;
     private Collation collation;
 
-    public CountOperation(final ClientSideOperationTimeout clientSideOperationTimeout, final MongoNamespace namespace) {
+    public CountOperation(final TimeoutContext clientSideOperationTimeout, final MongoNamespace namespace) {
         this.clientSideOperationTimeout = notNull("clientSideOperationTimeout", clientSideOperationTimeout);
         this.namespace = notNull("namespace", namespace);
     }

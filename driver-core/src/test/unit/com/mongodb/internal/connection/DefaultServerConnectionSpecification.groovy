@@ -60,7 +60,7 @@ class DefaultServerConnectionSpecification extends Specification {
         def codec = new BsonDocumentCodec()
         def executor = Mock(ProtocolExecutor)
         def connection = new DefaultServerConnection(internalConnection, executor, ClusterConnectionMode.MULTIPLE)
-        def operationContext = new OperationContext()
+        def operationContext = new OperationIdContext()
         def context = new StaticBindingContext(NoOpSessionContext.INSTANCE, getServerApi(), IgnorableRequestContext.INSTANCE,
                 operationContext)
         when:

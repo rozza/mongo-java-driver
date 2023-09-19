@@ -70,8 +70,8 @@ public final class AsyncOperations<TDocument> {
     public AsyncOperations(final MongoNamespace namespace, final Class<TDocument> documentClass, final ReadPreference readPreference,
             final CodecRegistry codecRegistry, final ReadConcern readConcern, final WriteConcern writeConcern,
             final boolean retryWrites, final boolean retryReads,  @Nullable final Long timeoutMS) {
-        this.operations = new Operations<>(namespace, documentClass, readPreference, codecRegistry, readConcern, writeConcern,
-                retryWrites, retryReads, timeoutMS);
+        this.operations = new Operations<>(namespace, documentClass, readPreference, codecRegistry, readConcern, writeConcern, retryWrites, retryReads, timeoutMS
+        );
     }
 
     public MongoNamespace getNamespace() {

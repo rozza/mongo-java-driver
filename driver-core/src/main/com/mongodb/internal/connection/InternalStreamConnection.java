@@ -352,12 +352,12 @@ public class InternalStreamConnection implements InternalConnection {
     @Nullable
     @Override
     public <T> T sendAndReceive(final CommandMessage message, final Decoder<T> decoder, final SessionContext sessionContext,
-                                final RequestContext requestContext, final OperationContext operationContext) {
+                                final RequestContext requestContext, final OperationIdContext operationIdContext) {
         CommandEventSender commandEventSender;
 
         try (ByteBufferBsonOutput bsonOutput = new ByteBufferBsonOutput(this)) {
             message.encode(bsonOutput, sessionContext);
-            commandEventSender = createCommandEventSender(message, bsonOutput, requestContext, operationContext);
+            commandEventSender = createCommandEventSender(message, bsonOutput, requestContext, operationIdContext);
             commandEventSender.sendStartedEvent();
             try {
                 sendCommandMessage(message, bsonOutput, sessionContext);
@@ -476,7 +476,7 @@ public class InternalStreamConnection implements InternalConnection {
 
     @Override
     public <T> void sendAndReceiveAsync(final CommandMessage message, final Decoder<T> decoder, final SessionContext sessionContext,
-            final RequestContext requestContext, final OperationContext operationContext, final SingleResultCallback<T> callback) {
+            final RequestContext requestContext, final OperationIdContext operationIdContext, final SingleResultCallback<T> callback) {
         notNull("stream is open", stream, callback);
 
         if (isClosed()) {
@@ -489,7 +489,7 @@ public class InternalStreamConnection implements InternalConnection {
 
         try {
             message.encode(bsonOutput, sessionContext);
-            CommandEventSender commandEventSender = createCommandEventSender(message, bsonOutput, requestContext, operationContext);
+            CommandEventSender commandEventSender = createCommandEventSender(message, bsonOutput, requestContext, operationIdContext);
             commandEventSender.sendStartedEvent();
             Compressor localSendCompressor = sendCompressor;
             if (localSendCompressor == null || SECURITY_SENSITIVE_COMMANDS.contains(message.getCommandDocument(bsonOutput).getFirstKey())) {
@@ -860,10 +860,10 @@ public class InternalStreamConnection implements InternalConnection {
     private static final StructuredLogger COMMAND_PROTOCOL_LOGGER = new StructuredLogger("protocol.command");
 
     private CommandEventSender createCommandEventSender(final CommandMessage message, final ByteBufferBsonOutput bsonOutput,
-            final RequestContext requestContext, final OperationContext operationContext) {
+            final RequestContext requestContext, final OperationIdContext operationIdContext) {
         if (!isMonitoringConnection && opened() && (commandListener != null || COMMAND_PROTOCOL_LOGGER.isRequired(DEBUG, getClusterId()))) {
             return new LoggingCommandEventSender(SECURITY_SENSITIVE_COMMANDS, SECURITY_SENSITIVE_HELLO_COMMANDS, description,
-                    commandListener, requestContext, operationContext, message, bsonOutput, COMMAND_PROTOCOL_LOGGER, loggerSettings);
+                                                 commandListener, requestContext, operationIdContext, message, bsonOutput, COMMAND_PROTOCOL_LOGGER, loggerSettings);
         } else {
             return new NoOpCommandEventSender();
         }

@@ -19,7 +19,7 @@ package com.mongodb.internal.binding;
 import com.mongodb.ReadPreference;
 import com.mongodb.RequestContext;
 import com.mongodb.ServerApi;
-import com.mongodb.internal.connection.OperationContext;
+import com.mongodb.internal.connection.OperationIdContext;
 import com.mongodb.connection.ServerDescription;
 import com.mongodb.internal.IgnorableRequestContext;
 import com.mongodb.internal.connection.Cluster;
@@ -49,7 +49,7 @@ public class SingleConnectionBinding implements ReadWriteBinding {
     private int count = 1;
     @Nullable
     private final ServerApi serverApi;
-    private final OperationContext operationContext;
+    private final OperationIdContext operationIdContext;
 
     /**
      * Create a new binding with the given cluster.
@@ -59,15 +59,15 @@ public class SingleConnectionBinding implements ReadWriteBinding {
      */
     public SingleConnectionBinding(final Cluster cluster, final ReadPreference readPreference, @Nullable final ServerApi serverApi) {
         this.serverApi = serverApi;
-        operationContext = new OperationContext();
+        operationIdContext = new OperationIdContext();
         notNull("cluster", cluster);
         this.readPreference = notNull("readPreference", readPreference);
-        ServerTuple writeServerTuple = cluster.selectServer(new WritableServerSelector(), operationContext);
+        ServerTuple writeServerTuple = cluster.selectServer(new WritableServerSelector(), operationIdContext);
         writeServerDescription = writeServerTuple.getServerDescription();
-        writeConnection = writeServerTuple.getServer().getConnection(operationContext);
-        ServerTuple readServerTuple = cluster.selectServer(new ReadPreferenceServerSelector(readPreference), operationContext);
+        writeConnection = writeServerTuple.getServer().getConnection(operationIdContext);
+        ServerTuple readServerTuple = cluster.selectServer(new ReadPreferenceServerSelector(readPreference), operationIdContext);
         readServerDescription = readServerTuple.getServerDescription();
-        readConnection = readServerTuple.getServer().getConnection(operationContext);
+        readConnection = readServerTuple.getServer().getConnection(operationIdContext);
     }
 
     @Override
@@ -129,8 +129,8 @@ public class SingleConnectionBinding implements ReadWriteBinding {
     }
 
     @Override
-    public OperationContext getOperationContext() {
-        return operationContext;
+    public OperationIdContext getOperationContext() {
+        return operationIdContext;
     }
 
     @Override
@@ -161,8 +161,8 @@ public class SingleConnectionBinding implements ReadWriteBinding {
         }
 
         @Override
-        public OperationContext getOperationContext() {
-            return operationContext;
+        public OperationIdContext getOperationContext() {
+            return operationIdContext;
         }
 
         @Override

@@ -19,7 +19,7 @@ package com.mongodb.client.internal;
 import com.mongodb.MongoClientException;
 import com.mongodb.ReadPreference;
 import com.mongodb.connection.ConnectionDescription;
-import com.mongodb.internal.binding.BindingContext;
+import com.mongodb.internal.binding.OperationContextSupplier;
 import com.mongodb.internal.connection.Connection;
 import com.mongodb.internal.connection.MessageSettings;
 import com.mongodb.internal.connection.SplittablePayload;
@@ -86,7 +86,7 @@ class CryptConnection implements Connection {
     @Override
     public <T> T command(final String database, final BsonDocument command, final FieldNameValidator commandFieldNameValidator,
             @Nullable final ReadPreference readPreference, final Decoder<T> commandResultDecoder,
-            final BindingContext context, final boolean responseExpected,
+            final OperationContextSupplier context, final boolean responseExpected,
             @Nullable final SplittablePayload payload, @Nullable final FieldNameValidator payloadFieldNameValidator) {
 
         if (serverIsLessThanVersionFourDotTwo(wrapped.getDescription())) {
@@ -124,7 +124,7 @@ class CryptConnection implements Connection {
     @Nullable
     @Override
     public <T> T command(final String database, final BsonDocument command, final FieldNameValidator fieldNameValidator,
-            @Nullable final ReadPreference readPreference, final Decoder<T> commandResultDecoder, final BindingContext context) {
+            @Nullable final ReadPreference readPreference, final Decoder<T> commandResultDecoder, final OperationContextSupplier context) {
         return command(database, command, fieldNameValidator, readPreference, commandResultDecoder, context, true, null, null);
     }
 
