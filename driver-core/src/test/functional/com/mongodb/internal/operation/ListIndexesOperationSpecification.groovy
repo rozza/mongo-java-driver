@@ -77,7 +77,7 @@ class ListIndexesOperationSpecification extends OperationFunctionalSpecification
         cursor.next(callback)
 
         then:
-        callback.get() == null
+        callback.get() == []
     }
 
 
