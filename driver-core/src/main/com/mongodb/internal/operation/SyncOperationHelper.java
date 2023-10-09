@@ -326,6 +326,12 @@ final class SyncOperationHelper {
         };
     }
 
+    static <T> CommandReadTransformer<BsonDocument, BatchCursor<T>> singleBatchCursorTransformer(final String fieldName) {
+        return (result, source, connection) ->
+                new SingleBatchCursor<>(BsonDocumentWrapperHelper.toList(result, fieldName), 0,
+                        connection.getDescription().getServerAddress());
+    }
+
     static <T> BatchCursor<T> cursorDocumentToBatchCursor(final BsonDocument cursorDocument, final Decoder<T> decoder,
             final BsonValue comment, final ConnectionSource source, final Connection connection, final int batchSize) {
         return new QueryBatchCursor<>(cursorDocumentToQueryResult(cursorDocument, source.getServerDescription().getAddress()),

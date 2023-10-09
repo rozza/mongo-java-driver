@@ -39,10 +39,8 @@ import com.mongodb.lang.NonNull;
 import com.mongodb.lang.Nullable;
 import org.bson.BsonDocument;
 import org.bson.BsonInt64;
-import org.bson.codecs.Decoder;
 import org.bson.conversions.Bson;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -199,13 +197,6 @@ final class OperationHelper {
             return false;
         }
         return true;
-    }
-
-    static <T> QueryBatchCursor<T> createEmptyBatchCursor(final MongoNamespace namespace, final Decoder<T> decoder,
-                                                          final ServerAddress serverAddress, final int batchSize) {
-        return new QueryBatchCursor<>(new QueryResult<>(namespace, Collections.emptyList(), 0L,
-                serverAddress),
-                0, batchSize, decoder);
     }
 
     static <T> QueryResult<T> cursorDocumentToQueryResult(final BsonDocument cursorDocument, final ServerAddress serverAddress) {

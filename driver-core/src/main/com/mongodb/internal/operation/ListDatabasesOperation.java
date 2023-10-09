@@ -125,7 +125,9 @@ public class ListDatabasesOperation<T> implements AsyncReadOperation<AsyncBatchC
     }
 
     private CommandReadTransformer<BsonDocument, BatchCursor<T>> transformer() {
-        return (result, source, connection) -> new QueryBatchCursor<>(createQueryResult(result, connection.getDescription()), 0, 0, decoder, comment, source);
+        return (result, source, connection) ->
+                new QueryBatchCursor<>(createQueryResult(result, connection.getDescription()), 0, 0, 0, decoder,
+                        comment, source, connection);
     }
 
     private CommandReadTransformerAsync<BsonDocument, AsyncBatchCursor<T>> asyncTransformer() {
