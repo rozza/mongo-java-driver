@@ -53,7 +53,6 @@ import static com.mongodb.internal.operation.CommandOperationHelper.initialRetry
 import static com.mongodb.internal.operation.CommandOperationHelper.isRetryWritesEnabled;
 import static com.mongodb.internal.operation.CommandOperationHelper.logRetryExecute;
 import static com.mongodb.internal.operation.CommandOperationHelper.transformWriteException;
-import static com.mongodb.internal.operation.OperationHelper.createCommandCursorResult;
 import static com.mongodb.internal.operation.WriteConcernHelper.throwOnWriteConcernError;
 
 final class AsyncOperationHelper {
@@ -336,9 +335,8 @@ final class AsyncOperationHelper {
 
     static <T> AsyncBatchCursor<T> cursorDocumentToAsyncBatchCursor(final BsonDocument cursorDocument, final Decoder<T> decoder,
             final BsonValue comment, final AsyncConnectionSource source, final AsyncConnection connection, final int batchSize) {
-        return new AsyncCommandBatchCursor<>(createCommandCursorResult(cursorDocument,
-                source.getServerDescription().getAddress()),
-                0, batchSize, 0, decoder, comment, source, connection, cursorDocument);
+        return new AsyncCommandBatchCursor<>(cursorDocument, 0, batchSize, 0, decoder,
+                comment, source, connection);
     }
 
     static <T> SingleResultCallback<T> releasingCallback(final SingleResultCallback<T> wrapped, final AsyncConnection connection) {

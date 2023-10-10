@@ -54,7 +54,6 @@ import static com.mongodb.internal.operation.DocumentHelper.putIfNotNullOrEmpty;
 import static com.mongodb.internal.operation.ExplainHelper.asExplainCommand;
 import static com.mongodb.internal.operation.OperationHelper.LOGGER;
 import static com.mongodb.internal.operation.OperationHelper.canRetryRead;
-import static com.mongodb.internal.operation.OperationHelper.createCommandCursorResult;
 import static com.mongodb.internal.operation.OperationReadConcernHelper.appendReadConcernToCommand;
 import static com.mongodb.internal.operation.ServerVersionHelper.MIN_WIRE_VERSION;
 import static com.mongodb.internal.operation.SyncOperationHelper.CommandReadTransformer;
@@ -456,11 +455,8 @@ public class FindOperation<T> implements AsyncExplainableReadOperation<AsyncBatc
     }
 
     private CommandReadTransformer<BsonDocument, CommandBatchCursor<T>> transformer() {
-        return (result, source, connection) -> {
-            CommandCursorResult<T> commandCursorResult = createCommandCursorResult(result, connection.getDescription().getServerAddress());
-            return new CommandBatchCursor<>(commandCursorResult, limit, batchSize, getMaxTimeForCursor(), decoder, comment, source,
-                    connection, result);
-        };
+        return (result, source, connection) ->
+                new CommandBatchCursor<>(result, limit, batchSize, getMaxTimeForCursor(), decoder, comment, source, connection);
     }
 
     // TODO - CSOT JAVA-4058
@@ -469,10 +465,7 @@ public class FindOperation<T> implements AsyncExplainableReadOperation<AsyncBatc
     }
 
     private CommandReadTransformerAsync<BsonDocument, AsyncBatchCursor<T>> asyncTransformer() {
-        return (result, source, connection) -> {
-            CommandCursorResult<T> commandCursorResult = createCommandCursorResult(result, connection.getDescription().getServerAddress());
-            return new AsyncCommandBatchCursor<>(commandCursorResult, limit, batchSize, getMaxTimeForCursor(), decoder, comment, source,
-                    connection, result);
-        };
+        return (result, source, connection) ->
+            new AsyncCommandBatchCursor<>(result, limit, batchSize, getMaxTimeForCursor(), decoder, comment, source, connection);
     }
 }

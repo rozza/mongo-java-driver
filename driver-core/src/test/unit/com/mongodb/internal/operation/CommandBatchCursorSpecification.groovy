@@ -33,7 +33,7 @@ import org.bson.BsonInt32
 import org.bson.BsonInt64
 import org.bson.BsonString
 import org.bson.Document
-import org.bson.codecs.BsonDocumentCodec
+import org.bson.codecs.Codec
 import org.bson.codecs.DocumentCodec
 import spock.lang.Specification
 
@@ -43,11 +43,13 @@ import static com.mongodb.internal.operation.OperationUnitSpecification.getMaxWi
 class CommandBatchCursorSpecification extends Specification {
     private static final MongoNamespace NAMESPACE = new MongoNamespace('db', 'coll')
     private static final ServerAddress SERVER_ADDRESS = new ServerAddress()
+    private static final Codec<Document> CODEC = new DocumentCodec()
 
     def 'should generate expected command with batchSize and maxTimeMS'() {
         given:
         def connection = Mock(Connection) {
             _ * getDescription() >> Stub(ConnectionDescription) {
+                getServerAddress() >> SERVER_ADDRESS
                 getMaxWireVersion() >> 4
             }
         }
@@ -59,8 +61,8 @@ class CommandBatchCursorSpecification extends Specification {
 
         def cursorId = 42
 
-        def firstBatch = createCommandCursorResult([], cursorId)
-        def cursor =  new CommandBatchCursor<Document>(firstBatch, 0, batchSize, maxTimeMS, new BsonDocumentCodec(),
+        def result = createCommandResult([], cursorId)
+        def cursor = new CommandBatchCursor<Document>(result, 0, batchSize, maxTimeMS, CODEC,
                 null, connectionSource, connection)
         def expectedCommand = new BsonDocument('getMore': new BsonInt64(cursorId))
                 .append('collection', new BsonString(NAMESPACE.getCollectionName()))
@@ -93,6 +95,7 @@ class CommandBatchCursorSpecification extends Specification {
         given:
         def connection = Mock(Connection) {
             _ * getDescription() >> Stub(ConnectionDescription) {
+                getServerAddress() >> SERVER_ADDRESS
                 getMaxWireVersion() >> 4
             }
             _ * command(*_) >> { throw new MongoSocketException('No MongoD', SERVER_ADDRESS) }
@@ -103,8 +106,9 @@ class CommandBatchCursorSpecification extends Specification {
         }
         connectionSource.retain() >> connectionSource
 
-        def firstBatch = createCommandCursorResult([], 42)
-        def cursor = new CommandBatchCursor<Document>(firstBatch, 0, 2, 100, new DocumentCodec(), null, connectionSource, connection)
+        def firstBatch = createCommandResult([], 42)
+        def cursor = new CommandBatchCursor<Document>(firstBatch, 0, 2, 100, CODEC,
+                null, connectionSource, connection)
 
         when:
         cursor.close()
@@ -123,6 +127,7 @@ class CommandBatchCursorSpecification extends Specification {
         given:
         def connection = Mock(Connection) {
             _ * getDescription() >> Stub(ConnectionDescription) {
+                getServerAddress() >> SERVER_ADDRESS
                 getMaxWireVersion() >> 4
             }
         }
@@ -132,8 +137,9 @@ class CommandBatchCursorSpecification extends Specification {
         }
         connectionSource.retain() >> connectionSource
 
-        def firstBatch = createCommandCursorResult([], 42)
-        def cursor = new CommandBatchCursor<Document>(firstBatch, 0, 2, 100, new DocumentCodec(), null, connectionSource, connection)
+        def firstBatch = createCommandResult([], 42)
+        def cursor = new CommandBatchCursor<Document>(firstBatch, 0, 2, 100, CODEC,
+                null, connectionSource, connection)
 
         when:
         cursor.close()
@@ -158,11 +164,12 @@ class CommandBatchCursorSpecification extends Specification {
             connSource = mockConnectionSource(SERVER_ADDRESS, serverType, conn, mockConnection(serverVersion))
         }
         List<Document> firstBatch = [new Document()]
-        CommandCursorResult<Document> initialResult = createCommandCursorResult(firstBatch, 1)
+        BsonDocument commandResult = createCommandResult(firstBatch, 1)
         Object getMoreResponse = emptyGetMoreCommandResponse(getMoreResponseHasCursor ? 42 : 0)
 
         when:
-        CommandBatchCursor<Document> cursor = new CommandBatchCursor<>(initialResult, 0, 0, 0, new DocumentCodec(), null, connSource, conn)
+        CommandBatchCursor<Document> cursor = new CommandBatchCursor<>(commandResult, 0, 0, 0, CODEC,
+                null, connSource, conn)
         List<Document> batch = cursor.next()
 
         then:
@@ -209,11 +216,12 @@ class CommandBatchCursorSpecification extends Specification {
             connSource = mockConnectionSource(SERVER_ADDRESS, serverType, conn, mockConnection(serverVersion))
         }
         List<Document> firstBatch = [new Document()]
-        CommandCursorResult<Document> initialResult = createCommandCursorResult(firstBatch,  1)
+        BsonDocument initialResult = createCommandResult(firstBatch,  1)
         String exceptionMessage = 'test'
 
         when:
-        CommandBatchCursor<Document> cursor = new CommandBatchCursor<>(initialResult, 0, 0, 0, new DocumentCodec(), null, connSource, conn)
+        CommandBatchCursor<Document> cursor = new CommandBatchCursor<>(initialResult, 0, 0, 0, CODEC,
+                null, connSource, conn)
         List<Document> batch = cursor.next()
 
         then:
@@ -264,6 +272,7 @@ class CommandBatchCursorSpecification extends Specification {
         Connection mockConn = Mock(Connection) {
             getDescription() >> Stub(ConnectionDescription) {
                 getMaxWireVersion() >> getMaxWireVersionForServerVersion(serverVersion.getVersionList())
+                getServerAddress() >> SERVER_ADDRESS
             }
         }
         mockConn.retain() >> {
@@ -320,7 +329,7 @@ class CommandBatchCursorSpecification extends Specification {
             if (connIdx < connections.length) {
                 conn = connections[connIdx]
             } else {
-                throw new IllegalStateException('Requested more than maxConnections=' + maxConnections)
+                throw new IllegalStateException('Requested more than maxConnections=' + connections.length)
             }
             connIdx++
             conn.retain()
