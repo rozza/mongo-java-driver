@@ -17,7 +17,6 @@
 package com.mongodb.internal.operation;
 
 import com.mongodb.MongoClientException;
-import com.mongodb.MongoNamespace;
 import com.mongodb.ServerAddress;
 import com.mongodb.WriteConcern;
 import com.mongodb.client.model.Collation;
@@ -31,14 +30,12 @@ import com.mongodb.internal.bulk.DeleteRequest;
 import com.mongodb.internal.bulk.UpdateRequest;
 import com.mongodb.internal.bulk.WriteRequest;
 import com.mongodb.internal.connection.OperationContext;
-import com.mongodb.internal.connection.QueryResult;
 import com.mongodb.internal.diagnostics.logging.Logger;
 import com.mongodb.internal.diagnostics.logging.Loggers;
 import com.mongodb.internal.session.SessionContext;
 import com.mongodb.lang.NonNull;
 import com.mongodb.lang.Nullable;
 import org.bson.BsonDocument;
-import org.bson.BsonInt64;
 import org.bson.conversions.Bson;
 
 import java.util.List;
@@ -199,18 +196,14 @@ final class OperationHelper {
         return true;
     }
 
-    static <T> QueryResult<T> cursorDocumentToQueryResult(final BsonDocument cursorDocument, final ServerAddress serverAddress) {
-        return cursorDocumentToQueryResult(cursorDocument, serverAddress, "firstBatch");
+    static <T> CommandCursorResult<T> createCommandCursorResult(final BsonDocument cursorDocument, final ServerAddress serverAddress) {
+        return createCommandCursorResult(cursorDocument, serverAddress, "firstBatch");
     }
 
-    static <T> QueryResult<T> cursorDocumentToQueryResult(final BsonDocument cursorDocument, final ServerAddress serverAddress,
+    static <T> CommandCursorResult<T> createCommandCursorResult(final BsonDocument cursorDocument, final ServerAddress serverAddress,
             final String fieldNameContainingBatch) {
-        long cursorId = ((BsonInt64) cursorDocument.get("id")).getValue();
-        MongoNamespace queryResultNamespace = new MongoNamespace(cursorDocument.getString("ns").getValue());
-        return new QueryResult<>(queryResultNamespace, BsonDocumentWrapperHelper.toList(cursorDocument, fieldNameContainingBatch),
-                cursorId, serverAddress);
+        return new CommandCursorResult<>(serverAddress, fieldNameContainingBatch, cursorDocument);
     }
-
 
     /**
      * This internal exception is used to
