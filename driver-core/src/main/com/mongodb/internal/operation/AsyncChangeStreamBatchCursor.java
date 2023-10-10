@@ -164,8 +164,8 @@ final class AsyncChangeStreamBatchCursor<T> implements AsyncAggregateResponseBat
         return maxWireVersion;
     }
 
-    private void cachePostBatchResumeToken(final AsyncAggregateResponseBatchCursor<RawBsonDocument> queryBatchCursor) {
-        BsonDocument resumeToken = queryBatchCursor.getPostBatchResumeToken();
+    private void cachePostBatchResumeToken(final AsyncAggregateResponseBatchCursor<RawBsonDocument> commandBatchCursor) {
+        BsonDocument resumeToken = commandBatchCursor.getPostBatchResumeToken();
         if (resumeToken != null) {
             this.resumeToken = resumeToken;
         }

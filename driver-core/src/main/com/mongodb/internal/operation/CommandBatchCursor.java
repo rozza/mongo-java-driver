@@ -28,7 +28,6 @@ import com.mongodb.connection.ConnectionDescription;
 import com.mongodb.connection.ServerType;
 import com.mongodb.internal.binding.ConnectionSource;
 import com.mongodb.internal.connection.Connection;
-import com.mongodb.internal.connection.QueryResult;
 import com.mongodb.internal.diagnostics.logging.Logger;
 import com.mongodb.internal.diagnostics.logging.Loggers;
 import com.mongodb.internal.validator.NoOpFieldNameValidator;
@@ -63,11 +62,11 @@ import static com.mongodb.internal.operation.CursorHelper.getNumberToReturn;
 import static com.mongodb.internal.operation.DocumentHelper.putIfNotNull;
 import static com.mongodb.internal.operation.QueryHelper.translateCommandException;
 import static com.mongodb.internal.operation.ServerVersionHelper.serverIsAtLeastVersionFourDotFour;
-import static com.mongodb.internal.operation.SyncOperationHelper.getMoreCursorDocumentToQueryResult;
+import static com.mongodb.internal.operation.SyncOperationHelper.getMoreDocumentToCommandCursorResult;
 import static java.lang.String.format;
 import static java.util.Collections.singletonList;
 
-class QueryBatchCursor<T> implements AggregateResponseBatchCursor<T> {
+class CommandBatchCursor<T> implements AggregateResponseBatchCursor<T> {
     private static final Logger LOGGER = Loggers.getLogger("operation");
     private static final FieldNameValidator NO_OP_FIELD_NAME_VALIDATOR = new NoOpFieldNameValidator();
     private static final String CURSOR = "cursor";
@@ -91,28 +90,28 @@ class QueryBatchCursor<T> implements AggregateResponseBatchCursor<T> {
     private int maxWireVersion = 0;
     private final ResourceManager resourceManager;
 
-    QueryBatchCursor(final QueryResult<T> firstQueryResult, final int limit, final int batchSize, final Decoder<T> decoder) {
-        this(firstQueryResult, limit, batchSize, decoder, null, null);
+    CommandBatchCursor(final CommandCursorResult<T> firstCommandCursorResult, final int limit, final int batchSize, final Decoder<T> decoder) {
+        this(firstCommandCursorResult, limit, batchSize, decoder, null, null);
     }
 
-    QueryBatchCursor(final QueryResult<T> firstQueryResult, final int limit, final int batchSize, final Decoder<T> decoder,
+    CommandBatchCursor(final CommandCursorResult<T> firstCommandCursorResult, final int limit, final int batchSize, final Decoder<T> decoder,
             @Nullable final BsonValue comment, @Nullable final ConnectionSource connectionSource) {
-        this(firstQueryResult, limit, batchSize, 0, decoder, comment, connectionSource, null, null);
+        this(firstCommandCursorResult, limit, batchSize, 0, decoder, comment, connectionSource, null, null);
     }
 
-    QueryBatchCursor(final QueryResult<T> firstQueryResult, final int limit, final int batchSize, final long maxTimeMS,
+    CommandBatchCursor(final CommandCursorResult<T> firstCommandCursorResult, final int limit, final int batchSize, final long maxTimeMS,
             final Decoder<T> decoder, @Nullable final BsonValue comment, @Nullable final ConnectionSource connectionSource,
             @Nullable final Connection connection) {
-        this(firstQueryResult, limit, batchSize, maxTimeMS, decoder, comment, connectionSource, connection, null);
+        this(firstCommandCursorResult, limit, batchSize, maxTimeMS, decoder, comment, connectionSource, connection, null);
     }
 
-    QueryBatchCursor(final QueryResult<T> firstQueryResult, final int limit, final int batchSize, final long maxTimeMS,
+    CommandBatchCursor(final CommandCursorResult<T> firstCommandCursorResult, final int limit, final int batchSize, final long maxTimeMS,
             final Decoder<T> decoder, @Nullable final BsonValue comment, @Nullable final ConnectionSource connectionSource,
             @Nullable final Connection connection, @Nullable final BsonDocument result) {
         isTrueArgument("maxTimeMS >= 0", maxTimeMS >= 0);
         this.maxTimeMS = maxTimeMS;
-        this.namespace = firstQueryResult.getNamespace();
-        this.serverAddress = firstQueryResult.getAddress();
+        this.namespace = firstCommandCursorResult.getNamespace();
+        this.serverAddress = firstCommandCursorResult.getServerAddress();
         this.limit = limit;
         this.comment = comment;
         this.batchSize = batchSize;
@@ -121,11 +120,11 @@ class QueryBatchCursor<T> implements AggregateResponseBatchCursor<T> {
             this.operationTime = result.getTimestamp(OPERATION_TIME, null);
             this.postBatchResumeToken = getPostBatchResumeTokenFromResponse(result);
         }
-        ServerCursor serverCursor = initFromQueryResult(firstQueryResult);
+        ServerCursor serverCursor = initCommandCursorResult(firstCommandCursorResult);
         if (serverCursor != null) {
             notNull("connectionSource", connectionSource);
         }
-        firstBatchEmpty = firstQueryResult.getResults().isEmpty();
+        firstBatchEmpty = firstCommandCursorResult.getResults().isEmpty();
         Connection connectionToPin = null;
         boolean releaseServerAndResources = false;
         if (connection != null) {
@@ -317,20 +316,20 @@ class QueryBatchCursor<T> implements AggregateResponseBatchCursor<T> {
     }
 
     @Nullable
-    private ServerCursor initFromQueryResult(final QueryResult<T> queryResult) {
-        nextBatch = queryResult.getResults().isEmpty() ? null : queryResult.getResults();
-        count += queryResult.getResults().size();
-        LOGGER.debug(format("Received batch of %d documents with cursorId %d from server %s", queryResult.getResults().size(),
-                queryResult.getCursorId(), queryResult.getAddress()));
-        return queryResult.getCursor();
+    private ServerCursor initCommandCursorResult(final CommandCursorResult<T> commandCursorResult) {
+        nextBatch = commandCursorResult.getResults().isEmpty() ? null : commandCursorResult.getResults();
+        count += commandCursorResult.getResults().size();
+        LOGGER.debug(format("Received batch of %d documents with cursorId %d from server %s", commandCursorResult.getResults().size(),
+                commandCursorResult.getCursorId(), commandCursorResult.getServerAddress()));
+        return commandCursorResult.getServerCursor();
     }
 
     @Nullable
     private ServerCursor initFromCommandResult(final BsonDocument getMoreCommandResultDocument) {
-        QueryResult<T> queryResult = getMoreCursorDocumentToQueryResult(getMoreCommandResultDocument.getDocument(CURSOR), serverAddress);
+        CommandCursorResult<T> commandCursorResult = getMoreDocumentToCommandCursorResult(getMoreCommandResultDocument, serverAddress);
         postBatchResumeToken = getPostBatchResumeTokenFromResponse(getMoreCommandResultDocument);
         operationTime = getMoreCommandResultDocument.getTimestamp(OPERATION_TIME, null);
-        return initFromQueryResult(queryResult);
+        return initCommandCursorResult(commandCursorResult);
     }
 
     private boolean limitReached() {
@@ -347,14 +346,14 @@ class QueryBatchCursor<T> implements AggregateResponseBatchCursor<T> {
     }
 
     /**
-     * This class maintains all resources that must be released in {@link QueryBatchCursor#close()}.
+     * This class maintains all resources that must be released in {@link CommandBatchCursor#close()}.
      * It also implements a {@linkplain #doClose() deferred close action} such that it is totally ordered with other operations of
-     * {@link QueryBatchCursor} (methods {@link #tryStartOperation()}/{@link #endOperation()} must be used properly to enforce the order)
-     * despite the method {@link QueryBatchCursor#close()} being called concurrently with those operations.
+     * {@link CommandBatchCursor} (methods {@link #tryStartOperation()}/{@link #endOperation()} must be used properly to enforce the order)
+     * despite the method {@link CommandBatchCursor#close()} being called concurrently with those operations.
      * This total order induces the happens-before order.
      * <p>
-     * The deferred close action does not violate externally observable idempotence of {@link QueryBatchCursor#close()},
-     * because {@link QueryBatchCursor#close()} is allowed to release resources "eventually".
+     * The deferred close action does not violate externally observable idempotence of {@link CommandBatchCursor#close()},
+     * because {@link CommandBatchCursor#close()} is allowed to release resources "eventually".
      * <p>
      * Only methods explicitly documented as thread-safe are thread-safe,
      * others are not and rely on the total order mentioned above.
@@ -397,7 +396,7 @@ class QueryBatchCursor<T> implements AggregateResponseBatchCursor<T> {
          * Thread-safe.
          * Executes {@code operation} within the {@link #tryStartOperation()}/{@link #endOperation()} bounds.
          *
-         * @throws IllegalStateException If {@linkplain QueryBatchCursor#close() closed}.
+         * @throws IllegalStateException If {@linkplain CommandBatchCursor#close() closed}.
          */
         @Nullable
         <R> R execute(final String exceptionMessageIfClosed, final Supplier<R> operation) throws IllegalStateException {
