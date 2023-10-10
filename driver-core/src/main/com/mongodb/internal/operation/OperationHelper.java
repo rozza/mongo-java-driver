@@ -17,7 +17,6 @@
 package com.mongodb.internal.operation;
 
 import com.mongodb.MongoClientException;
-import com.mongodb.ServerAddress;
 import com.mongodb.WriteConcern;
 import com.mongodb.client.model.Collation;
 import com.mongodb.connection.ConnectionDescription;
@@ -194,15 +193,6 @@ final class OperationHelper {
             return false;
         }
         return true;
-    }
-
-    static <T> CommandCursorResult<T> createCommandCursorResult(final BsonDocument cursorDocument, final ServerAddress serverAddress) {
-        return createCommandCursorResult(cursorDocument, serverAddress, "firstBatch");
-    }
-
-    static <T> CommandCursorResult<T> createCommandCursorResult(final BsonDocument cursorDocument, final ServerAddress serverAddress,
-            final String fieldNameContainingBatch) {
-        return new CommandCursorResult<>(serverAddress, fieldNameContainingBatch, cursorDocument);
     }
 
     /**

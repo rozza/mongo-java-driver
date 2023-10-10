@@ -45,7 +45,6 @@ import static com.mongodb.internal.operation.AsyncOperationHelper.CommandReadTra
 import static com.mongodb.internal.operation.AsyncOperationHelper.executeRetryableReadAsync;
 import static com.mongodb.internal.operation.CommandOperationHelper.CommandCreator;
 import static com.mongodb.internal.operation.OperationHelper.LOGGER;
-import static com.mongodb.internal.operation.OperationHelper.createCommandCursorResult;
 import static com.mongodb.internal.operation.OperationReadConcernHelper.appendReadConcernToCommand;
 import static com.mongodb.internal.operation.SyncOperationHelper.CommandReadTransformer;
 import static com.mongodb.internal.operation.SyncOperationHelper.executeRetryableRead;
@@ -223,21 +222,19 @@ class AggregateOperationImpl<T> implements AsyncReadOperation<AsyncBatchCursor<T
 
     private CommandReadTransformer<BsonDocument, CommandBatchCursor<T>> transformer() {
         return (result, source, connection) -> {
-            CommandCursorResult<T> commandCursorResult = createCommandCursorResult(result, connection.getDescription().getServerAddress());
             // TODO (CSOT) JAVA-4058
             long maxAwaitTimeMS = timeoutSettings.getMaxAwaitTimeMS();
-            return new CommandBatchCursor<>(commandCursorResult, 0, batchSize != null ? batchSize : 0, maxAwaitTimeMS, decoder, comment,
-                    source, connection, result);
+            return new CommandBatchCursor<>(connection.getDescription().getServerAddress(), result, 0, batchSize != null ? batchSize : 0,
+                    maxAwaitTimeMS, decoder, comment, source, connection);
         };
     }
 
     private CommandReadTransformerAsync<BsonDocument, AsyncBatchCursor<T>> asyncTransformer() {
         return (result, source, connection) -> {
-            CommandCursorResult<T> commandCursorResult = createCommandCursorResult(result, connection.getDescription().getServerAddress());
             // TODO (CSOT) JAVA-4058
             long maxAwaitTimeMS = timeoutSettings.getMaxAwaitTimeMS();
-            return new AsyncCommandBatchCursor<>(commandCursorResult, 0, batchSize != null ? batchSize : 0, maxAwaitTimeMS, decoder,
-                    comment, source, connection, result);
+            return new AsyncCommandBatchCursor<>(connection.getDescription().getServerAddress(), result, 0,
+                    batchSize != null ? batchSize : 0, maxAwaitTimeMS, decoder, comment, source, connection);
         };
     }
 
