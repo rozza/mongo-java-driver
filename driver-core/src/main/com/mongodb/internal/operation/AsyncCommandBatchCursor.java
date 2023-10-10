@@ -28,7 +28,6 @@ import com.mongodb.internal.async.SingleResultCallback;
 import com.mongodb.internal.binding.AsyncConnectionSource;
 import com.mongodb.internal.connection.AsyncConnection;
 import com.mongodb.internal.connection.Connection;
-import com.mongodb.internal.connection.QueryResult;
 import com.mongodb.internal.diagnostics.logging.Logger;
 import com.mongodb.internal.diagnostics.logging.Loggers;
 import com.mongodb.internal.validator.NoOpFieldNameValidator;
@@ -60,11 +59,11 @@ import static com.mongodb.internal.operation.CursorHelper.getNumberToReturn;
 import static com.mongodb.internal.operation.DocumentHelper.putIfNotNull;
 import static com.mongodb.internal.operation.QueryHelper.translateCommandException;
 import static com.mongodb.internal.operation.ServerVersionHelper.serverIsAtLeastVersionFourDotFour;
-import static com.mongodb.internal.operation.SyncOperationHelper.getMoreCursorDocumentToQueryResult;
+import static com.mongodb.internal.operation.SyncOperationHelper.getMoreDocumentToCommandCursorResult;
 import static java.lang.String.format;
 import static java.util.Collections.singletonList;
 
-class AsyncQueryBatchCursor<T> implements AsyncAggregateResponseBatchCursor<T> {
+class AsyncCommandBatchCursor<T> implements AsyncAggregateResponseBatchCursor<T> {
     private static final Logger LOGGER = Loggers.getLogger("operation");
     private static final FieldNameValidator NO_OP_FIELD_NAME_VALIDATOR = new NoOpFieldNameValidator();
     private static final String CURSOR = "cursor";
@@ -78,7 +77,7 @@ class AsyncQueryBatchCursor<T> implements AsyncAggregateResponseBatchCursor<T> {
     private volatile AsyncConnectionSource connectionSource;
     private volatile AsyncConnection pinnedConnection;
     private final AtomicReference<ServerCursor> cursor;
-    private volatile QueryResult<T> firstBatch;
+    private volatile CommandCursorResult<T> firstBatch;
     private volatile int batchSize;
     private final AtomicInteger count = new AtomicInteger();
     private volatile BsonDocument postBatchResumeToken;
@@ -94,13 +93,13 @@ class AsyncQueryBatchCursor<T> implements AsyncAggregateResponseBatchCursor<T> {
     /* protected by `lock` */
     private volatile boolean isClosePending = false;
 
-    AsyncQueryBatchCursor(final QueryResult<T> firstBatch, final int limit, final int batchSize, final long maxTimeMS,
+    AsyncCommandBatchCursor(final CommandCursorResult<T> firstBatch, final int limit, final int batchSize, final long maxTimeMS,
             final Decoder<T> decoder, final BsonValue comment, final AsyncConnectionSource connectionSource,
             final AsyncConnection connection) {
         this(firstBatch, limit, batchSize, maxTimeMS, decoder, comment, connectionSource, connection, null);
     }
 
-    AsyncQueryBatchCursor(final QueryResult<T> firstBatch, final int limit, final int batchSize, final long maxTimeMS,
+    AsyncCommandBatchCursor(final CommandCursorResult<T> firstBatch, final int limit, final int batchSize, final long maxTimeMS,
             final Decoder<T> decoder, final BsonValue comment, final AsyncConnectionSource connectionSource,
             @Nullable final AsyncConnection connection, @Nullable final BsonDocument result) {
         isTrueArgument("maxTimeMS >= 0", maxTimeMS >= 0);
@@ -111,7 +110,7 @@ class AsyncQueryBatchCursor<T> implements AsyncAggregateResponseBatchCursor<T> {
         this.batchSize = batchSize;
         this.decoder = decoder;
         this.comment = comment;
-        this.cursor = new AtomicReference<>(firstBatch.getCursor());
+        this.cursor = new AtomicReference<>(firstBatch.getServerCursor());
         this.count.addAndGet(firstBatch.getResults().size());
         if (result != null) {
             this.operationTime = result.getTimestamp(OPERATION_TIME, null);
@@ -329,21 +328,21 @@ class AsyncQueryBatchCursor<T> implements AsyncAggregateResponseBatchCursor<T> {
 
 
     private void handleGetMoreQueryResult(final AsyncConnection connection, final SingleResultCallback<List<T>> callback,
-                                          final QueryResult<T> result) {
+                                          final CommandCursorResult<T> result) {
         logQueryResult(result);
-        cursor.set(result.getCursor());
+        cursor.set(result.getServerCursor());
         if (isClosePending) {
             try {
                 connection.release();
-                if (result.getCursor() == null) {
+                if (result.getServerCursor() == null) {
                     connectionSource.release();
                 }
                 endOperationInProgress();
             } finally {
                 callback.onResult(null, null);
             }
-        } else if (result.getResults().isEmpty() && result.getCursor() != null) {
-            getMore(connection, assertNotNull(result.getCursor()), callback);
+        } else if (result.getResults().isEmpty() && result.getServerCursor() != null) {
+            getMore(connection, assertNotNull(result.getServerCursor()), callback);
         } else {
             count.addAndGet(result.getResults().size());
             if (limitReached()) {
@@ -351,7 +350,7 @@ class AsyncQueryBatchCursor<T> implements AsyncAggregateResponseBatchCursor<T> {
                 connection.release();
             } else {
                 connection.release();
-                if (result.getCursor() == null) {
+                if (result.getServerCursor() == null) {
                     connectionSource.release();
                 }
             }
@@ -365,9 +364,9 @@ class AsyncQueryBatchCursor<T> implements AsyncAggregateResponseBatchCursor<T> {
         }
     }
 
-    private void logQueryResult(final QueryResult<T> result) {
+    private void logQueryResult(final CommandCursorResult<T> result) {
         LOGGER.debug(format("Received batch of %d documents with cursorId %d from server %s", result.getResults().size(),
-                result.getCursorId(), result.getAddress()));
+                result.getCursorId(), result.getServerAddress()));
     }
 
     private class CommandResultSingleResultCallback implements SingleResultCallback<BsonDocument> {
@@ -393,10 +392,10 @@ class AsyncQueryBatchCursor<T> implements AsyncAggregateResponseBatchCursor<T> {
                 callback.onResult(null, translatedException);
             } else {
                 assertNotNull(result);
-                QueryResult<T> queryResult = getMoreCursorDocumentToQueryResult(result.getDocument(CURSOR),
+                CommandCursorResult<T> commandCursorResult = getMoreDocumentToCommandCursorResult(result,
                         connection.getDescription().getServerAddress());
                 postBatchResumeToken = getPostBatchResumeTokenFromResponse(result);
-                handleGetMoreQueryResult(connection, callback, queryResult);
+                handleGetMoreQueryResult(connection, callback, commandCursorResult);
             }
         }
     }

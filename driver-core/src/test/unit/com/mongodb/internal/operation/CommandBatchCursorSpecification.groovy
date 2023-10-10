@@ -28,7 +28,6 @@ import com.mongodb.connection.ServerType
 import com.mongodb.connection.ServerVersion
 import com.mongodb.internal.binding.ConnectionSource
 import com.mongodb.internal.connection.Connection
-import com.mongodb.internal.connection.QueryResult
 import org.bson.BsonDocument
 import org.bson.BsonInt32
 import org.bson.BsonInt64
@@ -41,7 +40,7 @@ import spock.lang.Specification
 import static com.mongodb.ClusterFixture.OPERATION_CONTEXT
 import static com.mongodb.internal.operation.OperationUnitSpecification.getMaxWireVersionForServerVersion
 
-class QueryBatchCursorSpecification extends Specification {
+class CommandBatchCursorSpecification extends Specification {
     private static final MongoNamespace NAMESPACE = new MongoNamespace('db', 'coll')
     private static final ServerAddress SERVER_ADDRESS = new ServerAddress()
 
@@ -60,9 +59,9 @@ class QueryBatchCursorSpecification extends Specification {
 
         def cursorId = 42
 
-        def firstBatch = new QueryResult(NAMESPACE, [], cursorId, SERVER_ADDRESS)
-        def cursor = new QueryBatchCursor<Document>(firstBatch, 0, batchSize, maxTimeMS, new BsonDocumentCodec(), null, connectionSource,
-                                                    connection)
+        def firstBatch = createCommandCursorResult([], cursorId)
+        def cursor =  new CommandBatchCursor<Document>(firstBatch, 0, batchSize, maxTimeMS, new BsonDocumentCodec(),
+                null, connectionSource, connection)
         def expectedCommand = new BsonDocument('getMore': new BsonInt64(cursorId))
                 .append('collection', new BsonString(NAMESPACE.getCollectionName()))
         if (batchSize != 0) {
@@ -72,11 +71,7 @@ class QueryBatchCursorSpecification extends Specification {
             expectedCommand.append('maxTimeMS', new BsonInt64(expectedMaxTimeFieldValue))
         }
 
-        def reply = new BsonDocument('ok', new BsonInt32(1))
-                .append('cursor',
-                        new BsonDocument('id', new BsonInt64(0))
-                                .append('ns', new BsonString(NAMESPACE.getFullName()))
-                                .append('nextBatch', new BsonArrayWrapper([])))
+        def reply = createCommandResult([], 0, 'nextBatch')
 
         when:
         cursor.hasNext()
@@ -108,8 +103,8 @@ class QueryBatchCursorSpecification extends Specification {
         }
         connectionSource.retain() >> connectionSource
 
-        def firstBatch = new QueryResult(NAMESPACE, [], 42, SERVER_ADDRESS)
-        def cursor = new QueryBatchCursor<Document>(firstBatch, 0, 2, 100, new DocumentCodec(), null, connectionSource, connection)
+        def firstBatch = createCommandCursorResult([], 42)
+        def cursor = new CommandBatchCursor<Document>(firstBatch, 0, 2, 100, new DocumentCodec(), null, connectionSource, connection)
 
         when:
         cursor.close()
@@ -137,8 +132,8 @@ class QueryBatchCursorSpecification extends Specification {
         }
         connectionSource.retain() >> connectionSource
 
-        def firstBatch = new QueryResult(NAMESPACE, [], 42, SERVER_ADDRESS)
-        def cursor = new QueryBatchCursor<Document>(firstBatch, 0, 2, 100, new DocumentCodec(), null, connectionSource, connection)
+        def firstBatch = createCommandCursorResult([], 42)
+        def cursor = new CommandBatchCursor<Document>(firstBatch, 0, 2, 100, new DocumentCodec(), null, connectionSource, connection)
 
         when:
         cursor.close()
@@ -163,13 +158,11 @@ class QueryBatchCursorSpecification extends Specification {
             connSource = mockConnectionSource(SERVER_ADDRESS, serverType, conn, mockConnection(serverVersion))
         }
         List<Document> firstBatch = [new Document()]
-        QueryResult<Document> initialResult = new QueryResult<>(NAMESPACE, firstBatch, 1, SERVER_ADDRESS)
-        Object getMoreResponse = useCommand
-                ? emptyGetMoreCommandResponse(NAMESPACE, getMoreResponseHasCursor ? 42 : 0)
-                : emptyGetMoreQueryResponse(NAMESPACE, SERVER_ADDRESS, getMoreResponseHasCursor ? 42 : 0)
+        CommandCursorResult<Document> initialResult = createCommandCursorResult(firstBatch, 1)
+        Object getMoreResponse = emptyGetMoreCommandResponse(getMoreResponseHasCursor ? 42 : 0)
 
         when:
-        QueryBatchCursor<Document> cursor = new QueryBatchCursor<>(initialResult, 0, 0, 0, new DocumentCodec(), null, connSource, conn)
+        CommandBatchCursor<Document> cursor = new CommandBatchCursor<>(initialResult, 0, 0, 0, new DocumentCodec(), null, connSource, conn)
         List<Document> batch = cursor.next()
 
         then:
@@ -226,11 +219,11 @@ class QueryBatchCursorSpecification extends Specification {
             connSource = mockConnectionSource(SERVER_ADDRESS, serverType, conn, mockConnection(serverVersion))
         }
         List<Document> firstBatch = [new Document()]
-        QueryResult<Document> initialResult = new QueryResult<>(NAMESPACE, firstBatch, 1, SERVER_ADDRESS)
+        CommandCursorResult<Document> initialResult = createCommandCursorResult(firstBatch,  1)
         String exceptionMessage = 'test'
 
         when:
-        QueryBatchCursor<Document> cursor = new QueryBatchCursor<>(initialResult, 0, 0, 0, new DocumentCodec(), null, connSource, conn)
+        CommandBatchCursor<Document> cursor = new CommandBatchCursor<>(initialResult, 0, 0, 0, new DocumentCodec(), null, connSource, conn)
         List<Document> batch = cursor.next()
 
         then:
@@ -345,14 +338,22 @@ class QueryBatchCursorSpecification extends Specification {
         mockConnectionSource
     }
 
-    private static BsonDocument emptyGetMoreCommandResponse(MongoNamespace namespace, long cursorId) {
-        new BsonDocument('ok', new BsonInt32(1))
-                .append('cursor', new BsonDocument('id', new BsonInt64(cursorId))
-                        .append('ns', new BsonString(namespace.getFullName()))
-                        .append('nextBatch', new BsonArrayWrapper([])))
+    private static BsonDocument emptyGetMoreCommandResponse(long cursorId) {
+        createCommandResult([], cursorId)
     }
 
-    private static <T> QueryResult<T> emptyGetMoreQueryResponse(MongoNamespace namespace, ServerAddress serverAddress, long cursorId) {
-        new QueryResult(namespace, [], cursorId, serverAddress)
+    private static CommandCursorResult createCommandCursorResult(final List<?> results, final Long cursorId,
+            final String fieldNameContainingBatch = "firstBatch", final ServerAddress serverAddress = SERVER_ADDRESS) {
+        new CommandCursorResult(serverAddress, fieldNameContainingBatch, createCommandResult(results, cursorId, fieldNameContainingBatch))
     }
+
+    private static BsonDocument createCommandResult(final List<?> results, final Long cursorId,
+            final String fieldNameContainingBatch = "firstBatch") {
+        new BsonDocument("ok", new BsonInt32(1))
+                .append("cursor",
+                        new BsonDocument("ns", new BsonString(NAMESPACE.fullName))
+                                .append("id", new BsonInt64(cursorId))
+                                .append(fieldNameContainingBatch, new BsonArrayWrapper(results)))
+    }
+
 }

@@ -33,7 +33,6 @@ import com.mongodb.internal.binding.ReadBinding
 import com.mongodb.internal.bulk.IndexRequest
 import com.mongodb.internal.connection.AsyncConnection
 import com.mongodb.internal.connection.Connection
-import com.mongodb.internal.connection.QueryResult
 import org.bson.BsonDocument
 import org.bson.BsonDouble
 import org.bson.BsonInt32
@@ -293,7 +292,7 @@ class ListIndexesOperationSpecification extends OperationFunctionalSpecification
         threeSixConnectionDescription : Stub(ConnectionDescription) {
             getMaxWireVersion() >> 3
         },
-        queryResult: Stub(QueryResult) {
+        queryResult: Stub(CommandCursorResult) {
             getNamespace() >> new MongoNamespace('db', 'coll')
             getResults() >> []
             getCursor() >> new ServerCursor(1, Stub(ServerAddress))
