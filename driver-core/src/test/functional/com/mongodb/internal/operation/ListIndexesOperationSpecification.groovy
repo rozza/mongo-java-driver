@@ -210,7 +210,7 @@ class ListIndexesOperationSpecification extends OperationFunctionalSpecification
         cursor.getBatchSize() == 2
 
         cleanup:
-        consumeAsyncResults(cursor)
+        cursor?.close()
     }
 
     @IgnoreIf({ isSharded() })
