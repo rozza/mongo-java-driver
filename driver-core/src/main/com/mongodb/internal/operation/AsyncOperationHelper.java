@@ -61,6 +61,10 @@ final class AsyncOperationHelper {
         void call(@Nullable AsyncConnection connection, @Nullable Throwable t);
     }
 
+    interface AsyncCallableConnectionWithCallback<T> {
+        void call(@Nullable AsyncConnection connection, SingleResultCallback<T> callback);
+    }
+
     interface AsyncCallableWithSource {
         void call(@Nullable AsyncConnectionSource source, @Nullable Throwable t);
     }

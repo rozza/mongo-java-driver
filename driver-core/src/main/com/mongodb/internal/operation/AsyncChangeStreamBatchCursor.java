@@ -188,7 +188,7 @@ final class AsyncChangeStreamBatchCursor<T> implements AsyncAggregateResponseBat
                 try {
                     List<T> convertedResults;
                     try {
-                        convertedResults = convertAndProduceLastId(result, changeStreamOperation.getDecoder(),
+                        convertedResults = convertAndProduceLastId(assertNotNull(result), changeStreamOperation.getDecoder(),
                                 lastId -> resumeToken = lastId);
                     } finally {
                         cachePostBatchResumeToken(wrappedCursor);
