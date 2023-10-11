@@ -50,7 +50,7 @@ public final class ServerHelper {
         long startTime = System.currentTimeMillis();
         while (pool.getInUseCount() > 0) {
             try {
-                sleep(10);
+                sleep(100);
                 if (System.currentTimeMillis() > startTime + ClusterFixture.TIMEOUT * 1000) {
                     throw new MongoTimeoutException("Timed out waiting for pool in use count to drop to 0.  Now at: "
                                                             + pool.getInUseCount());
@@ -62,10 +62,10 @@ public final class ServerHelper {
     }
 
     private static void checkPool(final ServerAddress address, final Cluster cluster) {
-        ConcurrentPool<UsageTrackingInternalConnection> pool = connectionPool(
-                cluster.selectServer(new ServerAddressSelector(address), OPERATION_CONTEXT).getServer());
-        if (pool.getInUseCount() > 0) {
-            throw new IllegalStateException("Connection pool in use count is " + pool.getInUseCount());
+        try {
+            waitForLastRelease(address, cluster);
+        } catch (MongoTimeoutException e) {
+            throw new IllegalStateException(e.getMessage());
         }
     }
 

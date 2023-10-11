@@ -25,6 +25,7 @@ import com.mongodb.ServerAddress;
 import com.mongodb.ServerCursor;
 import com.mongodb.annotations.ThreadSafe;
 import com.mongodb.connection.ServerType;
+import com.mongodb.internal.VisibleForTesting;
 import com.mongodb.internal.binding.ConnectionSource;
 import com.mongodb.internal.connection.Connection;
 import com.mongodb.internal.diagnostics.logging.Logger;
@@ -54,6 +55,7 @@ import static com.mongodb.assertions.Assertions.assertTrue;
 import static com.mongodb.assertions.Assertions.fail;
 import static com.mongodb.assertions.Assertions.notNull;
 import static com.mongodb.internal.Locks.withLock;
+import static com.mongodb.internal.VisibleForTesting.AccessModifier.PRIVATE;
 import static com.mongodb.internal.operation.CommandBatchCursorHelper.FIRST_BATCH;
 import static com.mongodb.internal.operation.CommandBatchCursorHelper.MESSAGE_IF_CLOSED_AS_CURSOR;
 import static com.mongodb.internal.operation.CommandBatchCursorHelper.MESSAGE_IF_CLOSED_AS_ITERATOR;
@@ -160,6 +162,11 @@ class CommandBatchCursor<T> implements AggregateResponseBatchCursor<T> {
         List<T> retVal = nextBatch;
         nextBatch = null;
         return retVal;
+    }
+
+    @VisibleForTesting(otherwise = PRIVATE)
+    boolean isClosed() {
+        return !resourceManager.operable();
     }
 
     @Override
