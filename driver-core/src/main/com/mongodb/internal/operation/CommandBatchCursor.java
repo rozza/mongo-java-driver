@@ -17,41 +17,47 @@
 package com.mongodb.internal.operation;
 
 import com.mongodb.MongoCommandException;
+import com.mongodb.MongoException;
 import com.mongodb.MongoNamespace;
+import com.mongodb.MongoSocketException;
 import com.mongodb.ReadPreference;
 import com.mongodb.ServerAddress;
 import com.mongodb.ServerCursor;
+import com.mongodb.annotations.ThreadSafe;
+import com.mongodb.connection.ConnectionDescription;
 import com.mongodb.connection.ServerType;
 import com.mongodb.internal.VisibleForTesting;
 import com.mongodb.internal.binding.ConnectionSource;
 import com.mongodb.internal.connection.Connection;
-import com.mongodb.internal.diagnostics.logging.Logger;
-import com.mongodb.internal.diagnostics.logging.Loggers;
-import com.mongodb.internal.validator.NoOpFieldNameValidator;
+import com.mongodb.internal.connection.OperationContext;
 import com.mongodb.lang.Nullable;
 import org.bson.BsonDocument;
 import org.bson.BsonTimestamp;
 import org.bson.BsonValue;
-import org.bson.FieldNameValidator;
+import org.bson.codecs.BsonDocumentCodec;
 import org.bson.codecs.Decoder;
 
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.concurrent.locks.StampedLock;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 import static com.mongodb.assertions.Assertions.assertNotNull;
+import static com.mongodb.assertions.Assertions.assertTrue;
 import static com.mongodb.assertions.Assertions.notNull;
 import static com.mongodb.internal.VisibleForTesting.AccessModifier.PRIVATE;
 import static com.mongodb.internal.operation.CommandBatchCursorHelper.FIRST_BATCH;
 import static com.mongodb.internal.operation.CommandBatchCursorHelper.MESSAGE_IF_CLOSED_AS_CURSOR;
 import static com.mongodb.internal.operation.CommandBatchCursorHelper.MESSAGE_IF_CLOSED_AS_ITERATOR;
 import static com.mongodb.internal.operation.CommandBatchCursorHelper.NEXT_BATCH;
+import static com.mongodb.internal.operation.CommandBatchCursorHelper.NO_OP_FIELD_NAME_VALIDATOR;
+import static com.mongodb.internal.operation.CommandBatchCursorHelper.getKillCursorsCommand;
+import static com.mongodb.internal.operation.CommandBatchCursorHelper.getCommandCursorResult;
 import static com.mongodb.internal.operation.CommandBatchCursorHelper.getMoreCommandDocument;
-import static com.mongodb.internal.operation.QueryHelper.translateCommandException;
-import static java.lang.String.format;
+import static com.mongodb.internal.operation.CommandBatchCursorHelper.translateCommandException;
 
 class CommandBatchCursor<T> implements AggregateResponseBatchCursor<T> {
-    private static final Logger LOGGER = Loggers.getLogger("operation");
-    private static final FieldNameValidator NO_OP_FIELD_NAME_VALIDATOR = new NoOpFieldNameValidator();
 
     private final MongoNamespace namespace;
     private final int limit;
@@ -61,11 +67,11 @@ class CommandBatchCursor<T> implements AggregateResponseBatchCursor<T> {
     private final BsonValue comment;
     private final int maxWireVersion;
     private final boolean firstBatchEmpty;
-    private final CursorResourceManager resourceManager;
+    private final ResourceManager resourceManager;
 
     private int batchSize;
     private CommandCursorResult<T> commandCursorResult;
-    private int count;
+    private int count = 0;
     @Nullable
     private List<T> nextBatch;
 
@@ -76,26 +82,26 @@ class CommandBatchCursor<T> implements AggregateResponseBatchCursor<T> {
             @Nullable final BsonValue comment,
             final ConnectionSource connectionSource,
             final Connection connection) {
-        this.commandCursorResult = initFromCommandCursorDocument(connection.getDescription().getServerAddress(),
-                FIRST_BATCH, commandCursorDocument);
+        ConnectionDescription connectionDescription = connection.getDescription();
+        this.commandCursorResult = toCommandCursorResult(connectionDescription.getServerAddress(), FIRST_BATCH, commandCursorDocument);
         this.namespace = commandCursorResult.getNamespace();
         this.limit = limit;
         this.batchSize = batchSize;
         this.maxTimeMS = maxTimeMS;
         this.decoder = notNull("decoder", decoder);
         this.comment = comment;
-        this.maxWireVersion = connection.getDescription().getMaxWireVersion();
+        this.maxWireVersion = connectionDescription.getMaxWireVersion();
         this.firstBatchEmpty = commandCursorResult.getResults().isEmpty();
 
         Connection connectionToPin = null;
         boolean releaseServerAndResources = false;
         if (limitReached()) {
             releaseServerAndResources = true;
-        } else if (connectionSource.getServerDescription().getType() == ServerType.LOAD_BALANCER) {
+        } else if (connectionDescription.getServerType() == ServerType.LOAD_BALANCER) {
             connectionToPin = connection;
         }
 
-        resourceManager = new CursorResourceManager(namespace, connectionSource, connectionToPin, commandCursorResult.getServerCursor());
+        resourceManager = new ResourceManager(namespace, connectionSource, connectionToPin, commandCursorResult.getServerCursor());
         if (releaseServerAndResources) {
             resourceManager.releaseServerAndClientResources(connection);
         }
@@ -115,7 +121,7 @@ class CommandBatchCursor<T> implements AggregateResponseBatchCursor<T> {
             return false;
         }
 
-        while (resourceManager.serverCursor() != null) {
+        while (resourceManager.getServerCursor() != null) {
             getMore();
             if (!resourceManager.operable()) {
                 throw new IllegalStateException(MESSAGE_IF_CLOSED_AS_CURSOR);
@@ -194,7 +200,7 @@ class CommandBatchCursor<T> implements AggregateResponseBatchCursor<T> {
             return false;
         }
 
-        if (resourceManager.serverCursor() != null) {
+        if (resourceManager.getServerCursor() != null) {
             getMore();
         }
 
@@ -207,8 +213,7 @@ class CommandBatchCursor<T> implements AggregateResponseBatchCursor<T> {
         if (!resourceManager.operable()) {
             throw new IllegalStateException(MESSAGE_IF_CLOSED_AS_ITERATOR);
         }
-
-        return resourceManager.serverCursor();
+        return resourceManager.getServerCursor();
     }
 
     @Override
@@ -241,11 +246,11 @@ class CommandBatchCursor<T> implements AggregateResponseBatchCursor<T> {
     }
 
     private void getMore() {
-        ServerCursor serverCursor = assertNotNull(resourceManager.serverCursor());
+        ServerCursor serverCursor = assertNotNull(resourceManager.getServerCursor());
         resourceManager.executeWithConnection(connection -> {
             ServerCursor nextServerCursor;
             try {
-                initFromCommandCursorDocument(connection.getDescription().getServerAddress(), NEXT_BATCH,
+                this.commandCursorResult = toCommandCursorResult(connection.getDescription().getServerAddress(), NEXT_BATCH,
                         assertNotNull(
                             connection.command(namespace.getDatabaseName(),
                                  getMoreCommandDocument(serverCursor.getId(), connection.getDescription(), namespace,
@@ -265,15 +270,11 @@ class CommandBatchCursor<T> implements AggregateResponseBatchCursor<T> {
         });
     }
 
-    private CommandCursorResult<T> initFromCommandCursorDocument(final ServerAddress serverAddress, final String fieldNameContainingBatch,
+    private CommandCursorResult<T> toCommandCursorResult(final ServerAddress serverAddress, final String fieldNameContainingBatch,
             final BsonDocument commandCursorDocument) {
-        this.commandCursorResult = new CommandCursorResult<>(serverAddress, fieldNameContainingBatch, commandCursorDocument);
+        CommandCursorResult<T> commandCursorResult = getCommandCursorResult(serverAddress, fieldNameContainingBatch, commandCursorDocument);
         this.nextBatch = commandCursorResult.getResults().isEmpty() ? null : commandCursorResult.getResults();
         this.count += commandCursorResult.getResults().size();
-        if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug(format("Received batch of %d documents with cursorId %d from server %s", commandCursorResult.getResults().size(),
-                    commandCursorResult.getCursorId(), commandCursorResult.getServerAddress()));
-        }
         return commandCursorResult;
     }
 
@@ -281,5 +282,111 @@ class CommandBatchCursor<T> implements AggregateResponseBatchCursor<T> {
         return Math.abs(limit) != 0 && count >= Math.abs(limit);
     }
 
+    @ThreadSafe
+    private static final class ResourceManager extends CursorResourceManager<ConnectionSource, Connection> {
 
+        ResourceManager(
+                final MongoNamespace namespace,
+                final ConnectionSource connectionSource,
+                @Nullable final Connection connectionToPin,
+                @Nullable final ServerCursor serverCursor) {
+            super(new StampedLock().asWriteLock(), namespace, connectionSource, connectionToPin, serverCursor);
+        }
+
+        /**
+         * Thread-safe.
+         * Executes {@code operation} within the {@link #tryStartOperation()}/{@link #endOperation()} bounds.
+         *
+         * @throws IllegalStateException If {@linkplain CommandBatchCursor#close() closed}.
+         */
+        @Nullable
+        <R> R execute(final String exceptionMessageIfClosed, final Supplier<R> operation) throws IllegalStateException {
+            if (!tryStartOperation()) {
+                throw new IllegalStateException(exceptionMessageIfClosed);
+            }
+            try {
+                return operation.get();
+            } finally {
+                endOperation();
+            }
+        }
+
+        @Override
+        void markAsPinned(final Connection connectionToPin, final Connection.PinningMode pinningMode) {
+            connectionToPin.markAsPinned(pinningMode);
+        }
+
+        @Override
+        void doClose() {
+            if (isSkipReleasingServerResourcesOnClose()) {
+                unsetServerCursor();
+            }
+            try {
+                if (getServerCursor() != null) {
+                    // Don't handle corrupted connections
+                    Connection connection = getConnection();
+                    try {
+                        releaseServerResources(connection);
+                    } finally {
+                        connection.release();
+                    }
+                }
+            } catch (MongoException e) {
+                // ignore exceptions when releasing server resources
+            } finally {
+                // guarantee that regardless of exceptions, `serverCursor` is null and client resources are released
+                unsetServerCursor();
+                releaseClientResources();
+            }
+        }
+
+        void executeWithConnection(final Consumer<Connection> action) {
+            Connection connection = getConnection();
+            try {
+                action.accept(connection);
+            } catch (MongoSocketException e) {
+                onCorruptedConnection(connection, e);
+                throw e;
+            } finally {
+                connection.release();
+            }
+        }
+
+        private Connection getConnection() {
+            assertTrue(getState() != State.IDLE);
+            Connection pinnedConnection = getPinnedConnection();
+            if (pinnedConnection == null) {
+                return assertNotNull(getConnectionSource()).getConnection();
+            } else {
+                return pinnedConnection.retain();
+            }
+        }
+
+        private void releaseServerAndClientResources(final Connection connection) {
+            try {
+                releaseServerResources(assertNotNull(connection));
+            } finally {
+                releaseClientResources();
+            }
+        }
+
+        private void releaseServerResources(final Connection connection) {
+            try {
+                ServerCursor localServerCursor = getServerCursor();
+                if (localServerCursor != null) {
+                    killServerCursor(getNamespace(), localServerCursor, connection);
+                }
+            } finally {
+                unsetServerCursor();
+            }
+        }
+
+        private void killServerCursor(final MongoNamespace namespace, final ServerCursor localServerCursor,
+                final Connection localConnection) {
+            OperationContext operationContext = assertNotNull(getConnectionSource()).getOperationContext();
+            localConnection.command(namespace.getDatabaseName(), getKillCursorsCommand(namespace, localServerCursor),
+                    NO_OP_FIELD_NAME_VALIDATOR, ReadPreference.primary(), new BsonDocumentCodec(),
+                    operationContext);
+        }
+    }
 }

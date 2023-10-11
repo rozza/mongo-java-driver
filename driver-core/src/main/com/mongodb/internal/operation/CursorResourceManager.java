@@ -13,86 +13,103 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package com.mongodb.internal.operation;
 
-import com.mongodb.MongoException;
 import com.mongodb.MongoNamespace;
 import com.mongodb.MongoSocketException;
-import com.mongodb.ReadPreference;
 import com.mongodb.ServerCursor;
 import com.mongodb.annotations.ThreadSafe;
-import com.mongodb.internal.binding.ConnectionSource;
+import com.mongodb.internal.binding.ReferenceCounted;
 import com.mongodb.internal.connection.Connection;
-import com.mongodb.internal.validator.NoOpFieldNameValidator;
 import com.mongodb.lang.Nullable;
-import org.bson.BsonArray;
-import org.bson.BsonDocument;
-import org.bson.BsonInt64;
-import org.bson.BsonString;
-import org.bson.FieldNameValidator;
-import org.bson.codecs.BsonDocumentCodec;
 
 import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.StampedLock;
-import java.util.function.Consumer;
-import java.util.function.Supplier;
 
 import static com.mongodb.assertions.Assertions.assertNotNull;
 import static com.mongodb.assertions.Assertions.assertNull;
 import static com.mongodb.assertions.Assertions.assertTrue;
 import static com.mongodb.assertions.Assertions.fail;
+import static com.mongodb.assertions.Assertions.notNull;
 import static com.mongodb.internal.Locks.withLock;
-import static java.util.Collections.singletonList;
+import static com.mongodb.internal.operation.CommandBatchCursorHelper.MESSAGE_IF_CONCURRENT_OPERATION;
 
 /**
- * This class maintains all resources that must be released in {@link CommandBatchCursor#close()}.
- * It also implements a {@linkplain #doClose() deferred close action} such that it is totally ordered with other operations of
- * {@link CommandBatchCursor} (methods {@link #tryStartOperation()}/{@link #endOperation()} must be used properly to enforce the order)
- * despite the method {@link CommandBatchCursor#close()} being called concurrently with those operations.
+ * This is the resource manager for {@link CommandBatchCursor} or {@link AsyncCommandBatchCursor} implementations.
+ * <p>
+ * This class maintains all resources that must be released in {@link CommandBatchCursor#close()} /
+ * {@link AsyncCommandBatchCursor#close()}. The abstract {@linkplain #doClose() deferred close action} is such that it is totally
+ * ordered with other operations of {@link CommandBatchCursor} / {@link AsyncCommandBatchCursor} (methods {@link #tryStartOperation()}/
+ * {@link #endOperation()} must be used properly to enforce the order) despite the method {@link CommandBatchCursor#close()} /
+ * {@link AsyncCommandBatchCursor#close()} being called concurrently with those operations.
+ * <p>
  * This total order induces the happens-before order.
  * <p>
- * The deferred close action does not violate externally observable idempotence of {@link CommandBatchCursor#close()},
- * because {@link CommandBatchCursor#close()} is allowed to release resources "eventually".
+ * The deferred close action does not violate externally observable idempotence of {@link CommandBatchCursor#close()} /
+ * {@link AsyncCommandBatchCursor#close()}, because the close method is allowed to release resources "eventually".
  * <p>
  * Only methods explicitly documented as thread-safe are thread-safe,
  * others are not and rely on the total order mentioned above.
  */
 @ThreadSafe
-final class CursorResourceManager {
-
-    private static final FieldNameValidator NO_OP_FIELD_NAME_VALIDATOR = new NoOpFieldNameValidator();
-
-    private final MongoNamespace namespace;
+abstract class CursorResourceManager<CS extends ReferenceCounted, C extends ReferenceCounted> {
     private final Lock lock;
+    private final MongoNamespace namespace;
     private volatile State state;
     @Nullable
-    private volatile ConnectionSource connectionSource;
+    private volatile CS connectionSource;
     @Nullable
-    private volatile Connection pinnedConnection;
+    private volatile C pinnedConnection;
     @Nullable
     private volatile ServerCursor serverCursor;
     private volatile boolean skipReleasingServerResourcesOnClose;
 
-    CursorResourceManager(final MongoNamespace namespace, @Nullable final ConnectionSource connectionSource,
-            @Nullable final Connection connectionToPin, @Nullable final ServerCursor serverCursor) {
-        this.namespace = namespace;
-        lock = new StampedLock().asWriteLock();
-        state = State.IDLE;
+    CursorResourceManager(
+            final Lock lock,
+            final MongoNamespace namespace,
+            final CS connectionSource,
+            @Nullable final C connectionToPin,
+            @Nullable final ServerCursor serverCursor) {
+        this.lock = notNull("lock", lock);
+        this.namespace = notNull("mongoNamespace", namespace);
+        this.state = State.IDLE;
         if (serverCursor != null) {
-            this.connectionSource = (assertNotNull(connectionSource)).retain();
+            connectionSource.retain();
+            this.connectionSource = notNull("connectionSource", connectionSource);
             if (connectionToPin != null) {
-                this.pinnedConnection = connectionToPin.retain();
-                connectionToPin.markAsPinned(Connection.PinningMode.CURSOR);
+                connectionToPin.retain();
+                markAsPinned(connectionToPin, Connection.PinningMode.CURSOR);
+                this.pinnedConnection = connectionToPin;
             }
         }
-        skipReleasingServerResourcesOnClose = false;
+        this.skipReleasingServerResourcesOnClose = false;
         this.serverCursor = serverCursor;
     }
 
+    public MongoNamespace getNamespace() {
+        return namespace;
+    }
+
+    public State getState() {
+        return state;
+    }
+
     @Nullable
-    public ConnectionSource getConnectionSource() {
+    public CS getConnectionSource() {
         return connectionSource;
     }
+
+    @Nullable
+    public C getPinnedConnection() {
+        return pinnedConnection;
+    }
+
+    public boolean isSkipReleasingServerResourcesOnClose() {
+        return skipReleasingServerResourcesOnClose;
+    }
+
+    @SuppressWarnings("SameParameterValue")
+    abstract void markAsPinned(C connectionToPin, Connection.PinningMode pinningMode);
 
     /**
      * Thread-safe.
@@ -103,30 +120,12 @@ final class CursorResourceManager {
 
     /**
      * Thread-safe.
-     * Executes {@code operation} within the {@link #tryStartOperation()}/{@link #endOperation()} bounds.
-     *
-     * @throws IllegalStateException If {@linkplain CommandBatchCursor#close() closed}.
-     */
-    @Nullable
-    <R> R execute(final String exceptionMessageIfClosed, final Supplier<R> operation) throws IllegalStateException {
-        if (!tryStartOperation()) {
-            throw new IllegalStateException(exceptionMessageIfClosed);
-        }
-        try {
-            return operation.get();
-        } finally {
-            endOperation();
-        }
-    }
-
-    /**
-     * Thread-safe.
      * Returns {@code true} iff started an operation.
      * If {@linkplain #operable() closed}, then returns false, otherwise completes abruptly.
      *
      * @throws IllegalStateException Iff another operation is in progress.
      */
-    private boolean tryStartOperation() throws IllegalStateException {
+    boolean tryStartOperation() throws IllegalStateException {
         return withLock(lock, () -> {
             State localState = state;
             if (!localState.operable()) {
@@ -135,7 +134,7 @@ final class CursorResourceManager {
                 state = State.OPERATION_IN_PROGRESS;
                 return true;
             } else if (localState == State.OPERATION_IN_PROGRESS) {
-                throw new IllegalStateException("Another operation is currently in progress, concurrent operations are not supported");
+                throw new IllegalStateException(MESSAGE_IF_CONCURRENT_OPERATION);
             } else {
                 throw fail(state.toString());
             }
@@ -145,18 +144,18 @@ final class CursorResourceManager {
     /**
      * Thread-safe.
      */
-    private void endOperation() {
+    void endOperation() {
         boolean doClose = withLock(lock, () -> {
             State localState = state;
             if (localState == State.OPERATION_IN_PROGRESS) {
                 state = State.IDLE;
-                return false;
             } else if (localState == State.CLOSE_PENDING) {
                 state = State.CLOSED;
                 return true;
-            } else {
+            } else if (localState != State.CLOSED) {
                 throw fail(localState.toString());
             }
+            return false;
         });
         if (doClose) {
             doClose();
@@ -171,7 +170,6 @@ final class CursorResourceManager {
             State localState = state;
             if (localState == State.OPERATION_IN_PROGRESS) {
                 state = State.CLOSE_PENDING;
-                return false;
             } else if (localState != State.CLOSED) {
                 state = State.CLOSED;
                 return true;
@@ -187,59 +185,16 @@ final class CursorResourceManager {
      * This method is never executed concurrently with either itself or other operations
      * demarcated by {@link #tryStartOperation()}/{@link #endOperation()}.
      */
-    private void doClose() {
-        try {
-            if (skipReleasingServerResourcesOnClose) {
-                serverCursor = null;
-            } else if (serverCursor != null) {
-                Connection connection = connection();
-                try {
-                    releaseServerResources(connection);
-                } finally {
-                    connection.release();
-                }
-            }
-        } catch (MongoException e) {
-            // ignore exceptions when releasing server resources
-        } finally {
-            // guarantee that regardless of exceptions, `serverCursor` is null and client resources are released
-            serverCursor = null;
-            releaseClientResources();
-        }
-    }
+    abstract void doClose();
 
-    void onCorruptedConnection(final Connection corruptedConnection) {
-        assertTrue(state.inProgress());
+    void onCorruptedConnection(@Nullable final C corruptedConnection, final MongoSocketException e) {
         // if `pinnedConnection` is corrupted, then we cannot kill `serverCursor` via such a connection
-        Connection localPinnedConnection = pinnedConnection;
+        C localPinnedConnection = pinnedConnection;
         if (localPinnedConnection != null) {
-            assertTrue(corruptedConnection == localPinnedConnection);
-            skipReleasingServerResourcesOnClose = true;
-        }
-    }
-
-    void executeWithConnection(final Consumer<Connection> action) {
-        Connection connection = connection();
-        try {
-            action.accept(connection);
-        } catch (MongoSocketException e) {
-            try {
-                onCorruptedConnection(connection);
-            } catch (Exception suppressed) {
-                e.addSuppressed(suppressed);
+            if (corruptedConnection != localPinnedConnection) {
+                e.addSuppressed(new AssertionError("Corrupted connection does not equal the pinned connection."));
             }
-            throw e;
-        } finally {
-            connection.release();
-        }
-    }
-
-    private Connection connection() {
-        assertTrue(state != State.IDLE);
-        if (pinnedConnection == null) {
-            return assertNotNull(connectionSource).getConnection();
-        } else {
-            return assertNotNull(pinnedConnection).retain();
+            skipReleasingServerResourcesOnClose = true;
         }
     }
 
@@ -247,7 +202,7 @@ final class CursorResourceManager {
      * Thread-safe.
      */
     @Nullable
-    ServerCursor serverCursor() {
+    ServerCursor getServerCursor() {
         return serverCursor;
     }
 
@@ -262,52 +217,25 @@ final class CursorResourceManager {
         }
     }
 
-
-    void releaseServerAndClientResources(final Connection connection) {
-        try {
-            releaseServerResources(assertNotNull(connection));
-        } finally {
-            releaseClientResources();
-        }
+    void unsetServerCursor() {
+        this.serverCursor = null;
     }
 
-    private void releaseServerResources(final Connection connection) {
-        try {
-            ServerCursor localServerCursor = serverCursor;
-            if (localServerCursor != null) {
-                killServerCursor(namespace, localServerCursor, assertNotNull(connection));
-            }
-        } finally {
-            serverCursor = null;
-        }
-    }
-
-    private void killServerCursor(final MongoNamespace namespace, final ServerCursor serverCursor, final Connection connection) {
-        connection.command(namespace.getDatabaseName(), asKillCursorsCommandDocument(namespace, serverCursor),
-                NO_OP_FIELD_NAME_VALIDATOR, ReadPreference.primary(), new BsonDocumentCodec(),
-                assertNotNull(connectionSource).getOperationContext());
-    }
-
-    private BsonDocument asKillCursorsCommandDocument(final MongoNamespace namespace, final ServerCursor serverCursor) {
-        return new BsonDocument("killCursors", new BsonString(namespace.getCollectionName()))
-                .append("cursors", new BsonArray(singletonList(new BsonInt64(serverCursor.getId()))));
-    }
-
-    private void releaseClientResources() {
+    void releaseClientResources() {
         assertNull(serverCursor);
-        ConnectionSource localConnectionSource = connectionSource;
+        CS localConnectionSource = connectionSource;
         if (localConnectionSource != null) {
             localConnectionSource.release();
             connectionSource = null;
         }
-        Connection localPinnedConnection = pinnedConnection;
+        C localPinnedConnection = pinnedConnection;
         if (localPinnedConnection != null) {
             localPinnedConnection.release();
             pinnedConnection = null;
         }
     }
 
-    private enum State {
+    enum State {
         IDLE(true, false),
         OPERATION_IN_PROGRESS(true, true),
         /**

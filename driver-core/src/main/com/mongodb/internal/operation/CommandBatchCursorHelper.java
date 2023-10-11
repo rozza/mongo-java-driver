@@ -20,10 +20,12 @@ import com.mongodb.MongoCommandException;
 import com.mongodb.MongoCursorNotFoundException;
 import com.mongodb.MongoNamespace;
 import com.mongodb.MongoQueryException;
+import com.mongodb.ServerAddress;
 import com.mongodb.ServerCursor;
 import com.mongodb.connection.ConnectionDescription;
 import com.mongodb.internal.validator.NoOpFieldNameValidator;
 import com.mongodb.lang.Nullable;
+import org.bson.BsonArray;
 import org.bson.BsonDocument;
 import org.bson.BsonInt32;
 import org.bson.BsonInt64;
@@ -33,7 +35,10 @@ import org.bson.FieldNameValidator;
 
 import static com.mongodb.internal.operation.CursorHelper.getNumberToReturn;
 import static com.mongodb.internal.operation.DocumentHelper.putIfNotNull;
+import static com.mongodb.internal.operation.OperationHelper.LOGGER;
 import static com.mongodb.internal.operation.ServerVersionHelper.serverIsAtLeastVersionFourDotFour;
+import static java.lang.String.format;
+import static java.util.Collections.singletonList;
 
 final class CommandBatchCursorHelper {
 
@@ -64,6 +69,23 @@ final class CommandBatchCursorHelper {
         }
         return document;
     }
+
+    static <T> CommandCursorResult<T> getCommandCursorResult(final ServerAddress serverAddress, final String fieldNameContainingBatch,
+            final BsonDocument commandCursorDocument) {
+        CommandCursorResult<T> commandCursorResult = new CommandCursorResult<>(serverAddress, fieldNameContainingBatch,
+                commandCursorDocument);
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug(format("Received batch of %d documents with cursorId %d from server %s", commandCursorResult.getResults().size(),
+                    commandCursorResult.getCursorId(), commandCursorResult.getServerAddress()));
+        }
+        return commandCursorResult;
+    }
+
+    static BsonDocument getKillCursorsCommand(final MongoNamespace namespace, final ServerCursor serverCursor) {
+        return new BsonDocument("killCursors", new BsonString(namespace.getCollectionName()))
+                .append("cursors", new BsonArray(singletonList(new BsonInt64(serverCursor.getId()))));
+    }
+
 
     static MongoQueryException translateCommandException(final MongoCommandException commandException, final ServerCursor cursor) {
         if (commandException.getErrorCode() == 43) {
