@@ -86,7 +86,7 @@ class ListCollectionsOperationSpecification extends OperationFunctionalSpecifica
         cursor.next(callback)
 
         then:
-        callback.get() == null
+        callback.get() == []
 
         cleanup:
         collectionHelper.dropDatabase(madeUpDatabase)
@@ -382,7 +382,7 @@ class ListCollectionsOperationSpecification extends OperationFunctionalSpecifica
         cursor.getBatchSize() == 2
 
         cleanup:
-        consumeAsyncResults(cursor)
+        cursor?.close()
     }
 
     @IgnoreIf({ isSharded() })

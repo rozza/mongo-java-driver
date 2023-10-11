@@ -41,7 +41,7 @@ import spock.lang.Specification
 
 import static OperationUnitSpecification.getMaxWireVersionForServerVersion
 import static com.mongodb.ReadPreference.primary
-
+import static com.mongodb.internal.operation.CommandBatchCursorHelper.MESSAGE_IF_CLOSED_AS_CURSOR
 
 class AsyncCommandBatchCursorSpecification extends Specification {
 
@@ -49,7 +49,6 @@ class AsyncCommandBatchCursorSpecification extends Specification {
         given:
         def connection = referenceCountedAsyncConnection()
         def connectionSource = getAsyncConnectionSource(connection)
-
         def cursor = new AsyncCommandBatchCursor<Document>(createCommandResult([], 42), 0, batchSize, maxTimeMS, CODEC,
                 null, connectionSource, connection)
         def expectedCommand = new BsonDocument('getMore': new BsonInt64(CURSOR_ID))
@@ -70,7 +69,7 @@ class AsyncCommandBatchCursorSpecification extends Specification {
         1 * connection.commandAsync(NAMESPACE.getDatabaseName(), expectedCommand, *_) >> {
             it.last().onResult(reply, null)
         }
-        batch == null
+        batch.isEmpty()
 
         then:
         !cursor.isClosed()
@@ -138,7 +137,7 @@ class AsyncCommandBatchCursorSpecification extends Specification {
 
         then:
         def exception = thrown(MongoException)
-        exception.getMessage() == 'next() called after the cursor was closed.'
+        exception.getMessage() == MESSAGE_IF_CLOSED_AS_CURSOR
     }
 
     def 'should respect the limit'() {
@@ -178,20 +177,14 @@ class AsyncCommandBatchCursorSpecification extends Specification {
         1 * connectionB.commandAsync(*_) >> {
             connectionB.getCount() == 1
             connectionSource.getCount() == 1
-            it.last().onResult(getMoreResponse(thirdBatch, 0), null)
+                it.last().onResult(getMoreResponse(thirdBatch, 0), null)
         }
 
         then:
         batch == thirdBatch
         connectionB.getCount() == 0
         connectionSource.getCount() == 0
-
-        when:
-        batch = nextBatch(cursor)
-
-        then:
-        batch == null
-        connectionSource.getCount() == 0
+        cursor.isClosed()
     }
 
 
@@ -223,23 +216,25 @@ class AsyncCommandBatchCursorSpecification extends Specification {
 
     def 'should handle getMore when there are empty results but there is a cursor'() {
         given:
-        def connection = referenceCountedAsyncConnection(serverVersion)
-        def connectionSource = getAsyncConnectionSource(connection)
+        def connectionA = referenceCountedAsyncConnection(serverVersion, 'connectionA')
+        def connectionB = referenceCountedAsyncConnection(serverVersion, 'connectionB')
+        def connectionSource = getAsyncConnectionSource(connectionA, connectionB)
 
         when:
         def firstBatch = createCommandResult([], CURSOR_ID)
-        def cursor = new AsyncCommandBatchCursor<Document>(firstBatch, 3, 0, 0, CODEC, null, connectionSource, connection)
+        def cursor = new AsyncCommandBatchCursor<Document>(firstBatch, 3, 0, 0, CODEC,
+                null, connectionSource, connectionA)
         def batch = nextBatch(cursor)
 
         then:
-        1 * connection.commandAsync(*_) >> {
-            connection.getCount() == 1
+        1 * connectionA.commandAsync(*_) >> {
+            connectionA.getCount() == 1
             connectionSource.getCount() == 1
             it.last().onResult(response, null)
         }
 
-        1 * connection.commandAsync(*_) >> {
-            connection.getCount() == 1
+        1 * connectionB.commandAsync(*_) >> {
+            connectionB.getCount() == 1
             connectionSource.getCount() == 1
             it.last().onResult(response2, null)
         }
@@ -248,14 +243,16 @@ class AsyncCommandBatchCursorSpecification extends Specification {
         batch == SECOND_BATCH
 
         then:
-        connection.getCount() == 0
+        connectionA.getCount() == 0
+        connectionB.getCount() == 0
         connectionSource.getCount() == 0
 
         when:
         cursor.close()
 
         then:
-        0 * connection._
+        0 * connectionA._
+        0 * connectionB._
         connectionSource.getCount() == 0
 
         where:
@@ -338,13 +335,15 @@ class AsyncCommandBatchCursorSpecification extends Specification {
 
         then:
         connectionA.getCount() == 0
+        connectionB.getCount() == 0
+        connectionSource.getCount() == 0
         cursor.isClosed()
 
         where:
         response               | serverType               | numberOfInvocations
         getMoreResponse([])    | ServerType.LOAD_BALANCER | 2
         getMoreResponse([], 0) | ServerType.LOAD_BALANCER | 1
-        getMoreResponse([])    | ServerType.STANDALONE    | 1
+        getMoreResponse([])    | ServerType.STANDALONE    | 2
         getMoreResponse([], 0) | ServerType.STANDALONE    | 1
     }
 

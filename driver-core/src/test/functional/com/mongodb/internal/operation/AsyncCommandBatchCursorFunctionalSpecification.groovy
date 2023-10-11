@@ -377,7 +377,7 @@ class AsyncCommandBatchCursorFunctionalSpecification extends OperationFunctional
         nextBatch().size() == 3
         nextBatch().size() == 2
         nextBatch().size() == 1
-        !nextBatch()
+        cursor.isClosed()
     }
 
     @IgnoreIf({ isSharded() })
