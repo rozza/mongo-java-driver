@@ -170,7 +170,7 @@ final class ChangeStreamBatchCursor<T> implements AggregateResponseBatchCursor<T
                                                final Decoder<T> decoder,
                                                final Consumer<BsonDocument> lastIdConsumer) {
         List<T> results = null;
-        if (rawDocuments != null) {
+        if (rawDocuments != null && !rawDocuments.isEmpty()) {
             results = new ArrayList<>();
             for (RawBsonDocument rawDocument : rawDocuments) {
                 if (!rawDocument.containsKey("_id")) {

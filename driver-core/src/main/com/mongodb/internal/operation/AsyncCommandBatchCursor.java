@@ -19,55 +19,55 @@ package com.mongodb.internal.operation;
 import com.mongodb.MongoCommandException;
 import com.mongodb.MongoException;
 import com.mongodb.MongoNamespace;
+import com.mongodb.MongoSocketException;
 import com.mongodb.ReadPreference;
 import com.mongodb.ServerAddress;
 import com.mongodb.ServerCursor;
-import com.mongodb.connection.ConnectionDescription;
+import com.mongodb.annotations.ThreadSafe;
 import com.mongodb.connection.ServerType;
+import com.mongodb.internal.VisibleForTesting;
 import com.mongodb.internal.async.AsyncAggregateResponseBatchCursor;
 import com.mongodb.internal.async.SingleResultCallback;
+import com.mongodb.internal.async.function.AsyncCallbackSupplier;
 import com.mongodb.internal.binding.AsyncConnectionSource;
 import com.mongodb.internal.connection.AsyncConnection;
 import com.mongodb.internal.connection.Connection;
-import com.mongodb.internal.diagnostics.logging.Logger;
-import com.mongodb.internal.diagnostics.logging.Loggers;
-import com.mongodb.internal.validator.NoOpFieldNameValidator;
 import com.mongodb.lang.Nullable;
 import org.bson.BsonArray;
 import org.bson.BsonDocument;
-import org.bson.BsonInt32;
 import org.bson.BsonInt64;
 import org.bson.BsonString;
 import org.bson.BsonTimestamp;
 import org.bson.BsonValue;
-import org.bson.FieldNameValidator;
 import org.bson.codecs.BsonDocumentCodec;
 import org.bson.codecs.Decoder;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Consumer;
 
-import static com.mongodb.assertions.Assertions.assertFalse;
 import static com.mongodb.assertions.Assertions.assertNotNull;
+import static com.mongodb.assertions.Assertions.assertNull;
+import static com.mongodb.assertions.Assertions.assertTrue;
+import static com.mongodb.assertions.Assertions.fail;
 import static com.mongodb.assertions.Assertions.isTrueArgument;
 import static com.mongodb.assertions.Assertions.notNull;
-import static com.mongodb.internal.Locks.withLock;
-import static com.mongodb.internal.async.ErrorHandlingResultCallback.errorHandlingCallback;
 import static com.mongodb.internal.operation.CommandBatchCursorHelper.FIRST_BATCH;
+import static com.mongodb.internal.operation.CommandBatchCursorHelper.MESSAGE_IF_CLOSED_AS_CURSOR;
+import static com.mongodb.internal.operation.CommandBatchCursorHelper.MESSAGE_IF_CONCURRENT_OPERATION;
 import static com.mongodb.internal.operation.CommandBatchCursorHelper.NEXT_BATCH;
-import static com.mongodb.internal.operation.CursorHelper.getNumberToReturn;
-import static com.mongodb.internal.operation.DocumentHelper.putIfNotNull;
-import static com.mongodb.internal.operation.QueryHelper.translateCommandException;
-import static com.mongodb.internal.operation.ServerVersionHelper.serverIsAtLeastVersionFourDotFour;
+import static com.mongodb.internal.operation.CommandBatchCursorHelper.NO_OP_FIELD_NAME_VALIDATOR;
+import static com.mongodb.internal.operation.CommandBatchCursorHelper.getMoreCommandDocument;
+import static com.mongodb.internal.operation.CommandBatchCursorHelper.translateCommandException;
+import static com.mongodb.internal.operation.OperationHelper.LOGGER;
 import static java.lang.String.format;
+import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 
 class AsyncCommandBatchCursor<T> implements AsyncAggregateResponseBatchCursor<T> {
-    private static final Logger LOGGER = Loggers.getLogger("operation");
-    private static final FieldNameValidator NO_OP_FIELD_NAME_VALIDATOR = new NoOpFieldNameValidator();
 
     private final MongoNamespace namespace;
     private final int limit;
@@ -75,25 +75,14 @@ class AsyncCommandBatchCursor<T> implements AsyncAggregateResponseBatchCursor<T>
     private final long maxTimeMS;
     @Nullable
     private final BsonValue comment;
-    private final BsonTimestamp operationTime;
-    private final boolean firstBatchEmpty;
-    private final int maxWireVersion;
 
-    private final AtomicReference<ServerCursor> cursor;
     private final AtomicInteger count = new AtomicInteger();
-
-    private volatile AsyncConnectionSource connectionSource;
-    private volatile AsyncConnection pinnedConnection;
-    private volatile CommandCursorResult<T> initialCommandCursorResult;
-    private volatile int batchSize;
-    private volatile BsonDocument postBatchResumeToken;
-
-    private final Lock lock = new ReentrantLock();
-    /* protected by `lock` */
-    private boolean isOperationInProgress = false;
-    private boolean isClosed = false;
-    /* protected by `lock` */
-    private volatile boolean isClosePending = false;
+    private final AtomicBoolean processedInitial = new AtomicBoolean();
+    private final int maxWireVersion;
+    private final boolean firstBatchEmpty;
+    private final ResourceManager resourceManager;
+    private volatile CommandCursorResult<T> commandCursorResult;
+    private int batchSize;
 
     AsyncCommandBatchCursor(
             final ServerAddress serverAddress,
@@ -104,118 +93,86 @@ class AsyncCommandBatchCursor<T> implements AsyncAggregateResponseBatchCursor<T>
             final AsyncConnectionSource connectionSource,
             final AsyncConnection connection) {
         isTrueArgument("maxTimeMS >= 0", maxTimeMS >= 0);
-        this.cursor = new AtomicReference<>();
-        this.initialCommandCursorResult = initFromCommandCursorDocument(serverAddress, FIRST_BATCH, commandCursorDocument);
-        this.namespace = initialCommandCursorResult.getNamespace();
+        CommandCursorResult<T> commandCursor = initFromCommandCursorDocument(serverAddress, FIRST_BATCH, commandCursorDocument);
+        this.namespace = commandCursor.getNamespace();
         this.limit = limit;
         this.batchSize = batchSize;
         this.maxTimeMS = maxTimeMS;
-        this.decoder = decoder;
+        this.decoder = notNull("decoder", decoder);
         this.comment = comment;
         this.maxWireVersion = connection.getDescription().getMaxWireVersion();
-        this.firstBatchEmpty = initialCommandCursorResult.getResults().isEmpty();
+        this.firstBatchEmpty = commandCursor.getResults().isEmpty();
 
-        this.operationTime = initialCommandCursorResult.getOperationTime();
-        if (cursor.get() != null) {
-            this.connectionSource = notNull("connectionSource", connectionSource).retain();
-            assertNotNull(connection);
-            if (limitReached()) {
-                killCursor(connection);
-            } else {
-                if (connectionSource.getServerDescription().getType() == ServerType.LOAD_BALANCER) {
-                    this.pinnedConnection = connection.retain();
-                    this.pinnedConnection.markAsPinned(Connection.PinningMode.CURSOR);
-                }
-            }
+        AsyncConnection connectionToPin = null;
+        boolean releaseServerAndResources = false;
+        if (limitReached()) {
+            releaseServerAndResources = true;
+        } else if (connectionSource.getServerDescription().getType() == ServerType.LOAD_BALANCER) {
+            connectionToPin = connection;
         }
-        logQueryResult(initialCommandCursorResult);
-    }
 
-    /**
-     * {@inheritDoc}
-     * <p>
-     * From the perspective of the code external to this class, this method is idempotent as required by its specification.
-     * However, if this method sets {@link #isClosePending},
-     * then it must be called by {@code this} again to release resources.
-     * This behavior does not violate externally observable idempotence because this method is allowed to release resources "eventually".
-     */
-    @Override
-    public void close() {
-        boolean doClose = withLock(lock, () -> {
-            if (isOperationInProgress) {
-                isClosePending = true;
-                return false;
-            } else if (!isClosed) {
-                isClosed = true;
-                isClosePending = false;
-                return true;
-            }
-            return false;
-        });
-
-        if (doClose) {
-            killCursorOnClose();
+        resourceManager = new ResourceManager(connectionSource, connectionToPin, commandCursor.getServerCursor());
+        if (releaseServerAndResources) {
+            resourceManager.releaseServerAndClientResources(connection);
         }
     }
 
     @Override
     public void next(final SingleResultCallback<List<T>> callback) {
         if (isClosed()) {
-            callback.onResult(null, new MongoException("next() called after the cursor was closed."));
-        } else if (initialCommandCursorResult != null && !firstBatchEmpty) {
-            // May be empty for a tailable cursor
-            List<T> results = initialCommandCursorResult.getResults();
-            initialCommandCursorResult = null;
-            if (getServerCursor() == null) {
+            callback.onResult(null, new MongoException(MESSAGE_IF_CLOSED_AS_CURSOR));
+            return;
+        } else if (!resourceManager.tryStartOperation()) {
+            callback.onResult(null, new MongoException(MESSAGE_IF_CONCURRENT_OPERATION));
+            return;
+        }
+
+        ServerCursor localServerCursor = resourceManager.getServerCursor();
+        boolean cursorClosed = localServerCursor == null;
+        List<T> batchResults = emptyList();
+        if (!processedInitial.getAndSet(true) && !firstBatchEmpty) {
+            batchResults = commandCursorResult.getResults();
+        }
+
+        if (cursorClosed || !batchResults.isEmpty()) {
+            resourceManager.endOperation();
+            if (cursorClosed) {
                 close();
             }
-            callback.onResult(results, null);
+            callback.onResult(batchResults, null);
         } else {
-            ServerCursor localCursor = getServerCursor();
-            if (localCursor == null) {
-                close();
-                callback.onResult(null, null);
-            } else {
-                boolean doGetMore = withLock(lock, () ->  {
-                    if (isClosed()) {
-                        callback.onResult(null, new MongoException("next() called after the cursor was closed."));
-                        return false;
-                    }
-                    isOperationInProgress = true;
-                    return true;
-                });
-                if (doGetMore) {
-                    getMore(localCursor, callback);
-                }
-            }
+            getMore(localServerCursor, callback);
         }
     }
 
     @Override
     public void setBatchSize(final int batchSize) {
-        assertFalse(isClosed());
         this.batchSize = batchSize;
     }
 
     @Override
     public int getBatchSize() {
-        assertFalse(isClosed());
         return batchSize;
     }
 
     @Override
     public boolean isClosed() {
-        return withLock(lock, () ->  isClosed || isClosePending);
+        return !resourceManager.operable();
+    }
+
+    @Override
+    public void close() {
+        resourceManager.close();
     }
 
     @Override
     public BsonDocument getPostBatchResumeToken() {
-        return postBatchResumeToken;
+        return commandCursorResult.getPostBatchResumeToken();
     }
 
     @Override
     public BsonTimestamp getOperationTime() {
-        return operationTime;
+        return commandCursorResult.getOperationTime();
     }
 
     @Override
@@ -228,134 +185,60 @@ class AsyncCommandBatchCursor<T> implements AsyncAggregateResponseBatchCursor<T>
         return maxWireVersion;
     }
 
-    private boolean limitReached() {
-        return Math.abs(limit) != 0 && count.get() >= Math.abs(limit);
+    @Nullable
+    @VisibleForTesting(otherwise = VisibleForTesting.AccessModifier.PRIVATE)
+    ServerCursor getServerCursor() {
+        return resourceManager.getServerCursor();
     }
 
     private void getMore(final ServerCursor cursor, final SingleResultCallback<List<T>> callback) {
-        if (pinnedConnection != null)  {
-            getMore(pinnedConnection.retain(), cursor, callback);
-        } else {
-            connectionSource.getConnection((connection, t) -> {
-                if (t != null) {
-                    endOperationInProgress();
-                    callback.onResult(null, t);
-                } else {
-                    getMore(assertNotNull(connection), cursor, callback);
-                }
-            });
-        }
+        resourceManager.executeWithConnection(connection -> getMore(connection, cursor, callback), callback);
     }
 
     private void getMore(final AsyncConnection connection, final ServerCursor cursor, final SingleResultCallback<List<T>> callback) {
-        connection.commandAsync(namespace.getDatabaseName(), asGetMoreCommandDocument(cursor.getId(), connection.getDescription()),
-                NO_OP_FIELD_NAME_VALIDATOR, ReadPreference.primary(), CommandResultDocumentCodec.create(decoder, "nextBatch"),
-                connectionSource.getOperationContext(), new CommandResultSingleResultCallback(connection, cursor, callback));
-   }
-
-    private BsonDocument asGetMoreCommandDocument(final long cursorId, final ConnectionDescription connectionDescription) {
-        BsonDocument document = new BsonDocument("getMore", new BsonInt64(cursorId))
-                .append("collection", new BsonString(namespace.getCollectionName()));
-
-        int batchSizeForGetMoreCommand = Math.abs(getNumberToReturn(limit, this.batchSize, count.get()));
-        if (batchSizeForGetMoreCommand != 0) {
-            document.append("batchSize", new BsonInt32(batchSizeForGetMoreCommand));
-        }
-        if (maxTimeMS != 0) {
-            document.append("maxTimeMS", new BsonInt64(maxTimeMS));
-        }
-        if (serverIsAtLeastVersionFourDotFour(connectionDescription)) {
-            putIfNotNull(document, "comment", comment);
-        }
-        return document;
-    }
-
-    private void killCursorOnClose() {
-        ServerCursor localCursor = getServerCursor();
-        if (localCursor != null) {
-            if (pinnedConnection != null) {
-                killCursorAsynchronouslyAndReleaseConnectionAndSource(pinnedConnection, localCursor);
-            } else {
-                connectionSource.getConnection((connection, t) -> {
+        connection.commandAsync(namespace.getDatabaseName(),
+                getMoreCommandDocument(cursor.getId(), connection.getDescription(), namespace,
+                        limit, batchSize, count.get(), maxTimeMS, comment),
+                NO_OP_FIELD_NAME_VALIDATOR, ReadPreference.primary(),
+                CommandResultDocumentCodec.create(decoder, NEXT_BATCH),
+                assertNotNull(resourceManager.getConnectionSource()).getOperationContext(),
+                (commandResult, t) -> {
                     if (t != null) {
-                        connectionSource.release();
+                        Throwable translatedException =
+                                t instanceof MongoCommandException
+                                        ? translateCommandException((MongoCommandException) t, cursor)
+                                        : t;
+
+                        connection.release();
+                        resourceManager.endOperation();
+                        callback.onResult(null, translatedException);
+                        return;
+                    }
+
+                    CommandCursorResult<T> commandCursor =
+                            initFromCommandCursorDocument(connection.getDescription().getServerAddress(), NEXT_BATCH, assertNotNull(commandResult));
+                    resourceManager.setServerCursor(commandCursor.getServerCursor());
+
+                    if (!resourceManager.operable()) {
+                        resourceManager.releaseServerAndClientResources(connection);
+                        connection.release();
+                        callback.onResult(emptyList(), null);
+                        return;
+                    }
+
+                    if (commandCursor.getResults().isEmpty() && commandCursor.getServerCursor() != null) {
+                        connection.release();
+                        getMore(commandCursor.getServerCursor(), callback);
                     } else {
-                        killCursorAsynchronouslyAndReleaseConnectionAndSource(assertNotNull(connection), localCursor);
+                        resourceManager.endOperation();
+                        if (limitReached()) {
+                            resourceManager.releaseServerAndClientResources(connection);
+                            close();
+                        }
+                        connection.release();
+                        callback.onResult(commandCursor.getResults(), null);
                     }
                 });
-            }
-        } else if (pinnedConnection != null) {
-            pinnedConnection.release();
-        }
-    }
-
-    private void killCursor(final AsyncConnection connection) {
-        ServerCursor localCursor = cursor.getAndSet(null);
-        if (localCursor != null) {
-            killCursorAsynchronouslyAndReleaseConnectionAndSource(connection.retain(), localCursor);
-        } else {
-            connectionSource.release();
-        }
-    }
-
-    private void killCursorAsynchronouslyAndReleaseConnectionAndSource(final AsyncConnection connection, final ServerCursor localCursor) {
-        connection.commandAsync(namespace.getDatabaseName(), asKillCursorsCommandDocument(localCursor), NO_OP_FIELD_NAME_VALIDATOR,
-                ReadPreference.primary(), new BsonDocumentCodec(), connectionSource.getOperationContext(), (result, t) -> {
-                    connection.release();
-                    connectionSource.release();
-                });
-    }
-
-    private BsonDocument asKillCursorsCommandDocument(final ServerCursor localCursor) {
-        return new BsonDocument("killCursors", new BsonString(namespace.getCollectionName()))
-                .append("cursors", new BsonArray(singletonList(new BsonInt64(localCursor.getId()))));
-    }
-
-    private void endOperationInProgress() {
-        boolean closePending = withLock(lock, () -> {
-            isOperationInProgress = false;
-            return this.isClosePending;
-        });
-        if (closePending) {
-            close();
-        }
-    }
-
-
-    private void handleGetMoreQueryResult(final AsyncConnection connection, final SingleResultCallback<List<T>> callback,
-                                          final CommandCursorResult<T> result) {
-        logQueryResult(result);
-        cursor.set(result.getServerCursor());
-        if (isClosePending) {
-            try {
-                connection.release();
-                if (result.getServerCursor() == null) {
-                    connectionSource.release();
-                }
-                endOperationInProgress();
-            } finally {
-                callback.onResult(null, null);
-            }
-        } else if (result.getResults().isEmpty() && result.getServerCursor() != null) {
-            getMore(connection, assertNotNull(result.getServerCursor()), callback);
-        } else {
-            if (limitReached()) {
-                killCursor(connection);
-                connection.release();
-            } else {
-                connection.release();
-                if (result.getServerCursor() == null) {
-                    connectionSource.release();
-                }
-            }
-            endOperationInProgress();
-
-            if (result.getResults().isEmpty()) {
-                callback.onResult(null, null);
-            } else {
-                callback.onResult(result.getResults(), null);
-            }
-        }
     }
 
     private CommandCursorResult<T> initFromCommandCursorDocument(
@@ -363,52 +246,301 @@ class AsyncCommandBatchCursor<T> implements AsyncAggregateResponseBatchCursor<T>
             final String fieldNameContainingBatch,
             final BsonDocument commandCursorDocument) {
         CommandCursorResult<T> cursorResult = new CommandCursorResult<>(serverAddress, fieldNameContainingBatch, commandCursorDocument);
-        cursor.set(cursorResult.getServerCursor());
         count.addAndGet(cursorResult.getResults().size());
-        postBatchResumeToken = cursorResult.getPostBatchResumeToken();
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug(format("Received batch of %d documents with cursorId %d from server %s", cursorResult.getResults().size(),
                     cursorResult.getCursorId(), cursorResult.getServerAddress()));
         }
+        this.commandCursorResult = cursorResult;
         return cursorResult;
     }
 
-    private void logQueryResult(final CommandCursorResult<T> result) {
-        LOGGER.debug(format("Received batch of %d documents with cursorId %d from server %s", result.getResults().size(),
-                result.getCursorId(), result.getServerAddress()));
+    private boolean limitReached() {
+        return Math.abs(limit) != 0 && count.get() >= Math.abs(limit);
     }
 
-    private class CommandResultSingleResultCallback implements SingleResultCallback<BsonDocument> {
-        private final AsyncConnection connection;
-        private final ServerCursor cursor;
-        private final SingleResultCallback<List<T>> callback;
+    /**
+     * This class maintains all resources that must be released in {@link AsyncCommandBatchCursor#close()}.
+     * It also implements a {@linkplain #doClose() deferred close action} such that it is totally ordered with other operations of
+     * {@link AsyncCommandBatchCursor} (methods {@link #tryStartOperation()}/{@link #endOperation()} must be used properly to enforce the order)
+     * despite the method {@link AsyncCommandBatchCursor#close()} being called concurrently with those operations.
+     * This total order induces the happens-before order.
+     * <p>
+     * The deferred close action does not violate externally observable idempotence of {@link AsyncCommandBatchCursor#close()},
+     * because {@link AsyncCommandBatchCursor#close()} is allowed to release resources "eventually".
+     * <p>
+     * Only methods explicitly documented as thread-safe are thread-safe,
+     * others are not and rely on the total order mentioned above.
+     */
+    @ThreadSafe
+    private final class ResourceManager {
+        private final Lock lock;
+        private volatile State state = State.IDLE;
+        @Nullable
+        private volatile AsyncConnectionSource connectionSource;
+        @Nullable
+        private volatile AsyncConnection pinnedConnection;
+        @Nullable
+        private volatile ServerCursor serverCursor;
+        private volatile boolean skipReleasingServerResourcesOnClose;
 
-        CommandResultSingleResultCallback(final AsyncConnection connection, final ServerCursor cursor,
-                                          final SingleResultCallback<List<T>> callback) {
-            this.connection = connection;
-            this.cursor = cursor;
-            this.callback = errorHandlingCallback(callback, LOGGER);
+        ResourceManager(final AsyncConnectionSource connectionSource,
+                @Nullable final AsyncConnection connectionToPin,
+                @Nullable final ServerCursor serverCursor) {
+            lock = new ReentrantLock();
+            if (serverCursor != null) {
+                this.connectionSource = notNull("connectionSource", connectionSource).retain();
+                if (connectionToPin != null) {
+                    this.pinnedConnection = connectionToPin.retain();
+                    connectionToPin.markAsPinned(Connection.PinningMode.CURSOR);
+                }
+            }
+            skipReleasingServerResourcesOnClose = false;
+            this.serverCursor = serverCursor;
         }
 
-        @Override
-        public void onResult(@Nullable final BsonDocument result, @Nullable final Throwable t) {
-            if (t != null) {
-                Throwable translatedException = t instanceof MongoCommandException
-                        ? translateCommandException((MongoCommandException) t, cursor)
-                        : t;
-                connection.release();
-                endOperationInProgress();
-                callback.onResult(null, translatedException);
+        /**
+         * Thread-safe.
+         */
+        boolean operable() {
+            return state.operable();
+        }
+
+        /**
+         * Thread-safe.
+         * Returns {@code true} iff started an operation.
+         * If {@linkplain State#operable() closed}, then returns false, otherwise completes abruptly.
+         *
+         * @throws IllegalStateException Iff another operation is in progress.
+         */
+        private boolean tryStartOperation() throws IllegalStateException {
+            lock.lock();
+            try {
+                State localState = state;
+                if (!localState.operable()) {
+                    return false;
+                } else if (localState == State.IDLE) {
+                    state = State.OPERATION_IN_PROGRESS;
+                    return true;
+                } else if (localState == State.OPERATION_IN_PROGRESS) {
+                    throw new IllegalStateException(MESSAGE_IF_CONCURRENT_OPERATION);
+                } else {
+                    throw fail(state.toString());
+                }
+            } finally {
+                lock.unlock();
+            }
+        }
+
+        /**
+         * Thread-safe.
+         */
+        private void endOperation() {
+            boolean doClose = false;
+            lock.lock();
+            try {
+                State localState = state;
+                if (localState == State.OPERATION_IN_PROGRESS) {
+                    state = State.IDLE;
+                } else if (localState == State.CLOSE_PENDING) {
+                    state = State.CLOSED;
+                    doClose = true;
+                } else if (localState != State.CLOSED) {
+                    fail(localState.toString());
+                }
+            } finally {
+                lock.unlock();
+            }
+            if (doClose) {
+                doClose();
+            }
+        }
+
+        /**
+         * Thread-safe.
+         */
+        void close() {
+            boolean doClose = false;
+            lock.lock();
+            try {
+                State localState = state;
+                if (localState == State.OPERATION_IN_PROGRESS) {
+                    state = State.CLOSE_PENDING;
+                } else if (localState != State.CLOSED) {
+                    state = State.CLOSED;
+                    doClose = true;
+                }
+            } finally {
+                lock.unlock();
+            }
+            if (doClose) {
+                doClose();
+            }
+        }
+
+        /**
+         * This method is never executed concurrently with either itself or other operations
+         * demarcated by {@link #tryStartOperation()}/{@link #endOperation()}.
+         */
+        private void doClose() {
+            if (skipReleasingServerResourcesOnClose) {
+                serverCursor = null;
+            }
+
+            if (getServerCursor() != null) {
+                executeWithConnection(c -> {
+                    releaseServerAndClientResources(c);
+                    releaseServerResources(c);
+                    c.release();
+                }, (r, t) -> {
+                    // guarantee that regardless of exceptions, `serverCursor` is null and client resources are released
+                    serverCursor = null;
+                    releaseClientResources();
+                });
             } else {
-                assertNotNull(result);
-                handleGetMoreQueryResult(connection, callback,
-                        initFromCommandCursorDocument(connection.getDescription().getServerAddress(), NEXT_BATCH, result));
+                releaseClientResources();
+            }
+        }
+
+        void onCorruptedConnection(@Nullable final AsyncConnection corruptedConnection) {
+            // if `pinnedConnection` is corrupted, then we cannot kill `serverCursor` via such a connection
+            AsyncConnection localPinnedConnection = pinnedConnection;
+            if (localPinnedConnection != null) {
+                assertTrue(corruptedConnection == localPinnedConnection);
+                skipReleasingServerResourcesOnClose = true;
+            }
+        }
+
+        <R> void executeWithConnection(final Consumer<AsyncConnection> action, final SingleResultCallback<R> callback) {
+            assertTrue(state != State.IDLE);
+            if (pinnedConnection != null) {
+                executeWithConnection(assertNotNull(pinnedConnection).retain(), null, action, callback);
+            } else {
+                assertNotNull(connectionSource).getConnection((conn, t) -> executeWithConnection(conn, t, action, callback));
+            }
+        }
+
+        <R> void executeWithConnection(
+                @Nullable final AsyncConnection connection,
+                @Nullable final Throwable t,
+                final Consumer<AsyncConnection> action,
+                final SingleResultCallback<R> callback) {
+            assertTrue(connection != null || t != null);
+            if (t != null) {
+                callback.onResult(null, t);
+            } else {
+                AsyncCallbackSupplier<R> curriedFunction = c -> action.accept(connection);
+                curriedFunction.whenComplete(connection::release).get((result, error) -> {
+                    if (error instanceof MongoSocketException) {
+                        onCorruptedConnection(connection);
+                    }
+                    connection.release();
+                    callback.onResult(result, error);
+                });
+            }
+        }
+
+        /**
+         * Thread-safe.
+         */
+        @Nullable
+        ServerCursor getServerCursor() {
+            return serverCursor;
+        }
+
+        @Nullable
+        public AsyncConnectionSource getConnectionSource() {
+            return connectionSource;
+        }
+
+        void setServerCursor(@Nullable final ServerCursor serverCursor) {
+            assertTrue(state.inProgress());
+            assertNotNull(connectionSource);
+            this.serverCursor = serverCursor;
+            if (serverCursor == null) {
+                releaseClientResources();
+            }
+        }
+
+        private void releaseServerAndClientResources(final AsyncConnection connection) {
+            lock.lock();
+            ServerCursor localServerCursor = serverCursor;
+            serverCursor = null;
+            lock.unlock();
+            if (localServerCursor != null) {
+                killServerCursor(namespace, localServerCursor, connection);
+            } else {
+                releaseClientResources();
+            }
+        }
+
+        private BsonDocument asKillCursorsCommandDocument(final MongoNamespace namespace, final ServerCursor serverCursor) {
+            return new BsonDocument("killCursors", new BsonString(namespace.getCollectionName()))
+                    .append("cursors", new BsonArray(singletonList(new BsonInt64(serverCursor.getId()))));
+        }
+
+        private void releaseServerResources(final AsyncConnection connection) {
+            ServerCursor localServerCursor = serverCursor;
+            serverCursor = null;
+            if (localServerCursor != null) {
+                killServerCursor(namespace, localServerCursor, connection);
+            }
+        }
+
+        private void killServerCursor(final MongoNamespace namespace, final ServerCursor serverCursor, final AsyncConnection connection) {
+            connection.retain();
+            AsyncConnectionSource connectionSource = assertNotNull(resourceManager.connectionSource).retain();
+            connection.commandAsync(namespace.getDatabaseName(), asKillCursorsCommandDocument(namespace, serverCursor),
+                    NO_OP_FIELD_NAME_VALIDATOR, ReadPreference.primary(), new BsonDocumentCodec(),
+                    connectionSource.getOperationContext(), (r, t) -> {
+                        connectionSource.release();
+                        connection.release();
+                        releaseClientResources();
+                    });
+        }
+
+        private void releaseClientResources() {
+            assertNull(serverCursor);
+            lock.lock();
+            AsyncConnectionSource localConnectionSource = connectionSource;
+            connectionSource = null;
+
+            AsyncConnection localPinnedConnection = pinnedConnection;
+            pinnedConnection = null;
+            lock.unlock();
+
+            if (localConnectionSource != null) {
+                localConnectionSource.release();
+            }
+            if (localPinnedConnection != null) {
+                localPinnedConnection.release();
             }
         }
     }
 
-    @Nullable
-    ServerCursor getServerCursor() {
-        return cursor.get();
+    private enum State {
+        IDLE(true, false),
+        OPERATION_IN_PROGRESS(true, true),
+        /**
+         * Implies {@link #OPERATION_IN_PROGRESS}.
+         */
+        CLOSE_PENDING(false, true),
+        CLOSED(false, false);
+
+        private final boolean operable;
+        private final boolean inProgress;
+
+        State(final boolean operable, final boolean inProgress) {
+            this.operable = operable;
+            this.inProgress = inProgress;
+        }
+
+        boolean operable() {
+            return operable;
+        }
+
+        boolean inProgress() {
+            return inProgress;
+        }
     }
 }
