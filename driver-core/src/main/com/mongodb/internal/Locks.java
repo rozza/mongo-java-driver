@@ -17,6 +17,7 @@
 package com.mongodb.internal;
 
 import com.mongodb.MongoInterruptedException;
+import com.mongodb.lang.Nullable;
 
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -37,6 +38,16 @@ public final class Locks {
 
     public static <V> V withLock(final Lock lock, final Supplier<V> supplier) {
         return checkedWithLock(lock, supplier::get);
+    }
+
+    @Nullable
+    public static <V> V withLockNullable(final Lock lock, final Supplier<V> supplier) {
+        try {
+            lock.lock();
+            return supplier.get();
+        } finally {
+            lock.unlock();
+        }
     }
 
     public static <V, E extends Exception> V checkedWithLock(final Lock lock, final CheckedSupplier<V, E> supplier) throws E {

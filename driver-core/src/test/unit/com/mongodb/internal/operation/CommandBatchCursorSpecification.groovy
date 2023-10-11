@@ -334,7 +334,7 @@ class CommandBatchCursorSpecification extends Specification {
         response               | serverType               | numberOfInvocations
         getMoreResponse([])    | ServerType.LOAD_BALANCER | 2
         getMoreResponse([], 0) | ServerType.LOAD_BALANCER | 1
-        getMoreResponse([])    | ServerType.STANDALONE    | 1
+        getMoreResponse([])    | ServerType.STANDALONE    | 2
         getMoreResponse([], 0) | ServerType.STANDALONE    | 1
     }
 
