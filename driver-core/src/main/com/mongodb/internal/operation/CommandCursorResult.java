@@ -37,7 +37,6 @@ public class CommandCursorResult<T> {
     private static final String CURSOR = "cursor";
     private static final String POST_BATCH_RESUME_TOKEN = "postBatchResumeToken";
     private static final String OPERATION_TIME = "operationTime";
-    private final BsonDocument cursorDocument;
     private final ServerAddress serverAddress;
     private final List<T> results;
     private final MongoNamespace namespace;
@@ -53,7 +52,7 @@ public class CommandCursorResult<T> {
             final BsonDocument commandCursorDocument) {
         isTrue("Contains cursor", commandCursorDocument.isDocument(CURSOR));
         this.serverAddress = serverAddress;
-        this.cursorDocument = commandCursorDocument.getDocument(CURSOR);
+        BsonDocument cursorDocument = commandCursorDocument.getDocument(CURSOR);
         this.results = BsonDocumentWrapperHelper.toList(cursorDocument, fieldNameContainingBatch);
         this.namespace = new MongoNamespace(cursorDocument.getString("ns").getValue());
         this.cursorId = cursorDocument.getNumber("id").longValue();
