@@ -28,10 +28,10 @@ import com.mongodb.connection.ServerType;
 import com.mongodb.internal.VisibleForTesting;
 import com.mongodb.internal.async.AsyncAggregateResponseBatchCursor;
 import com.mongodb.internal.async.SingleResultCallback;
-import com.mongodb.internal.async.function.AsyncCallbackSupplier;
 import com.mongodb.internal.binding.AsyncConnectionSource;
 import com.mongodb.internal.connection.AsyncConnection;
 import com.mongodb.internal.connection.Connection;
+import com.mongodb.internal.operation.AsyncOperationHelper.AsyncCallableWithConnection;
 import com.mongodb.lang.Nullable;
 import org.bson.BsonArray;
 import org.bson.BsonDocument;
@@ -47,7 +47,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.function.Consumer;
 
 import static com.mongodb.assertions.Assertions.assertNotNull;
 import static com.mongodb.assertions.Assertions.assertNull;
@@ -192,7 +191,14 @@ class AsyncCommandBatchCursor<T> implements AsyncAggregateResponseBatchCursor<T>
     }
 
     private void getMore(final ServerCursor cursor, final SingleResultCallback<List<T>> callback) {
-        resourceManager.executeWithConnection(connection -> getMore(connection, cursor, callback), callback);
+        resourceManager.executeWithConnection((connection, t) -> {
+            assertTrue(connection != null || t != null);
+            if (t != null) {
+                callback.onResult(null, t);
+            } else {
+                getMore(connection, cursor, callback);
+            }
+        });
     }
 
     private void getMore(final AsyncConnection connection, final ServerCursor cursor, final SingleResultCallback<List<T>> callback) {
@@ -388,54 +394,41 @@ class AsyncCommandBatchCursor<T> implements AsyncAggregateResponseBatchCursor<T>
             }
 
             if (getServerCursor() != null) {
-                executeWithConnection(c -> {
-                    releaseServerAndClientResources(c);
-                    releaseServerResources(c);
-                    c.release();
-                }, (r, t) -> {
-                    // guarantee that regardless of exceptions, `serverCursor` is null and client resources are released
-                    serverCursor = null;
-                    releaseClientResources();
-                });
+                executeWithConnection(((connection, t) -> {
+                    assertTrue(connection != null || t != null);
+                    if (t != null) {
+                        // guarantee that regardless of exceptions, `serverCursor` is null and client resources are released
+                        serverCursor = null;
+                        releaseClientResources();
+                    } else {
+                        releaseServerAndClientResources(connection);
+                        releaseServerResources(connection);
+                        connection.release();
+                    }
+                }));
             } else {
                 releaseClientResources();
             }
         }
 
-        void onCorruptedConnection(@Nullable final AsyncConnection corruptedConnection) {
+        void checkCorruptedConnection() {
             // if `pinnedConnection` is corrupted, then we cannot kill `serverCursor` via such a connection
             AsyncConnection localPinnedConnection = pinnedConnection;
             if (localPinnedConnection != null) {
-                assertTrue(corruptedConnection == localPinnedConnection);
                 skipReleasingServerResourcesOnClose = true;
             }
         }
 
-        <R> void executeWithConnection(final Consumer<AsyncConnection> action, final SingleResultCallback<R> callback) {
+        void executeWithConnection(final AsyncCallableWithConnection callable) {
             assertTrue(state != State.IDLE);
             if (pinnedConnection != null) {
-                executeWithConnection(assertNotNull(pinnedConnection).retain(), null, action, callback);
+                callable.call(assertNotNull(pinnedConnection).retain(), null);
             } else {
-                assertNotNull(connectionSource).getConnection((conn, t) -> executeWithConnection(conn, t, action, callback));
-            }
-        }
-
-        <R> void executeWithConnection(
-                @Nullable final AsyncConnection connection,
-                @Nullable final Throwable t,
-                final Consumer<AsyncConnection> action,
-                final SingleResultCallback<R> callback) {
-            assertTrue(connection != null || t != null);
-            if (t != null) {
-                callback.onResult(null, t);
-            } else {
-                AsyncCallbackSupplier<R> curriedFunction = c -> action.accept(connection);
-                curriedFunction.whenComplete(connection::release).get((result, error) -> {
-                    if (error instanceof MongoSocketException) {
-                        onCorruptedConnection(connection);
+                assertNotNull(connectionSource).getConnection((connection, t) -> {
+                    if (t instanceof MongoSocketException) {
+                        checkCorruptedConnection();
                     }
-                    connection.release();
-                    callback.onResult(result, error);
+                    callable.call(connection, t);
                 });
             }
         }
