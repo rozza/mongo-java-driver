@@ -46,7 +46,7 @@ class AsyncChangeStreamBatchCursorSpecification extends Specification {
         cursor.next(callback)
 
         then:
-        1 * wrapped.next(_) >> { it[0].onResult(null, null) }
+        1 * wrapped.next(_) >> { it[0].onResult([], null) }
 
         when:
         cursor.close()
@@ -78,7 +78,7 @@ class AsyncChangeStreamBatchCursorSpecification extends Specification {
         1 * wrapped.next(_) >> {
             // Simulate the user calling close while wrapped.next() is in flight
             cursor.close()
-            it[0].onResult(null, null)
+            it[0].onResult([], null)
         }
 
         then:
