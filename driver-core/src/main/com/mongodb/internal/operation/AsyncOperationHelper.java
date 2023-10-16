@@ -335,7 +335,7 @@ final class AsyncOperationHelper {
 
     static <T> AsyncBatchCursor<T> cursorDocumentToAsyncBatchCursor(final BsonDocument cursorDocument, final Decoder<T> decoder,
             final BsonValue comment, final AsyncConnectionSource source, final AsyncConnection connection, final int batchSize) {
-        return new AsyncCommandBatchCursor<>(source.getServerDescription().getAddress(), cursorDocument, 0, batchSize, 0, decoder,
+        return new AsyncCommandBatchCursor<>(cursorDocument, 0, batchSize, 0, decoder,
                 comment, source, connection);
     }
 

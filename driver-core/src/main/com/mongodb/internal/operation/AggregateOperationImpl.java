@@ -224,8 +224,8 @@ class AggregateOperationImpl<T> implements AsyncReadOperation<AsyncBatchCursor<T
         return (result, source, connection) -> {
             // TODO (CSOT) JAVA-4058
             long maxAwaitTimeMS = timeoutSettings.getMaxAwaitTimeMS();
-            return new CommandBatchCursor<>(connection.getDescription().getServerAddress(), result, 0, batchSize != null ? batchSize : 0,
-                    maxAwaitTimeMS, decoder, comment, source, connection);
+            return new CommandBatchCursor<>(result, 0, batchSize != null ? batchSize : 0, maxAwaitTimeMS, decoder,
+                    comment, source, connection);
         };
     }
 
@@ -233,8 +233,8 @@ class AggregateOperationImpl<T> implements AsyncReadOperation<AsyncBatchCursor<T
         return (result, source, connection) -> {
             // TODO (CSOT) JAVA-4058
             long maxAwaitTimeMS = timeoutSettings.getMaxAwaitTimeMS();
-            return new AsyncCommandBatchCursor<>(connection.getDescription().getServerAddress(), result, 0,
-                    batchSize != null ? batchSize : 0, maxAwaitTimeMS, decoder, comment, source, connection);
+            return new AsyncCommandBatchCursor<>(result, 0, batchSize != null ? batchSize : 0, maxAwaitTimeMS, decoder,
+                    comment, source, connection);
         };
     }
 

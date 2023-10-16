@@ -49,6 +49,7 @@ class CommandBatchCursorSpecification extends Specification {
         given:
         def connection = Mock(Connection) {
             _ * getDescription() >> Stub(ConnectionDescription) {
+                getServerAddress() >> SERVER_ADDRESS
                 getMaxWireVersion() >> 4
             }
         }
@@ -61,7 +62,7 @@ class CommandBatchCursorSpecification extends Specification {
         def cursorId = 42
 
         def result = createCommandResult([], cursorId)
-        def cursor = new CommandBatchCursor<Document>(SERVER_ADDRESS, result, 0, batchSize, maxTimeMS, CODEC,
+        def cursor = new CommandBatchCursor<Document>(result, 0, batchSize, maxTimeMS, CODEC,
                 null, connectionSource, connection)
         def expectedCommand = new BsonDocument('getMore': new BsonInt64(cursorId))
                 .append('collection', new BsonString(NAMESPACE.getCollectionName()))
@@ -94,6 +95,7 @@ class CommandBatchCursorSpecification extends Specification {
         given:
         def connection = Mock(Connection) {
             _ * getDescription() >> Stub(ConnectionDescription) {
+                getServerAddress() >> SERVER_ADDRESS
                 getMaxWireVersion() >> 4
             }
             _ * command(*_) >> { throw new MongoSocketException('No MongoD', SERVER_ADDRESS) }
@@ -105,7 +107,7 @@ class CommandBatchCursorSpecification extends Specification {
         connectionSource.retain() >> connectionSource
 
         def firstBatch = createCommandResult([], 42)
-        def cursor = new CommandBatchCursor<Document>(SERVER_ADDRESS, firstBatch, 0, 2, 100, CODEC,
+        def cursor = new CommandBatchCursor<Document>(firstBatch, 0, 2, 100, CODEC,
                 null, connectionSource, connection)
 
         when:
@@ -125,6 +127,7 @@ class CommandBatchCursorSpecification extends Specification {
         given:
         def connection = Mock(Connection) {
             _ * getDescription() >> Stub(ConnectionDescription) {
+                getServerAddress() >> SERVER_ADDRESS
                 getMaxWireVersion() >> 4
             }
         }
@@ -135,7 +138,7 @@ class CommandBatchCursorSpecification extends Specification {
         connectionSource.retain() >> connectionSource
 
         def firstBatch = createCommandResult([], 42)
-        def cursor = new CommandBatchCursor<Document>(SERVER_ADDRESS, firstBatch, 0, 2, 100, CODEC,
+        def cursor = new CommandBatchCursor<Document>(firstBatch, 0, 2, 100, CODEC,
                 null, connectionSource, connection)
 
         when:
@@ -165,7 +168,7 @@ class CommandBatchCursorSpecification extends Specification {
         Object getMoreResponse = emptyGetMoreCommandResponse(getMoreResponseHasCursor ? 42 : 0)
 
         when:
-        CommandBatchCursor<Document> cursor = new CommandBatchCursor<>(SERVER_ADDRESS, commandResult, 0, 0, 0, CODEC,
+        CommandBatchCursor<Document> cursor = new CommandBatchCursor<>(commandResult, 0, 0, 0, CODEC,
                 null, connSource, conn)
         List<Document> batch = cursor.next()
 
@@ -227,7 +230,7 @@ class CommandBatchCursorSpecification extends Specification {
         String exceptionMessage = 'test'
 
         when:
-        CommandBatchCursor<Document> cursor = new CommandBatchCursor<>(SERVER_ADDRESS, initialResult, 0, 0, 0, CODEC,
+        CommandBatchCursor<Document> cursor = new CommandBatchCursor<>(initialResult, 0, 0, 0, CODEC,
                 null, connSource, conn)
         List<Document> batch = cursor.next()
 
@@ -279,6 +282,7 @@ class CommandBatchCursorSpecification extends Specification {
         Connection mockConn = Mock(Connection) {
             getDescription() >> Stub(ConnectionDescription) {
                 getMaxWireVersion() >> getMaxWireVersionForServerVersion(serverVersion.getVersionList())
+                getServerAddress() >> SERVER_ADDRESS
             }
         }
         mockConn.retain() >> {

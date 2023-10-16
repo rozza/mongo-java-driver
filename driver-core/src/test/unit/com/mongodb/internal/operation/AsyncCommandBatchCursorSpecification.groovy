@@ -50,7 +50,7 @@ class AsyncCommandBatchCursorSpecification extends Specification {
         def connection = referenceCountedAsyncConnection()
         def connectionSource = getAsyncConnectionSource(connection)
 
-        def cursor = new AsyncCommandBatchCursor<Document>(SERVER_ADDRESS, createCommandResult([], 42), 0, batchSize, maxTimeMS, CODEC,
+        def cursor = new AsyncCommandBatchCursor<Document>(createCommandResult([], 42), 0, batchSize, maxTimeMS, CODEC,
                 null, connectionSource, connection)
         def expectedCommand = new BsonDocument('getMore': new BsonInt64(CURSOR_ID))
                 .append('collection', new BsonString(NAMESPACE.getCollectionName()))
@@ -94,7 +94,7 @@ class AsyncCommandBatchCursorSpecification extends Specification {
         def serverVersion = new ServerVersion([3, 6, 0])
         def connection = referenceCountedAsyncConnection(serverVersion)
         def connectionSource = getAsyncConnectionSource(connection)
-        def cursor = new AsyncCommandBatchCursor<Document>(SERVER_ADDRESS, firstBatch, 0, 0, 0, CODEC,
+        def cursor = new AsyncCommandBatchCursor<Document>(firstBatch, 0, 0, 0, CODEC,
                 null, connectionSource, connection)
 
         when:
@@ -121,7 +121,7 @@ class AsyncCommandBatchCursorSpecification extends Specification {
         def connectionSource = getAsyncConnectionSource(connection)
 
         when:
-        def cursor = new AsyncCommandBatchCursor<Document>(SERVER_ADDRESS, createCommandResult(FIRST_BATCH, 0), 0, 0, 0, CODEC,
+        def cursor = new AsyncCommandBatchCursor<Document>(createCommandResult(FIRST_BATCH, 0), 0, 0, 0, CODEC,
                 null, connectionSource, connection)
 
         then:
@@ -153,7 +153,7 @@ class AsyncCommandBatchCursorSpecification extends Specification {
         def thirdBatch = [new Document('_id', 7)]
 
         when:
-        def cursor = new AsyncCommandBatchCursor<Document>(SERVER_ADDRESS, createCommandResult(firstBatch, 42), 7, 3, 0, CODEC,
+        def cursor = new AsyncCommandBatchCursor<Document>(createCommandResult(firstBatch, 42), 7, 3, 0, CODEC,
                 null, connectionSource, connectionA)
         def batch = nextBatch(cursor)
 
@@ -203,7 +203,7 @@ class AsyncCommandBatchCursorSpecification extends Specification {
         def firstBatch = createCommandResult()
 
         when:
-        def cursor = new AsyncCommandBatchCursor<Document>(SERVER_ADDRESS, firstBatch, 1, 0, 0, CODEC,
+        def cursor = new AsyncCommandBatchCursor<Document>(firstBatch, 1, 0, 0, CODEC,
                 null, connectionSource, connection)
 
         then:
@@ -228,7 +228,7 @@ class AsyncCommandBatchCursorSpecification extends Specification {
 
         when:
         def firstBatch = createCommandResult([], CURSOR_ID)
-        def cursor = new AsyncCommandBatchCursor<Document>(SERVER_ADDRESS, firstBatch, 3, 0, 0, CODEC, null, connectionSource, connection)
+        def cursor = new AsyncCommandBatchCursor<Document>(firstBatch, 3, 0, 0, CODEC, null, connectionSource, connection)
         def batch = nextBatch(cursor)
 
         then:
@@ -270,7 +270,7 @@ class AsyncCommandBatchCursorSpecification extends Specification {
         def firstBatch = createCommandResult()
 
         when:
-        def cursor = new AsyncCommandBatchCursor<Document>(SERVER_ADDRESS, firstBatch, 3, 0, 0, CODEC,
+        def cursor = new AsyncCommandBatchCursor<Document>(firstBatch, 3, 0, 0, CODEC,
                 null, connectionSource, connection)
         def batch = nextBatch(cursor)
 
@@ -313,7 +313,7 @@ class AsyncCommandBatchCursorSpecification extends Specification {
         def connectionSource = getAsyncConnectionSource(serverType, connectionA, connectionB)
 
         when:
-        def cursor = new AsyncCommandBatchCursor<Document>(SERVER_ADDRESS, createCommandResult(FIRST_BATCH, 42), 0, 0, 0, CODEC,
+        def cursor = new AsyncCommandBatchCursor<Document>(createCommandResult(FIRST_BATCH, 42), 0, 0, 0, CODEC,
                 null, connectionSource, connectionA)
         def batch = nextBatch(cursor)
 
@@ -357,7 +357,7 @@ class AsyncCommandBatchCursorSpecification extends Specification {
         def firstBatch = createCommandResult()
 
         when:
-        def cursor = new AsyncCommandBatchCursor<Document>(SERVER_ADDRESS, firstBatch, 0, 0, 0, CODEC,
+        def cursor = new AsyncCommandBatchCursor<Document>(firstBatch, 0, 0, 0, CODEC,
                 null, connectionSource, connectionA)
         def batch = nextBatch(cursor)
 
@@ -395,7 +395,7 @@ class AsyncCommandBatchCursorSpecification extends Specification {
         def connection = referenceCountedAsyncConnection()
         def connectionSource = getAsyncConnectionSourceWithResult(ServerType.STANDALONE) { [null, MONGO_EXCEPTION] }
         def firstBatch = createCommandResult()
-        def cursor = new AsyncCommandBatchCursor<Document>(SERVER_ADDRESS, firstBatch, 0, 0, 0, CODEC,
+        def cursor = new AsyncCommandBatchCursor<Document>(firstBatch, 0, 0, 0, CODEC,
                 null, connectionSource, connection)
 
         when:
@@ -414,7 +414,7 @@ class AsyncCommandBatchCursorSpecification extends Specification {
 
         when:
         def firstBatch = createCommandResult()
-        def cursor = new AsyncCommandBatchCursor<Document>(SERVER_ADDRESS, firstBatch, 0, 0, 0, CODEC,
+        def cursor = new AsyncCommandBatchCursor<Document>(firstBatch, 0, 0, 0, CODEC,
                 null, connectionSource, connection)
 
         then:
@@ -440,7 +440,7 @@ class AsyncCommandBatchCursorSpecification extends Specification {
 
         when:
         def firstBatch = createCommandResult()
-        def cursor = new AsyncCommandBatchCursor<Document>(SERVER_ADDRESS, firstBatch, 0, 0, 0, CODEC,
+        def cursor = new AsyncCommandBatchCursor<Document>(firstBatch, 0, 0, 0, CODEC,
                 null, connectionSource, connectionA)
 
         then:
@@ -526,6 +526,7 @@ class AsyncCommandBatchCursorSpecification extends Specification {
         def mock = Mock(AsyncConnection, name: name) {
             _ * getDescription() >> Stub(ConnectionDescription) {
                 getMaxWireVersion() >> getMaxWireVersionForServerVersion(serverVersion.getVersionList())
+                getServerAddress() >> SERVER_ADDRESS
             }
         }
         mock.retain() >> {

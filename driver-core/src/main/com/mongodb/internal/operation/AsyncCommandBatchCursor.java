@@ -96,7 +96,6 @@ class AsyncCommandBatchCursor<T> implements AsyncAggregateResponseBatchCursor<T>
     private volatile boolean isClosePending = false;
 
     AsyncCommandBatchCursor(
-            final ServerAddress serverAddress,
             final BsonDocument commandCursorDocument,
             final int limit, final int batchSize, final long maxTimeMS,
             final Decoder<T> decoder,
@@ -105,7 +104,8 @@ class AsyncCommandBatchCursor<T> implements AsyncAggregateResponseBatchCursor<T>
             final AsyncConnection connection) {
         isTrueArgument("maxTimeMS >= 0", maxTimeMS >= 0);
         this.cursor = new AtomicReference<>();
-        this.initialCommandCursorResult = initFromCommandCursorDocument(serverAddress, FIRST_BATCH, commandCursorDocument);
+        this.initialCommandCursorResult = initFromCommandCursorDocument(connection.getDescription().getServerAddress(),
+                FIRST_BATCH, commandCursorDocument);
         this.namespace = initialCommandCursorResult.getNamespace();
         this.limit = limit;
         this.batchSize = batchSize;

@@ -20,7 +20,6 @@ import com.mongodb.MongoCursorNotFoundException
 import com.mongodb.MongoTimeoutException
 import com.mongodb.OperationFunctionalSpecification
 import com.mongodb.ReadPreference
-import com.mongodb.ServerAddress
 import com.mongodb.ServerCursor
 import com.mongodb.WriteConcern
 import com.mongodb.client.model.CreateCollectionOptions
@@ -80,10 +79,10 @@ class CommandBatchCursorFunctionalSpecification extends OperationFunctionalSpeci
 
     def 'server cursor should not be null'() {
         given:
-        def (serverAddress, commandCursorResult) = executeFindCommand(2)
+        def commandCursorResult = executeFindCommand(2)
 
         when:
-        cursor = new CommandBatchCursor<Document>(serverAddress, commandCursorResult, 0, 0, 0, CODEC,
+        cursor = new CommandBatchCursor<Document>(commandCursorResult, 0, 0, 0, CODEC,
                 null, connectionSource, connection)
 
         then:
@@ -92,10 +91,10 @@ class CommandBatchCursorFunctionalSpecification extends OperationFunctionalSpeci
 
     def 'test server address'() {
         given:
-        def (serverAddress, commandCursorResult) = executeFindCommand()
+        def commandCursorResult = executeFindCommand()
 
         when:
-        cursor = new CommandBatchCursor<Document>(serverAddress, commandCursorResult, 0, 0, 0, CODEC,
+        cursor = new CommandBatchCursor<Document>(commandCursorResult, 0, 0, 0, CODEC,
                 null, connectionSource, connection)
         then:
         cursor.getServerAddress() != null
@@ -103,9 +102,9 @@ class CommandBatchCursorFunctionalSpecification extends OperationFunctionalSpeci
 
     def 'should get Exceptions for operations on the cursor after closing'() {
         given:
-        def (serverAddress, commandCursorResult) = executeFindCommand()
+        def commandCursorResult = executeFindCommand()
 
-        cursor = new CommandBatchCursor<Document>(serverAddress, commandCursorResult, 0, 0, 0, CODEC,
+        cursor = new CommandBatchCursor<Document>(commandCursorResult, 0, 0, 0, CODEC,
                 null, connectionSource, connection)
 
         when:
@@ -133,9 +132,9 @@ class CommandBatchCursorFunctionalSpecification extends OperationFunctionalSpeci
 
     def 'should throw an Exception when going off the end'() {
         given:
-        def (serverAddress, commandCursorResult) = executeFindCommand(1)
+        def commandCursorResult = executeFindCommand(1)
 
-        cursor = new CommandBatchCursor<Document>(serverAddress, commandCursorResult, 2, 0, 0, CODEC,
+        cursor = new CommandBatchCursor<Document>(commandCursorResult, 2, 0, 0, CODEC,
                 null, connectionSource, connection)
         when:
         cursor.next()
@@ -148,10 +147,10 @@ class CommandBatchCursorFunctionalSpecification extends OperationFunctionalSpeci
 
     def 'test normal exhaustion'() {
         given:
-        def (serverAddress, commandCursorResult) = executeFindCommand()
+        def commandCursorResult = executeFindCommand()
 
         when:
-        cursor = new CommandBatchCursor<Document>(serverAddress, commandCursorResult, 0, 0, 0, CODEC,
+        cursor = new CommandBatchCursor<Document>(commandCursorResult, 0, 0, 0, CODEC,
                 null, connectionSource, connection)
 
         then:
@@ -160,11 +159,11 @@ class CommandBatchCursorFunctionalSpecification extends OperationFunctionalSpeci
 
     def 'test limit exhaustion'() {
         given:
-        def (serverAddress, commandCursorResult) = executeFindCommand(limit, batchSize)
+        def commandCursorResult = executeFindCommand(limit, batchSize)
         def connection = connectionSource.getConnection()
 
         when:
-        cursor = new CommandBatchCursor<Document>(serverAddress, commandCursorResult, limit, batchSize, 0, CODEC,
+        cursor = new CommandBatchCursor<Document>(commandCursorResult, limit, batchSize, 0, CODEC,
                 null, connectionSource, connection)
 
         then:
@@ -187,9 +186,9 @@ class CommandBatchCursorFunctionalSpecification extends OperationFunctionalSpeci
 
     def 'test remove'() {
         given:
-        def (serverAddress, commandCursorResult) = executeFindCommand()
+        def commandCursorResult = executeFindCommand()
 
-        cursor = new CommandBatchCursor<Document>(serverAddress, commandCursorResult, 0, 0, 0, CODEC,
+        cursor = new CommandBatchCursor<Document>(commandCursorResult, 0, 0, 0, CODEC,
                 null, connectionSource, connection)
 
         when:
@@ -206,11 +205,11 @@ class CommandBatchCursorFunctionalSpecification extends OperationFunctionalSpeci
         def connection = connectionSource.getConnection()
         collectionHelper.create(collectionName, new CreateCollectionOptions().capped(true).sizeInBytes(1000))
         collectionHelper.insertDocuments(CODEC, new Document('_id', 1).append('ts', new BsonTimestamp(5, 0)))
-        def (serverAddress, commandCursorResult) = executeFindCommand(
+        def commandCursorResult = executeFindCommand(
                 new BsonDocument('ts', new BsonDocument('$gte', new BsonTimestamp(5, 0))), 0, 2, true, awaitData)
 
         when:
-        cursor = new CommandBatchCursor<Document>(serverAddress, commandCursorResult, 0, 2, maxTimeMS, CODEC,
+        cursor = new CommandBatchCursor<Document>(commandCursorResult, 0, 2, maxTimeMS, CODEC,
                 null, connectionSource, connection)
 
         then:
@@ -254,12 +253,12 @@ class CommandBatchCursorFunctionalSpecification extends OperationFunctionalSpeci
     def 'test try next with tailable'() {
         collectionHelper.create(collectionName, new CreateCollectionOptions().capped(true).sizeInBytes(1000))
         collectionHelper.insertDocuments(CODEC, new Document('_id', 1).append('ts', new BsonTimestamp(5, 0)))
-        def (serverAddress, commandCursorResult) = executeFindCommand(
+        def commandCursorResult = executeFindCommand(
                 new BsonDocument('ts', new BsonDocument('$gte', new BsonTimestamp(5, 0))), 0, 2, true, true)
 
 
         when:
-        cursor = new CommandBatchCursor<Document>(serverAddress, commandCursorResult, 0, 2, 0, CODEC,
+        cursor = new CommandBatchCursor<Document>(commandCursorResult, 0, 2, 0, CODEC,
                 null, connectionSource, connection)
 
         then:
@@ -282,9 +281,9 @@ class CommandBatchCursorFunctionalSpecification extends OperationFunctionalSpeci
         Connection conn = connectionSource.getConnection()
         collectionHelper.create(collectionName, new CreateCollectionOptions().capped(true).sizeInBytes(1000))
         collectionHelper.insertDocuments(CODEC, new Document('_id', 1).append('ts', new BsonTimestamp(5, 0)))
-        def (serverAddress, commandCursorResult) = executeFindCommand(
+        def commandCursorResult = executeFindCommand(
                 new BsonDocument('ts', new BsonDocument('$gte', new BsonTimestamp(5, 0))), 0, 2, true, true)
-        cursor = new CommandBatchCursor<Document>(serverAddress, commandCursorResult, 0, 2, 0, CODEC,
+        cursor = new CommandBatchCursor<Document>(commandCursorResult, 0, 2, 0, CODEC,
                 null, connectionSource, conn)
         cursor.next()
         def closeCompleted = new CountDownLatch(1)
@@ -313,12 +312,12 @@ class CommandBatchCursorFunctionalSpecification extends OperationFunctionalSpeci
     def 'test maxTimeMS'() {
         collectionHelper.create(collectionName, new CreateCollectionOptions().capped(true).sizeInBytes(1000))
         collectionHelper.insertDocuments(CODEC, new Document('_id', 1).append('ts', new BsonTimestamp(5, 0)))
-        def (serverAddress, commandCursorResult) = executeFindCommand(
+        def commandCursorResult = executeFindCommand(
                 new BsonDocument('ts', new BsonDocument('$gte', new BsonTimestamp(5, 0))), 0, 2, true, true)
 
         def connection = connectionSource.getConnection()
         def maxTimeMS = 10
-        cursor = new CommandBatchCursor<Document>(serverAddress, commandCursorResult, 0, 2, maxTimeMS, CODEC,
+        cursor = new CommandBatchCursor<Document>(commandCursorResult, 0, 2, maxTimeMS, CODEC,
                 null, connectionSource, connection)
         cursor.tryNext()
         long startTime = System.currentTimeMillis()
@@ -341,10 +340,10 @@ class CommandBatchCursorFunctionalSpecification extends OperationFunctionalSpeci
         collectionHelper.create(collectionName, new CreateCollectionOptions().capped(true).sizeInBytes(1000))
         collectionHelper.insertDocuments(CODEC, new Document('_id', 1))
 
-        def (serverAddress, commandCursorResult) = executeFindCommand(new BsonDocument(), 0, 2, true, true)
+        def commandCursorResult = executeFindCommand(new BsonDocument(), 0, 2, true, true)
 
         when:
-        cursor = new CommandBatchCursor<Document>(serverAddress, commandCursorResult, 0, 2, 0, CODEC,
+        cursor = new CommandBatchCursor<Document>(commandCursorResult, 0, 2, 0, CODEC,
                 null, connectionSource, connection)
 
         CountDownLatch latch = new CountDownLatch(1)
@@ -373,8 +372,8 @@ class CommandBatchCursorFunctionalSpecification extends OperationFunctionalSpeci
     @IgnoreIf({ isSharded() })
     def 'should kill cursor if limit is reached on initial query'() throws InterruptedException {
         given:
-        def (serverAddress, commandResult) = executeFindCommand(5)
-        cursor = new CommandBatchCursor<Document>(serverAddress, commandResult, 5, 0, 0, new DocumentCodec(),
+        def commandResult = executeFindCommand(5)
+        cursor = new CommandBatchCursor<Document>(commandResult, 5, 0, 0, new DocumentCodec(),
                 null, connectionSource, connection)
 
         when:
@@ -389,9 +388,9 @@ class CommandBatchCursorFunctionalSpecification extends OperationFunctionalSpeci
     @Slow
     def 'should kill cursor if limit is reached on get more'() throws InterruptedException {
         given:
-        def (serverAddress, commandCursorResult) = executeFindCommand(3)
+        def commandCursorResult = executeFindCommand(3)
 
-        cursor = new CommandBatchCursor<Document>(serverAddress, commandCursorResult, 5, 3,  0, CODEC,
+        cursor = new CommandBatchCursor<Document>(commandCursorResult, 5, 3,  0, CODEC,
                 null, connectionSource, connection)
         ServerCursor serverCursor = cursor.getServerCursor()
 
@@ -408,11 +407,11 @@ class CommandBatchCursorFunctionalSpecification extends OperationFunctionalSpeci
 
     def 'should release connection source if limit is reached on initial query'() throws InterruptedException {
         given:
-        def (serverAddress, commandCursorResult) = executeFindCommand(5)
+        def commandCursorResult = executeFindCommand(5)
         def connection = connectionSource.getConnection()
 
         when:
-        cursor = new CommandBatchCursor<Document>(serverAddress, commandCursorResult, 5, 0, 0, CODEC, null, connectionSource, connection)
+        cursor = new CommandBatchCursor<Document>(commandCursorResult, 5, 0, 0, CODEC, null, connectionSource, connection)
 
         then:
         checkReferenceCountReachesTarget(connectionSource, 1)
@@ -423,9 +422,9 @@ class CommandBatchCursorFunctionalSpecification extends OperationFunctionalSpeci
 
     def 'should release connection source if limit is reached on get more'() throws InterruptedException {
         given:
-        def (serverAddress, commandCursorResult) = executeFindCommand(3)
+        def commandCursorResult = executeFindCommand(3)
 
-        cursor = new CommandBatchCursor<Document>(serverAddress, commandCursorResult, 5, 3, 0, CODEC,
+        cursor = new CommandBatchCursor<Document>(commandCursorResult, 5, 3, 0, CODEC,
                 null, connectionSource, connection)
 
         when:
@@ -438,10 +437,10 @@ class CommandBatchCursorFunctionalSpecification extends OperationFunctionalSpeci
 
     def 'test limit with get more'() {
         given:
-        def (serverAddress, commandCursorResult) = executeFindCommand(2)
+        def commandCursorResult = executeFindCommand(2)
 
         when:
-        cursor = new CommandBatchCursor<Document>(serverAddress, commandCursorResult, 5, 2, 0, CODEC,
+        cursor = new CommandBatchCursor<Document>(commandCursorResult, 5, 2, 0, CODEC,
                 null, connectionSource, connection)
 
         then:
@@ -458,10 +457,10 @@ class CommandBatchCursorFunctionalSpecification extends OperationFunctionalSpeci
         String bigString = new String(array)
 
         (11..1000).each { collectionHelper.insertDocuments(CODEC, new Document('_id', it).append('s', bigString)) }
-        def (serverAddress, commandCursorResult) = executeFindCommand(300, 0)
+        def commandCursorResult = executeFindCommand(300, 0)
 
         when:
-        cursor = new CommandBatchCursor<Document>(serverAddress, commandCursorResult, 300, 0, 0, CODEC,
+        cursor = new CommandBatchCursor<Document>(commandCursorResult, 300, 0, 0, CODEC,
                 null, connectionSource, connection)
 
         then:
@@ -470,10 +469,10 @@ class CommandBatchCursorFunctionalSpecification extends OperationFunctionalSpeci
 
     def 'should respect batch size'() {
         given:
-        def (serverAddress, commandCursorResult) = executeFindCommand(2)
+        def commandCursorResult = executeFindCommand(2)
 
         when:
-        cursor = new CommandBatchCursor<Document>(serverAddress, commandCursorResult, 0, 2, 0, CODEC,
+        cursor = new CommandBatchCursor<Document>(commandCursorResult, 0, 2, 0, CODEC,
                 null, connectionSource, connection)
 
         then:
@@ -508,10 +507,10 @@ class CommandBatchCursorFunctionalSpecification extends OperationFunctionalSpeci
 
     def 'test normal loop with get more'() {
         given:
-        def (serverAddress, commandCursorResult) = executeFindCommand(2)
+        def commandCursorResult = executeFindCommand(2)
 
         when:
-        cursor = new CommandBatchCursor<Document>(serverAddress, commandCursorResult, 0, 2, 0, CODEC,
+        cursor = new CommandBatchCursor<Document>(commandCursorResult, 0, 2, 0, CODEC,
                 null, connectionSource, connection)
         def results = cursor.iterator().collectMany { it*.get('_id') }
 
@@ -522,10 +521,10 @@ class CommandBatchCursorFunctionalSpecification extends OperationFunctionalSpeci
 
     def 'test next without has next with get more'() {
         given:
-        def (serverAddress, commandCursorResult) = executeFindCommand(2)
+        def commandCursorResult = executeFindCommand(2)
 
         when:
-        cursor = new CommandBatchCursor<Document>(serverAddress, commandCursorResult, 0, 2, 0, CODEC,
+        cursor = new CommandBatchCursor<Document>(commandCursorResult, 0, 2, 0, CODEC,
                 null, connectionSource, connection)
 
         then:
@@ -544,10 +543,10 @@ class CommandBatchCursorFunctionalSpecification extends OperationFunctionalSpeci
     @IgnoreIf({ isSharded() })
     def 'should throw cursor not found exception'() {
         given:
-        def (serverAddress, commandCursorResult) = executeFindCommand(2)
+        def commandCursorResult = executeFindCommand(2)
 
         when:
-        cursor = new CommandBatchCursor<Document>(serverAddress, commandCursorResult, 0, 2, 0, CODEC,
+        cursor = new CommandBatchCursor<Document>(commandCursorResult, 0, 2, 0, CODEC,
                 null, connectionSource, connection)
         def serverCursor = cursor.getServerCursor()
         def connection = connectionSource.getConnection()
@@ -571,10 +570,10 @@ class CommandBatchCursorFunctionalSpecification extends OperationFunctionalSpeci
 
     def 'should report available documents'() {
         given:
-        def (serverAddress, commandCursorResult) = executeFindCommand(3)
+        def commandCursorResult = executeFindCommand(3)
 
         when:
-        cursor = new CommandBatchCursor<Document>(serverAddress, commandCursorResult, 0, 2, 0, CODEC,
+        cursor = new CommandBatchCursor<Document>(commandCursorResult, 0, 2, 0, CODEC,
                 null, connectionSource, connection)
 
         then:
@@ -617,28 +616,28 @@ class CommandBatchCursorFunctionalSpecification extends OperationFunctionalSpeci
         cursor.available() == 0
     }
 
-     private Tuple2<ServerAddress, BsonDocument> executeFindCommand() {
+     private BsonDocument executeFindCommand() {
         executeFindCommand(0)
     }
 
-     private Tuple2<ServerAddress, BsonDocument> executeFindCommand(int batchSize) {
+     private BsonDocument executeFindCommand(int batchSize) {
         executeFindCommand(batchSize, ReadPreference.primary())
     }
 
-     private Tuple2<ServerAddress, BsonDocument> executeFindCommand(int batchSize, ReadPreference readPreference) {
+     private BsonDocument executeFindCommand(int batchSize, ReadPreference readPreference) {
         executeFindCommand(new BsonDocument(), 0, batchSize, false, false, readPreference)
     }
 
-     private Tuple2<ServerAddress, BsonDocument> executeFindCommand(int limit, int batchSize) {
+     private BsonDocument executeFindCommand(int limit, int batchSize) {
         executeFindCommand(new BsonDocument(), limit, batchSize, false, false, ReadPreference.primary())
     }
 
-     private Tuple2<ServerAddress, BsonDocument> executeFindCommand(BsonDocument filter, int limit, int batchSize, boolean tailable,
+     private BsonDocument executeFindCommand(BsonDocument filter, int limit, int batchSize, boolean tailable,
             boolean awaitData) {
         executeFindCommand(filter, limit, batchSize, tailable, awaitData, ReadPreference.primary())
     }
 
-     private Tuple2<ServerAddress, BsonDocument> executeFindCommand(BsonDocument filter, int limit, int batchSize, boolean tailable,
+     private BsonDocument executeFindCommand(BsonDocument filter, int limit, int batchSize, boolean tailable,
             boolean awaitData, ReadPreference readPreference) {
         def connection = connectionSource.getConnection()
         try {
@@ -657,9 +656,9 @@ class CommandBatchCursorFunctionalSpecification extends OperationFunctionalSpeci
                 }
             }
 
-            new Tuple2(connection.getDescription().getServerAddress(), connection.command(getDatabaseName(), findCommand,
+            connection.command(getDatabaseName(), findCommand,
                     NO_OP_FIELD_NAME_VALIDATOR, readPreference, CommandResultDocumentCodec.create(CODEC, FIRST_BATCH),
-                    connectionSource.getOperationContext()))
+                    connectionSource.getOperationContext())
         } finally {
             connection.release()
         }

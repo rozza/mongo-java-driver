@@ -83,14 +83,14 @@ class CommandBatchCursor<T> implements AggregateResponseBatchCursor<T> {
     private final ResourceManager resourceManager;
 
     CommandBatchCursor(
-            final ServerAddress serverAddress,
             final BsonDocument commandCursorDocument,
             final int limit, final int batchSize, final long maxTimeMS,
             final Decoder<T> decoder,
             @Nullable final BsonValue comment,
             final ConnectionSource connectionSource,
             final Connection connection) {
-        this.commandCursorResult = initFromCommandCursorDocument(serverAddress, FIRST_BATCH, commandCursorDocument);
+        this.commandCursorResult = initFromCommandCursorDocument(connection.getDescription().getServerAddress(),
+                FIRST_BATCH, commandCursorDocument);
         this.namespace = commandCursorResult.getNamespace();
         this.limit = limit;
         this.batchSize = batchSize;

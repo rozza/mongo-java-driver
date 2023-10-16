@@ -21,7 +21,6 @@ import com.mongodb.MongoException
 import com.mongodb.MongoTimeoutException
 import com.mongodb.OperationFunctionalSpecification
 import com.mongodb.ReadPreference
-import com.mongodb.ServerAddress
 import com.mongodb.WriteConcern
 import com.mongodb.async.FutureResultCallback
 import com.mongodb.client.model.CreateCollectionOptions
@@ -104,8 +103,8 @@ class AsyncCommandBatchCursorFunctionalSpecification extends OperationFunctional
 
     def 'should exhaust single batch'() {
         given:
-        def (serverAddress, commandCursorResult) = executeFindCommand()
-        cursor = new AsyncCommandBatchCursor<Document>(serverAddress, commandCursorResult, 0, 0, 0, CODEC,
+        def commandCursorResult = executeFindCommand()
+        cursor = new AsyncCommandBatchCursor<Document>(commandCursorResult, 0, 0, 0, CODEC,
                 null, connectionSource, connection)
 
         expect:
@@ -114,9 +113,9 @@ class AsyncCommandBatchCursorFunctionalSpecification extends OperationFunctional
 
     def 'should not retain connection and source after cursor is exhausted on first batch'() {
         given:
-        def (serverAddress, commandCursorResult) = executeFindCommand()
+        def commandCursorResult = executeFindCommand()
 
-        cursor = new AsyncCommandBatchCursor<Document>(serverAddress, commandCursorResult, 0, 0, 0, CODEC,
+        cursor = new AsyncCommandBatchCursor<Document>(commandCursorResult, 0, 0, 0, CODEC,
                 null, connectionSource, connection)
 
         when:
@@ -129,9 +128,9 @@ class AsyncCommandBatchCursorFunctionalSpecification extends OperationFunctional
 
     def 'should not retain connection and source after cursor is exhausted on getMore'() {
         given:
-        def (serverAddress, commandCursorResult) = executeFindCommand(1, 0)
+        def commandCursorResult = executeFindCommand(1, 0)
 
-        cursor = new AsyncCommandBatchCursor<Document>(serverAddress, commandCursorResult, 1, 1, 0, CODEC,
+        cursor = new AsyncCommandBatchCursor<Document>(commandCursorResult, 1, 1, 0, CODEC,
                 null, connectionSource, connection)
 
         when:
@@ -144,9 +143,9 @@ class AsyncCommandBatchCursorFunctionalSpecification extends OperationFunctional
 
     def 'should not retain connection and source after cursor is exhausted after first batch'() {
         when:
-        def (serverAddress, commandCursorResult) = executeFindCommand(10, 10)
+        def commandCursorResult = executeFindCommand(10, 10)
 
-        cursor = new AsyncCommandBatchCursor<Document>(serverAddress, commandCursorResult, 10, 10, 0, CODEC,
+        cursor = new AsyncCommandBatchCursor<Document>(commandCursorResult, 10, 10, 0, CODEC,
                 null, connectionSource, connection)
 
         then:
@@ -156,9 +155,9 @@ class AsyncCommandBatchCursorFunctionalSpecification extends OperationFunctional
 
     def 'should exhaust single batch with limit'() {
         given:
-        def (serverAddress, commandCursorResult) = executeFindCommand(1, 0)
+        def commandCursorResult = executeFindCommand(1, 0)
 
-        cursor = new AsyncCommandBatchCursor<Document>(serverAddress, commandCursorResult, 1, 0, 0, CODEC,
+        cursor = new AsyncCommandBatchCursor<Document>(commandCursorResult, 1, 0, 0, CODEC,
                 null, connectionSource, connection)
 
         expect:
@@ -168,9 +167,9 @@ class AsyncCommandBatchCursorFunctionalSpecification extends OperationFunctional
 
     def 'should exhaust multiple batches with limit'() {
         given:
-        def (serverAddress, commandCursorResult) = executeFindCommand(limit, batchSize)
+        def commandCursorResult = executeFindCommand(limit, batchSize)
 
-        cursor = new AsyncCommandBatchCursor<Document>(serverAddress, commandCursorResult, limit, batchSize, 0, CODEC,
+        cursor = new AsyncCommandBatchCursor<Document>(commandCursorResult, limit, batchSize, 0, CODEC,
                 null, connectionSource, connection)
 
         when:
@@ -201,9 +200,9 @@ class AsyncCommandBatchCursorFunctionalSpecification extends OperationFunctional
 
     def 'should exhaust multiple batches'() {
         given:
-        def (serverAddress, commandCursorResult) = executeFindCommand(3)
+        def commandCursorResult = executeFindCommand(3)
 
-        cursor = new AsyncCommandBatchCursor<Document>(serverAddress, commandCursorResult, 0, 2, 0, CODEC,
+        cursor = new AsyncCommandBatchCursor<Document>(commandCursorResult, 0, 2, 0, CODEC,
                 null, connectionSource, connection)
 
         expect:
@@ -217,9 +216,9 @@ class AsyncCommandBatchCursorFunctionalSpecification extends OperationFunctional
 
     def 'should respect batch size'() {
         when:
-        def (serverAddress, commandCursorResult) = executeFindCommand(3)
+        def commandCursorResult = executeFindCommand(3)
 
-        cursor = new AsyncCommandBatchCursor<Document>(serverAddress, commandCursorResult, 0, 2, 0, CODEC,
+        cursor = new AsyncCommandBatchCursor<Document>(commandCursorResult, 0, 2, 0, CODEC,
                 null, connectionSource, connection)
 
         then:
@@ -235,9 +234,9 @@ class AsyncCommandBatchCursorFunctionalSpecification extends OperationFunctional
 
     def 'should close when exhausted'() {
         given:
-        def (serverAddress, commandCursorResult) = executeFindCommand()
+        def commandCursorResult = executeFindCommand()
 
-        cursor = new AsyncCommandBatchCursor<Document>(serverAddress, commandCursorResult, 0, 2, 0, CODEC,
+        cursor = new AsyncCommandBatchCursor<Document>(commandCursorResult, 0, 2, 0, CODEC,
                 null, connectionSource, connection)
 
         when:
@@ -256,9 +255,9 @@ class AsyncCommandBatchCursorFunctionalSpecification extends OperationFunctional
 
     def 'should close when not exhausted'() {
         given:
-        def (serverAddress, commandCursorResult) = executeFindCommand(3)
+        def commandCursorResult = executeFindCommand(3)
 
-        cursor = new AsyncCommandBatchCursor<Document>(serverAddress, commandCursorResult, 0, 2, 0, CODEC,
+        cursor = new AsyncCommandBatchCursor<Document>(commandCursorResult, 0, 2, 0, CODEC,
                 null, connectionSource, connection)
 
         when:
@@ -273,11 +272,11 @@ class AsyncCommandBatchCursorFunctionalSpecification extends OperationFunctional
         given:
         collectionHelper.create(collectionName, new CreateCollectionOptions().capped(true).sizeInBytes(1000))
         collectionHelper.insertDocuments(CODEC, new Document('_id', 1).append('ts', new BsonTimestamp(4, 0)))
-        def (serverAddress, commandCursorResult) = executeFindCommand(
+        def commandCursorResult = executeFindCommand(
                 new BsonDocument('ts', new BsonDocument('$gte', new BsonTimestamp(5, 0))), 0, 2, true, false)
 
         when:
-        cursor = new AsyncCommandBatchCursor<Document>(serverAddress, commandCursorResult, 0, 2, 0, CODEC,
+        cursor = new AsyncCommandBatchCursor<Document>(commandCursorResult, 0, 2, 0, CODEC,
                 null, connectionSource, connection)
         def latch = new CountDownLatch(1)
         Thread.start {
@@ -303,11 +302,11 @@ class AsyncCommandBatchCursorFunctionalSpecification extends OperationFunctional
     def 'should block waiting for next batch on a tailable cursor'() {
         collectionHelper.create(collectionName, new CreateCollectionOptions().capped(true).sizeInBytes(1000))
         collectionHelper.insertDocuments(CODEC, new Document('_id', 1).append('ts', new BsonTimestamp(5, 0)))
-        def (serverAddress, commandCursorResult) = executeFindCommand(
+        def commandCursorResult = executeFindCommand(
                 new BsonDocument('ts', new BsonDocument('$gte', new BsonTimestamp(5, 0))), 0, 2, true, awaitData)
 
         when:
-        cursor = new AsyncCommandBatchCursor<Document>(serverAddress, commandCursorResult, 0, 2, maxTimeMS, CODEC,
+        cursor = new AsyncCommandBatchCursor<Document>(commandCursorResult, 0, 2, maxTimeMS, CODEC,
                 null, connectionSource, connection)
         def batch = nextBatch()
 
@@ -347,11 +346,11 @@ class AsyncCommandBatchCursorFunctionalSpecification extends OperationFunctional
         given:
         collectionHelper.create(collectionName, new CreateCollectionOptions().capped(true).sizeInBytes(1000))
         collectionHelper.insertDocuments(CODEC, Document.parse('{}'))
-        def (serverAddress, commandCursorResult) = executeFindCommand(
+        def commandCursorResult = executeFindCommand(
                 new BsonDocument('_id', BsonNull.VALUE), 0, 1, true, true)
 
         when:
-        cursor = new AsyncCommandBatchCursor<Document>(serverAddress, commandCursorResult, 0, 1, 500, CODEC,
+        cursor = new AsyncCommandBatchCursor<Document>(commandCursorResult, 0, 1, 500, CODEC,
                 null, connectionSource, connection)
         Thread.start {
             Thread.sleep(SECONDS.toMillis(2))
@@ -369,9 +368,9 @@ class AsyncCommandBatchCursorFunctionalSpecification extends OperationFunctional
 
     def 'should respect limit'() {
         given:
-        def (serverAddress, commandCursorResult) = executeFindCommand(6, 3)
+        def commandCursorResult = executeFindCommand(6, 3)
 
-        cursor = new AsyncCommandBatchCursor<Document>(serverAddress, commandCursorResult, 6, 2, 0, CODEC,
+        cursor = new AsyncCommandBatchCursor<Document>(commandCursorResult, 6, 2, 0, CODEC,
                 null, connectionSource, connection)
 
         expect:
@@ -384,8 +383,8 @@ class AsyncCommandBatchCursorFunctionalSpecification extends OperationFunctional
     @IgnoreIf({ isSharded() })
     def 'should kill cursor if limit is reached on initial query'() throws InterruptedException {
         given:
-        def (serverAddress, commandResult) = executeFindCommand(5)
-        cursor = new AsyncCommandBatchCursor<Document>(serverAddress, commandResult, 5, 0, 0, new DocumentCodec(),
+        def commandResult = executeFindCommand(5)
+        cursor = new AsyncCommandBatchCursor<Document>(commandResult, 5, 0, 0, new DocumentCodec(),
                 null, connectionSource, connection)
 
         when:
@@ -400,10 +399,10 @@ class AsyncCommandBatchCursorFunctionalSpecification extends OperationFunctional
     @IgnoreIf({ isSharded() })
     def 'should throw cursor not found exception'() {
         given:
-        def (serverAddress, commandCursorResult) = executeFindCommand(2)
+        def commandCursorResult = executeFindCommand(2)
 
         when:
-        cursor = new AsyncCommandBatchCursor<Document>(serverAddress, commandCursorResult, 0, 2, 0, CODEC,
+        cursor = new AsyncCommandBatchCursor<Document>(commandCursorResult, 0, 2, 0, CODEC,
                 null, connectionSource, connection)
 
         def connection = new SyncConnection(getConnection(connectionSource))
@@ -434,19 +433,19 @@ class AsyncCommandBatchCursorFunctionalSpecification extends OperationFunctional
         futureResultCallback.get()
     }
 
-    private Tuple2<ServerAddress, BsonDocument> executeFindCommand() {
+    private BsonDocument executeFindCommand() {
         executeFindCommand(0)
     }
 
-    private Tuple2<ServerAddress, BsonDocument> executeFindCommand(int batchSize) {
+    private BsonDocument executeFindCommand(int batchSize) {
         executeFindCommand(0, batchSize)
     }
 
-    private Tuple2<ServerAddress, BsonDocument> executeFindCommand(int limit, int batchSize) {
+    private BsonDocument executeFindCommand(int limit, int batchSize) {
         executeFindCommand(new BsonDocument(), limit, batchSize, false, false)
     }
 
-    private Tuple2<ServerAddress, BsonDocument> executeFindCommand(BsonDocument filter, int limit, int batchSize, boolean tailable,
+    private BsonDocument executeFindCommand(BsonDocument filter, int limit, int batchSize, boolean tailable,
             boolean awaitData) {
         def findCommand = new BsonDocument('find', new BsonString(getCollectionName()))
                 .append('filter', filter)
@@ -467,7 +466,7 @@ class AsyncCommandBatchCursorFunctionalSpecification extends OperationFunctional
         connection.commandAsync(getDatabaseName(), findCommand, NO_OP_FIELD_NAME_VALIDATOR, ReadPreference.primary(),
                 CommandResultDocumentCodec.create(CODEC, 'firstBatch'), operationContext,
                 futureResultCallback)
-        new Tuple2(connection.getDescription().getServerAddress(), futureResultCallback.get())
+        futureResultCallback.get()
     }
 
     private static final Codec<Document> CODEC = new DocumentCodec()

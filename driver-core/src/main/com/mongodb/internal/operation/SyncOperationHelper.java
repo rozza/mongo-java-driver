@@ -331,8 +331,7 @@ final class SyncOperationHelper {
 
     static <T> BatchCursor<T> cursorDocumentToBatchCursor(final BsonDocument cursorDocument, final Decoder<T> decoder,
             final BsonValue comment, final ConnectionSource source, final Connection connection, final int batchSize) {
-        return new CommandBatchCursor<>(connection.getDescription().getServerAddress(), cursorDocument,
-                0, batchSize, 0, decoder, comment, source, connection);
+        return new CommandBatchCursor<>(cursorDocument, 0, batchSize, 0, decoder, comment, source, connection);
     }
 
     private SyncOperationHelper() {
