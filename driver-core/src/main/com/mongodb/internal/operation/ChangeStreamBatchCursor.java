@@ -165,18 +165,20 @@ final class ChangeStreamBatchCursor<T> implements AggregateResponseBatchCursor<T
      * @param lastIdConsumer Is {@linkplain Consumer#accept(Object) called} iff {@code rawDocuments} is successfully converted
      *                       and the returned {@link List} is neither {@code null} nor {@linkplain List#isEmpty() empty}.
      */
-    static <T> List<T> convertAndProduceLastId(final List<RawBsonDocument> rawDocuments,
+    static <T> List<T> convertAndProduceLastId(@Nullable final List<RawBsonDocument> rawDocuments,
                                                final Decoder<T> decoder,
                                                final Consumer<BsonDocument> lastIdConsumer) {
         List<T> results = new ArrayList<>();
-        for (RawBsonDocument rawDocument : rawDocuments) {
-            if (!rawDocument.containsKey("_id")) {
-                throw new MongoChangeStreamException("Cannot provide resume functionality when the resume token is missing.");
+        if (rawDocuments != null) {
+            for (RawBsonDocument rawDocument : rawDocuments) {
+                if (!rawDocument.containsKey("_id")) {
+                    throw new MongoChangeStreamException("Cannot provide resume functionality when the resume token is missing.");
+                }
+                results.add(rawDocument.decode(decoder));
             }
-            results.add(rawDocument.decode(decoder));
-        }
-        if (!rawDocuments.isEmpty()) {
-            lastIdConsumer.accept(rawDocuments.get(rawDocuments.size() - 1).getDocument("_id"));
+            if (!rawDocuments.isEmpty()) {
+                lastIdConsumer.accept(rawDocuments.get(rawDocuments.size() - 1).getDocument("_id"));
+            }
         }
         return results;
     }
