@@ -55,8 +55,8 @@ import static com.mongodb.internal.operation.CommandBatchCursorHelper.MESSAGE_IF
 import static com.mongodb.internal.operation.CommandBatchCursorHelper.MESSAGE_IF_CONCURRENT_OPERATION;
 import static com.mongodb.internal.operation.CommandBatchCursorHelper.NEXT_BATCH;
 import static com.mongodb.internal.operation.CommandBatchCursorHelper.NO_OP_FIELD_NAME_VALIDATOR;
-import static com.mongodb.internal.operation.CommandBatchCursorHelper.getKillCursorsCommand;
 import static com.mongodb.internal.operation.CommandBatchCursorHelper.getCommandCursorResult;
+import static com.mongodb.internal.operation.CommandBatchCursorHelper.getKillCursorsCommand;
 import static com.mongodb.internal.operation.CommandBatchCursorHelper.getMoreCommandDocument;
 import static com.mongodb.internal.operation.CommandBatchCursorHelper.translateCommandException;
 import static java.util.Collections.emptyList;
@@ -115,8 +115,6 @@ class AsyncCommandBatchCursor<T> implements AsyncAggregateResponseBatchCursor<T>
             callback.onResult(null, new MongoException(MESSAGE_IF_CLOSED_AS_CURSOR));
             return;
         }
-
-
 
         resourceManager.execute((AsyncCallbackSupplier<List<T>>) funcCallback -> {
             ServerCursor localServerCursor = resourceManager.getServerCursor();
@@ -193,39 +191,44 @@ class AsyncCommandBatchCursor<T> implements AsyncAggregateResponseBatchCursor<T>
 
     private void getMore(final ServerCursor cursor, final SingleResultCallback<List<T>> callback) {
         resourceManager.executeWithConnection((connection, wrappedCallback) ->
-                        assertNotNull(connection).commandAsync(namespace.getDatabaseName(),
-                                getMoreCommandDocument(cursor.getId(), connection.getDescription(), namespace,
-                                        limit, batchSize, count.get(), maxTimeMS, comment),
-                                NO_OP_FIELD_NAME_VALIDATOR, ReadPreference.primary(),
-                                CommandResultDocumentCodec.create(decoder, NEXT_BATCH),
-                                assertNotNull(resourceManager.getConnectionSource()).getOperationContext(),
-                                (commandResult, t) -> {
-                                    if (t != null) {
-                                        Throwable translatedException =
-                                                t instanceof MongoCommandException
-                                                        ? translateCommandException((MongoCommandException) t, cursor)
-                                                        : t;
-                                        wrappedCallback.onResult(null, translatedException);
-                                        return;
-                                    }
-                                    CommandCursorResult<T> commandCursorResult = toCommandCursorResult(
-                                            connection.getDescription().getServerAddress(), NEXT_BATCH, assertNotNull(commandResult));
-                                    resourceManager.setServerCursor(commandCursorResult.getServerCursor());
+                getMoreLoop(assertNotNull(connection), cursor, wrappedCallback), callback);
+    }
 
-                                    if (!resourceManager.operable()) {
-                                        // The cursor was closed
-                                        resourceManager.releaseServerAndClientResources(connection);
-                                        wrappedCallback.onResult(emptyList(), null);
-                                        return;
-                                    }
+    private void getMoreLoop(final AsyncConnection connection, final ServerCursor serverCursor,
+            final SingleResultCallback<List<T>> callback) {
+        connection.commandAsync(namespace.getDatabaseName(),
+                getMoreCommandDocument(serverCursor.getId(), connection.getDescription(), namespace,
+                        limit, batchSize, count.get(), maxTimeMS, comment),
+                NO_OP_FIELD_NAME_VALIDATOR, ReadPreference.primary(),
+                CommandResultDocumentCodec.create(decoder, NEXT_BATCH),
+                assertNotNull(resourceManager.getConnectionSource()).getOperationContext(),
+                (commandResult, t) -> {
+                    if (t != null) {
+                        Throwable translatedException =
+                                t instanceof MongoCommandException
+                                        ? translateCommandException((MongoCommandException) t, serverCursor)
+                                        : t;
+                        callback.onResult(null, translatedException);
+                        return;
+                    }
+                    CommandCursorResult<T> commandCursorResult = toCommandCursorResult(
+                            connection.getDescription().getServerAddress(), NEXT_BATCH, assertNotNull(commandResult));
+                    resourceManager.setServerCursor(commandCursorResult.getServerCursor());
 
-                                    List<T> nextBatch = commandCursorResult.getResults();
-                                    if (nextBatch.isEmpty() && commandCursorResult.getServerCursor() != null) {
-                                        getMore(commandCursorResult.getServerCursor(), wrappedCallback);
-                                    } else {
-                                        wrappedCallback.onResult(nextBatch, null);
-                                    }
-                                }), callback);
+                    if (!resourceManager.operable()) {
+                        // The cursor was closed
+                        resourceManager.releaseServerAndClientResources(connection);
+                        callback.onResult(emptyList(), null);
+                        return;
+                    }
+
+                    List<T> nextBatch = commandCursorResult.getResults();
+                    if (nextBatch.isEmpty() && commandCursorResult.getServerCursor() != null) {
+                        getMoreLoop(connection, commandCursorResult.getServerCursor(), callback);
+                    } else {
+                        callback.onResult(nextBatch, null);
+                    }
+                });
     }
 
     private CommandCursorResult<T> toCommandCursorResult(final ServerAddress serverAddress, final String fieldNameContainingBatch,

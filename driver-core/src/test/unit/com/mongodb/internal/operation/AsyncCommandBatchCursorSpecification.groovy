@@ -233,8 +233,8 @@ class AsyncCommandBatchCursorSpecification extends Specification {
             it.last().onResult(response, null)
         }
 
-        1 * connectionB.commandAsync(*_) >> {
-            connectionB.getCount() == 1
+        1 * connectionA.commandAsync(*_) >> {
+            connectionA.getCount() == 1
             connectionSource.getCount() == 1
             it.last().onResult(response2, null)
         }
