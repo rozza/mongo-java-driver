@@ -62,7 +62,7 @@ final class AsyncOperationHelper {
     }
 
     interface AsyncCallableConnectionWithCallback<T> {
-        void call(@Nullable AsyncConnection connection, SingleResultCallback<T> callback);
+        void call(AsyncConnection connection, SingleResultCallback<T> callback);
     }
 
     interface AsyncCallableWithSource {

@@ -53,7 +53,7 @@ import static com.mongodb.internal.operation.CommandBatchCursorHelper.MESSAGE_IF
 import static com.mongodb.internal.operation.CommandBatchCursorHelper.NEXT_BATCH;
 import static com.mongodb.internal.operation.CommandBatchCursorHelper.NO_OP_FIELD_NAME_VALIDATOR;
 import static com.mongodb.internal.operation.CommandBatchCursorHelper.getKillCursorsCommand;
-import static com.mongodb.internal.operation.CommandBatchCursorHelper.getCommandCursorResult;
+import static com.mongodb.internal.operation.CommandBatchCursorHelper.logCommandCursorResult;
 import static com.mongodb.internal.operation.CommandBatchCursorHelper.getMoreCommandDocument;
 import static com.mongodb.internal.operation.CommandBatchCursorHelper.translateCommandException;
 
@@ -272,7 +272,9 @@ class CommandBatchCursor<T> implements AggregateResponseBatchCursor<T> {
 
     private CommandCursorResult<T> toCommandCursorResult(final ServerAddress serverAddress, final String fieldNameContainingBatch,
             final BsonDocument commandCursorDocument) {
-        CommandCursorResult<T> commandCursorResult = getCommandCursorResult(serverAddress, fieldNameContainingBatch, commandCursorDocument);
+        CommandCursorResult<T> commandCursorResult = new CommandCursorResult<>(serverAddress, fieldNameContainingBatch,
+                commandCursorDocument);
+        logCommandCursorResult(commandCursorResult);
         this.nextBatch = commandCursorResult.getResults().isEmpty() ? null : commandCursorResult.getResults();
         this.count += commandCursorResult.getResults().size();
         return commandCursorResult;
@@ -323,7 +325,6 @@ class CommandBatchCursor<T> implements AggregateResponseBatchCursor<T> {
             }
             try {
                 if (getServerCursor() != null) {
-                    // Don't handle corrupted connections
                     Connection connection = getConnection();
                     try {
                         releaseServerResources(connection);

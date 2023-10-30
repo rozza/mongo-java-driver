@@ -55,7 +55,7 @@ import static com.mongodb.internal.operation.CommandBatchCursorHelper.MESSAGE_IF
 import static com.mongodb.internal.operation.CommandBatchCursorHelper.MESSAGE_IF_CONCURRENT_OPERATION;
 import static com.mongodb.internal.operation.CommandBatchCursorHelper.NEXT_BATCH;
 import static com.mongodb.internal.operation.CommandBatchCursorHelper.NO_OP_FIELD_NAME_VALIDATOR;
-import static com.mongodb.internal.operation.CommandBatchCursorHelper.getCommandCursorResult;
+import static com.mongodb.internal.operation.CommandBatchCursorHelper.logCommandCursorResult;
 import static com.mongodb.internal.operation.CommandBatchCursorHelper.getKillCursorsCommand;
 import static com.mongodb.internal.operation.CommandBatchCursorHelper.getMoreCommandDocument;
 import static com.mongodb.internal.operation.CommandBatchCursorHelper.translateCommandException;
@@ -233,7 +233,9 @@ class AsyncCommandBatchCursor<T> implements AsyncAggregateResponseBatchCursor<T>
 
     private CommandCursorResult<T> toCommandCursorResult(final ServerAddress serverAddress, final String fieldNameContainingBatch,
             final BsonDocument commandCursorDocument) {
-        CommandCursorResult<T> commandCursorResult = getCommandCursorResult(serverAddress, fieldNameContainingBatch, commandCursorDocument);
+        CommandCursorResult<T> commandCursorResult = new CommandCursorResult<>(serverAddress, fieldNameContainingBatch,
+                commandCursorDocument);
+        logCommandCursorResult(commandCursorResult);
         this.count.addAndGet(commandCursorResult.getResults().size());
         return commandCursorResult;
     }
@@ -279,7 +281,6 @@ class AsyncCommandBatchCursor<T> implements AsyncAggregateResponseBatchCursor<T>
             }
 
             if (getServerCursor() != null) {
-                // Don't handle corrupted connections
                 getConnection((connection, t) -> {
                     if (connection != null) {
                         releaseServerAndClientResources(connection, (r, t1) -> connection.release());
@@ -299,11 +300,11 @@ class AsyncCommandBatchCursor<T> implements AsyncAggregateResponseBatchCursor<T>
                     callback.onResult(null, t);
                     return;
                 }
-                callable.call(connection, (result, t1) -> {
+                callable.call(assertNotNull(connection), (result, t1) -> {
                     if (t1 instanceof MongoSocketException) {
                         onCorruptedConnection(connection, (MongoSocketException) t1);
                     }
-                    assertNotNull(connection).release();
+                    connection.release();
                     callback.onResult(result, t1);
                 });
             });

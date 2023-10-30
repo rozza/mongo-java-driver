@@ -20,7 +20,6 @@ import com.mongodb.MongoCommandException;
 import com.mongodb.MongoCursorNotFoundException;
 import com.mongodb.MongoNamespace;
 import com.mongodb.MongoQueryException;
-import com.mongodb.ServerAddress;
 import com.mongodb.ServerCursor;
 import com.mongodb.connection.ConnectionDescription;
 import com.mongodb.internal.validator.NoOpFieldNameValidator;
@@ -70,10 +69,7 @@ final class CommandBatchCursorHelper {
         return document;
     }
 
-    static <T> CommandCursorResult<T> getCommandCursorResult(final ServerAddress serverAddress, final String fieldNameContainingBatch,
-            final BsonDocument commandCursorDocument) {
-        CommandCursorResult<T> commandCursorResult = new CommandCursorResult<>(serverAddress, fieldNameContainingBatch,
-                commandCursorDocument);
+    static <T> CommandCursorResult<T> logCommandCursorResult(final CommandCursorResult<T> commandCursorResult) {
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug(format("Received batch of %d documents with cursorId %d from server %s", commandCursorResult.getResults().size(),
                     commandCursorResult.getCursorId(), commandCursorResult.getServerAddress()));
