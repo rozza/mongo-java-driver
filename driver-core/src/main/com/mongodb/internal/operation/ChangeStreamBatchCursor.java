@@ -33,6 +33,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
+import static com.mongodb.assertions.Assertions.assertNotNull;
 import static com.mongodb.internal.operation.ChangeStreamBatchCursorHelper.isResumableError;
 import static com.mongodb.internal.operation.SyncOperationHelper.withReadConnectionSource;
 
@@ -94,8 +95,9 @@ final class ChangeStreamBatchCursor<T> implements AggregateResponseBatchCursor<T
     public List<T> tryNext() {
         return resumeableOperation(commandBatchCursor -> {
             try {
-                return convertAndProduceLastId(commandBatchCursor.tryNext(), changeStreamOperation.getDecoder(),
-                        lastId -> resumeToken = lastId);
+                List<RawBsonDocument> tryNext = commandBatchCursor.tryNext();
+                return tryNext == null ? null :
+                        convertAndProduceLastId(tryNext, changeStreamOperation.getDecoder(), lastId -> resumeToken = lastId);
             } finally {
                 cachePostBatchResumeToken(commandBatchCursor);
             }
@@ -165,20 +167,18 @@ final class ChangeStreamBatchCursor<T> implements AggregateResponseBatchCursor<T
      * @param lastIdConsumer Is {@linkplain Consumer#accept(Object) called} iff {@code rawDocuments} is successfully converted
      *                       and the returned {@link List} is neither {@code null} nor {@linkplain List#isEmpty() empty}.
      */
-    static <T> List<T> convertAndProduceLastId(@Nullable final List<RawBsonDocument> rawDocuments,
+    static <T> List<T> convertAndProduceLastId(final List<RawBsonDocument> rawDocuments,
                                                final Decoder<T> decoder,
                                                final Consumer<BsonDocument> lastIdConsumer) {
         List<T> results = new ArrayList<>();
-        if (rawDocuments != null) {
-            for (RawBsonDocument rawDocument : rawDocuments) {
-                if (!rawDocument.containsKey("_id")) {
-                    throw new MongoChangeStreamException("Cannot provide resume functionality when the resume token is missing.");
-                }
-                results.add(rawDocument.decode(decoder));
+        for (RawBsonDocument rawDocument : assertNotNull(rawDocuments)) {
+            if (!rawDocument.containsKey("_id")) {
+                throw new MongoChangeStreamException("Cannot provide resume functionality when the resume token is missing.");
             }
-            if (!rawDocuments.isEmpty()) {
-                lastIdConsumer.accept(rawDocuments.get(rawDocuments.size() - 1).getDocument("_id"));
-            }
+            results.add(rawDocument.decode(decoder));
+        }
+        if (!rawDocuments.isEmpty()) {
+            lastIdConsumer.accept(rawDocuments.get(rawDocuments.size() - 1).getDocument("_id"));
         }
         return results;
     }
