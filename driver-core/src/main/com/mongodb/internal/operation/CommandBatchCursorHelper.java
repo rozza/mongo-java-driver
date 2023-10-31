@@ -51,14 +51,13 @@ final class CommandBatchCursorHelper {
             + "supported";
 
     static BsonDocument getMoreCommandDocument(
-            final long cursorId, final ConnectionDescription connectionDescription, final MongoNamespace namespace, final int limit,
-            final int batchSize, final int count, final long maxTimeMS, @Nullable final BsonValue comment) {
+            final long cursorId, final ConnectionDescription connectionDescription, final MongoNamespace namespace, final int batchSize,
+            final long maxTimeMS, @Nullable final BsonValue comment) {
         BsonDocument document = new BsonDocument("getMore", new BsonInt64(cursorId))
                 .append("collection", new BsonString(namespace.getCollectionName()));
 
-        int batchSizeForGetMoreCommand = Math.abs(getNumberToReturn(limit, batchSize, count));
-        if (batchSizeForGetMoreCommand != 0) {
-            document.append("batchSize", new BsonInt32(batchSizeForGetMoreCommand));
+        if (batchSize != 0) {
+            document.append("batchSize", new BsonInt32(batchSize));
         }
         if (maxTimeMS != 0) {
             document.append("maxTimeMS", new BsonInt64(maxTimeMS));

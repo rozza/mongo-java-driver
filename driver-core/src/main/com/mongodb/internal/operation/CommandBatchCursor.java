@@ -59,7 +59,6 @@ import static com.mongodb.internal.operation.CommandBatchCursorHelper.translateC
 class CommandBatchCursor<T> implements AggregateResponseBatchCursor<T> {
 
     private final MongoNamespace namespace;
-    private final int limit;
     private final long maxTimeMS;
     private final Decoder<T> decoder;
     @Nullable
@@ -70,13 +69,12 @@ class CommandBatchCursor<T> implements AggregateResponseBatchCursor<T> {
 
     private int batchSize;
     private CommandCursorResult<T> commandCursorResult;
-    private int count = 0;
     @Nullable
     private List<T> nextBatch;
 
     CommandBatchCursor(
             final BsonDocument commandCursorDocument,
-            final int limit, final int batchSize, final long maxTimeMS,
+            final int batchSize, final long maxTimeMS,
             final Decoder<T> decoder,
             @Nullable final BsonValue comment,
             final ConnectionSource connectionSource,
@@ -84,7 +82,6 @@ class CommandBatchCursor<T> implements AggregateResponseBatchCursor<T> {
         ConnectionDescription connectionDescription = connection.getDescription();
         this.commandCursorResult = toCommandCursorResult(connectionDescription.getServerAddress(), FIRST_BATCH, commandCursorDocument);
         this.namespace = commandCursorResult.getNamespace();
-        this.limit = limit;
         this.batchSize = batchSize;
         this.maxTimeMS = maxTimeMS;
         this.decoder = notNull("decoder", decoder);
@@ -93,17 +90,11 @@ class CommandBatchCursor<T> implements AggregateResponseBatchCursor<T> {
         this.firstBatchEmpty = commandCursorResult.getResults().isEmpty();
 
         Connection connectionToPin = null;
-        boolean releaseServerAndResources = false;
-        if (limitReached()) {
-            releaseServerAndResources = true;
-        } else if (connectionDescription.getServerType() == ServerType.LOAD_BALANCER) {
+        if (connectionDescription.getServerType() == ServerType.LOAD_BALANCER) {
             connectionToPin = connection;
         }
 
         resourceManager = new ResourceManager(namespace, connectionSource, connectionToPin, commandCursorResult.getServerCursor());
-        if (releaseServerAndResources) {
-            resourceManager.releaseServerAndClientResources(connection);
-        }
     }
 
     @Override
@@ -114,10 +105,6 @@ class CommandBatchCursor<T> implements AggregateResponseBatchCursor<T> {
     private boolean doHasNext() {
         if (nextBatch != null) {
             return true;
-        }
-
-        if (limitReached()) {
-            return false;
         }
 
         while (resourceManager.getServerCursor() != null) {
@@ -195,10 +182,6 @@ class CommandBatchCursor<T> implements AggregateResponseBatchCursor<T> {
             return true;
         }
 
-        if (limitReached()) {
-            return false;
-        }
-
         if (resourceManager.getServerCursor() != null) {
             getMore();
         }
@@ -252,8 +235,8 @@ class CommandBatchCursor<T> implements AggregateResponseBatchCursor<T> {
                 this.commandCursorResult = toCommandCursorResult(connection.getDescription().getServerAddress(), NEXT_BATCH,
                         assertNotNull(
                             connection.command(namespace.getDatabaseName(),
-                                 getMoreCommandDocument(serverCursor.getId(), connection.getDescription(), namespace,
-                                     limit, batchSize, count, maxTimeMS, comment),
+                                 getMoreCommandDocument(serverCursor.getId(), connection.getDescription(), namespace, batchSize,
+                                         maxTimeMS, comment),
                                  NO_OP_FIELD_NAME_VALIDATOR,
                                  ReadPreference.primary(),
                                  CommandResultDocumentCodec.create(decoder, NEXT_BATCH),
@@ -263,9 +246,6 @@ class CommandBatchCursor<T> implements AggregateResponseBatchCursor<T> {
                 throw translateCommandException(e, serverCursor);
             }
             resourceManager.setServerCursor(nextServerCursor);
-            if (limitReached() || !resourceManager.operable()) {
-                resourceManager.releaseServerAndClientResources(connection);
-            }
         });
     }
 
@@ -275,12 +255,7 @@ class CommandBatchCursor<T> implements AggregateResponseBatchCursor<T> {
                 commandCursorDocument);
         logCommandCursorResult(commandCursorResult);
         this.nextBatch = commandCursorResult.getResults().isEmpty() ? null : commandCursorResult.getResults();
-        this.count += commandCursorResult.getResults().size();
         return commandCursorResult;
-    }
-
-    private boolean limitReached() {
-        return Math.abs(limit) != 0 && count >= Math.abs(limit);
     }
 
     @ThreadSafe
@@ -359,14 +334,6 @@ class CommandBatchCursor<T> implements AggregateResponseBatchCursor<T> {
                 return assertNotNull(getConnectionSource()).getConnection();
             } else {
                 return pinnedConnection.retain();
-            }
-        }
-
-        private void releaseServerAndClientResources(final Connection connection) {
-            try {
-                releaseServerResources(assertNotNull(connection));
-            } finally {
-                releaseClientResources();
             }
         }
 

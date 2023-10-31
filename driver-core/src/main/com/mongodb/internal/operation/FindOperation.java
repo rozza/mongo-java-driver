@@ -456,7 +456,7 @@ public class FindOperation<T> implements AsyncExplainableReadOperation<AsyncBatc
 
     private CommandReadTransformer<BsonDocument, CommandBatchCursor<T>> transformer() {
         return (result, source, connection) ->
-                new CommandBatchCursor<>(result, limit, batchSize, getMaxTimeForCursor(), decoder, comment, source, connection);
+                new CommandBatchCursor<>(result, batchSize, getMaxTimeForCursor(), decoder, comment, source, connection);
     }
 
     // TODO - CSOT JAVA-4058
@@ -466,6 +466,6 @@ public class FindOperation<T> implements AsyncExplainableReadOperation<AsyncBatc
 
     private CommandReadTransformerAsync<BsonDocument, AsyncBatchCursor<T>> asyncTransformer() {
         return (result, source, connection) ->
-            new AsyncCommandBatchCursor<>(result, limit, batchSize, getMaxTimeForCursor(), decoder, comment, source, connection);
+            new AsyncCommandBatchCursor<>(result, batchSize, getMaxTimeForCursor(), decoder, comment, source, connection);
     }
 }

@@ -339,8 +339,7 @@ final class AsyncOperationHelper {
 
     static <T> AsyncBatchCursor<T> cursorDocumentToAsyncBatchCursor(final BsonDocument cursorDocument, final Decoder<T> decoder,
             final BsonValue comment, final AsyncConnectionSource source, final AsyncConnection connection, final int batchSize) {
-        return new AsyncCommandBatchCursor<>(cursorDocument, 0, batchSize, 0, decoder,
-                comment, source, connection);
+        return new AsyncCommandBatchCursor<>(cursorDocument, batchSize, 0, decoder, comment, source, connection);
     }
 
     static <T> SingleResultCallback<T> releasingCallback(final SingleResultCallback<T> wrapped, final AsyncConnection connection) {

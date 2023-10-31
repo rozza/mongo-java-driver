@@ -44,7 +44,6 @@ import org.bson.codecs.Decoder;
 
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.mongodb.assertions.Assertions.assertNotNull;
 import static com.mongodb.assertions.Assertions.assertTrue;
@@ -63,7 +62,6 @@ import static java.util.Collections.emptyList;
 class AsyncCommandBatchCursor<T> implements AsyncAggregateResponseBatchCursor<T> {
 
     private final MongoNamespace namespace;
-    private final int limit;
     private final long maxTimeMS;
     private final Decoder<T> decoder;
     @Nullable
@@ -72,13 +70,12 @@ class AsyncCommandBatchCursor<T> implements AsyncAggregateResponseBatchCursor<T>
     private final boolean firstBatchEmpty;
     private final ResourceManager resourceManager;
     private final CommandCursorResult<T> commandCursorResult;
-    private final AtomicInteger count = new AtomicInteger();
     private final AtomicBoolean processedInitial = new AtomicBoolean();
     private int batchSize;
 
     AsyncCommandBatchCursor(
             final BsonDocument commandCursorDocument,
-            final int limit, final int batchSize, final long maxTimeMS,
+            final int batchSize, final long maxTimeMS,
             final Decoder<T> decoder,
             @Nullable final BsonValue comment,
             final AsyncConnectionSource connectionSource,
@@ -86,7 +83,6 @@ class AsyncCommandBatchCursor<T> implements AsyncAggregateResponseBatchCursor<T>
         ConnectionDescription connectionDescription = connection.getDescription();
         this.commandCursorResult = toCommandCursorResult(connectionDescription.getServerAddress(), FIRST_BATCH, commandCursorDocument);
         this.namespace = commandCursorResult.getNamespace();
-        this.limit = limit;
         this.batchSize = batchSize;
         this.maxTimeMS = maxTimeMS;
         this.decoder = notNull("decoder", decoder);
@@ -95,17 +91,11 @@ class AsyncCommandBatchCursor<T> implements AsyncAggregateResponseBatchCursor<T>
         this.firstBatchEmpty = commandCursorResult.getResults().isEmpty();
 
         AsyncConnection connectionToPin = null;
-        boolean releaseServerAndResources = false;
-        if (limitReached()) {
-            releaseServerAndResources = true;
-        } else if (connectionDescription.getServerType() == ServerType.LOAD_BALANCER) {
+        if (connectionDescription.getServerType() == ServerType.LOAD_BALANCER) {
             connectionToPin = connection;
         }
 
         resourceManager = new ResourceManager(namespace, connectionSource, connectionToPin, commandCursorResult.getServerCursor());
-        if (releaseServerAndResources) {
-            resourceManager.releaseServerAndClientResources(connection);
-        }
     }
 
     @Override
@@ -124,15 +114,12 @@ class AsyncCommandBatchCursor<T> implements AsyncAggregateResponseBatchCursor<T>
             }
 
             if (serverCursorIsNull || !batchResults.isEmpty()) {
-                if (serverCursorIsNull) {
-                    close();
-                }
                 funcCallback.onResult(batchResults, null);
             } else {
                 getMore(localServerCursor, funcCallback);
             }
         }).get((r, t) -> {
-            if (limitReached()) {
+            if (resourceManager.getServerCursor() == null) {
                 close();
             }
             callback.onResult(r, t);
@@ -196,8 +183,7 @@ class AsyncCommandBatchCursor<T> implements AsyncAggregateResponseBatchCursor<T>
     private void getMoreLoop(final AsyncConnection connection, final ServerCursor serverCursor,
             final SingleResultCallback<List<T>> callback) {
         connection.commandAsync(namespace.getDatabaseName(),
-                getMoreCommandDocument(serverCursor.getId(), connection.getDescription(), namespace,
-                        limit, batchSize, count.get(), maxTimeMS, comment),
+                getMoreCommandDocument(serverCursor.getId(), connection.getDescription(), namespace, batchSize, maxTimeMS, comment),
                 NO_OP_FIELD_NAME_VALIDATOR, ReadPreference.primary(),
                 CommandResultDocumentCodec.create(decoder, NEXT_BATCH),
                 assertNotNull(resourceManager.getConnectionSource()).getOperationContext(),
@@ -214,20 +200,19 @@ class AsyncCommandBatchCursor<T> implements AsyncAggregateResponseBatchCursor<T>
                             connection.getDescription().getServerAddress(), NEXT_BATCH, assertNotNull(commandResult));
                     resourceManager.setServerCursor(commandCursorResult.getServerCursor());
 
+                    List<T> nextBatch = commandCursorResult.getResults();
+                    if (commandCursorResult.getServerCursor() == null || !nextBatch.isEmpty()) {
+                        callback.onResult(nextBatch, null);
+                        return;
+                    }
+
                     if (!resourceManager.operable()) {
-                        // The cursor was closed
-                        resourceManager.releaseServerAndClientResources(connection);
                         callback.onResult(emptyList(), null);
                         return;
                     }
 
-                    List<T> nextBatch = commandCursorResult.getResults();
-                    if (nextBatch.isEmpty() && commandCursorResult.getServerCursor() != null) {
-                        getMoreLoop(connection, commandCursorResult.getServerCursor(), callback);
-                    } else {
-                        callback.onResult(nextBatch, null);
-                    }
-                });
+                    getMoreLoop(connection, commandCursorResult.getServerCursor(), callback);
+        });
     }
 
     private CommandCursorResult<T> toCommandCursorResult(final ServerAddress serverAddress, final String fieldNameContainingBatch,
@@ -235,12 +220,7 @@ class AsyncCommandBatchCursor<T> implements AsyncAggregateResponseBatchCursor<T>
         CommandCursorResult<T> commandCursorResult = new CommandCursorResult<>(serverAddress, fieldNameContainingBatch,
                 commandCursorDocument);
         logCommandCursorResult(commandCursorResult);
-        this.count.addAndGet(commandCursorResult.getResults().size());
         return commandCursorResult;
-    }
-
-    private boolean limitReached() {
-        return Math.abs(limit) != 0 && count.get() >= Math.abs(limit);
     }
 
     @ThreadSafe
@@ -282,7 +262,7 @@ class AsyncCommandBatchCursor<T> implements AsyncAggregateResponseBatchCursor<T>
             if (getServerCursor() != null) {
                 getConnection((connection, t) -> {
                     if (connection != null) {
-                        releaseServerAndClientResources(connection, (r, t1) -> connection.release());
+                        releaseServerAndClientResources(connection);
                     } else {
                         unsetServerCursor();
                         releaseClientResources();
@@ -320,10 +300,6 @@ class AsyncCommandBatchCursor<T> implements AsyncAggregateResponseBatchCursor<T>
         }
 
         private void releaseServerAndClientResources(final AsyncConnection connection) {
-            releaseServerAndClientResources(connection, (r, t) -> { /* Do nothing */ });
-        }
-
-        private void releaseServerAndClientResources(final AsyncConnection connection, final SingleResultCallback<Void> callback) {
             AsyncCallbackSupplier<Void> callbackSupplier = funcCallback -> {
                 ServerCursor localServerCursor = getServerCursor();
                 if (localServerCursor != null) {
@@ -333,7 +309,7 @@ class AsyncCommandBatchCursor<T> implements AsyncAggregateResponseBatchCursor<T>
             callbackSupplier.whenComplete(() -> {
                 unsetServerCursor();
                 releaseClientResources();
-            }).get(callback);
+            }).whenComplete(connection::release).get((r,t) -> { /* do nothing */ });
         }
 
         private void killServerCursor(final MongoNamespace namespace, final ServerCursor localServerCursor,
