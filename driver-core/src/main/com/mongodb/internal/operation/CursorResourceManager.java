@@ -25,6 +25,7 @@ import com.mongodb.internal.connection.Connection;
 import com.mongodb.lang.Nullable;
 
 import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import static com.mongodb.assertions.Assertions.assertNotNull;
 import static com.mongodb.assertions.Assertions.assertNull;
@@ -65,12 +66,11 @@ abstract class CursorResourceManager<CS extends ReferenceCounted, C extends Refe
     private volatile boolean skipReleasingServerResourcesOnClose;
 
     CursorResourceManager(
-            final Lock lock,
             final MongoNamespace namespace,
             final CS connectionSource,
             @Nullable final C connectionToPin,
             @Nullable final ServerCursor serverCursor) {
-        this.lock = notNull("lock", lock);
+        this.lock = new ReentrantLock();
         this.namespace = notNull("mongoNamespace", namespace);
         this.state = State.IDLE;
         if (serverCursor != null) {

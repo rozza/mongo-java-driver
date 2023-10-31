@@ -39,7 +39,6 @@ import org.bson.codecs.Decoder;
 
 import java.util.List;
 import java.util.NoSuchElementException;
-import java.util.concurrent.locks.StampedLock;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
@@ -53,8 +52,8 @@ import static com.mongodb.internal.operation.CommandBatchCursorHelper.MESSAGE_IF
 import static com.mongodb.internal.operation.CommandBatchCursorHelper.NEXT_BATCH;
 import static com.mongodb.internal.operation.CommandBatchCursorHelper.NO_OP_FIELD_NAME_VALIDATOR;
 import static com.mongodb.internal.operation.CommandBatchCursorHelper.getKillCursorsCommand;
-import static com.mongodb.internal.operation.CommandBatchCursorHelper.logCommandCursorResult;
 import static com.mongodb.internal.operation.CommandBatchCursorHelper.getMoreCommandDocument;
+import static com.mongodb.internal.operation.CommandBatchCursorHelper.logCommandCursorResult;
 import static com.mongodb.internal.operation.CommandBatchCursorHelper.translateCommandException;
 
 class CommandBatchCursor<T> implements AggregateResponseBatchCursor<T> {
@@ -292,7 +291,7 @@ class CommandBatchCursor<T> implements AggregateResponseBatchCursor<T> {
                 final ConnectionSource connectionSource,
                 @Nullable final Connection connectionToPin,
                 @Nullable final ServerCursor serverCursor) {
-            super(new StampedLock().asWriteLock(), namespace, connectionSource, connectionToPin, serverCursor);
+            super(namespace, connectionSource, connectionToPin, serverCursor);
         }
 
         /**

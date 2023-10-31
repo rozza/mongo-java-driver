@@ -45,7 +45,6 @@ import org.bson.codecs.Decoder;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.locks.ReentrantLock;
 
 import static com.mongodb.assertions.Assertions.assertNotNull;
 import static com.mongodb.assertions.Assertions.assertTrue;
@@ -55,9 +54,9 @@ import static com.mongodb.internal.operation.CommandBatchCursorHelper.MESSAGE_IF
 import static com.mongodb.internal.operation.CommandBatchCursorHelper.MESSAGE_IF_CONCURRENT_OPERATION;
 import static com.mongodb.internal.operation.CommandBatchCursorHelper.NEXT_BATCH;
 import static com.mongodb.internal.operation.CommandBatchCursorHelper.NO_OP_FIELD_NAME_VALIDATOR;
-import static com.mongodb.internal.operation.CommandBatchCursorHelper.logCommandCursorResult;
 import static com.mongodb.internal.operation.CommandBatchCursorHelper.getKillCursorsCommand;
 import static com.mongodb.internal.operation.CommandBatchCursorHelper.getMoreCommandDocument;
+import static com.mongodb.internal.operation.CommandBatchCursorHelper.logCommandCursorResult;
 import static com.mongodb.internal.operation.CommandBatchCursorHelper.translateCommandException;
 import static java.util.Collections.emptyList;
 
@@ -252,7 +251,7 @@ class AsyncCommandBatchCursor<T> implements AsyncAggregateResponseBatchCursor<T>
                 final AsyncConnectionSource connectionSource,
                 @Nullable final AsyncConnection connectionToPin,
                 @Nullable final ServerCursor serverCursor) {
-            super(new ReentrantLock(), namespace, connectionSource, connectionToPin, serverCursor);
+            super(namespace, connectionSource, connectionToPin, serverCursor);
         }
 
         /**
