@@ -90,11 +90,7 @@ class AsyncCommandBatchCursor<T> implements AsyncAggregateResponseBatchCursor<T>
         this.maxWireVersion = connectionDescription.getMaxWireVersion();
         this.firstBatchEmpty = commandCursorResult.getResults().isEmpty();
 
-        AsyncConnection connectionToPin = null;
-        if (connectionDescription.getServerType() == ServerType.LOAD_BALANCER) {
-            connectionToPin = connection;
-        }
-
+        AsyncConnection connectionToPin = connectionDescription.getServerType() == ServerType.LOAD_BALANCER ? connection : null;
         resourceManager = new ResourceManager(namespace, connectionSource, connectionToPin, commandCursorResult.getServerCursor());
     }
 
