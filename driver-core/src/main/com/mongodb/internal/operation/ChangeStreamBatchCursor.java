@@ -96,8 +96,8 @@ final class ChangeStreamBatchCursor<T> implements AggregateResponseBatchCursor<T
         return resumeableOperation(commandBatchCursor -> {
             try {
                 List<RawBsonDocument> tryNext = commandBatchCursor.tryNext();
-                return tryNext == null ? null :
-                        convertAndProduceLastId(tryNext, changeStreamOperation.getDecoder(), lastId -> resumeToken = lastId);
+                return tryNext == null ? null
+                        : convertAndProduceLastId(tryNext, changeStreamOperation.getDecoder(), lastId -> resumeToken = lastId);
             } finally {
                 cachePostBatchResumeToken(commandBatchCursor);
             }

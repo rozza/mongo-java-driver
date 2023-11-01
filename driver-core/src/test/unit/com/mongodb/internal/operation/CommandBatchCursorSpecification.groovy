@@ -128,7 +128,7 @@ class CommandBatchCursorSpecification extends Specification {
         then:
         cursor.next() == FIRST_BATCH
 
-        then:  
+        then:
         initialConnection.getCount() == 0
         connectionSource.getCount() == 0
 
@@ -177,7 +177,7 @@ class CommandBatchCursorSpecification extends Specification {
 
         then:
         0 * connectionA._
-        0 * connectionB._  
+        0 * connectionB._
         initialConnection.getCount() == 0
         connectionSource.getCount() == 0
 
@@ -220,7 +220,7 @@ class CommandBatchCursorSpecification extends Specification {
         }
 
         then:
-        if(responseCursorId > 0) {
+        if (responseCursorId > 0) {
             1 * secondConnection.command(*_) >> null
         }
 
@@ -422,11 +422,6 @@ class CommandBatchCursorSpecification extends Specification {
     def 'should handle exceptions when killing cursor and a connection can not be obtained'() {
         given:
         def initialConnection = referenceCountedConnection()
-        def connection = Mock(Connection) {
-            _ * getDescription() >> Stub(ConnectionDescription) {
-                getMaxWireVersion() >> 4
-            }
-        }
         def connectionSource = Stub(ConnectionSource) {
             getConnection() >> { throw new MongoSocketOpenException("can't open socket", SERVER_ADDRESS, new IOException()) }
             getServerApi() >> null

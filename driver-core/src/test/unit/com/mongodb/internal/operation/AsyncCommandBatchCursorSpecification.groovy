@@ -224,7 +224,7 @@ class AsyncCommandBatchCursorSpecification extends Specification {
         }
 
         then:
-        if(responseCursorId > 0) {
+        if (responseCursorId > 0) {
             1 * secondConnection.commandAsync(*_) >> {
                 // `killCursors` command
                 ((SingleResultCallback<?>) it.last()).onResult(null, null)

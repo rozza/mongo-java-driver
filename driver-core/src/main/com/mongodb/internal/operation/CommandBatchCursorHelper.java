@@ -32,7 +32,6 @@ import org.bson.BsonString;
 import org.bson.BsonValue;
 import org.bson.FieldNameValidator;
 
-import static com.mongodb.internal.operation.CursorHelper.getNumberToReturn;
 import static com.mongodb.internal.operation.DocumentHelper.putIfNotNull;
 import static com.mongodb.internal.operation.OperationHelper.LOGGER;
 import static com.mongodb.internal.operation.ServerVersionHelper.serverIsAtLeastVersionFourDotFour;

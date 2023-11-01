@@ -309,7 +309,7 @@ class AsyncCommandBatchCursor<T> implements AsyncAggregateResponseBatchCursor<T>
             callbackSupplier.whenComplete(() -> {
                 unsetServerCursor();
                 releaseClientResources();
-            }).whenComplete(connection::release).get((r,t) -> { /* do nothing */ });
+            }).whenComplete(connection::release).get((r, t) -> { /* do nothing */ });
         }
 
         private void killServerCursor(final MongoNamespace namespace, final ServerCursor localServerCursor,
