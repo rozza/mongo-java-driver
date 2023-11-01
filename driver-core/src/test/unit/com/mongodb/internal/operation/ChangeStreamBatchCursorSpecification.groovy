@@ -21,6 +21,8 @@ import org.bson.BsonDocument
 import org.bson.BsonInt32
 import spock.lang.Specification
 
+import static java.util.Collections.emptyList
+
 class ChangeStreamBatchCursorSpecification extends Specification {
 
     def 'should call the underlying CommandBatchCursor'() {
@@ -49,7 +51,7 @@ class ChangeStreamBatchCursorSpecification extends Specification {
         cursor.next()
 
         then:
-        1 * wrapped.next()
+        1 * wrapped.next() >> emptyList()
         1 * wrapped.getPostBatchResumeToken()
 
         when:
