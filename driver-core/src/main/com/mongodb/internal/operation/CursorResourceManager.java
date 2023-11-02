@@ -100,8 +100,11 @@ abstract class CursorResourceManager<CS extends ReferenceCounted, C extends Refe
         return state;
     }
 
+    /**
+     * Thread-safe.
+     */
     @Nullable
-    public CS getConnectionSource() {
+    CS getConnectionSource() {
         return connectionSource;
     }
 
