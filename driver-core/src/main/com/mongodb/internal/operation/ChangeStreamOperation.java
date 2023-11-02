@@ -20,6 +20,7 @@ import com.mongodb.MongoNamespace;
 import com.mongodb.client.model.Collation;
 import com.mongodb.client.model.changestream.FullDocument;
 import com.mongodb.client.model.changestream.FullDocumentBeforeChange;
+import com.mongodb.internal.TimeoutSettings;
 import com.mongodb.internal.async.AsyncAggregateResponseBatchCursor;
 import com.mongodb.internal.async.AsyncBatchCursor;
 import com.mongodb.internal.async.SingleResultCallback;
@@ -40,7 +41,6 @@ import org.bson.codecs.RawBsonDocumentCodec;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 import static com.mongodb.assertions.Assertions.notNull;
 import static com.mongodb.internal.operation.AsyncOperationHelper.withAsyncReadConnectionSource;
@@ -65,15 +65,16 @@ public class ChangeStreamOperation<T> implements AsyncReadOperation<AsyncBatchCu
     private boolean showExpandedEvents;
 
 
-    public ChangeStreamOperation(final MongoNamespace namespace, final FullDocument fullDocument,
-            final FullDocumentBeforeChange fullDocumentBeforeChange, final List<BsonDocument> pipeline, final Decoder<T> decoder) {
-        this(namespace, fullDocument, fullDocumentBeforeChange, pipeline, decoder, ChangeStreamLevel.COLLECTION);
+    public ChangeStreamOperation(final TimeoutSettings timeoutSettings, final MongoNamespace namespace,
+            final FullDocument fullDocument, final FullDocumentBeforeChange fullDocumentBeforeChange,
+            final List<BsonDocument> pipeline, final Decoder<T> decoder) {
+        this(timeoutSettings, namespace, fullDocument, fullDocumentBeforeChange, pipeline, decoder, ChangeStreamLevel.COLLECTION);
     }
 
-    public ChangeStreamOperation(final MongoNamespace namespace, final FullDocument fullDocument,
-            final FullDocumentBeforeChange fullDocumentBeforeChange, final List<BsonDocument> pipeline,
+    public ChangeStreamOperation(final TimeoutSettings timeoutSettings, final MongoNamespace namespace,
+            final FullDocument fullDocument, final FullDocumentBeforeChange fullDocumentBeforeChange, final List<BsonDocument> pipeline,
             final Decoder<T> decoder, final ChangeStreamLevel changeStreamLevel) {
-        this.wrapped = new AggregateOperationImpl<>(namespace, pipeline, RAW_BSON_DOCUMENT_CODEC,
+        this.wrapped = new AggregateOperationImpl<>(timeoutSettings, namespace, pipeline, RAW_BSON_DOCUMENT_CODEC,
                 getAggregateTarget(), getPipelineCreator());
         this.fullDocument = notNull("fullDocument", fullDocument);
         this.fullDocumentBeforeChange = notNull("fullDocumentBeforeChange", fullDocumentBeforeChange);
@@ -124,15 +125,6 @@ public class ChangeStreamOperation<T> implements AsyncReadOperation<AsyncBatchCu
         return this;
     }
 
-    public long getMaxAwaitTime(final TimeUnit timeUnit) {
-        return wrapped.getMaxAwaitTime(timeUnit);
-    }
-
-    public ChangeStreamOperation<T> maxAwaitTime(final long maxAwaitTime, final TimeUnit timeUnit) {
-        wrapped.maxAwaitTime(maxAwaitTime, timeUnit);
-        return this;
-    }
-
     public Collation getCollation() {
         return wrapped.getCollation();
     }
@@ -179,6 +171,10 @@ public class ChangeStreamOperation<T> implements AsyncReadOperation<AsyncBatchCu
         return this;
     }
 
+    @Override
+    public TimeoutSettings getTimeoutSettings() {
+        return wrapped.getTimeoutSettings();
+    }
 
     @Override
     public BatchCursor<T> execute(final ReadBinding binding) {

@@ -80,9 +80,11 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static com.mongodb.ClusterFixture.TIMEOUT_SETTINGS;
 import static com.mongodb.assertions.Assertions.assertFalse;
 import static com.mongodb.internal.thread.InterruptionUtil.interruptAndCreateMongoInterruptedException;
 import static java.lang.String.format;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 import static org.junit.Assume.assumeFalse;
@@ -136,22 +138,22 @@ public abstract class AbstractConnectionPoolTest {
             settingsBuilder.minSize(poolOptions.getNumber("minPoolSize").intValue());
         }
         if (poolOptions.containsKey("maxIdleTimeMS")) {
-            settingsBuilder.maxConnectionIdleTime(poolOptions.getNumber("maxIdleTimeMS").intValue(), TimeUnit.MILLISECONDS);
+            settingsBuilder.maxConnectionIdleTime(poolOptions.getNumber("maxIdleTimeMS").intValue(), MILLISECONDS);
         }
         if (poolOptions.containsKey("waitQueueTimeoutMS")) {
-            settingsBuilder.maxWaitTime(poolOptions.getNumber("waitQueueTimeoutMS").intValue(), TimeUnit.MILLISECONDS);
+            settingsBuilder.maxWaitTime(poolOptions.getNumber("waitQueueTimeoutMS").intValue(), MILLISECONDS);
         }
         if (poolOptions.containsKey("backgroundThreadIntervalMS")) {
             long intervalMillis = poolOptions.getNumber("backgroundThreadIntervalMS").longValue();
             assertFalse(intervalMillis == 0);
             if (intervalMillis < 0) {
-                settingsBuilder.maintenanceInitialDelay(Long.MAX_VALUE, TimeUnit.MILLISECONDS);
+                settingsBuilder.maintenanceInitialDelay(Long.MAX_VALUE, MILLISECONDS);
             } else {
                 /* Using frequency/period instead of an interval as required by the specification is incorrect, for example,
                  * because it opens up a possibility to run the background thread non-stop if runs are as long as or longer than the period.
                  * Nevertheless, I am reusing what we already have in the driver instead of clogging up the implementation. */
                 settingsBuilder.maintenanceFrequency(
-                        poolOptions.getNumber("backgroundThreadIntervalMS").longValue(), TimeUnit.MILLISECONDS);
+                        poolOptions.getNumber("backgroundThreadIntervalMS").longValue(), MILLISECONDS);
             }
         }
         if (poolOptions.containsKey("maxConnecting")) {
@@ -242,7 +244,7 @@ public abstract class AbstractConnectionPoolTest {
                     assumeNotNull(eventClass);
                     long timeoutMillis = operation.getNumber("timeout", new BsonInt64(TimeUnit.SECONDS.toMillis(5)))
                             .longValue();
-                    listener.waitForEvent(eventClass, operation.getNumber("count").intValue(), timeoutMillis, TimeUnit.MILLISECONDS);
+                    listener.waitForEvent(eventClass, operation.getNumber("count").intValue(), timeoutMillis, MILLISECONDS);
                 } else if (name.equals("clear")) {
                     pool.invalidate(null);
                 } else if (name.equals("ready")) {
@@ -350,6 +352,10 @@ public abstract class AbstractConnectionPoolTest {
             default:
                 fail("Unexpected reason to close connection " + connectionClosedEvent.getReason());
         }
+    }
+
+    protected OperationContext createOperationContext() {
+        return ClusterFixture.createOperationContext(TIMEOUT_SETTINGS.withMaxWaitTimeMS(settings.getMaxWaitTime(MILLISECONDS)));
     }
 
     private void assertReasonMatch(final BsonDocument expectedEvent, final ConnectionCheckOutFailedEvent connectionCheckOutFailedEvent) {
@@ -474,7 +480,8 @@ public abstract class AbstractConnectionPoolTest {
     }
 
     private static void executeAdminCommand(final BsonDocument command) {
-        new CommandReadOperation<>("admin", command, new BsonDocumentCodec()).execute(ClusterFixture.getBinding());
+        new CommandReadOperation<>(TIMEOUT_SETTINGS, "admin", command, new BsonDocumentCodec())
+                .execute(ClusterFixture.getBinding());
     }
 
     private void setFailPoint() {
@@ -566,13 +573,6 @@ public abstract class AbstractConnectionPoolTest {
         @Override
         public InternalConnection get(final OperationContext operationContext) {
             InternalConnection result = pool.get(operationContext);
-            updateConnectionIdLocalValueAdjustment(result);
-            return result;
-        }
-
-        @Override
-        public InternalConnection get(final OperationContext operationContext, final long timeout, final TimeUnit timeUnit) {
-            InternalConnection result = pool.get(new OperationContext(), timeout, timeUnit);
             updateConnectionIdLocalValueAdjustment(result);
             return result;
         }

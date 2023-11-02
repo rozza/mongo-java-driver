@@ -20,6 +20,7 @@ import com.mongodb.ReadConcern;
 import com.mongodb.ReadPreference;
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.ListCollectionsIterable;
+import com.mongodb.internal.TimeoutSettings;
 import com.mongodb.internal.operation.BatchCursor;
 import com.mongodb.internal.operation.ReadOperation;
 import com.mongodb.internal.operation.SyncOperations;
@@ -46,17 +47,11 @@ class ListCollectionsIterableImpl<TResult> extends MongoIterableImpl<TResult> im
     private BsonValue comment;
 
     ListCollectionsIterableImpl(@Nullable final ClientSession clientSession, final String databaseName, final boolean collectionNamesOnly,
-                                final Class<TResult> resultClass, final CodecRegistry codecRegistry, final ReadPreference readPreference,
-                                final OperationExecutor executor) {
-        this(clientSession, databaseName, collectionNamesOnly, resultClass, codecRegistry, readPreference, executor, true);
-    }
-
-    ListCollectionsIterableImpl(@Nullable final ClientSession clientSession, final String databaseName, final boolean collectionNamesOnly,
-                                final Class<TResult> resultClass, final CodecRegistry codecRegistry, final ReadPreference readPreference,
-                                final OperationExecutor executor, final boolean retryReads) {
-        super(clientSession, executor, ReadConcern.DEFAULT, readPreference, retryReads); // TODO: read concern?
+            final Class<TResult> resultClass, final CodecRegistry codecRegistry, final ReadPreference readPreference,
+            final OperationExecutor executor, final boolean retryReads, final TimeoutSettings timeoutSettings) {
+        super(clientSession, executor, ReadConcern.DEFAULT, readPreference, retryReads, timeoutSettings); // TODO: read concern?
         this.collectionNamesOnly = collectionNamesOnly;
-        this.operations = new SyncOperations<>(BsonDocument.class, readPreference, codecRegistry, retryReads);
+        this.operations = new SyncOperations<>(BsonDocument.class, readPreference, codecRegistry, retryReads, timeoutSettings);
         this.databaseName = notNull("databaseName", databaseName);
         this.resultClass = notNull("resultClass", resultClass);
     }

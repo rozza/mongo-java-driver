@@ -41,7 +41,6 @@ import com.mongodb.event.CommandFailedEvent
 import com.mongodb.event.CommandStartedEvent
 import com.mongodb.event.CommandSucceededEvent
 import com.mongodb.internal.ExceptionUtils.MongoCommandExceptionUtils
-import com.mongodb.internal.IgnorableRequestContext
 import com.mongodb.internal.session.SessionContext
 import com.mongodb.internal.validator.NoOpFieldNameValidator
 import org.bson.BsonDocument
@@ -61,6 +60,7 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
+import static com.mongodb.ClusterFixture.OPERATION_CONTEXT
 import static com.mongodb.ReadPreference.primary
 import static com.mongodb.connection.ClusterConnectionMode.MULTIPLE
 import static com.mongodb.connection.ClusterConnectionMode.SINGLE
@@ -96,7 +96,7 @@ class InternalStreamConnectionSpecification extends Specification {
     def internalConnectionInitializationDescription =
             new InternalConnectionInitializationDescription(connectionDescription, serverDescription)
     def stream = Mock(Stream) {
-        openAsync(_) >> { it[0].completed(null) }
+        openAsync(_, _) >> { it.last().completed(null) }
     }
     def streamFactory = Mock(StreamFactory) {
         create(_) >> { stream }
@@ -115,7 +115,7 @@ class InternalStreamConnectionSpecification extends Specification {
 
     def getOpenedConnection() {
         def connection = getConnection()
-        connection.open()
+        connection.open(OPERATION_CONTEXT)
         connection
     }
 
@@ -133,7 +133,7 @@ class InternalStreamConnectionSpecification extends Specification {
                 .lastUpdateTimeNanos(connection.getInitialServerDescription().getLastUpdateTime(NANOSECONDS))
                 .build()
         when:
-        connection.open()
+        connection.open(OPERATION_CONTEXT)
 
         then:
         connection.opened()
@@ -160,7 +160,7 @@ class InternalStreamConnectionSpecification extends Specification {
                 .build()
 
         when:
-        connection.openAsync(futureResultCallback)
+        connection.openAsync(OPERATION_CONTEXT, futureResultCallback)
         futureResultCallback.get()
 
         then:
@@ -178,7 +178,7 @@ class InternalStreamConnectionSpecification extends Specification {
                 failedInitializer, null)
 
         when:
-        connection.open()
+        connection.open(OPERATION_CONTEXT)
 
         then:
         thrown MongoInternalException
@@ -196,7 +196,7 @@ class InternalStreamConnectionSpecification extends Specification {
 
         when:
         def futureResultCallback = new FutureResultCallback<Void>()
-        connection.openAsync(futureResultCallback)
+        connection.openAsync(OPERATION_CONTEXT, futureResultCallback)
         futureResultCallback.get()
 
         then:
@@ -568,8 +568,7 @@ class InternalStreamConnectionSpecification extends Specification {
         stream.read(_, 0) >> helper.reply(response)
 
         when:
-        connection.sendAndReceive(commandMessage, new BsonDocumentCodec(), NoOpSessionContext.INSTANCE, IgnorableRequestContext.INSTANCE,
-                new OperationContext())
+        connection.sendAndReceive(commandMessage, new BsonDocumentCodec(), OPERATION_CONTEXT)
 
         then:
         thrown(MongoCommandException)
@@ -597,8 +596,7 @@ class InternalStreamConnectionSpecification extends Specification {
         }
 
         when:
-        connection.sendAndReceiveAsync(commandMessage, new BsonDocumentCodec(), NoOpSessionContext.INSTANCE,
-                IgnorableRequestContext.INSTANCE, new OperationContext(), callback)
+        connection.sendAndReceiveAsync(commandMessage, new BsonDocumentCodec(), OPERATION_CONTEXT, callback)
         callback.get()
 
         then:
@@ -651,8 +649,7 @@ class InternalStreamConnectionSpecification extends Specification {
         stream.read(90, 0) >> helper.defaultReply()
 
         when:
-        connection.sendAndReceive(commandMessage, new BsonDocumentCodec(), NoOpSessionContext.INSTANCE, IgnorableRequestContext.INSTANCE,
-                new OperationContext())
+        connection.sendAndReceive(commandMessage, new BsonDocumentCodec(), OPERATION_CONTEXT)
 
         then:
         commandListener.eventsWereDelivered([
@@ -675,7 +672,7 @@ class InternalStreamConnectionSpecification extends Specification {
         when:
         connection.sendAndReceive(commandMessage, {
             BsonReader reader, DecoderContext decoderContext -> throw new CodecConfigurationException('')
-        }, NoOpSessionContext.INSTANCE, IgnorableRequestContext.INSTANCE, new OperationContext())
+        }, OPERATION_CONTEXT)
 
         then:
         thrown(CodecConfigurationException)
@@ -705,10 +702,10 @@ class InternalStreamConnectionSpecification extends Specification {
             1 * advanceClusterTime(BsonDocument.parse(response).getDocument('$clusterTime'))
             getReadConcern() >> ReadConcern.DEFAULT
         }
+        def operationContext = OPERATION_CONTEXT.withSessionContext(sessionContext)
 
         when:
-        connection.sendAndReceive(commandMessage, new BsonDocumentCodec(), sessionContext, IgnorableRequestContext.INSTANCE,
-                new OperationContext())
+        connection.sendAndReceive(commandMessage, new BsonDocumentCodec(), operationContext)
 
         then:
         true
@@ -741,10 +738,10 @@ class InternalStreamConnectionSpecification extends Specification {
             1 * advanceClusterTime(BsonDocument.parse(response).getDocument('$clusterTime'))
             getReadConcern() >> ReadConcern.DEFAULT
         }
+        def operationContext = OPERATION_CONTEXT.withSessionContext(sessionContext)
 
         when:
-        connection.sendAndReceiveAsync(commandMessage, new BsonDocumentCodec(), sessionContext, IgnorableRequestContext.INSTANCE,
-                new OperationContext(), callback)
+        connection.sendAndReceiveAsync(commandMessage, new BsonDocumentCodec(), operationContext, callback)
         callback.get()
 
         then:
@@ -761,8 +758,7 @@ class InternalStreamConnectionSpecification extends Specification {
         stream.write(_) >> { throw new MongoSocketWriteException('Failed to write', serverAddress, new IOException()) }
 
         when:
-        connection.sendAndReceive(commandMessage, new BsonDocumentCodec(), NoOpSessionContext.INSTANCE, IgnorableRequestContext.INSTANCE,
-                new OperationContext())
+        connection.sendAndReceive(commandMessage, new BsonDocumentCodec(), OPERATION_CONTEXT)
 
         then:
         def e = thrown(MongoSocketWriteException)
@@ -782,8 +778,7 @@ class InternalStreamConnectionSpecification extends Specification {
         stream.read(16, 0) >> { throw new MongoSocketReadException('Failed to read', serverAddress) }
 
         when:
-        connection.sendAndReceive(commandMessage, new BsonDocumentCodec(), NoOpSessionContext.INSTANCE, IgnorableRequestContext.INSTANCE,
-                new OperationContext())
+        connection.sendAndReceive(commandMessage, new BsonDocumentCodec(), OPERATION_CONTEXT)
 
         then:
         def e = thrown(MongoSocketReadException)
@@ -804,8 +799,7 @@ class InternalStreamConnectionSpecification extends Specification {
         stream.read(90, 0) >> { throw new MongoSocketReadException('Failed to read', serverAddress) }
 
         when:
-        connection.sendAndReceive(commandMessage, new BsonDocumentCodec(), NoOpSessionContext.INSTANCE, IgnorableRequestContext.INSTANCE,
-                new OperationContext())
+        connection.sendAndReceive(commandMessage, new BsonDocumentCodec(), OPERATION_CONTEXT)
 
         then:
         def e = thrown(MongoSocketException)
@@ -827,8 +821,7 @@ class InternalStreamConnectionSpecification extends Specification {
         stream.read(_, 0) >> helper.reply(response)
 
         when:
-        connection.sendAndReceive(commandMessage, new BsonDocumentCodec(), NoOpSessionContext.INSTANCE, IgnorableRequestContext.INSTANCE,
-                new OperationContext())
+        connection.sendAndReceive(commandMessage, new BsonDocumentCodec(), OPERATION_CONTEXT)
 
         then:
         def e = thrown(MongoCommandException)
@@ -849,8 +842,7 @@ class InternalStreamConnectionSpecification extends Specification {
         stream.read(90, 0) >> helper.defaultReply()
 
         when:
-        connection.sendAndReceive(commandMessage, new BsonDocumentCodec(), NoOpSessionContext.INSTANCE, IgnorableRequestContext.INSTANCE,
-                new OperationContext())
+        connection.sendAndReceive(commandMessage, new BsonDocumentCodec(), OPERATION_CONTEXT)
 
         then:
         commandListener.eventsWereDelivered([
@@ -886,8 +878,7 @@ class InternalStreamConnectionSpecification extends Specification {
         stream.read(_, 0) >> helper.reply('{ok : 0, errmsg : "failed"}')
 
         when:
-        connection.sendAndReceive(commandMessage, new BsonDocumentCodec(), NoOpSessionContext.INSTANCE, IgnorableRequestContext.INSTANCE,
-                new OperationContext())
+        connection.sendAndReceive(commandMessage, new BsonDocumentCodec(), OPERATION_CONTEXT)
 
         then:
         thrown(MongoCommandException)
@@ -933,8 +924,7 @@ class InternalStreamConnectionSpecification extends Specification {
         }
 
         when:
-        connection.sendAndReceiveAsync(commandMessage, new BsonDocumentCodec(), NoOpSessionContext.INSTANCE,
-                IgnorableRequestContext.INSTANCE, new OperationContext(), callback)
+        connection.sendAndReceiveAsync(commandMessage, new BsonDocumentCodec(), OPERATION_CONTEXT, callback)
         callback.get()
 
         then:
@@ -967,7 +957,7 @@ class InternalStreamConnectionSpecification extends Specification {
         when:
         connection.sendAndReceiveAsync(commandMessage, {
             BsonReader reader, DecoderContext decoderContext -> throw new CodecConfigurationException('')
-        }, NoOpSessionContext.INSTANCE, IgnorableRequestContext.INSTANCE, new OperationContext(), callback)
+        }, OPERATION_CONTEXT, callback)
         callback.get()
 
         then:
@@ -994,8 +984,7 @@ class InternalStreamConnectionSpecification extends Specification {
         }
 
         when:
-        connection.sendAndReceiveAsync(commandMessage, new BsonDocumentCodec(), NoOpSessionContext.INSTANCE,
-                IgnorableRequestContext.INSTANCE, new OperationContext(), callback)
+        connection.sendAndReceiveAsync(commandMessage, new BsonDocumentCodec(), OPERATION_CONTEXT, callback)
         callback.get()
 
         then:
@@ -1023,8 +1012,7 @@ class InternalStreamConnectionSpecification extends Specification {
         }
 
         when:
-        connection.sendAndReceiveAsync(commandMessage, new BsonDocumentCodec(), NoOpSessionContext.INSTANCE,
-                IgnorableRequestContext.INSTANCE, new OperationContext(), callback)
+        connection.sendAndReceiveAsync(commandMessage, new BsonDocumentCodec(), OPERATION_CONTEXT, callback)
         callback.get()
 
         then:
@@ -1055,8 +1043,7 @@ class InternalStreamConnectionSpecification extends Specification {
         }
 
         when:
-        connection.sendAndReceiveAsync(commandMessage, new BsonDocumentCodec(), NoOpSessionContext.INSTANCE,
-                IgnorableRequestContext.INSTANCE, new OperationContext(), callback)
+        connection.sendAndReceiveAsync(commandMessage, new BsonDocumentCodec(), OPERATION_CONTEXT, callback)
         callback.get()
 
         then:
@@ -1088,8 +1075,7 @@ class InternalStreamConnectionSpecification extends Specification {
         }
 
         when:
-        connection.sendAndReceiveAsync(commandMessage, new BsonDocumentCodec(), NoOpSessionContext.INSTANCE,
-                IgnorableRequestContext.INSTANCE, new OperationContext(), callback)
+        connection.sendAndReceiveAsync(commandMessage, new BsonDocumentCodec(), OPERATION_CONTEXT, callback)
         callback.get()
 
         then:
@@ -1120,8 +1106,7 @@ class InternalStreamConnectionSpecification extends Specification {
         }
 
         when:
-        connection.sendAndReceiveAsync(commandMessage, new BsonDocumentCodec(), NoOpSessionContext.INSTANCE,
-                IgnorableRequestContext.INSTANCE, new OperationContext(), callback)
+        connection.sendAndReceiveAsync(commandMessage, new BsonDocumentCodec(), OPERATION_CONTEXT, callback)
         callback.get()
 
         then:

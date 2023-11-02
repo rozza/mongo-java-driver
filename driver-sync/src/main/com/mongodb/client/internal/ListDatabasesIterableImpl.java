@@ -19,6 +19,7 @@ import com.mongodb.ReadConcern;
 import com.mongodb.ReadPreference;
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.ListDatabasesIterable;
+import com.mongodb.internal.TimeoutSettings;
 import com.mongodb.internal.operation.BatchCursor;
 import com.mongodb.internal.operation.ReadOperation;
 import com.mongodb.internal.operation.SyncOperations;
@@ -48,17 +49,11 @@ public class ListDatabasesIterableImpl<TResult> extends MongoIterableImpl<TResul
     private Boolean authorizedDatabasesOnly;
     private BsonValue comment;
 
-    ListDatabasesIterableImpl(@Nullable final ClientSession clientSession, final Class<TResult> resultClass,
-                              final CodecRegistry codecRegistry, final ReadPreference readPreference,
-                              final OperationExecutor executor) {
-        this(clientSession, resultClass, codecRegistry, readPreference, executor, true);
-    }
-
     public ListDatabasesIterableImpl(@Nullable final ClientSession clientSession, final Class<TResult> resultClass,
-                                     final CodecRegistry codecRegistry, final ReadPreference readPreference,
-                                     final OperationExecutor executor, final boolean retryReads) {
-        super(clientSession, executor, ReadConcern.DEFAULT, readPreference, retryReads); // TODO: read concern?
-        this.operations = new SyncOperations<>(BsonDocument.class, readPreference, codecRegistry, retryReads);
+            final CodecRegistry codecRegistry, final ReadPreference readPreference, final OperationExecutor executor,
+            final boolean retryReads, final TimeoutSettings timeoutSettings) {
+        super(clientSession, executor, ReadConcern.DEFAULT, readPreference, retryReads, timeoutSettings); // TODO: read concern?
+        this.operations = new SyncOperations<>(BsonDocument.class, readPreference, codecRegistry, retryReads, timeoutSettings);
         this.resultClass = notNull("clazz", resultClass);
     }
 

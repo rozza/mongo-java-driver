@@ -46,6 +46,7 @@ import org.bson.codecs.Decoder;
 
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.StampedLock;
 import java.util.function.Consumer;
@@ -60,9 +61,9 @@ import static com.mongodb.assertions.Assertions.notNull;
 import static com.mongodb.internal.Locks.withLock;
 import static com.mongodb.internal.operation.CursorHelper.getNumberToReturn;
 import static com.mongodb.internal.operation.DocumentHelper.putIfNotNull;
-import static com.mongodb.internal.operation.SyncOperationHelper.getMoreCursorDocumentToQueryResult;
 import static com.mongodb.internal.operation.QueryHelper.translateCommandException;
 import static com.mongodb.internal.operation.ServerVersionHelper.serverIsAtLeastVersionFourDotFour;
+import static com.mongodb.internal.operation.SyncOperationHelper.getMoreCursorDocumentToQueryResult;
 import static java.lang.String.format;
 import static java.util.Collections.singletonList;
 
@@ -282,12 +283,12 @@ class QueryBatchCursor<T> implements AggregateResponseBatchCursor<T> {
         resourceManager.executeWithConnection(connection -> {
             ServerCursor nextServerCursor;
             try {
-                nextServerCursor = initFromCommandResult(connection.command(namespace.getDatabaseName(),
+                nextServerCursor = initFromCommandResult(Objects.requireNonNull(connection.command(namespace.getDatabaseName(),
                         asGetMoreCommandDocument(serverCursor.getId(), connection.getDescription()),
                         NO_OP_FIELD_NAME_VALIDATOR,
                         ReadPreference.primary(),
                         CommandResultDocumentCodec.create(decoder, "nextBatch"),
-                        assertNotNull(resourceManager.connectionSource)));
+                        assertNotNull(resourceManager.connectionSource).getOperationContext())));
             } catch (MongoCommandException e) {
                 throw translateCommandException(e, serverCursor);
             }
@@ -574,7 +575,8 @@ class QueryBatchCursor<T> implements AggregateResponseBatchCursor<T> {
 
         private void killServerCursor(final MongoNamespace namespace, final ServerCursor serverCursor, final Connection connection) {
             connection.command(namespace.getDatabaseName(), asKillCursorsCommandDocument(namespace, serverCursor),
-                    NO_OP_FIELD_NAME_VALIDATOR, ReadPreference.primary(), new BsonDocumentCodec(), assertNotNull(connectionSource));
+                    NO_OP_FIELD_NAME_VALIDATOR, ReadPreference.primary(), new BsonDocumentCodec(),
+                    assertNotNull(connectionSource).getOperationContext());
         }
 
         private BsonDocument asKillCursorsCommandDocument(final MongoNamespace namespace, final ServerCursor serverCursor) {

@@ -16,13 +16,11 @@
 
 package com.mongodb.internal.connection
 
-
 import com.mongodb.MongoCredential
 import com.mongodb.MongoSecurityException
 import com.mongodb.ReadConcern
 import com.mongodb.ReadPreference
 import com.mongodb.async.FutureResultCallback
-import com.mongodb.internal.IgnorableRequestContext
 import com.mongodb.internal.binding.AsyncClusterBinding
 import com.mongodb.internal.binding.ClusterBinding
 import com.mongodb.internal.operation.CommandReadOperation
@@ -35,10 +33,11 @@ import org.bson.codecs.DocumentCodec
 import spock.lang.IgnoreIf
 import spock.lang.Specification
 
+import static com.mongodb.ClusterFixture.OPERATION_CONTEXT
+import static com.mongodb.ClusterFixture.TIMEOUT_SETTINGS
 import static com.mongodb.ClusterFixture.createAsyncCluster
 import static com.mongodb.ClusterFixture.createCluster
 import static com.mongodb.ClusterFixture.getBinding
-import static com.mongodb.ClusterFixture.getServerApi
 import static com.mongodb.ClusterFixture.isAuthenticated
 import static com.mongodb.ClusterFixture.serverVersionLessThan
 import static com.mongodb.MongoCredential.createCredential
@@ -88,14 +87,14 @@ class ScramSha256AuthenticationSpecification extends Specification {
                 .append('pwd', password)
                 .append('roles', ['root'])
                 .append('mechanisms', mechanisms)
-        new CommandReadOperation<>('admin',
+        new CommandReadOperation<>(TIMEOUT_SETTINGS, 'admin',
                 new BsonDocumentWrapper<Document>(createUserCommand, new DocumentCodec()), new DocumentCodec())
                 .execute(getBinding())
     }
 
     def dropUser(final String userName) {
-        new CommandReadOperation<>('admin', new BsonDocument('dropUser', new BsonString(userName)),
-            new BsonDocumentCodec()).execute(getBinding())
+        new CommandReadOperation<>(TIMEOUT_SETTINGS, 'admin', new BsonDocument('dropUser', new BsonString(userName)),
+                new BsonDocumentCodec()).execute(getBinding())
     }
 
     def 'test authentication and authorization'() {
@@ -103,10 +102,9 @@ class ScramSha256AuthenticationSpecification extends Specification {
         def cluster = createCluster(credential)
 
         when:
-        new CommandReadOperation<Document>('admin',
+        new CommandReadOperation<Document>(TIMEOUT_SETTINGS, 'admin',
                 new BsonDocumentWrapper<Document>(new Document('dbstats', 1), new DocumentCodec()), new DocumentCodec())
-                .execute(new ClusterBinding(cluster, ReadPreference.primary(), ReadConcern.DEFAULT, getServerApi(),
-                        IgnorableRequestContext.INSTANCE))
+                .execute(new ClusterBinding(cluster, ReadPreference.primary(), ReadConcern.DEFAULT, OPERATION_CONTEXT))
 
         then:
         noExceptionThrown()
@@ -125,10 +123,9 @@ class ScramSha256AuthenticationSpecification extends Specification {
 
         when:
         // make this synchronous
-        new CommandReadOperation<Document>('admin',
+        new CommandReadOperation<Document>(TIMEOUT_SETTINGS, 'admin',
                 new BsonDocumentWrapper<Document>(new Document('dbstats', 1), new DocumentCodec()), new DocumentCodec())
-                .executeAsync(new AsyncClusterBinding(cluster, ReadPreference.primary(), ReadConcern.DEFAULT, getServerApi(),
-                        IgnorableRequestContext.INSTANCE),
+                .executeAsync(new AsyncClusterBinding(cluster, ReadPreference.primary(), ReadConcern.DEFAULT, OPERATION_CONTEXT),
                         callback)
         callback.get()
 
@@ -147,10 +144,9 @@ class ScramSha256AuthenticationSpecification extends Specification {
         def cluster = createCluster(credential)
 
         when:
-        new CommandReadOperation<Document>('admin',
+        new CommandReadOperation<Document>(TIMEOUT_SETTINGS, 'admin',
                 new BsonDocumentWrapper<Document>(new Document('dbstats', 1), new DocumentCodec()), new DocumentCodec())
-                .execute(new ClusterBinding(cluster, ReadPreference.primary(), ReadConcern.DEFAULT, getServerApi(),
-                        IgnorableRequestContext.INSTANCE))
+                .execute(new ClusterBinding(cluster, ReadPreference.primary(), ReadConcern.DEFAULT, OPERATION_CONTEXT))
 
         then:
         thrown(MongoSecurityException)
@@ -168,10 +164,10 @@ class ScramSha256AuthenticationSpecification extends Specification {
         def callback = new FutureResultCallback()
 
         when:
-        new CommandReadOperation<Document>('admin',
+        new CommandReadOperation<Document>(TIMEOUT_SETTINGS, 'admin',
                 new BsonDocumentWrapper<Document>(new Document('dbstats', 1), new DocumentCodec()), new DocumentCodec())
-                .executeAsync(new AsyncClusterBinding(cluster, ReadPreference.primary(), ReadConcern.DEFAULT, getServerApi(),
-                        IgnorableRequestContext.INSTANCE), callback)
+                .executeAsync(new AsyncClusterBinding(cluster, ReadPreference.primary(), ReadConcern.DEFAULT, OPERATION_CONTEXT),
+                        callback)
         callback.get()
 
         then:
@@ -189,10 +185,9 @@ class ScramSha256AuthenticationSpecification extends Specification {
         def cluster = createCluster(credential)
 
         when:
-        new CommandReadOperation<Document>('admin',
+        new CommandReadOperation<Document>(TIMEOUT_SETTINGS, 'admin',
                 new BsonDocumentWrapper<Document>(new Document('dbstats', 1), new DocumentCodec()), new DocumentCodec())
-                .execute(new ClusterBinding(cluster, ReadPreference.primary(), ReadConcern.DEFAULT, getServerApi(),
-                        IgnorableRequestContext.INSTANCE))
+                .execute(new ClusterBinding(cluster, ReadPreference.primary(), ReadConcern.DEFAULT, OPERATION_CONTEXT))
 
         then:
         noExceptionThrown()
@@ -210,10 +205,10 @@ class ScramSha256AuthenticationSpecification extends Specification {
         def callback = new FutureResultCallback()
 
         when:
-        new CommandReadOperation<Document>('admin',
+        new CommandReadOperation<Document>(TIMEOUT_SETTINGS, 'admin',
                 new BsonDocumentWrapper<Document>(new Document('dbstats', 1), new DocumentCodec()), new DocumentCodec())
-                .executeAsync(new AsyncClusterBinding(cluster, ReadPreference.primary(), ReadConcern.DEFAULT, getServerApi(),
-                        IgnorableRequestContext.INSTANCE), callback)
+                .executeAsync(new AsyncClusterBinding(cluster, ReadPreference.primary(), ReadConcern.DEFAULT, OPERATION_CONTEXT),
+                        callback)
         callback.get()
 
         then:

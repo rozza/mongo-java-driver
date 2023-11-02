@@ -145,10 +145,14 @@ final class ClientSessionImpl extends BaseClientSessionImpl implements ClientSes
                     throw new MongoInternalException("Invariant violated.  Transaction options read concern can not be null");
                 }
                 commitInProgress = true;
-                delegate.getOperationExecutor().execute(new CommitTransactionOperation(assertNotNull(transactionOptions.getWriteConcern()),
+                Long maxCommitTime = transactionOptions.getMaxCommitTime(MILLISECONDS);
+                delegate.getOperationExecutor().execute(
+                        new CommitTransactionOperation(
+                                // TODO (CSOT) - JAVA-4067
+                                delegate.getTimeoutSettings().withMaxCommitMS(maxCommitTime == null ? 0 : maxCommitTime),
+                                assertNotNull(transactionOptions.getWriteConcern()),
                         transactionState == TransactionState.COMMITTED)
-                                .recoveryToken(getRecoveryToken())
-                                .maxCommitTime(transactionOptions.getMaxCommitTime(MILLISECONDS), MILLISECONDS),
+                                .recoveryToken(getRecoveryToken()),
                         readConcern, this);
             }
         } catch (MongoException e) {
@@ -177,9 +181,12 @@ final class ClientSessionImpl extends BaseClientSessionImpl implements ClientSes
                 if (readConcern == null) {
                     throw new MongoInternalException("Invariant violated.  Transaction options read concern can not be null");
                 }
-                delegate.getOperationExecutor().execute(new AbortTransactionOperation(assertNotNull(transactionOptions.getWriteConcern()))
-                                .recoveryToken(getRecoveryToken()),
-                        readConcern, this);
+                Long maxCommitTime = transactionOptions.getMaxCommitTime(MILLISECONDS);
+                delegate.getOperationExecutor().execute(new AbortTransactionOperation(
+                        // TODO (CSOT) - JAVA-4067
+                        delegate.getTimeoutSettings().withMaxCommitMS(maxCommitTime == null ? 0 : maxCommitTime),
+                        assertNotNull(transactionOptions.getWriteConcern()))
+                        .recoveryToken(getRecoveryToken()), readConcern, this);
             }
         } catch (RuntimeException e) {
             // ignore exceptions from abort

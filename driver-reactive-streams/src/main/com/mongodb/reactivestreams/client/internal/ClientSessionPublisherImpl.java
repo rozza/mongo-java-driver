@@ -30,7 +30,6 @@ import com.mongodb.internal.operation.CommitTransactionOperation;
 import com.mongodb.internal.session.BaseClientSessionImpl;
 import com.mongodb.internal.session.ServerSessionPool;
 import com.mongodb.reactivestreams.client.ClientSession;
-import com.mongodb.reactivestreams.client.MongoClient;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.MonoSink;
@@ -45,16 +44,18 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 final class ClientSessionPublisherImpl extends BaseClientSessionImpl implements ClientSession {
 
+    private final MongoClientImpl mongoClient;
     private final OperationExecutor executor;
     private TransactionState transactionState = TransactionState.NONE;
     private boolean messageSentInCurrentTransaction;
     private boolean commitInProgress;
     private TransactionOptions transactionOptions;
 
-    ClientSessionPublisherImpl(final ServerSessionPool serverSessionPool, final MongoClient mongoClient,
+    ClientSessionPublisherImpl(final ServerSessionPool serverSessionPool, final MongoClientImpl mongoClient,
             final ClientSessionOptions options, final OperationExecutor executor) {
         super(serverSessionPool, mongoClient, options);
         this.executor = executor;
+        this.mongoClient = mongoClient;
     }
 
     @Override
@@ -143,10 +144,13 @@ final class ClientSessionPublisherImpl extends BaseClientSessionImpl implements 
             boolean alreadyCommitted = commitInProgress || transactionState == TransactionState.COMMITTED;
             commitInProgress = true;
 
+            Long maxCommitTime = transactionOptions.getMaxCommitTime(MILLISECONDS);
             return executor.execute(
-                    new CommitTransactionOperation(assertNotNull(transactionOptions.getWriteConcern()), alreadyCommitted)
-                            .recoveryToken(getRecoveryToken())
-                            .maxCommitTime(transactionOptions.getMaxCommitTime(MILLISECONDS), MILLISECONDS),
+                    new CommitTransactionOperation(
+                            // TODO (CSOT) - JAVA-4067
+                            mongoClient.getTimeoutSettings().withMaxCommitMS(maxCommitTime == null ? 0 : maxCommitTime),
+                            assertNotNull(transactionOptions.getWriteConcern()), alreadyCommitted)
+                            .recoveryToken(getRecoveryToken()),
                     readConcern, this)
                     .doOnTerminate(() -> {
                         commitInProgress = false;
@@ -175,8 +179,12 @@ final class ClientSessionPublisherImpl extends BaseClientSessionImpl implements 
             if (readConcern == null) {
                 throw new MongoInternalException("Invariant violated. Transaction options read concern can not be null");
             }
+            Long maxCommitTime = transactionOptions.getMaxCommitTime(MILLISECONDS);
             return executor.execute(
-                    new AbortTransactionOperation(assertNotNull(transactionOptions.getWriteConcern()))
+                    new AbortTransactionOperation(
+                            // TODO (CSOT) - JAVA-4067
+                            mongoClient.getTimeoutSettings().withMaxCommitMS(maxCommitTime == null ? 0 : maxCommitTime),
+                            assertNotNull(transactionOptions.getWriteConcern()))
                             .recoveryToken(getRecoveryToken()),
                     readConcern, this)
                     .onErrorResume(Throwable.class, (e) -> Mono.empty())

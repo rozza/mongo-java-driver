@@ -46,9 +46,11 @@ import static java.util.Arrays.asList;
 @SuppressWarnings("overloads")
 final class CommandOperationHelper {
 
-
     interface CommandCreator {
-        BsonDocument create(ServerDescription serverDescription, ConnectionDescription connectionDescription);
+        BsonDocument create(
+                OperationContext operationContext,
+                ServerDescription serverDescription,
+                ConnectionDescription connectionDescription);
     }
 
 

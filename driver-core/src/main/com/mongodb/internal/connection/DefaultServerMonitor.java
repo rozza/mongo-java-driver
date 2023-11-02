@@ -56,6 +56,7 @@ import static com.mongodb.internal.Locks.checkedWithLock;
 import static com.mongodb.internal.Locks.withLock;
 import static com.mongodb.internal.connection.CommandHelper.HELLO;
 import static com.mongodb.internal.connection.CommandHelper.LEGACY_HELLO;
+import static com.mongodb.internal.connection.CommandHelper.createOperationContext;
 import static com.mongodb.internal.connection.CommandHelper.executeCommand;
 import static com.mongodb.internal.connection.DescriptionHelper.createServerDescription;
 import static com.mongodb.internal.connection.ServerDescriptionHelper.unknownConnectingServerDescription;
@@ -193,7 +194,8 @@ class DefaultServerMonitor implements ServerMonitor {
                 if (connection == null || connection.isClosed()) {
                     currentCheckCancelled = false;
                     InternalConnection newConnection = internalConnectionFactory.create(serverId);
-                    newConnection.open();
+                    // TODO (CSOT) create OC from ServerSettings / SocketTimeout
+                    newConnection.open(OperationContext.todoOperationContext());
                     connection = newConnection;
                     averageRoundTripTime.addSample(connection.getInitialServerDescription().getRoundTripTimeNanos());
                     return connection.getInitialServerDescription();
@@ -207,6 +209,7 @@ class DefaultServerMonitor implements ServerMonitor {
                 long start = System.nanoTime();
                 try {
                     SessionContext sessionContext = new ClusterClockAdvancingSessionContext(NoOpSessionContext.INSTANCE, clusterClock);
+                    OperationContext operationContext = createOperationContext(sessionContext, serverApi);
                     if (!connection.hasMoreToCome()) {
                         BsonDocument helloDocument = new BsonDocument(getHandshakeCommandName(currentServerDescription), new BsonInt32(1))
                                 .append("helloOk", BsonBoolean.TRUE);
@@ -216,15 +219,15 @@ class DefaultServerMonitor implements ServerMonitor {
                         }
 
                         connection.send(createCommandMessage(helloDocument, connection, currentServerDescription), new BsonDocumentCodec(),
-                                sessionContext);
+                                operationContext);
                     }
 
                     BsonDocument helloResult;
                     if (shouldStreamResponses(currentServerDescription)) {
-                        helloResult = connection.receive(new BsonDocumentCodec(), sessionContext,
+                        helloResult = connection.receive(new BsonDocumentCodec(), operationContext,
                                 Math.toIntExact(serverSettings.getHeartbeatFrequency(MILLISECONDS)));
                     } else {
-                        helloResult = connection.receive(new BsonDocumentCodec(), sessionContext);
+                        helloResult = connection.receive(new BsonDocumentCodec(), operationContext);
                     }
 
                     long elapsedTimeNanos = System.nanoTime() - start;
@@ -424,7 +427,8 @@ class DefaultServerMonitor implements ServerMonitor {
         private void initialize() {
             connection = null;
             connection = internalConnectionFactory.create(serverId);
-            connection.open();
+            // TODO (CSOT) create OC from ServerSettings / SocketTimeout
+            connection.open(OperationContext.todoOperationContext());
             averageRoundTripTime.addSample(connection.getInitialServerDescription().getRoundTripTimeNanos());
         }
 

@@ -15,6 +15,16 @@
  */
 package com.mongodb.internal.connection;
 
+import com.mongodb.MongoClientSettings;
+import com.mongodb.RequestContext;
+import com.mongodb.ServerApi;
+import com.mongodb.internal.IgnorableRequestContext;
+import com.mongodb.internal.TimeoutContext;
+import com.mongodb.internal.TimeoutSettings;
+import com.mongodb.internal.VisibleForTesting;
+import com.mongodb.internal.session.SessionContext;
+import com.mongodb.lang.Nullable;
+
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -23,12 +33,69 @@ import java.util.concurrent.atomic.AtomicLong;
 public class OperationContext {
     private static final AtomicLong NEXT_ID = new AtomicLong(0);
     private final long id;
+    private final SessionContext sessionContext;
+    private final RequestContext requestContext;
+    private final TimeoutContext timeoutContext;
+    @Nullable
+    private final ServerApi serverApi;
 
-    public OperationContext() {
-        id = NEXT_ID.incrementAndGet();
+    public OperationContext(final RequestContext requestContext, final SessionContext sessionContext, final TimeoutContext timeoutContext,
+            @Nullable final ServerApi serverApi) {
+        this(NEXT_ID.incrementAndGet(), requestContext, sessionContext, timeoutContext, serverApi);
+    }
+
+
+    public static OperationContext todoOperationContext() {
+        // TODO (CSOT) should be removed; used at locations that require an OC, but which do not yet have one available
+        return nonUserOperationContext(MongoClientSettings.builder().build());
+    }
+
+    public static OperationContext nonUserOperationContext(final MongoClientSettings settings) {
+        // TODO (CSOT) below is placeholder, validate correctness (serverApi/timeoutSettings might
+        // TODO (CSOT) need to be passed in instead)
+        TimeoutSettings timeoutSettings = TimeoutSettings.create(settings);
+        ServerApi serverApi = settings.getServerApi();
+        return new OperationContext(
+                IgnorableRequestContext.INSTANCE,
+                NoOpSessionContext.INSTANCE,
+                new TimeoutContext(timeoutSettings.connectionOnly()),
+                serverApi);
+    }
+
+    public OperationContext withSessionContext(final SessionContext sessionContext) {
+        return new OperationContext(id, requestContext, sessionContext, timeoutContext, serverApi);
     }
 
     public long getId() {
         return id;
     }
+
+    public SessionContext getSessionContext() {
+        return sessionContext;
+    }
+
+    public RequestContext getRequestContext() {
+        return requestContext;
+    }
+
+    public TimeoutContext getTimeoutContext() {
+        return timeoutContext;
+    }
+
+    @Nullable
+    public ServerApi getServerApi() {
+        return serverApi;
+    }
+
+    @VisibleForTesting(otherwise = VisibleForTesting.AccessModifier.PRIVATE)
+    public OperationContext(final long id, final RequestContext requestContext, final SessionContext sessionContext,
+            final TimeoutContext timeoutContext,
+            @Nullable final ServerApi serverApi) {
+        this.id = id;
+        this.requestContext = requestContext;
+        this.sessionContext = sessionContext;
+        this.timeoutContext = timeoutContext;
+        this.serverApi = serverApi;
+    }
 }
+

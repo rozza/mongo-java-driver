@@ -50,7 +50,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 
+import static com.mongodb.assertions.Assertions.isTrue;
 import static com.mongodb.assertions.Assertions.isTrueArgument;
 import static com.mongodb.assertions.Assertions.notNull;
 import static java.util.Arrays.asList;
@@ -114,6 +116,8 @@ public final class MongoClientSettings {
     private final ContextProvider contextProvider;
     private final DnsClient dnsClient;
     private final InetAddressResolver inetAddressResolver;
+    @Nullable
+    private final Long timeoutMS;
 
     /**
      * Gets the default codec registry.  It includes the following providers:
@@ -232,6 +236,7 @@ public final class MongoClientSettings {
 
         private int heartbeatConnectTimeoutMS;
         private int heartbeatSocketTimeoutMS;
+        private Long timeoutMS;
 
         private ContextProvider contextProvider;
         private DnsClient dnsClient;
@@ -255,6 +260,7 @@ public final class MongoClientSettings {
             uuidRepresentation = settings.getUuidRepresentation();
             serverApi = settings.getServerApi();
             dnsClient = settings.getDnsClient();
+            timeoutMS = settings.getTimeout(MILLISECONDS);
             inetAddressResolver = settings.getInetAddressResolver();
             transportSettings = settings.getTransportSettings();
             streamFactoryFactory = settings.getStreamFactoryFactory();
@@ -317,6 +323,9 @@ public final class MongoClientSettings {
             sslSettingsBuilder.applyConnectionString(connectionString);
             if (connectionString.getWriteConcern() != null) {
                 writeConcern = connectionString.getWriteConcern();
+            }
+            if (connectionString.getTimeout() != null) {
+                timeoutMS = connectionString.getTimeout();
             }
             return this;
         }
@@ -690,6 +699,40 @@ public final class MongoClientSettings {
             return this;
         }
 
+
+        /**
+         * Sets the time limit for the full execution of an operation.
+         *
+         * <ul>
+         *   <li>{@code null} means that the timeout mechanism for operations will defer to using:
+         *    <ul>
+         *        <li>{@code waitQueueTimeoutMS}: The maximum wait time in milliseconds that a thread may wait for a connection to become
+         *        available</li>
+         *        <li>{@code socketTimeoutMS}: How long a send or receive on a socket can take before timing out.</li>
+         *        <li>{@code wTimeoutMS}: How long the server will wait for the write concern to be fulfilled before timing out.</li>
+         *        <li>{@code maxTimeMS}: The cumulative time limit for processing operations on a cursor.
+         *        See: <a href="https://docs.mongodb.com/manual/reference/method/cursor.maxTimeMS">cursor.maxTimeMS</a>.</li>
+         *        <li>{@code maxCommitTimeMS}: The maximum amount of time to allow a single {@code commitTransaction} command to execute.
+         *        See: {@link TransactionOptions#getMaxCommitTime}.</li>
+         *   </ul>
+         *   </li>
+         *   <li>{@code 0} means infinite timeout.</li>
+         *    <li>{@code > 0} The time limit to use for the full execution of an operation.</li>
+         * </ul>
+         *
+         * @param timeout the timeout
+         * @param timeUnit the time unit
+         * @return this
+         * @since 4.x
+         * @see #getTimeout
+         */
+        public Builder timeout(final long timeout, final TimeUnit timeUnit) {
+            isTrueArgument("timeoutMS must be >= 0", timeout >= 0);
+            this.timeoutMS = MILLISECONDS.convert(timeout, timeUnit);
+            return this;
+        }
+
+
         // Package-private to provide interop with MongoClientOptions
         Builder heartbeatConnectTimeoutMS(final int heartbeatConnectTimeoutMS) {
             this.heartbeatConnectTimeoutMS = heartbeatConnectTimeoutMS;
@@ -884,6 +927,38 @@ public final class MongoClientSettings {
     }
 
     /**
+     * The time limit for the full execution of an operation.
+     *
+     * <p>If set the following deprecated options will be ignored:
+     * {@code waitQueueTimeoutMS}, {@code socketTimeoutMS}, {@code wTimeoutMS}, {@code maxTimeMS} and {@code maxCommitTimeMS}</p>
+     *
+     * <ul>
+     *   <li>{@code null} means that the timeout mechanism for operations will defer to using:
+     *    <ul>
+     *        <li>{@code waitQueueTimeoutMS}: The maximum wait time in milliseconds that a thread may wait for a connection to become
+     *        available</li>
+     *        <li>{@code socketTimeoutMS}: How long a send or receive on a socket can take before timing out.</li>
+     *        <li>{@code wTimeoutMS}: How long the server will wait for the write concern to be fulfilled before timing out.</li>
+     *        <li>{@code maxTimeMS}: The cumulative time limit for processing operations on a cursor.
+     *        See: <a href="https://docs.mongodb.com/manual/reference/method/cursor.maxTimeMS">cursor.maxTimeMS</a>.</li>
+     *        <li>{@code maxCommitTimeMS}: The maximum amount of time to allow a single {@code commitTransaction} command to execute.
+     *        See: {@link TransactionOptions#getMaxCommitTime}.</li>
+     *   </ul>
+     *   </li>
+     *   <li>{@code 0} means infinite timeout.</li>
+     *    <li>{@code > 0} The time limit to use for the full execution of an operation.</li>
+     * </ul>
+     *
+     * @param timeUnit the time unit
+     * @return the timeout in the given time unit
+     * @since 4.x
+     */
+    @Nullable
+    public Long getTimeout(final TimeUnit timeUnit) {
+        return timeoutMS == null ? null : timeUnit.convert(timeoutMS, MILLISECONDS);
+    }
+
+    /**
      * Gets the auto-encryption settings.
      * <p>
      * In-use encryption enables an application to specify what fields in a collection must be
@@ -1034,7 +1109,8 @@ public final class MongoClientSettings {
                 && Objects.equals(autoEncryptionSettings, that.autoEncryptionSettings)
                 && Objects.equals(dnsClient, that.dnsClient)
                 && Objects.equals(inetAddressResolver, that.inetAddressResolver)
-                && Objects.equals(contextProvider, that.contextProvider);
+                && Objects.equals(contextProvider, that.contextProvider)
+                && Objects.equals(timeoutMS, that.timeoutMS);
     }
 
     @Override
@@ -1043,7 +1119,8 @@ public final class MongoClientSettings {
                 streamFactoryFactory, commandListeners, codecRegistry, loggerSettings, clusterSettings, socketSettings,
                 heartbeatSocketSettings, connectionPoolSettings, serverSettings, sslSettings, applicationName, compressorList,
                 uuidRepresentation, serverApi, autoEncryptionSettings, heartbeatSocketTimeoutSetExplicitly,
-                heartbeatConnectTimeoutSetExplicitly, dnsClient, inetAddressResolver, contextProvider);
+                heartbeatConnectTimeoutSetExplicitly, dnsClient, inetAddressResolver, contextProvider, timeoutMS);
+
     }
 
     @Override
@@ -1074,10 +1151,12 @@ public final class MongoClientSettings {
                 + ", dnsClient=" + dnsClient
                 + ", inetAddressResolver=" + inetAddressResolver
                 + ", contextProvider=" + contextProvider
+                + ", timeoutMS=" + timeoutMS
                 + '}';
     }
 
     private MongoClientSettings(final Builder builder) {
+        isTrue("timeoutMS > 0 ", builder.timeoutMS == null || builder.timeoutMS >= 0);
         readPreference = builder.readPreference;
         writeConcern = builder.writeConcern;
         retryWrites = builder.retryWrites;
@@ -1113,5 +1192,6 @@ public final class MongoClientSettings {
         heartbeatSocketTimeoutSetExplicitly = builder.heartbeatSocketTimeoutMS != 0;
         heartbeatConnectTimeoutSetExplicitly = builder.heartbeatConnectTimeoutMS != 0;
         contextProvider = builder.contextProvider;
+        timeoutMS = builder.timeoutMS;
     }
 }

@@ -21,6 +21,7 @@ import com.mongodb.ClientSessionOptions;
 import com.mongodb.MongoClientSettings;
 import com.mongodb.MongoDriverInformation;
 import com.mongodb.connection.ClusterDescription;
+import com.mongodb.internal.TimeoutSettings;
 import com.mongodb.internal.client.model.changestream.ChangeStreamLevel;
 import com.mongodb.internal.connection.Cluster;
 import com.mongodb.internal.diagnostics.logging.Logger;
@@ -85,7 +86,8 @@ public final class MongoClientImpl implements MongoClient {
                             @Nullable final OperationExecutor executor, @Nullable final Closeable externalResourceCloser) {
         this.settings = notNull("settings", settings);
         this.cluster = notNull("cluster", cluster);
-        this.serverSessionPool = new ServerSessionPool(cluster, settings.getServerApi());
+        TimeoutSettings timeoutSettings = TimeoutSettings.create(settings);
+        this.serverSessionPool = new ServerSessionPool(cluster, timeoutSettings, settings.getServerApi());
         this.clientSessionHelper = new ClientSessionHelper(this, serverSessionPool);
         AutoEncryptionSettings autoEncryptSettings = settings.getAutoEncryptionSettings();
         this.crypt = autoEncryptSettings != null ? Crypts.createCrypt(this, autoEncryptSettings) : null;
@@ -103,6 +105,7 @@ public final class MongoClientImpl implements MongoClient {
                                                                      settings.getRetryWrites(), settings.getRetryReads(),
                                                                      settings.getUuidRepresentation(),
                                                                      settings.getAutoEncryptionSettings(),
+                                                                     timeoutSettings,
                                                                      this.executor);
         this.closed = new AtomicBoolean();
         BsonDocument clientMetadataDocument = createClientMetadataDocument(settings.getApplicationName(), mongoDriverInformation);
@@ -240,6 +243,10 @@ public final class MongoClientImpl implements MongoClient {
     @Override
     public ClusterDescription getClusterDescription() {
         return getCluster().getCurrentDescription();
+    }
+
+    TimeoutSettings getTimeoutSettings() {
+        return mongoOperationPublisher.getTimeoutSettings();
     }
 
 }

@@ -18,23 +18,18 @@ package com.mongodb.internal.binding;
 
 import com.mongodb.ReadConcern;
 import com.mongodb.ReadPreference;
-import com.mongodb.RequestContext;
 import com.mongodb.ServerAddress;
-import com.mongodb.ServerApi;
 import com.mongodb.connection.ClusterConnectionMode;
 import com.mongodb.connection.ServerDescription;
 import com.mongodb.internal.async.SingleResultCallback;
 import com.mongodb.internal.connection.AsyncConnection;
 import com.mongodb.internal.connection.Cluster;
 import com.mongodb.internal.connection.OperationContext;
-import com.mongodb.internal.connection.ReadConcernAwareNoOpSessionContext;
 import com.mongodb.internal.connection.Server;
 import com.mongodb.internal.selector.ReadPreferenceServerSelector;
 import com.mongodb.internal.selector.ReadPreferenceWithFallbackServerSelector;
 import com.mongodb.internal.selector.ServerAddressSelector;
 import com.mongodb.internal.selector.WritableServerSelector;
-import com.mongodb.internal.session.SessionContext;
-import com.mongodb.lang.Nullable;
 import com.mongodb.selector.ServerSelector;
 
 import static com.mongodb.assertions.Assertions.notNull;
@@ -49,9 +44,6 @@ public class AsyncClusterBinding extends AbstractReferenceCounted implements Asy
     private final Cluster cluster;
     private final ReadPreference readPreference;
     private final ReadConcern readConcern;
-    @Nullable
-    private final ServerApi serverApi;
-    private final RequestContext requestContext;
     private final OperationContext operationContext;
 
     /**
@@ -60,18 +52,15 @@ public class AsyncClusterBinding extends AbstractReferenceCounted implements Asy
      * @param cluster        a non-null Cluster which will be used to select a server to bind to
      * @param readPreference a non-null ReadPreference for read operations
      * @param readConcern    a non-null read concern
-     * @param serverApi      a server API, which may be null
-     * @param requestContext the request context
+     * @param operationContext the operation context
      * <p>This class is not part of the public API and may be removed or changed at any time</p>
      */
     public AsyncClusterBinding(final Cluster cluster, final ReadPreference readPreference, final ReadConcern readConcern,
-            @Nullable final ServerApi serverApi, final RequestContext requestContext) {
+            final OperationContext operationContext) {
         this.cluster = notNull("cluster", cluster);
         this.readPreference = notNull("readPreference", readPreference);
-        this.readConcern = (notNull("readConcern", readConcern));
-        this.serverApi = serverApi;
-        this.requestContext = notNull("requestContext", requestContext);
-        operationContext = new OperationContext();
+        this.readConcern = notNull("readConcern", readConcern);
+        this.operationContext = notNull("operationContext", operationContext);
     }
 
     @Override
@@ -88,22 +77,6 @@ public class AsyncClusterBinding extends AbstractReferenceCounted implements Asy
     @Override
     public ReadPreference getReadPreference() {
         return readPreference;
-    }
-
-    @Override
-    public SessionContext getSessionContext() {
-        return new ReadConcernAwareNoOpSessionContext(readConcern);
-    }
-
-    @Override
-    @Nullable
-    public ServerApi getServerApi() {
-        return serverApi;
-    }
-
-    @Override
-    public RequestContext getRequestContext() {
-        return requestContext;
     }
 
     @Override
@@ -174,22 +147,6 @@ public class AsyncClusterBinding extends AbstractReferenceCounted implements Asy
         @Override
         public ServerDescription getServerDescription() {
             return serverDescription;
-        }
-
-        @Override
-        public SessionContext getSessionContext() {
-            return new ReadConcernAwareNoOpSessionContext(readConcern);
-        }
-
-        @Override
-        @Nullable
-        public ServerApi getServerApi() {
-            return serverApi;
-        }
-
-        @Override
-        public RequestContext getRequestContext() {
-            return requestContext;
         }
 
         @Override

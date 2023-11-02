@@ -19,19 +19,18 @@ package com.mongodb.internal.operation;
 import com.mongodb.ExplainVerbosity;
 import com.mongodb.MongoNamespace;
 import com.mongodb.client.model.Collation;
+import com.mongodb.internal.TimeoutSettings;
 import com.mongodb.internal.async.AsyncBatchCursor;
 import com.mongodb.internal.async.SingleResultCallback;
 import com.mongodb.internal.binding.AsyncReadBinding;
 import com.mongodb.internal.binding.ReadBinding;
 import com.mongodb.internal.client.model.AggregationLevel;
-import com.mongodb.internal.connection.NoOpSessionContext;
 import com.mongodb.lang.Nullable;
 import org.bson.BsonDocument;
 import org.bson.BsonValue;
 import org.bson.codecs.Decoder;
 
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 import static com.mongodb.internal.operation.ExplainHelper.asExplainCommand;
 import static com.mongodb.internal.operation.ServerVersionHelper.MIN_WIRE_VERSION;
@@ -44,13 +43,14 @@ import static com.mongodb.internal.operation.ServerVersionHelper.MIN_WIRE_VERSIO
 public class AggregateOperation<T> implements AsyncExplainableReadOperation<AsyncBatchCursor<T>>, ExplainableReadOperation<BatchCursor<T>> {
     private final AggregateOperationImpl<T> wrapped;
 
-    public AggregateOperation(final MongoNamespace namespace, final List<BsonDocument> pipeline, final Decoder<T> decoder) {
-        this(namespace, pipeline, decoder, AggregationLevel.COLLECTION);
+    public AggregateOperation(final TimeoutSettings timeoutSettings, final MongoNamespace namespace,
+            final List<BsonDocument> pipeline, final Decoder<T> decoder) {
+        this(timeoutSettings, namespace, pipeline, decoder, AggregationLevel.COLLECTION);
     }
 
-    public AggregateOperation(final MongoNamespace namespace, final List<BsonDocument> pipeline, final Decoder<T> decoder,
-                              final AggregationLevel aggregationLevel) {
-        this.wrapped = new AggregateOperationImpl<>(namespace, pipeline, decoder, aggregationLevel);
+    public AggregateOperation(final TimeoutSettings timeoutSettings, final MongoNamespace namespace,
+            final List<BsonDocument> pipeline, final Decoder<T> decoder, final AggregationLevel aggregationLevel) {
+        this.wrapped = new AggregateOperationImpl<>(timeoutSettings, namespace, pipeline, decoder, aggregationLevel);
     }
 
     public List<BsonDocument> getPipeline() {
@@ -72,24 +72,6 @@ public class AggregateOperation<T> implements AsyncExplainableReadOperation<Asyn
 
     public AggregateOperation<T> batchSize(@Nullable final Integer batchSize) {
         wrapped.batchSize(batchSize);
-        return this;
-    }
-
-    public long getMaxAwaitTime(final TimeUnit timeUnit) {
-        return wrapped.getMaxAwaitTime(timeUnit);
-    }
-
-    public AggregateOperation<T> maxAwaitTime(final long maxAwaitTime, final TimeUnit timeUnit) {
-        wrapped.maxAwaitTime(maxAwaitTime, timeUnit);
-        return this;
-    }
-
-    public long getMaxTime(final TimeUnit timeUnit) {
-        return wrapped.getMaxTime(timeUnit);
-    }
-
-    public AggregateOperation<T> maxTime(final long maxTime, final TimeUnit timeUnit) {
-        wrapped.maxTime(maxTime, timeUnit);
         return this;
     }
 
@@ -149,6 +131,11 @@ public class AggregateOperation<T> implements AsyncExplainableReadOperation<Asyn
     }
 
     @Override
+    public TimeoutSettings getTimeoutSettings() {
+        return wrapped.getTimeoutSettings();
+    }
+
+    @Override
     public BatchCursor<T> execute(final ReadBinding binding) {
         return wrapped.execute(binding);
     }
@@ -159,24 +146,22 @@ public class AggregateOperation<T> implements AsyncExplainableReadOperation<Asyn
     }
 
     public <R> ReadOperation<R> asExplainableOperation(@Nullable final ExplainVerbosity verbosity, final Decoder<R> resultDecoder) {
-        return new CommandReadOperation<>(getNamespace().getDatabaseName(),
-                asExplainCommand(wrapped.getCommand(NoOpSessionContext.INSTANCE, MIN_WIRE_VERSION), verbosity),
-                resultDecoder);
+        return createExplainableOperation(verbosity, resultDecoder);
     }
 
     public <R> AsyncReadOperation<R> asAsyncExplainableOperation(@Nullable final ExplainVerbosity verbosity,
                                                                  final Decoder<R> resultDecoder) {
-        return new CommandReadOperation<>(getNamespace().getDatabaseName(),
-                asExplainCommand(wrapped.getCommand(NoOpSessionContext.INSTANCE, MIN_WIRE_VERSION), verbosity),
-                resultDecoder);
+        return createExplainableOperation(verbosity, resultDecoder);
     }
 
+    <R> CommandReadOperation<R> createExplainableOperation(@Nullable final ExplainVerbosity verbosity, final Decoder<R> resultDecoder) {
+        return new CommandReadOperation<>(wrapped.getTimeoutSettings(), getNamespace().getDatabaseName(),
+                (operationContext, serverDescription, connectionDescription) ->
+                        asExplainCommand(wrapped.getCommand(operationContext, MIN_WIRE_VERSION), verbosity), resultDecoder);
+    }
 
     MongoNamespace getNamespace() {
         return wrapped.getNamespace();
     }
 
-    Decoder<T> getDecoder() {
-        return wrapped.getDecoder();
-    }
 }

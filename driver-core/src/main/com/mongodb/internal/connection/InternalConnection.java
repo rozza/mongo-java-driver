@@ -16,12 +16,10 @@
 
 package com.mongodb.internal.connection;
 
-import com.mongodb.RequestContext;
 import com.mongodb.connection.BufferProvider;
 import com.mongodb.connection.ConnectionDescription;
 import com.mongodb.connection.ServerDescription;
 import com.mongodb.internal.async.SingleResultCallback;
-import com.mongodb.internal.session.SessionContext;
 import com.mongodb.lang.Nullable;
 import org.bson.ByteBuf;
 import org.bson.codecs.Decoder;
@@ -53,14 +51,15 @@ public interface InternalConnection extends BufferProvider {
     /**
      * Opens the connection so its ready for use
      */
-    void open();
+    void open(OperationContext operationContext);
 
     /**
      * Opens the connection so its ready for use
      *
-     * @param callback the callback to be called once the connection has been opened
+     * @param operationContext
+     * @param callback         the callback to be called once the connection has been opened
      */
-    void openAsync(SingleResultCallback<Void> callback);
+    void openAsync(OperationContext operationContext, SingleResultCallback<Void> callback);
 
     /**
      * Closes the connection.
@@ -92,24 +91,20 @@ public interface InternalConnection extends BufferProvider {
      * Send a command message to the server.
      *
      * @param message          the command message to send
-     * @param sessionContext   the session context
-     * @param requestContext   the request context
      * @param operationContext the operation context
      */
     @Nullable
-    <T> T sendAndReceive(CommandMessage message, Decoder<T> decoder, SessionContext sessionContext, RequestContext requestContext,
-            OperationContext operationContext);
+    <T> T sendAndReceive(CommandMessage message, Decoder<T> decoder, OperationContext operationContext);
 
-    <T> void send(CommandMessage message, Decoder<T> decoder, SessionContext sessionContext);
+    <T> void send(CommandMessage message, Decoder<T> decoder, OperationContext operationContext);
 
-    <T> T receive(Decoder<T> decoder, SessionContext sessionContext);
-
+    <T> T receive(Decoder<T> decoder, OperationContext operationContext);
 
     default boolean supportsAdditionalTimeout() {
         return false;
     }
 
-    default <T> T receive(Decoder<T> decoder, SessionContext sessionContext, int additionalTimeout) {
+    default <T> T receive(Decoder<T> decoder, OperationContext operationContext, int additionalTimeout) {
         throw new UnsupportedOperationException();
     }
 
@@ -119,12 +114,9 @@ public interface InternalConnection extends BufferProvider {
      * Send a command message to the server.
      *
      * @param message          the command message to send
-     * @param sessionContext   the session context
-     * @param operationContext the operation context
      * @param callback         the callback
      */
-    <T> void sendAndReceiveAsync(CommandMessage message, Decoder<T> decoder, SessionContext sessionContext, RequestContext requestContext,
-            OperationContext operationContext, SingleResultCallback<T> callback);
+    <T> void sendAndReceiveAsync(CommandMessage message, Decoder<T> decoder, OperationContext operationContext, SingleResultCallback<T> callback);
 
     /**
      * Send a message to the server. The connection may not make any attempt to validate the integrity of the message.

@@ -22,6 +22,7 @@ import com.mongodb.ReadPreference;
 import com.mongodb.WriteConcern;
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.model.Collation;
+import com.mongodb.internal.TimeoutSettings;
 import com.mongodb.internal.binding.ReadBinding;
 import com.mongodb.internal.client.model.FindOptions;
 import com.mongodb.internal.operation.BatchCursor;
@@ -69,10 +70,10 @@ class MapReduceIterableImpl<TDocument, TResult> extends MongoIterableImpl<TResul
     MapReduceIterableImpl(@Nullable final ClientSession clientSession, final MongoNamespace namespace, final Class<TDocument> documentClass,
                           final Class<TResult> resultClass, final CodecRegistry codecRegistry, final ReadPreference readPreference,
                           final ReadConcern readConcern, final WriteConcern writeConcern, final OperationExecutor executor,
-                          final String mapFunction, final String reduceFunction) {
-        super(clientSession, executor, readConcern, readPreference, false);
+                          final String mapFunction, final String reduceFunction, final TimeoutSettings timeoutSettings) {
+        super(clientSession, executor, readConcern, readPreference, false, timeoutSettings);
         this.operations = new SyncOperations<>(namespace, documentClass, readPreference, codecRegistry, readConcern, writeConcern,
-                false, false);
+                false, false, timeoutSettings);
         this.namespace = notNull("namespace", namespace);
         this.resultClass = notNull("resultClass", resultClass);
         this.mapFunction = notNull("mapFunction", mapFunction);
@@ -232,6 +233,11 @@ class MapReduceIterableImpl<TDocument, TResult> extends MongoIterableImpl<TResul
 
         WrappedMapReduceReadOperation(final ReadOperation<MapReduceBatchCursor<TResult>> operation) {
             this.operation = operation;
+        }
+
+        @Override
+        public TimeoutSettings getTimeoutSettings() {
+            return operation.getTimeoutSettings();
         }
 
         @Override

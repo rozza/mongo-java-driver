@@ -28,6 +28,7 @@ import com.mongodb.client.model.Collation;
 import com.mongodb.client.model.changestream.ChangeStreamDocument;
 import com.mongodb.client.model.changestream.FullDocument;
 import com.mongodb.client.model.changestream.FullDocumentBeforeChange;
+import com.mongodb.internal.TimeoutSettings;
 import com.mongodb.internal.client.model.changestream.ChangeStreamLevel;
 import com.mongodb.internal.operation.BatchCursor;
 import com.mongodb.internal.operation.ReadOperation;
@@ -70,23 +71,23 @@ public class ChangeStreamIterableImpl<TResult> extends MongoIterableImpl<ChangeS
     private boolean showExpandedEvents;
 
     public ChangeStreamIterableImpl(@Nullable final ClientSession clientSession, final String databaseName,
-                                    final CodecRegistry codecRegistry, final ReadPreference readPreference, final ReadConcern readConcern,
-                                    final OperationExecutor executor, final List<? extends Bson> pipeline, final Class<TResult> resultClass,
-                                    final ChangeStreamLevel changeStreamLevel, final boolean retryReads) {
+            final CodecRegistry codecRegistry, final ReadPreference readPreference, final ReadConcern readConcern,
+            final OperationExecutor executor, final List<? extends Bson> pipeline, final Class<TResult> resultClass,
+            final ChangeStreamLevel changeStreamLevel, final boolean retryReads, final TimeoutSettings timeoutSettings) {
         this(clientSession, new MongoNamespace(databaseName, "ignored"), codecRegistry, readPreference, readConcern, executor, pipeline,
-                resultClass, changeStreamLevel, retryReads);
+                resultClass, changeStreamLevel, retryReads, timeoutSettings);
     }
 
     public ChangeStreamIterableImpl(@Nullable final ClientSession clientSession, final MongoNamespace namespace,
                                     final CodecRegistry codecRegistry, final ReadPreference readPreference, final ReadConcern readConcern,
                                     final OperationExecutor executor, final List<? extends Bson> pipeline, final Class<TResult> resultClass,
-                                    final ChangeStreamLevel changeStreamLevel, final boolean retryReads) {
-        super(clientSession, executor, readConcern, readPreference, retryReads);
+                                    final ChangeStreamLevel changeStreamLevel, final boolean retryReads, final TimeoutSettings timeoutSettings) {
+        super(clientSession, executor, readConcern, readPreference, retryReads, timeoutSettings);
         this.codecRegistry = notNull("codecRegistry", codecRegistry);
         this.pipeline = notNull("pipeline", pipeline);
         this.codec = ChangeStreamDocument.createCodec(notNull("resultClass", resultClass), codecRegistry);
         this.changeStreamLevel = notNull("changeStreamLevel", changeStreamLevel);
-        this.operations = new SyncOperations<>(namespace, resultClass, readPreference, codecRegistry, retryReads);
+        this.operations = new SyncOperations<>(namespace, resultClass, readPreference, codecRegistry, retryReads, timeoutSettings);
     }
 
     @Override
@@ -128,7 +129,8 @@ public class ChangeStreamIterableImpl<TResult> extends MongoIterableImpl<ChangeS
 
     @Override
     public <TDocument> MongoIterable<TDocument> withDocumentClass(final Class<TDocument> clazz) {
-        return new MongoIterableImpl<TDocument>(getClientSession(), getExecutor(), getReadConcern(), getReadPreference(), getRetryReads()) {
+        return new MongoIterableImpl<TDocument>(getClientSession(), getExecutor(), getReadConcern(), getReadPreference(), getRetryReads(),
+                getTimeoutSettings()) {
             @Override
             public MongoCursor<TDocument> iterator() {
                 return cursor();
