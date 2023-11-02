@@ -86,7 +86,10 @@ abstract class CursorResourceManager<CS extends ReferenceCounted, C extends Refe
         this.serverCursor = serverCursor;
     }
 
-    public MongoNamespace getNamespace() {
+    /**
+     * Thread-safe.
+     */
+    MongoNamespace getNamespace() {
         return namespace;
     }
 
