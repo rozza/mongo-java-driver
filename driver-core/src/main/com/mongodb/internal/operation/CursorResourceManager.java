@@ -108,8 +108,11 @@ abstract class CursorResourceManager<CS extends ReferenceCounted, C extends Refe
         return connectionSource;
     }
 
+    /**
+     * Thread-safe.
+     */
     @Nullable
-    public C getPinnedConnection() {
+    C getPinnedConnection() {
         return pinnedConnection;
     }
 
