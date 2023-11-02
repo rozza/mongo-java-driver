@@ -31,7 +31,6 @@ import static com.mongodb.assertions.Assertions.assertNotNull;
 import static com.mongodb.assertions.Assertions.assertNull;
 import static com.mongodb.assertions.Assertions.assertTrue;
 import static com.mongodb.assertions.Assertions.fail;
-import static com.mongodb.assertions.Assertions.notNull;
 import static com.mongodb.internal.Locks.withLock;
 import static com.mongodb.internal.operation.CommandBatchCursorHelper.MESSAGE_IF_CONCURRENT_OPERATION;
 
@@ -71,11 +70,11 @@ abstract class CursorResourceManager<CS extends ReferenceCounted, C extends Refe
             @Nullable final C connectionToPin,
             @Nullable final ServerCursor serverCursor) {
         this.lock = new ReentrantLock();
-        this.namespace = notNull("mongoNamespace", namespace);
+        this.namespace = namespace;
         this.state = State.IDLE;
         if (serverCursor != null) {
             connectionSource.retain();
-            this.connectionSource = notNull("connectionSource", connectionSource);
+            this.connectionSource = connectionSource;
             if (connectionToPin != null) {
                 connectionToPin.retain();
                 markAsPinned(connectionToPin, Connection.PinningMode.CURSOR);

@@ -44,7 +44,6 @@ import java.util.function.Supplier;
 
 import static com.mongodb.assertions.Assertions.assertNotNull;
 import static com.mongodb.assertions.Assertions.assertTrue;
-import static com.mongodb.assertions.Assertions.notNull;
 import static com.mongodb.internal.VisibleForTesting.AccessModifier.PRIVATE;
 import static com.mongodb.internal.operation.CommandBatchCursorHelper.FIRST_BATCH;
 import static com.mongodb.internal.operation.CommandBatchCursorHelper.MESSAGE_IF_CLOSED_AS_CURSOR;
@@ -84,7 +83,7 @@ class CommandBatchCursor<T> implements AggregateResponseBatchCursor<T> {
         this.namespace = commandCursorResult.getNamespace();
         this.batchSize = batchSize;
         this.maxTimeMS = maxTimeMS;
-        this.decoder = notNull("decoder", decoder);
+        this.decoder = decoder;
         this.comment = comment;
         this.maxWireVersion = connectionDescription.getMaxWireVersion();
         this.firstBatchEmpty = commandCursorResult.getResults().isEmpty();
