@@ -93,7 +93,10 @@ abstract class CursorResourceManager<CS extends ReferenceCounted, C extends Refe
         return namespace;
     }
 
-    public State getState() {
+    /**
+     * Thread-safe.
+     */
+    State getState() {
         return state;
     }
 
