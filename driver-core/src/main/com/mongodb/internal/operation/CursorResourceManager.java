@@ -113,7 +113,10 @@ abstract class CursorResourceManager<CS extends ReferenceCounted, C extends Refe
         return pinnedConnection;
     }
 
-    public boolean isSkipReleasingServerResourcesOnClose() {
+    /**
+     * Thread-safe.
+     */
+    boolean isSkipReleasingServerResourcesOnClose() {
         return skipReleasingServerResourcesOnClose;
     }
 
