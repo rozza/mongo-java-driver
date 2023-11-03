@@ -227,7 +227,7 @@ abstract class CursorResourceManager<CS extends ReferenceCounted, C extends Refe
         assertNotNull(connectionSource);
         this.serverCursor = serverCursor;
         if (serverCursor == null) {
-            close();
+            releaseClientResources();
         }
     }
 
