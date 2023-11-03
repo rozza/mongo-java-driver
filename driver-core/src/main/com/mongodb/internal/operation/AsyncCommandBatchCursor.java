@@ -236,7 +236,7 @@ class AsyncCommandBatchCursor<T> implements AsyncAggregateResponseBatchCursor<T>
         <R> AsyncCallbackSupplier<R> execute(final AsyncCallbackSupplier<R> callbackSupplier) {
             return callback -> {
                 if (!tryStartOperation()) {
-                    callback.onResult(null, new IllegalStateException(MESSAGE_IF_CONCURRENT_OPERATION));
+                    callback.onResult(null, new IllegalStateException(MESSAGE_IF_CLOSED_AS_CURSOR));
                 } else {
                     callbackSupplier.whenComplete(this::endOperation).get(callback);
                 }
