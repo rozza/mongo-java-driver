@@ -122,7 +122,7 @@ public class AsyncCommandBatchCursorFunctionalTest extends OperationTest {
         assertDoesNotThrow(() -> cursor.close());
 
         checkReferenceCountReachesTarget(connectionSource, 1);
-        assertThrows(MongoException.class, this::cursorNext);
+        assertThrows(IllegalStateException.class, this::cursorNext);
         assertNull(cursor.getServerCursor());
     }
 
@@ -136,7 +136,7 @@ public class AsyncCommandBatchCursorFunctionalTest extends OperationTest {
         cursorNext();
         cursorNext();
 
-        assertThrows(MongoException.class, this::cursorNext);
+        assertThrows(IllegalStateException.class, this::cursorNext);
     }
 
 

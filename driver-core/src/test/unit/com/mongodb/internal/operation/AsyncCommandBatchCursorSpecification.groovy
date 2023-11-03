@@ -42,6 +42,7 @@ import spock.lang.Specification
 import static OperationUnitSpecification.getMaxWireVersionForServerVersion
 import static com.mongodb.ReadPreference.primary
 import static com.mongodb.internal.operation.CommandBatchCursorHelper.MESSAGE_IF_CLOSED_AS_CURSOR
+import static com.mongodb.internal.operation.CommandBatchCursorHelper.MESSAGE_IF_CONCURRENT_OPERATION
 
 class AsyncCommandBatchCursorSpecification extends Specification {
 
@@ -141,7 +142,7 @@ class AsyncCommandBatchCursorSpecification extends Specification {
         nextBatch(cursor)
 
         then:
-        def exception = thrown(MongoException)
+        def exception = thrown(IllegalStateException)
         exception.getMessage() == MESSAGE_IF_CLOSED_AS_CURSOR
         initialConnection.getCount() == 0
         connectionSource.getCount() == 0
@@ -247,6 +248,37 @@ class AsyncCommandBatchCursorSpecification extends Specification {
         ServerType.LOAD_BALANCER | 0
         ServerType.STANDALONE    | 42
         ServerType.STANDALONE    | 0
+    }
+
+    def 'should throw concurrent operation assertion error'() {
+        given:
+        def serverVersion =  new ServerVersion([3, 6, 0])
+        def initialConnection = referenceCountedAsyncConnection(serverVersion, 'connectionOri')
+        def connectionA = referenceCountedAsyncConnection(serverVersion, 'connectionA')
+        def connectionB = referenceCountedAsyncConnection(serverVersion, 'connectionB')
+        def connectionSource = getAsyncConnectionSource(connectionA, connectionB)
+
+        when:
+        def cursor = new AsyncCommandBatchCursor<Document>(createCommandResult(FIRST_BATCH, 42), 0, 0, CODEC,
+                null, connectionSource, initialConnection)
+        def batch = nextBatch(cursor)
+
+        then:
+        batch == FIRST_BATCH
+
+        when:
+        nextBatch(cursor)
+
+        then:
+        // simulate the user calling `cursor.next()` while `getMore` is in flight
+        1 * connectionA.commandAsync(*_) >> {
+            // `getMore` command
+            nextBatch(cursor)
+        }
+
+        then:
+        def exception = thrown(AssertionError)
+        exception.getMessage() == MESSAGE_IF_CONCURRENT_OPERATION
     }
 
     def 'should close cursor after getMore finishes if cursor was closed while getMore was in progress and getMore throws exception'() {

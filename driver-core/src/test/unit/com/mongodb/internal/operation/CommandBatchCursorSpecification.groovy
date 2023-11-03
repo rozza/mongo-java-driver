@@ -40,6 +40,8 @@ import org.bson.codecs.DocumentCodec
 import spock.lang.Specification
 
 import static com.mongodb.ReadPreference.primary
+import static com.mongodb.internal.operation.CommandBatchCursorHelper.MESSAGE_IF_CLOSED_AS_CURSOR
+import static com.mongodb.internal.operation.CommandBatchCursorHelper.MESSAGE_IF_CONCURRENT_OPERATION
 import static com.mongodb.internal.operation.OperationUnitSpecification.getMaxWireVersionForServerVersion
 
 class CommandBatchCursorSpecification extends Specification {
@@ -226,10 +228,11 @@ class CommandBatchCursorSpecification extends Specification {
 
         then:
         IllegalStateException e = thrown()
-        e.getMessage() == 'Cursor has been closed'
+        e.getMessage() == MESSAGE_IF_CLOSED_AS_CURSOR
 
         then:
         connectionA.getCount() == 0
+        connectionB.getCount() == 0
         initialConnection.getCount() == 0
         connectionSource.getCount() == 0
         cursor.isClosed()
@@ -240,6 +243,37 @@ class CommandBatchCursorSpecification extends Specification {
         ServerType.LOAD_BALANCER | 0
         ServerType.STANDALONE    | 42
         ServerType.STANDALONE    | 0
+    }
+
+    def 'should throw concurrent operation illegal state exception'() {
+        given:
+        def serverVersion =  new ServerVersion([3, 6, 0])
+        def initialConnection = referenceCountedConnection(serverVersion, 'connectionOri')
+        def connectionA = referenceCountedConnection(serverVersion, 'connectionA')
+        def connectionB = referenceCountedConnection(serverVersion, 'connectionB')
+        def connectionSource = getConnectionSource(connectionA, connectionB)
+
+        when:
+        def cursor = new CommandBatchCursor<Document>(createCommandResult(FIRST_BATCH, 42), 0, 0, CODEC,
+                null, connectionSource, initialConnection)
+        def batch = cursor.next()
+
+        then:
+        batch == FIRST_BATCH
+
+        when:
+        cursor.next()
+
+        then:
+        // simulate the user calling `cursor.next()` while `getMore` is in flight
+        1 * connectionA.command(*_) >> {
+            // `getMore` command
+            cursor.next()
+        }
+
+        then:
+        def exception = thrown(IllegalStateException)
+        exception.getMessage() == MESSAGE_IF_CONCURRENT_OPERATION
     }
 
     def 'should close cursor after getMore finishes if cursor was closed while getMore was in progress and getMore throws exception'() {
