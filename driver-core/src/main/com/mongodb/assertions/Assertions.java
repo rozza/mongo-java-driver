@@ -236,8 +236,7 @@ public final class Assertions {
         try {
             return supplier.get();
         } catch (Exception e) {
-            AssertionError assertionError = new AssertionError(e.getMessage());
-            assertionError.addSuppressed(e);
+            throw new AssertionError(e);
             throw assertionError;
         }
     }
