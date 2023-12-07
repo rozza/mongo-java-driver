@@ -148,6 +148,14 @@ public class TimeoutContext {
         return timeoutOrAlternative(timeoutSettings.getMaxCommitTimeMS());
     }
 
+    public long getReadTimeoutMS() {
+        return timeoutOrAlternative(timeoutSettings.getReadTimeoutMS());
+    }
+
+    public long getWriteTimeoutMS() {
+        return timeoutOrAlternative(0);
+    }
+
 
     public void resetTimeout() {
         assertNotNull(timeout);

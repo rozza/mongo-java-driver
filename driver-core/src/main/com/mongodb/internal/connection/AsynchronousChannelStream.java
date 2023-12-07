@@ -90,11 +90,11 @@ public abstract class AsynchronousChannelStream implements Stream {
             final AsyncCompletionHandler<Void> handler) {
         AsyncWritableByteChannelAdapter byteChannel = new AsyncWritableByteChannelAdapter();
         Iterator<ByteBuf> iter = buffers.iterator();
-        pipeOneBuffer(byteChannel, iter.next(), new AsyncCompletionHandler<Void>() {
+        pipeOneBuffer(byteChannel, iter.next(), operationContext, new AsyncCompletionHandler<Void>() {
             @Override
             public void completed(@Nullable final Void t) {
                 if (iter.hasNext()) {
-                    pipeOneBuffer(byteChannel, iter.next(), this);
+                    pipeOneBuffer(byteChannel, iter.next(), operationContext, this);
                 } else {
                     handler.completed(null);
                 }
@@ -116,7 +116,7 @@ public abstract class AsynchronousChannelStream implements Stream {
             final AsyncCompletionHandler<ByteBuf> handler) {
         ByteBuf buffer = bufferProvider.getBuffer(numBytes);
 
-        int timeout = settings.getReadTimeout(MILLISECONDS);
+        long timeout = operationContext.getTimeoutContext().getReadTimeoutMS();
         if (timeout > 0 && additionalTimeout > 0) {
             timeout += additionalTimeout;
         }
@@ -184,12 +184,12 @@ public abstract class AsynchronousChannelStream implements Stream {
     }
 
     private void pipeOneBuffer(final AsyncWritableByteChannelAdapter byteChannel, final ByteBuf byteBuffer,
-                               final AsyncCompletionHandler<Void> outerHandler) {
-        byteChannel.write(byteBuffer.asNIO(), new AsyncCompletionHandler<Void>() {
+            final OperationContext operationContext, final AsyncCompletionHandler<Void> outerHandler) {
+        byteChannel.write(byteBuffer.asNIO(), operationContext, new AsyncCompletionHandler<Void>() {
             @Override
             public void completed(@Nullable final Void t) {
                 if (byteBuffer.hasRemaining()) {
-                    byteChannel.write(byteBuffer.asNIO(), this);
+                    byteChannel.write(byteBuffer.asNIO(), operationContext, this);
                 } else {
                     outerHandler.completed(null);
                 }
@@ -203,8 +203,9 @@ public abstract class AsynchronousChannelStream implements Stream {
     }
 
     private class AsyncWritableByteChannelAdapter {
-        void write(final ByteBuffer src, final AsyncCompletionHandler<Void> handler) {
-            getChannel().write(src, null, new AsyncWritableByteChannelAdapter.WriteCompletionHandler(handler));
+        void write(final ByteBuffer src, final OperationContext operationContext, final AsyncCompletionHandler<Void> handler) {
+            getChannel().write(src, operationContext.getTimeoutContext().getWriteTimeoutMS(), MILLISECONDS, null,
+                    new AsyncWritableByteChannelAdapter.WriteCompletionHandler(handler));
         }
 
         private class WriteCompletionHandler extends BaseCompletionHandler<Void, Integer, Object> {

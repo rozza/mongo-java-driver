@@ -24,6 +24,7 @@ import com.mongodb.connection.AsyncCompletionHandler;
 import com.mongodb.connection.ProxySettings;
 import com.mongodb.connection.SocketSettings;
 import com.mongodb.connection.SslSettings;
+import com.mongodb.internal.TimeoutContext;
 import com.mongodb.spi.dns.InetAddressResolver;
 import org.bson.ByteBuf;
 
@@ -162,6 +163,9 @@ public class SocketStream implements Stream {
     public void write(final List<ByteBuf> buffers, final OperationContext operationContext) throws IOException {
         for (final ByteBuf cur : buffers) {
             outputStream.write(cur.array(), 0, cur.limit());
+            if (operationContext.getTimeoutContext().hasExpired()) {
+                throw TimeoutContext.createMongoTimeoutException();
+            }
         }
     }
 
@@ -176,6 +180,10 @@ public class SocketStream implements Stream {
                 if (bytesRead == -1) {
                     throw new MongoSocketReadException("Prematurely reached end of stream", getAddress());
                 }
+                if (operationContext.getTimeoutContext().hasExpired()) {
+                    throw TimeoutContext.createMongoTimeoutException();
+                }
+
                 totalBytesRead += bytesRead;
             }
             return buffer;
