@@ -82,6 +82,9 @@ public class TestHelper {
 
     static {
         OperationExecutor executor = mock(OperationExecutor.class);
+        Mockito.lenient().doAnswer(invocation -> executor)
+                .when(executor).withTimeoutContext(any());
+
         Mockito.lenient().doAnswer(invocation -> Mono.empty())
                 .when(executor)
                 .execute(any(), any(), any());

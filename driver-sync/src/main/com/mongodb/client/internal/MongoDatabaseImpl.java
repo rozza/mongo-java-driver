@@ -216,8 +216,9 @@ public class MongoDatabaseImpl implements MongoDatabase {
         if (clientSession != null && clientSession.hasActiveTransaction() && !readPreference.equals(ReadPreference.primary())) {
             throw new MongoClientException("Read preference in a transaction must be primary");
         }
-        return executor.execute(operations.commandRead(command, resultClass),
-                readPreference, readConcern, clientSession);
+        return executor
+                .withTimeoutContext(operations.getTimeoutContext())
+                .execute(operations.commandRead(command, resultClass), readPreference, readConcern, clientSession);
     }
 
     @Override
@@ -232,7 +233,8 @@ public class MongoDatabaseImpl implements MongoDatabase {
     }
 
     private void executeDrop(@Nullable final ClientSession clientSession) {
-        executor.execute(operations.dropDatabase(), readConcern, clientSession);
+        executor.withTimeoutContext(operations.getTimeoutContext())
+                .execute(operations.dropDatabase(), readConcern, clientSession);
     }
 
     @Override
@@ -302,8 +304,9 @@ public class MongoDatabaseImpl implements MongoDatabase {
 
     private void executeCreateCollection(@Nullable final ClientSession clientSession, final String collectionName,
                                          final CreateCollectionOptions createCollectionOptions) {
-        executor.execute(operations.createCollection(collectionName, createCollectionOptions, autoEncryptionSettings), readConcern,
-                clientSession);
+        executor.withTimeoutContext(operations.getTimeoutContext())
+                .execute(operations.createCollection(collectionName, createCollectionOptions, autoEncryptionSettings),
+                        readConcern, clientSession);
     }
 
     @Override
@@ -411,6 +414,7 @@ public class MongoDatabaseImpl implements MongoDatabase {
     private void executeCreateView(@Nullable final ClientSession clientSession, final String viewName, final String viewOn,
                                    final List<? extends Bson> pipeline, final CreateViewOptions createViewOptions) {
         notNull("createViewOptions", createViewOptions);
-        executor.execute(operations.createView(viewName, viewOn, pipeline, createViewOptions), readConcern, clientSession);
+        executor.withTimeoutContext(operations.getTimeoutContext())
+                .execute(operations.createView(viewName, viewOn, pipeline, createViewOptions), readConcern, clientSession);
     }
 }
