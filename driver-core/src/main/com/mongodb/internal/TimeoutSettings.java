@@ -46,7 +46,8 @@ public class TimeoutSettings {
     // Deprecated options for CRUD methods
     private final long maxTimeMS;
     private final long maxAwaitTimeMS;
-    private final long maxCommitTimeMS;
+    @Nullable
+    private final Long maxCommitTimeMS;
 
     public static final TimeoutSettings DEFAULT = create(MongoClientSettings.builder().build());
 
@@ -71,19 +72,21 @@ public class TimeoutSettings {
     public TimeoutSettings(
             final long serverSelectionTimeoutMS, final long connectTimeoutMS, final long readTimeoutMS,
             @Nullable final Long timeoutMS, final long maxWaitTimeMS) {
-        this(timeoutMS, null, serverSelectionTimeoutMS, connectTimeoutMS, readTimeoutMS, 0, 0, 0, null, maxWaitTimeMS);
+        this(timeoutMS, null, serverSelectionTimeoutMS, connectTimeoutMS, readTimeoutMS, 0, 0, null, null, maxWaitTimeMS);
     }
 
     TimeoutSettings(
             @Nullable final Long timeoutMS, @Nullable final Long defaultTimeoutMS, final long serverSelectionTimeoutMS,
             final long connectTimeoutMS, final long readTimeoutMS, final long maxAwaitTimeMS, final long maxTimeMS,
-            final long maxCommitTimeMS, @Nullable final Long wTimeoutMS, final long maxWaitTimeMS) {
+            @Nullable final Long maxCommitTimeMS, @Nullable final Long wTimeoutMS, final long maxWaitTimeMS) {
 
         isTrueArgument("timeoutMS must be >= 0", timeoutMS == null || timeoutMS >= 0);
+        isTrueArgument("defaultTimeoutMS must be >= 0", defaultTimeoutMS == null || defaultTimeoutMS >= 0);
         isTrueArgument("maxAwaitTimeMS must be >= 0", maxAwaitTimeMS >= 0);
         isTrueArgument("maxTimeMS must be >= 0", maxTimeMS >= 0);
         isTrueArgument("timeoutMS must be greater than maxAwaitTimeMS", timeoutMS == null || timeoutMS == 0
                 || timeoutMS > maxAwaitTimeMS);
+        isTrueArgument("maxCommitTimeMS must be >= 0", maxCommitTimeMS == null || maxCommitTimeMS >= 0);
 
         this.serverSelectionTimeoutMS = serverSelectionTimeoutMS;
         this.connectTimeoutMS = connectTimeoutMS;
@@ -106,7 +109,7 @@ public class TimeoutSettings {
                 maxTimeMS, maxCommitTimeMS, wTimeoutMS, maxWaitTimeMS);
     }
 
-    public TimeoutSettings withDefaultTimeoutMS(final long defaultTimeoutMS) {
+    public TimeoutSettings withDefaultTimeoutMS(@Nullable final Long defaultTimeoutMS) {
         return new TimeoutSettings(timeoutMS, defaultTimeoutMS, serverSelectionTimeoutMS, connectTimeoutMS, readTimeoutMS, maxAwaitTimeMS,
                 maxTimeMS, maxCommitTimeMS, wTimeoutMS, maxWaitTimeMS);
     }
@@ -126,7 +129,7 @@ public class TimeoutSettings {
                 maxTimeMS, maxCommitTimeMS, wTimeoutMS, maxWaitTimeMS);
     }
 
-    public TimeoutSettings withMaxCommitMS(final long maxCommitTimeMS) {
+    public TimeoutSettings withMaxCommitMS(@Nullable final Long maxCommitTimeMS) {
         return new TimeoutSettings(timeoutMS, defaultTimeoutMS, serverSelectionTimeoutMS, connectTimeoutMS, readTimeoutMS, maxAwaitTimeMS,
                 maxTimeMS, maxCommitTimeMS, wTimeoutMS, maxWaitTimeMS);
     }
@@ -164,11 +167,6 @@ public class TimeoutSettings {
         return timeoutMS;
     }
 
-    @Nullable
-    public Long getDefaultTimeoutMS() {
-        return defaultTimeoutMS;
-    }
-
     public long getMaxAwaitTimeMS() {
         return maxAwaitTimeMS;
     }
@@ -181,8 +179,9 @@ public class TimeoutSettings {
         return maxTimeMS;
     }
 
-    public long getMaxCommitTimeMS() {
-        return maxCommitTimeMS;
+    @Nullable
+    public Long getTransactionTimeoutMS() {
+        return defaultTimeoutMS;
     }
 
     @Nullable
@@ -192,6 +191,16 @@ public class TimeoutSettings {
 
     public long getMaxWaitTimeMS() {
         return maxWaitTimeMS;
+    }
+
+    @Nullable
+    public Long getDefaultTimeoutMS() {
+        return defaultTimeoutMS;
+    }
+
+    @Nullable
+    public Long getMaxCommitTimeMS() {
+        return maxCommitTimeMS;
     }
 
     @Override
