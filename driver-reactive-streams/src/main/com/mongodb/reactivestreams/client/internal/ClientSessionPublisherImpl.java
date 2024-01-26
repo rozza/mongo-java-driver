@@ -30,6 +30,8 @@ import com.mongodb.internal.operation.CommitTransactionOperation;
 import com.mongodb.internal.session.BaseClientSessionImpl;
 import com.mongodb.internal.session.ServerSessionPool;
 import com.mongodb.reactivestreams.client.ClientSession;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.MonoSink;
@@ -40,6 +42,7 @@ import static com.mongodb.assertions.Assertions.assertNotNull;
 import static com.mongodb.assertions.Assertions.assertTrue;
 import static com.mongodb.assertions.Assertions.isTrue;
 import static com.mongodb.assertions.Assertions.notNull;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 final class ClientSessionPublisherImpl extends BaseClientSessionImpl implements ClientSession {
 
@@ -143,14 +146,10 @@ final class ClientSessionPublisherImpl extends BaseClientSessionImpl implements 
             boolean alreadyCommitted = commitInProgress || transactionState == TransactionState.COMMITTED;
             commitInProgress = true;
 
-            // TODO (CSOT) - JAVA-4067
-            // Long maxCommitTime = transactionOptions.getMaxCommitTime(MILLISECONDS);
-            return executor.execute(
-                    new CommitTransactionOperation(
-                            // TODO (CSOT) - JAVA-4067
-                            assertNotNull(transactionOptions.getWriteConcern()), alreadyCommitted)
-                            .recoveryToken(getRecoveryToken()),
-                    readConcern, this)
+            return getExecutor()
+                    .execute(
+                            new CommitTransactionOperation(assertNotNull(transactionOptions.getWriteConcern()), alreadyCommitted)
+                                    .recoveryToken(getRecoveryToken()), readConcern, this)
                     .doOnTerminate(() -> {
                         commitInProgress = false;
                         transactionState = TransactionState.COMMITTED;
@@ -178,14 +177,10 @@ final class ClientSessionPublisherImpl extends BaseClientSessionImpl implements 
             if (readConcern == null) {
                 throw new MongoInternalException("Invariant violated. Transaction options read concern can not be null");
             }
-            // TODO (CSOT) - JAVA-4067
-            // Long maxCommitTime = transactionOptions.getMaxCommitTime(MILLISECONDS);
-            return executor.execute(
-                    new AbortTransactionOperation(
-                            // TODO (CSOT) - JAVA-4067
-                            assertNotNull(transactionOptions.getWriteConcern()))
-                            .recoveryToken(getRecoveryToken()),
-                    readConcern, this)
+
+            return getExecutor()
+                    .execute(new AbortTransactionOperation(assertNotNull(transactionOptions.getWriteConcern()))
+                                    .recoveryToken(getRecoveryToken()), readConcern, this)
                     .onErrorResume(Throwable.class, (e) -> Mono.empty())
                     .doOnTerminate(() -> {
                         clearTransactionContext();
@@ -207,6 +202,17 @@ final class ClientSessionPublisherImpl extends BaseClientSessionImpl implements 
         } else {
             super.close();
         }
+    }
+
+    private OperationExecutor getExecutor() {
+        Long maxCommitTimeMS = transactionOptions.getMaxCommitTime(MILLISECONDS);
+        if (maxCommitTimeMS == null) {
+            maxCommitTimeMS = getOptions().getDefaultTimeout(MILLISECONDS);
+        }
+        if (maxCommitTimeMS == null) {
+            return executor;
+        }
+        return executor.withTimeoutContext(executor.getTimeoutContext().withMaxCommitTimeMS(maxCommitTimeMS));
     }
 
     private void cleanupTransaction(final TransactionState nextState) {

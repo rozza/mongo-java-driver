@@ -211,7 +211,7 @@ final class MongoClientDelegate {
             return new DelegateOperationExecutor(newTimeContext);
         }
 
-        TimeoutContext getTimeoutContext() {
+        public TimeoutContext getTimeoutContext() {
             return timeoutContext != null ? timeoutContext : new TimeoutContext(getTimeoutSettings());
         }
 

@@ -165,7 +165,7 @@ public final class TransactionOptions {
                 + "readConcern=" + readConcern
                 + ", writeConcern=" + writeConcern
                 + ", readPreference=" + readPreference
-                + ", maxCommitTimeMS" + maxCommitTimeMS
+                + ", maxCommitTimeMS=" + maxCommitTimeMS
                 + '}';
     }
 

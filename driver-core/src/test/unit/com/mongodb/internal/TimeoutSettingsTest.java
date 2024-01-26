@@ -41,17 +41,16 @@ final class TimeoutSettingsTest {
                             () -> assertEquals(10_000, timeoutSettings.getConnectTimeoutMS()),
                             () -> assertEquals(0, timeoutSettings.getReadTimeoutMS()),
                             () -> assertNull(timeoutSettings.getTimeoutMS()),
-                            () -> assertNull(timeoutSettings.getDefaultTimeoutMS()),
                             () -> assertEquals(0, timeoutSettings.getMaxTimeMS()),
                             () -> assertEquals(0, timeoutSettings.getMaxAwaitTimeMS()),
-                            () -> assertEquals(0, timeoutSettings.getMaxCommitTimeMS()),
+                            () -> assertNull(timeoutSettings.getTransactionTimeoutMS()),
                             () -> assertNull(timeoutSettings.getWTimeoutMS())
                     );
                 }),
                 dynamicTest("test overrides", () -> {
                     TimeoutSettings timeoutSettings = TIMEOUT_SETTINGS
                             .withTimeoutMS(100)
-                            .withDefaultTimeoutMS(1000)
+                            .withDefaultTimeoutMS(1_000L)
                             .withMaxTimeMS(111)
                             .withMaxAwaitTimeMS(11)
                             .withMaxCommitMS(999L)
@@ -62,7 +61,7 @@ final class TimeoutSettingsTest {
                             () -> assertEquals(10_000, timeoutSettings.getConnectTimeoutMS()),
                             () -> assertEquals(11_000, timeoutSettings.getReadTimeoutMS()),
                             () -> assertEquals(100, timeoutSettings.getTimeoutMS()),
-                            () -> assertEquals(1000, timeoutSettings.getDefaultTimeoutMS()),
+                            () -> assertEquals(1_000L, timeoutSettings.getDefaultTimeoutMS()),
                             () -> assertEquals(111, timeoutSettings.getMaxTimeMS()),
                             () -> assertEquals(11, timeoutSettings.getMaxAwaitTimeMS()),
                             () -> assertEquals(999, timeoutSettings.getMaxCommitTimeMS()),

@@ -171,8 +171,21 @@ public class TimeoutContext {
         return maxTimeMS - minRoundTripTimeMS;
     }
 
-    public long getMaxCommitTimeMS() {
-        return timeoutOrAlternative(timeoutSettings.getMaxCommitTimeMS());
+    public Long getMaxCommitTimeMS() {
+        Long maxCommitTimeMS = timeoutSettings.getDefaultTimeoutMS();
+        if (maxCommitTimeMS == null) {
+            maxCommitTimeMS = timeoutSettings.getMaxCommitTimeMS();
+        }
+        return timeoutOrAlternative(maxCommitTimeMS != null ? maxCommitTimeMS : 0);
+    }
+
+    public TimeoutContext withMaxCommitTimeMS(@Nullable final Long maxCommitTimeMS) {
+        return new TimeoutContext(false, timeoutSettings.withMaxCommitMS(maxCommitTimeMS), timeout);
+    }
+
+    public long getTransactionTimeoutMS() {
+        Long defaultTimeoutMS = timeoutSettings.getDefaultTimeoutMS();
+        return timeoutOrAlternative(defaultTimeoutMS != null ? defaultTimeoutMS : 0);
     }
 
     public long getReadTimeoutMS() {

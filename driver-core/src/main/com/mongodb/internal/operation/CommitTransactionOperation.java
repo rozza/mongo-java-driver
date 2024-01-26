@@ -25,6 +25,8 @@ import com.mongodb.MongoSocketException;
 import com.mongodb.MongoTimeoutException;
 import com.mongodb.MongoWriteConcernException;
 import com.mongodb.WriteConcern;
+import com.mongodb.internal.TimeoutContext;
+import com.mongodb.internal.TimeoutSettings;
 import com.mongodb.internal.async.SingleResultCallback;
 import com.mongodb.internal.binding.AsyncWriteBinding;
 import com.mongodb.internal.binding.WriteBinding;
@@ -68,8 +70,7 @@ public class CommitTransactionOperation extends TransactionOperation {
         try {
             return super.execute(binding);
         } catch (MongoException e) {
-            addErrorLabels(e);
-            throw e;
+            throw transformException(binding.getOperationContext().getTimeoutContext().getTimeoutSettings(), e);
         }
     }
 
@@ -77,16 +78,20 @@ public class CommitTransactionOperation extends TransactionOperation {
     public void executeAsync(final AsyncWriteBinding binding, final SingleResultCallback<Void> callback) {
         super.executeAsync(binding, (result, t) -> {
              if (t instanceof MongoException) {
-                 addErrorLabels((MongoException) t);
+                 callback.onResult(result,
+                         transformException(binding.getOperationContext().getTimeoutContext().getTimeoutSettings(), (MongoException) t));
+             } else {
+                 callback.onResult(result, t);
              }
-             callback.onResult(result, t);
         });
     }
 
-    private void addErrorLabels(final MongoException e) {
+    private MongoException transformException(final TimeoutSettings timeoutSettings, final MongoException e) {
         if (shouldAddUnknownTransactionCommitResultLabel(e)) {
             e.addLabel(UNKNOWN_TRANSACTION_COMMIT_RESULT_LABEL);
         }
+        boolean isTimeoutException = timeoutSettings.getTimeoutMS() != null || timeoutSettings.getTransactionTimeoutMS() != null;
+        return isTimeoutException ? TimeoutContext.createMongoTimeoutException(e) : e;
     }
 
     private static final List<Integer> NON_RETRYABLE_WRITE_CONCERN_ERROR_CODES = asList(79, 100);

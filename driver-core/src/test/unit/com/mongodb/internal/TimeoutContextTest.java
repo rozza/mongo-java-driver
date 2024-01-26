@@ -51,7 +51,7 @@ final class TimeoutContextTest {
                             () -> assertFalse(timeoutContext.hasTimeoutMS()),
                             () -> assertEquals(0, timeoutContext.getMaxTimeMS()),
                             () -> assertEquals(0, timeoutContext.getMaxAwaitTimeMS()),
-                            () -> assertEquals(0, timeoutContext.getMaxCommitTimeMS()),
+                            () -> assertEquals(0, timeoutContext.getTransactionTimeoutMS()),
                             () -> assertEquals(0, timeoutContext.getReadTimeoutMS())
                     );
                 }),
@@ -61,7 +61,7 @@ final class TimeoutContextTest {
                             () -> assertTrue(timeoutContext.hasTimeoutMS()),
                             () -> assertTrue(timeoutContext.getMaxTimeMS() > 0),
                             () -> assertEquals(0, timeoutContext.getMaxAwaitTimeMS()),
-                            () -> assertTrue(timeoutContext.getMaxCommitTimeMS() > 0)
+                            () -> assertTrue(timeoutContext.getTransactionTimeoutMS() > 0)
                     );
                 }),
                 dynamicTest("test infinite timeoutMS", () -> {
@@ -70,7 +70,7 @@ final class TimeoutContextTest {
                             () -> assertTrue(timeoutContext.hasTimeoutMS()),
                             () -> assertEquals(0, timeoutContext.getMaxTimeMS()),
                             () -> assertEquals(0, timeoutContext.getMaxAwaitTimeMS()),
-                            () -> assertEquals(0, timeoutContext.getMaxCommitTimeMS())
+                            () -> assertEquals(0, timeoutContext.getTransactionTimeoutMS())
                     );
                 }),
                 dynamicTest("MaxTimeMS set", () -> {
@@ -78,7 +78,7 @@ final class TimeoutContextTest {
                     assertAll(
                             () -> assertEquals(100, timeoutContext.getMaxTimeMS()),
                             () -> assertEquals(0, timeoutContext.getMaxAwaitTimeMS()),
-                            () -> assertEquals(0, timeoutContext.getMaxCommitTimeMS())
+                            () -> assertEquals(0, timeoutContext.getTransactionTimeoutMS())
                     );
                 }),
                 dynamicTest("MaxAwaitTimeMS set", () -> {
@@ -87,7 +87,7 @@ final class TimeoutContextTest {
                     assertAll(
                             () -> assertEquals(0, timeoutContext.getMaxTimeMS()),
                             () -> assertEquals(101, timeoutContext.getMaxAwaitTimeMS()),
-                            () -> assertEquals(0, timeoutContext.getMaxCommitTimeMS())
+                            () -> assertEquals(0, timeoutContext.getTransactionTimeoutMS())
                     );
                 }),
                 dynamicTest("MaxTimeMS and MaxAwaitTimeMS set", () -> {
@@ -96,7 +96,7 @@ final class TimeoutContextTest {
                     assertAll(
                             () -> assertEquals(101, timeoutContext.getMaxTimeMS()),
                             () -> assertEquals(1001, timeoutContext.getMaxAwaitTimeMS()),
-                            () -> assertEquals(0, timeoutContext.getMaxCommitTimeMS())
+                            () -> assertEquals(0, timeoutContext.getTransactionTimeoutMS())
                     );
                 }),
                 dynamicTest("MaxCommitTimeMS set", () -> {
@@ -138,6 +138,19 @@ final class TimeoutContextTest {
                             TimeoutContext timeoutContext =
                                     new TimeoutContext(TIMEOUT_SETTINGS.withTimeoutMS(999));
                             assertTrue(timeoutContext.timeoutOrAlternative(999999) <= 999);
+                        },
+                        () -> {
+                            TimeoutContext timeoutContext = new TimeoutContext(TIMEOUT_SETTINGS);
+                            assertEquals(timeoutContext.getMaxCommitTimeMS(), 0);
+                        },
+                        () -> {
+                            TimeoutContext timeoutContext = new TimeoutContext(TIMEOUT_SETTINGS.withDefaultTimeoutMS(10_000L));
+                            assertEquals(timeoutContext.getMaxCommitTimeMS(), 10_000);
+                        },
+                        () -> {
+                            TimeoutContext timeoutContext =
+                                    new TimeoutContext(TIMEOUT_SETTINGS.withDefaultTimeoutMS(100_000L).withTimeoutMS(999L));
+                            assertTrue(timeoutContext.getMaxCommitTimeMS() <= 999);
                         }
                 )),
                 dynamicTest("Calculate min works as expected", () -> assertAll(
