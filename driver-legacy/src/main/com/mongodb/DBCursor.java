@@ -23,6 +23,7 @@ import com.mongodb.client.internal.OperationExecutor;
 import com.mongodb.client.model.Collation;
 import com.mongodb.client.model.DBCollectionCountOptions;
 import com.mongodb.client.model.DBCollectionFindOptions;
+import com.mongodb.internal.TimeoutContext;
 import com.mongodb.internal.connection.PowerOfTwoBufferPool;
 import com.mongodb.internal.operation.FindOperation;
 import com.mongodb.lang.Nullable;
@@ -36,6 +37,7 @@ import java.util.NoSuchElementException;
 import java.util.concurrent.TimeUnit;
 
 import static com.mongodb.MongoClient.getDefaultCodecRegistry;
+import static com.mongodb.TimeoutSettingsHelper.createTimeoutSettings;
 import static com.mongodb.assertions.Assertions.notNull;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
@@ -370,9 +372,9 @@ public class DBCursor implements Cursor, Iterable<DBObject> {
      * @mongodb.server.release 3.0
      */
     public DBObject explain() {
-        return executor.execute(getQueryOperation(collection.getObjectCodec())
-                        .asExplainableOperation(null, getDefaultCodecRegistry().get(DBObject.class)),
-                getReadPreference(), getReadConcern());
+        return executor.execute(
+                getQueryOperation(collection.getObjectCodec())
+                                .asExplainableOperation(null, getDefaultCodecRegistry().get(DBObject.class)), getReadPreference(), getReadConcern(), null);
     }
 
     /**
@@ -414,7 +416,6 @@ public class DBCursor implements Cursor, Iterable<DBObject> {
 
     private FindOperation<DBObject> getQueryOperation(final Decoder<DBObject> decoder) {
         return new FindOperation<>(
-                collection.getTimeoutSettings(findOptions.getMaxTime(MILLISECONDS), findOptions.getMaxAwaitTime(MILLISECONDS)),
                 collection.getNamespace(), decoder)
                 .filter(collection.wrapAllowNull(filter))
                 .batchSize(findOptions.getBatchSize())
@@ -786,7 +787,10 @@ public class DBCursor implements Cursor, Iterable<DBObject> {
     }
 
     private void initializeCursor(final FindOperation<DBObject> operation) {
-        cursor = new MongoBatchCursorAdapter<>(executor.execute(operation, getReadPreference(), getReadConcern()));
+        cursor =
+                new MongoBatchCursorAdapter<>(executor
+                        .withTimeoutContext(new TimeoutContext(createTimeoutSettings(collection.getTimeoutSettings(), findOptions)))
+                        .execute(operation, getReadPreference(), getReadConcern(), null));
         ServerCursor serverCursor = cursor.getServerCursor();
         if (isCursorFinalizerEnabled() && serverCursor != null) {
             optionalCleaner = DBCursorCleaner.create(collection.getDB().getMongoClient(), collection.getNamespace(),

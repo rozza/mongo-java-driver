@@ -23,6 +23,7 @@ import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoIterable;
 import com.mongodb.client.cursor.TimeoutMode;
+import com.mongodb.internal.TimeoutContext;
 import com.mongodb.internal.TimeoutSettings;
 import com.mongodb.internal.operation.BatchCursor;
 import com.mongodb.internal.operation.ReadOperation;
@@ -63,8 +64,10 @@ public abstract class MongoIterableImpl<TResult> implements MongoIterable<TResul
         return clientSession;
     }
 
-    OperationExecutor getExecutor() {
-        return executor;
+    protected abstract OperationExecutor getExecutor();
+
+    OperationExecutor getExecutor(final TimeoutSettings timeoutSettings) {
+        return executor.withTimeoutContext(new TimeoutContext(timeoutSettings));
     }
 
     ReadPreference getReadPreference() {
@@ -146,6 +149,6 @@ public abstract class MongoIterableImpl<TResult> implements MongoIterable<TResul
     }
 
     private BatchCursor<TResult> execute() {
-        return executor.execute(asReadOperation(), readPreference, readConcern, clientSession);
+        return getExecutor().execute(asReadOperation(), readPreference, readConcern, clientSession);
     }
 }

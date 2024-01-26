@@ -18,6 +18,7 @@ package com.mongodb.reactivestreams.client.internal;
 
 import com.mongodb.ReadConcern;
 import com.mongodb.ReadPreference;
+import com.mongodb.internal.TimeoutContext;
 import com.mongodb.internal.operation.AsyncReadOperation;
 import com.mongodb.internal.operation.AsyncWriteOperation;
 import com.mongodb.lang.Nullable;
@@ -52,4 +53,14 @@ public interface OperationExecutor {
      * @param <T> the operations result type.
      */
     <T> Mono<T> execute(AsyncWriteOperation<T> operation, ReadConcern readConcern, @Nullable ClientSession session);
+
+    /**
+     * Create a new OperationExecutor with a specific TimeoutContext
+     *
+     * @param timeoutContext the TimeoutContext to use for the operations
+     *                       a null value will use a new TimeoutContext instance for all calls to {@code execute}
+     * @return the new operation executor with the set timeout context
+     * @since CSOT
+     */
+    OperationExecutor withTimeoutContext(@Nullable TimeoutContext timeoutContext);
 }
