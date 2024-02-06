@@ -30,6 +30,7 @@ import com.mongodb.internal.connection.Connection;
 import com.mongodb.internal.connection.OperationContext;
 import com.mongodb.internal.session.ClientSessionContext;
 
+import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
 import static com.mongodb.connection.ClusterType.LOAD_BALANCED;
@@ -45,6 +46,7 @@ public class ClientSessionBinding extends AbstractReferenceCounted implements Re
     private final ClientSession session;
     private final boolean ownsSession;
     private final OperationContext operationContext;
+    private volatile OperationContext transactionOperationContext;
 
     public ClientSessionBinding(final ClientSession session, final boolean ownsSession, final ClusterAwareReadWriteBinding wrapped) {
         this.wrapped = wrapped;
@@ -217,6 +219,11 @@ public class ClientSessionBinding extends AbstractReferenceCounted implements Re
             } else {
                return wrapped.getOperationContext().getSessionContext().getReadConcern();
             }
+        }
+
+        @Override
+        public void clearTransactionContext() {
+            super.clearTransactionContext();
         }
     }
 }

@@ -72,6 +72,9 @@ public class ClientSideOperationTimeoutTest extends UnifiedSyncTest {
     }
 
     public static void checkSkipCSOTTest(final String fileDescription, final String testDescription) {
+
+        assumeTrue(testDescription.equals("withTransaction raises a client-side error if timeoutMS is overridden inside the callback"));
+
         assumeFalse("No maxTimeMS parameter for createIndex() method",
                 testDescription.contains("maxTimeMS is ignored if timeoutMS is set - createIndex on collection"));
         assumeFalse("TODO (CSOT) CRUD Failure",
@@ -98,8 +101,6 @@ public class ClientSideOperationTimeoutTest extends UnifiedSyncTest {
 
         assumeFalse("TODO (CSOT) - JAVA-5259 No client.withTimeout", testDescription.endsWith("on client"));
 
-        checkTransactionSessionSupport(fileDescription, testDescription);
-
         assumeFalse("TODO (CSOT) - JAVA-4054", fileDescription.equals("timeoutMS behaves correctly for change streams"));
         assumeFalse("TODO (CSOT) - JAVA-4052", fileDescription.startsWith("timeoutMS behaves correctly for retryable operations"));
         assumeFalse("TODO (CSOT) - JAVA-4052", fileDescription.startsWith("legacy timeouts behave correctly for retryable operations"));
@@ -107,7 +108,8 @@ public class ClientSideOperationTimeoutTest extends UnifiedSyncTest {
         assumeFalse("TODO (CSOT) - JAVA-5248",
                 fileDescription.equals("MaxTimeMSExpired server errors are transformed into a custom timeout error"));
 
-        assumeFalse("TODO (CSOT) - JAVA-4062", testDescription.contains("wTimeoutMS is ignored"));
+        assumeFalse("TODO (CSOT) - JAVA-4062", testDescription.contains("wTimeoutMS is ignored")
+          || testDescription.contains("ignores wTimeoutMS"));
 
         // TEST BUGS / ISSUES
         assumeFalse("TODO (CSOT) - Tests need to create a capped collection - not in json",
@@ -119,10 +121,6 @@ public class ClientSideOperationTimeoutTest extends UnifiedSyncTest {
 
         assumeFalse("TODO (CSOT) - Invalid collection name in the test",
              testDescription.equals("timeoutMS can be overridden for close"));
-    }
-
-    private static void checkTransactionSessionSupport(final String fileDescription, final String testDescription) {
-        assumeFalse("TODO (CSOT) - JAVA-4066", fileDescription.contains("withTransaction") || testDescription.contains("withTransaction"));
     }
 
     private static final List<String> RACY_GET_MORE_TESTS = asList(

@@ -23,6 +23,7 @@ import com.mongodb.MongoInternalException;
 import com.mongodb.ReadConcern;
 import com.mongodb.TransactionOptions;
 import com.mongodb.WriteConcern;
+import com.mongodb.internal.TimeoutContext;
 import com.mongodb.internal.operation.AbortTransactionOperation;
 import com.mongodb.internal.operation.AsyncReadOperation;
 import com.mongodb.internal.operation.AsyncWriteOperation;
@@ -30,8 +31,6 @@ import com.mongodb.internal.operation.CommitTransactionOperation;
 import com.mongodb.internal.session.BaseClientSessionImpl;
 import com.mongodb.internal.session.ServerSessionPool;
 import com.mongodb.reactivestreams.client.ClientSession;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.MonoSink;
@@ -212,7 +211,7 @@ final class ClientSessionPublisherImpl extends BaseClientSessionImpl implements 
         if (maxCommitTimeMS == null) {
             return executor;
         }
-        return executor.withTimeoutContext(executor.getTimeoutContext().withMaxCommitTimeMS(maxCommitTimeMS));
+        return executor.withTimeoutContext(new TimeoutContext(mongoClient.getTimeoutSettings().withMaxCommitMS(maxCommitTimeMS)));
     }
 
     private void cleanupTransaction(final TransactionState nextState) {

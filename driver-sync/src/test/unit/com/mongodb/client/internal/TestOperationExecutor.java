@@ -74,11 +74,6 @@ public class TestOperationExecutor implements OperationExecutor {
         return this;
     }
 
-    @Override
-    public TimeoutContext getTimeoutContext() {
-        throw new UnsupportedOperationException("Not supported");
-    }
-
     @SuppressWarnings("unchecked")
     private <T> T getResponse() {
         Object response = responses.remove(0);

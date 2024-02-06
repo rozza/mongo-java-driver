@@ -127,17 +127,17 @@ final class TimeoutContextTest {
                         },
                         () -> {
                             TimeoutContext timeoutContext =
-                                    new TimeoutContext(TIMEOUT_SETTINGS.withTimeoutMS(0));
+                                    new TimeoutContext(TIMEOUT_SETTINGS.withTimeoutMS(0L));
                             assertEquals(0L, timeoutContext.timeoutOrAlternative(99));
                         },
                         () -> {
                             TimeoutContext timeoutContext =
-                                    new TimeoutContext(TIMEOUT_SETTINGS.withTimeoutMS(999));
+                                    new TimeoutContext(TIMEOUT_SETTINGS.withTimeoutMS(999L));
                             assertTrue(timeoutContext.timeoutOrAlternative(0) <= 999);
                         },
                         () -> {
                             TimeoutContext timeoutContext =
-                                    new TimeoutContext(TIMEOUT_SETTINGS.withTimeoutMS(999));
+                                    new TimeoutContext(TIMEOUT_SETTINGS.withTimeoutMS(999L));
                             assertTrue(timeoutContext.timeoutOrAlternative(999999) <= 999);
                         },
                         () -> {
@@ -162,17 +162,17 @@ final class TimeoutContextTest {
                         },
                         () -> {
                             TimeoutContext timeoutContext =
-                                    new TimeoutContext(TIMEOUT_SETTINGS.withTimeoutMS(0));
+                                    new TimeoutContext(TIMEOUT_SETTINGS.withTimeoutMS(0L));
                             assertEquals(99L, timeoutContext.calculateMin(99));
                         },
                         () -> {
                             TimeoutContext timeoutContext =
-                                    new TimeoutContext(TIMEOUT_SETTINGS.withTimeoutMS(999));
+                                    new TimeoutContext(TIMEOUT_SETTINGS.withTimeoutMS(999L));
                             assertTrue(timeoutContext.calculateMin(0) <= 999);
                         },
                         () -> {
                             TimeoutContext timeoutContext =
-                                    new TimeoutContext(TIMEOUT_SETTINGS.withTimeoutMS(999));
+                                    new TimeoutContext(TIMEOUT_SETTINGS.withTimeoutMS(999L));
                             assertTrue(timeoutContext.calculateMin(999999) <= 999);
                         }
                 )),
@@ -200,9 +200,9 @@ final class TimeoutContextTest {
                         }
                 )),
                 dynamicTest("Expired works as expected", () -> {
-                    TimeoutContext smallTimeout = new TimeoutContext(TIMEOUT_SETTINGS.withTimeoutMS(1));
+                    TimeoutContext smallTimeout = new TimeoutContext(TIMEOUT_SETTINGS.withTimeoutMS(1L));
                     TimeoutContext longTimeout =
-                            new TimeoutContext(TIMEOUT_SETTINGS.withTimeoutMS(9999999));
+                            new TimeoutContext(TIMEOUT_SETTINGS.withTimeoutMS(9999999L));
                     TimeoutContext noTimeout = new TimeoutContext(TIMEOUT_SETTINGS);
                     sleep(100);
                     assertAll(
@@ -236,7 +236,7 @@ final class TimeoutContextTest {
                     );
                 }),
                 dynamicTest("validates minRoundTripTime for maxTimeMS", () -> {
-                    Supplier<TimeoutContext> supplier = () -> new TimeoutContext(TIMEOUT_SETTINGS.withTimeoutMS(100));
+                    Supplier<TimeoutContext> supplier = () -> new TimeoutContext(TIMEOUT_SETTINGS.withTimeoutMS(100L));
                     assertAll(
                             () -> assertTrue(supplier.get().getMaxTimeMS() <= 100),
                             () -> assertTrue(supplier.get().minRoundTripTimeMS(10).getMaxTimeMS() <= 90),

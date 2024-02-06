@@ -179,6 +179,11 @@ public class TimeoutContext {
         return timeoutOrAlternative(maxCommitTimeMS != null ? maxCommitTimeMS : 0);
     }
 
+
+    public TimeoutContext withTimeoutMS(@Nullable final Long timeoutMS) {
+        return new TimeoutContext(timeoutSettings.withTimeoutMS(timeoutMS));
+    }
+
     public TimeoutContext withMaxCommitTimeMS(@Nullable final Long maxCommitTimeMS) {
         return new TimeoutContext(false, timeoutSettings.withMaxCommitMS(maxCommitTimeMS), timeout);
     }

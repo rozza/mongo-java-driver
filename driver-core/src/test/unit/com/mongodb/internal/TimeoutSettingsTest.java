@@ -49,7 +49,7 @@ final class TimeoutSettingsTest {
                 }),
                 dynamicTest("test overrides", () -> {
                     TimeoutSettings timeoutSettings = TIMEOUT_SETTINGS
-                            .withTimeoutMS(100)
+                            .withTimeoutMS(100L)
                             .withDefaultTimeoutMS(1_000L)
                             .withMaxTimeMS(111)
                             .withMaxAwaitTimeMS(11)
@@ -73,10 +73,10 @@ final class TimeoutSettingsTest {
 
     @Test
     public void testTimeoutSettingsValidation() {
-        assertThrows(IllegalArgumentException.class, () -> TIMEOUT_SETTINGS.withTimeoutMS(-1));
+        assertThrows(IllegalArgumentException.class, () -> TIMEOUT_SETTINGS.withTimeoutMS(-1L));
         assertThrows(IllegalArgumentException.class, () -> TIMEOUT_SETTINGS.withMaxAwaitTimeMS(-1));
         assertThrows(IllegalArgumentException.class, () -> TIMEOUT_SETTINGS.withMaxTimeMS(-1));
-        assertThrows(IllegalArgumentException.class, () -> TIMEOUT_SETTINGS.withTimeoutMS(10).withMaxAwaitTimeMS(11));
+        assertThrows(IllegalArgumentException.class, () -> TIMEOUT_SETTINGS.withTimeoutMS(10L).withMaxAwaitTimeMS(11));
     }
 
     private TimeoutSettingsTest() {

@@ -18,7 +18,12 @@ package com.mongodb.client;
 
 import com.mongodb.ServerAddress;
 import com.mongodb.TransactionOptions;
+import com.mongodb.internal.TimeoutContext;
 import com.mongodb.lang.Nullable;
+
+import java.util.concurrent.TimeUnit;
+
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 /**
  * A client session that supports transactions.
@@ -125,4 +130,17 @@ public interface ClientSession extends com.mongodb.session.ClientSession {
      * @since 3.11
      */
     <T> T withTransaction(TransactionBody<T> transactionBody, TransactionOptions options);
+
+    /**
+     * Gets the timeout context to use with this session:
+     *
+     * <ul>
+     *   <li>{@code MongoClientSettings#getTimeoutMS}</li>
+     *   <li>{@code ClientSessionOptions#getDefaultTimeout}</li>
+     * </ul>
+     * @return the timeout to use
+     * @since CSOT
+     */
+    @Nullable
+    TimeoutContext getTimeoutContext();
 }

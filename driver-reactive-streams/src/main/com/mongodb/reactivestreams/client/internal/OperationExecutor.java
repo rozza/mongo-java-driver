@@ -63,12 +63,4 @@ public interface OperationExecutor {
      * @since CSOT
      */
     OperationExecutor withTimeoutContext(@Nullable TimeoutContext timeoutContext);
-
-    /**
-     * Returns the current timeout context
-     *
-     * @return the timeout context
-     * @since CSOT
-     */
-    TimeoutContext getTimeoutContext();
 }

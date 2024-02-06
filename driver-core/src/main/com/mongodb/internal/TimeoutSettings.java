@@ -104,7 +104,7 @@ public class TimeoutSettings {
         return new TimeoutSettings(serverSelectionTimeoutMS, connectTimeoutMS, readTimeoutMS, null, maxWaitTimeMS);
     }
 
-    public TimeoutSettings withTimeoutMS(final long timeoutMS) {
+    public TimeoutSettings withTimeoutMS(@Nullable final Long timeoutMS) {
         return new TimeoutSettings(timeoutMS, defaultTimeoutMS, serverSelectionTimeoutMS, connectTimeoutMS, readTimeoutMS, maxAwaitTimeMS,
                 maxTimeMS, maxCommitTimeMS, wTimeoutMS, maxWaitTimeMS);
     }
