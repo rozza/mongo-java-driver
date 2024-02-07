@@ -191,7 +191,6 @@ final class MongoClientDelegate {
             ClientSession actualClientSession = getClientSession(session);
             WriteBinding binding = getWriteBinding(readConcern, actualClientSession, session == null);
 
-            System.err.println(" --> " + binding.getOperationContext().getTimeoutContext().getMaxTimeMS());
             try {
                 return operation.execute(binding);
             } catch (MongoException e) {
@@ -199,7 +198,6 @@ final class MongoClientDelegate {
                 clearTransactionContextOnTransientTransactionError(session, e);
                 throw e;
             } finally {
-                System.err.println(" >>> " + binding.getOperationContext().getTimeoutContext().getMaxTimeMS());
                 binding.release();
             }
         }
@@ -215,6 +213,10 @@ final class MongoClientDelegate {
         TimeoutContext getTimeoutContext(final ClientSession session) {
             TimeoutContext sessionTimeoutContext = session.getTimeoutContext();
             if (sessionTimeoutContext != null) {
+
+                System.err.println(">: " + sessionTimeoutContext.getTimeoutSettings());
+                System.err.println(">< " + getTimeoutSettings());
+
                 return sessionTimeoutContext;
             }
             return timeoutContext != null ? timeoutContext : new TimeoutContext(getTimeoutSettings());

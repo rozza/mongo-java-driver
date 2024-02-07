@@ -46,7 +46,6 @@ public class ClientSessionBinding extends AbstractReferenceCounted implements Re
     private final ClientSession session;
     private final boolean ownsSession;
     private final OperationContext operationContext;
-    private volatile OperationContext transactionOperationContext;
 
     public ClientSessionBinding(final ClientSession session, final boolean ownsSession, final ClusterAwareReadWriteBinding wrapped) {
         this.wrapped = wrapped;
