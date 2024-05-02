@@ -14,6 +14,10 @@
  * limitations under the License.
  */
 
+plugins {
+    id('conventions.testArtifacts')
+}
+
 archivesBaseName = 'bson'
 description = 'The BSON library'
 

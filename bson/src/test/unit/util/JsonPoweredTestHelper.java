@@ -26,6 +26,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
@@ -35,6 +36,7 @@ import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -87,7 +89,15 @@ public final class JsonPoweredTestHelper {
 
     public static List<File> getTestFiles(final String resourcePath) throws URISyntaxException {
         List<File> files = new ArrayList<>();
-        addFilesFromDirectory(new File(JsonPoweredTestHelper.class.getResource(resourcePath).toURI()), files);
+
+        URL resource = JsonPoweredTestHelper.class.getResource(resourcePath);
+        File directory;
+        try {
+            directory = new File(resource.toURI());
+        } catch (IllegalArgumentException e) {
+            directory = new File(resource.toExternalForm());
+        }
+        addFilesFromDirectory(directory, files);
         return files;
     }
 
