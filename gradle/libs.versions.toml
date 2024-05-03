@@ -13,6 +13,7 @@
 # limitations under the License.
 
 [versions]
+scala-v3 = "3.3.3"
 scala-v2-v13 = "2.13.14"
 scala-v2-v12 = "2.12.19"
 scala-v2-v11 = "2.11.12"
@@ -29,6 +30,12 @@ spotless-plugin = "6.14.0"
 test-logger-plugin = "4.0.0"
 
 [libraries]
+scala-library-v3 = { module = "org.scala-lang:scala3-library_3", version.ref = "scala-v3" }
+scala-test-flatspec-v3 = { module = "org.scalatest:scalatest-flatspec_3", version.ref = "scala-test" }
+scala-test-shouldmatchers-v3 = { module = "org.scalatest:scalatest-shouldmatchers_3", version.ref = "scala-test" }
+scala-test-mockito-v3 = { module = "org.scalatestplus:mockito-4-11_3", version.ref = "scala-test-plus" }
+scala-test-junit-runner-v3 = { module = "org.scalatestplus:junit-5-10_3", version.ref = "scala-test-plus" }
+
 scala-library-v2-v13 = { module = "org.scala-lang:scala-library", version.ref = "scala-v2-v13" }
 scala-reflect-v2-v13 = { module = "org.scala-lang:scala-reflect", version.ref = "scala-v2-v13" }
 scala-test-flatspec-v2-v13 = { module = "org.scalatest:scalatest-flatspec_2.13", version.ref = "scala-test" }
@@ -70,10 +77,13 @@ spotless-plugin = { group = "com.diffplug.spotless", name = "spotless-plugin-gra
 test-logger-plugin = { group = "com.adarshr", name = "gradle-test-logger-plugin", version.ref = "test-logger-plugin"}
 
 [bundles]
+scala-v3 = ["scala-library-v3"]
 scala-v2-v13 = ["scala-library-v2-v13", "scala-reflect-v2-v13"]
 scala-v2-v12 = ["scala-library-v2-v12", "scala-reflect-v2-v12"]
 scala-v2-v11 = ["scala-library-v2-v11", "scala-reflect-v2-v11"]
 
+scala-test-v3 = ["scala-test-flatspec-v3", "scala-test-shouldmatchers-v3", "scala-test-mockito-v3",
+    "scala-test-junit-runner-v3", "reflections-library"]
 scala-test-v2-v13 = ["scala-test-flatspec-v2-v13", "scala-test-shouldmatchers-v2-v13", "scala-test-mockito-v2-v13",
     "scala-test-junit-runner-v2-v13", "reflections-library"]
 scala-test-v2-v12 = ["scala-test-flatspec-v2-v12", "scala-test-shouldmatchers-v2-v12", "scala-test-mockito-v2-v12",
@@ -84,6 +94,3 @@ scala-test-v2-v11 = ["scala-test-flatspec-v2-v11", "scala-test-shouldmatchers-v2
 junit = ["junit-jupiter-params", "junit-jupiter-engine", "junit-jupiter", "logback-classic", "hamcrest-all"]
 junit-vintage = ["junit-vintage-engine", "junit-jupiter-params", "junit-jupiter-engine", "junit-jupiter", "logback-classic", "hamcrest-all"]
 spock = ["spock-core", "spock-junit4"]
-
-
-

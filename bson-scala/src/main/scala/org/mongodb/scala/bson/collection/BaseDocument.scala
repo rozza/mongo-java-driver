@@ -145,7 +145,7 @@ private[bson] trait BaseDocument[T] extends Traversable[(String, BsonValue)] wit
    *              [[BsonElement]] via [[BsonMagnets.CanBeBsonElement]] implicits and any [[BsonTransformer]]s that are in scope.
    * @return       A fresh immutable document with the binding from `key` to `value` added to the new document.
    */
-  def updated(elems: CanBeBsonElement*): T = this + (elems: _*)
+  def updated(elems: CanBeBsonElement*): T = this.+(elems: _*)
 
   /**
    * Optionally returns the value associated with a key.
