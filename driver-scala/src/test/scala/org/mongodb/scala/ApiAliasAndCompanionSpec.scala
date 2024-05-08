@@ -17,29 +17,43 @@
 package org.mongodb.scala
 
 import org.reflections.Reflections
-import org.reflections.scanners.SubTypesScanner
-import org.reflections.util.{ ClasspathHelper, ConfigurationBuilder, FilterBuilder }
+import org.reflections.scanners.Scanners.SubTypes
+import org.reflections.util.ConfigurationBuilder
 import org.scalatest.Inspectors.forEvery
 
-import java.lang.reflect.Modifier._
-import scala.collection.JavaConverters._
-import scala.reflect.runtime.currentMirror
+import java.lang.reflect.Modifier
+import java.lang.reflect.Modifier.*
+import scala.collection.JavaConverters.*
 
 class ApiAliasAndCompanionSpec extends BaseSpec {
 
-  val classFilter = (f: Class[_ <: Object]) =>
-    isPublic(f.getModifiers) && !f.getName.contains("$") && !f.getSimpleName.contains("Test")
+  private val defaultClassFilter = (f: Class[_ <: Object]) => {
+    isPublic(f.getModifiers) && (!isAbstract(f.getModifiers) || isInterface(f.getModifiers)) &&
+    f.getSimpleName != "package" && f.getSimpleName != "package$" && !f.getSimpleName.equals("Builder") &&
+    (f.getCanonicalName == null || (
+      !f.getCanonicalName.contains("Spec") &&
+        !f.getCanonicalName.contains("Test") &&
+        !f.getCanonicalName.contains("Tour") &&
+        !f.getCanonicalName.contains("Fixture")
+    ))
+  }
+
+  private val scalaMapper = (name: String) => {
+    val removedDollar = if (name.endsWith("$")) name.dropRight(1) else name
+    removedDollar.replace("Publisher", "Observable")
+  }
 
   "The scala package" should "mirror the com.mongodb package and com.mongodb.reactivestreams.client" in {
-    val packageName = "com.mongodb"
     val javaExclusions = Set(
       "Address",
+      "AggregatePrimer",
+      "AuthenticationMechanism",
       "AwsCredential",
+      "BSONTimestampCodec",
       "BasicDBList",
       "BasicDBObject",
       "BasicDBObjectBuilder",
       "Block",
-      "BSONTimestampCodec",
       "CausalConsistencyExamples",
       "ChangeStreamSamples",
       "ContextHelper",
@@ -53,10 +67,15 @@ class ApiAliasAndCompanionSpec extends BaseSpec {
       "DnsClient",
       "DnsClientProvider",
       "DocumentToDBRefTransformer",
+      "DocumentationSamples",
+      "ErrorCategory",
+      "ExplainVerbosity",
       "Function",
       "FutureResultCallback",
+      "IndexesPrimer",
       "InetAddressResolver",
       "InetAddressResolverProvider",
+      "InsertPrimer",
       "Jep395RecordCodecProvider",
       "KerberosSubjectProvider",
       "KotlinCodecProvider",
@@ -65,164 +84,123 @@ class ApiAliasAndCompanionSpec extends BaseSpec {
       "NonNullApi",
       "Nullable",
       "Person",
-      "ReadPreferenceHedgeOptions",
+      "PublisherHelpers",
+      "QueryPrimer",
       "ReactiveContextProvider",
+      "ReadConcernLevel",
+      "ReadPreferenceHedgeOptions",
+      "RemovePrimer",
       "RequestContext",
       "ServerApi",
+      "ServerApiVersion",
       "ServerCursor",
       "ServerSession",
       "SessionContext",
       "SingleResultCallback",
       "SubjectProvider",
+      "SubscriberHelpers",
+      "SyncClientEncryption",
+      "SyncGridFSBucket",
+      "SyncMongoClient",
+      "SyncMongoDatabase",
+      "TargetDocument",
       "TransactionExample",
       "UnixServerAddress",
-      "SubscriberHelpers",
-      "PublisherHelpers",
-      "TargetDocument",
       "UpdatePrimer",
-      "InsertPrimer",
-      "IndexesPrimer",
-      "QueryPrimer",
-      "DocumentationSamples",
-      "AggregatePrimer",
-      "RemovePrimer",
-      "SyncMongoClient",
-      "SyncGridFSBucket",
-      "SyncMongoDatabase",
-      "SyncClientEncryption"
+      "WriteError"
     )
+
+    val javaPackageExclusions = List(
+      "com.mongodb.annotations",
+      "com.mongodb.assertions",
+      "com.mongodb.async",
+      "com.mongodb.binding",
+      "com.mongodb.bulk",
+      "com.mongodb.connection",
+      "com.mongodb.crypt",
+      "com.mongodb.diagnostics",
+      "com.mongodb.event",
+      "com.mongodb.internal",
+      "com.mongodb.kotlin",
+      "com.mongodb.management",
+      "com.mongodb.operation",
+      "com.mongodb.reactivestreams",
+      "com.mongodb.selector",
+      "com.mongodb.test"
+    )
+
+    val javaFilter: Class[? <: Object] => Boolean = cls => {
+      if (defaultClassFilter.apply(cls)) {
+        // Exclude the above and any nested static classes
+        if (javaExclusions.contains(cls.getSimpleName) || cls.getName.contains("$")) false
+        else cls.getCanonicalName != null && !javaPackageExclusions.exists(cls.getCanonicalName.startsWith(_))
+      } else false
+    }
+
+    val publishers = reflectPackage(
+      "com.mongodb.reactivestreams.client",
+      cls => cls.getSimpleName.endsWith("Publisher")
+    )
+    val wrapped = reflectPackage("com.mongodb", javaFilter) ++ publishers
+
     val scalaExclusions = Set(
-      "BuildInfo",
-      "BulkWriteResult",
-      "ClientSessionImplicits",
+      "CreateIndexCommitQuorum",
       "Document",
       "Helpers",
-      "internal",
+      "MongoClient",
+      "MongoCollection",
+      "MongoDatabase",
+      "MongoException",
       "Observable",
-      "ObservableImplicits",
       "Observer",
-      "package",
       "ReadConcernLevel",
+      "ReadPreference",
       "SingleObservable",
       "Subscription"
     )
 
-    val classFilter = (f: Class[_ <: Object]) => {
-      isPublic(f.getModifiers) &&
-      !f.getName.contains("$") &&
-      !f.getSimpleName.contains("Spec") &&
-      !f.getSimpleName.contains("Test") &&
-      !f.getSimpleName.contains("Tour") &&
-      !f.getSimpleName.contains("Fixture") &&
-      !javaExclusions.contains(f.getSimpleName)
-    }
-    val filters = FilterBuilder.parse(
-      """
-        |-com.mongodb.annotations.*,
-        |-com.mongodb.assertions.*,
-        |-com.mongodb.binding.*,
-        |-com.mongodb.bulk.*,
-        |-com.mongodb.client.*,
-        |-com.mongodb.connection.*,
-        |-com.mongodb.crypt.*,
-        |-com.mongodb.diagnostics.*,
-        |-com.mongodb.event.*,
-        |-com.mongodb.internal.*,
-        |-com.mongodb.management.*,
-        |-com.mongodb.operation.*,
-        |-com.mongodb.selector.*,
-        |-com.mongodb.kotlin.*,
-        |-com.mongodb.test.*,
-        |-com.mongodb.client.gridfs.*,
-        |-com.mongodb.async.client.*,
-        |-com.mongodb.async.client.gridfs.*,
-        |-com.mongodb.async.client.internal.*,
-        |-com.mongodb.async.client.vault.*,
-        |-com.mongodb.reactivestreams.client.gridfs.*,
-        |-com.mongodb.reactivestreams.client.internal.*,
-        |-com.mongodb.reactivestreams.client.vault.*""".stripMargin
-    )
+    val implicitsFilter: Class[? <: Object] => Boolean = cls =>
+      defaultClassFilter.apply(cls) && cls.getCanonicalName != null && cls.getCanonicalName.contains("Implicits")
 
-    val exceptions = new Reflections(packageName)
-      .getSubTypesOf(classOf[MongoException])
-      .asScala
-      .map(_.getSimpleName)
-      .toSet +
-      "MongoException" - "MongoGridFSException" - "MongoConfigurationException" - "MongoWriteConcernWithResponseException"
-
-    val objects = new Reflections(
-      new ConfigurationBuilder()
-        .setUrls(ClasspathHelper.forPackage(packageName))
-        .setScanners(new SubTypesScanner(false))
-        .filterInputsBy(filters)
-    ).getSubTypesOf(classOf[Object])
-      .asScala
-      .filter(classFilter)
-      .map(_.getSimpleName.replace("Publisher", "Observable"))
-      .toSet
-
-    val wrapped = objects ++ exceptions
-
-    val scalaPackageName = "org.mongodb.scala"
-    val scalaObjects = new Reflections(scalaPackageName, new SubTypesScanner(false))
-      .getSubTypesOf(classOf[Object])
-      .asScala
-      .filter(classFilter)
-      .filter(f => f.getPackage.getName == scalaPackageName)
-      .map(_.getSimpleName)
-      .toSet
-    val packageObjects =
-      currentMirror.staticPackage(scalaPackageName).info.decls.filter(!_.isImplicit).map(_.name.toString).toSet
-    val local = (scalaObjects ++ packageObjects) -- scalaExclusions
+    val scalaImplicits = reflectPackage("org.mongodb.scala", implicitsFilter)
+    val local = reflectPackage(
+      "org.mongodb.scala",
+      cls => defaultClassFilter.apply(cls) && !scalaExclusions.contains(cls.getSimpleName.replace("$", ""))
+    ) -- scalaImplicits
 
     diff(local, wrapped) shouldBe empty
   }
 
   it should "mirror parts of com.mongodb.connection in org.mongodb.scala.connection" in {
-    val packageName = "com.mongodb.connection"
     val javaExclusions = Set(
       "AsyncCompletionHandler",
       "ClusterDescription",
       "ClusterId",
+      "ClusterConnectionMode",
+      "ClusterType",
       "ConnectionDescription",
       "ConnectionId",
       "ServerDescription",
       "ServerId",
       "ServerVersion",
-      "TopologyVersion"
+      "TopologyVersion",
+      "ServerMonitoringMode",
+      "ServerConnectionState"
     )
 
-    val filters = FilterBuilder.parse("-com.mongodb.connection.netty.*")
-    val wrapped = new Reflections(
-      new ConfigurationBuilder()
-        .setUrls(ClasspathHelper.forPackage(packageName))
-        .setScanners(new SubTypesScanner(false))
-        .filterInputsBy(filters)
-    ).getSubTypesOf(classOf[Object])
-      .asScala
-      .filter(_.getPackage.getName == packageName)
-      .filter(classFilter)
-      .map(_.getSimpleName)
-      .toSet -- javaExclusions
-
-    val scalaPackageName = "org.mongodb.scala.connection"
-    val scalaExclusions = Set(
-      "package",
-      "NettyStreamFactoryFactory",
-      "NettyStreamFactoryFactoryBuilder",
-      "AsynchronousSocketChannelStreamFactoryFactoryBuilder"
-    )
-    val local = currentMirror.staticPackage(scalaPackageName).info.decls.map(_.name.toString).toSet -- scalaExclusions
+    val wrapped = reflectPackage("com.mongodb.connection") -- javaExclusions
+    val local = reflectPackage("org.mongodb.scala.connection") - "TransportSettings"
 
     diff(local, wrapped) shouldBe empty
   }
 
-  it should "mirror all com.mongodb.client. into org.mongdb.scala." in {
+  it should "mirror all com.mongodb.client. into org.mongodb.scala." in {
     val packageName = "com.mongodb.client"
 
     val javaExclusions = Set(
       "ClientSession",
       "ConcreteCodecProvider",
+      "FailPoint",
       "Fixture",
       "ImmutableDocument",
       "ImmutableDocumentCodec",
@@ -237,20 +215,19 @@ class ApiAliasAndCompanionSpec extends BaseSpec {
       "NameCodecProvider",
       "SynchronousContextProvider",
       "TransactionBody",
-      "FailPoint",
       "WithWrapper"
     )
 
-    val wrapped = new Reflections(packageName, new SubTypesScanner(false))
+    val wrapped = new Reflections(packageName)
       .getSubTypesOf(classOf[Object])
       .asScala
       .filter(_.getPackage.getName == packageName)
-      .filter(classFilter)
+      .filter(defaultClassFilter)
       .map(_.getSimpleName.replace("Iterable", "Observable"))
       .toSet -- javaExclusions
 
     val scalaPackageName = "org.mongodb.scala"
-    val local = new Reflections(scalaPackageName, new SubTypesScanner(false))
+    val local = new Reflections(scalaPackageName)
       .getSubTypesOf(classOf[Object])
       .asScala
       .filter(_.getPackage.getName == scalaPackageName)
@@ -263,110 +240,87 @@ class ApiAliasAndCompanionSpec extends BaseSpec {
     }
   }
 
-  it should "mirror all com.mongodb.client.model in org.mongdb.scala.model" in {
-    val javaExclusions = Set("ParallelCollectionScanOptions", "AggregationLevel")
-    val packageName = "com.mongodb.client.model"
+  it should "mirror all com.mongodb.client.model in org.mongodb.scala.model" in {
+    val scalaAliases = Set(
+      "ApproximateQuantileMethod",
+      "CreateIndexOptions",
+      "DropIndexOptions",
+      "GeoNearOptions",
+      "TimeSeriesGranularity",
+      "Window",
+      "WindowOutputField"
+    )
 
-    val objectsAndEnums = new Reflections(packageName, new SubTypesScanner(false))
-      .getSubTypesOf(classOf[Object])
-      .asScala ++
-      new Reflections(packageName, new SubTypesScanner(false)).getSubTypesOf(classOf[Enum[_]]).asScala
-
-    val wrapped = objectsAndEnums
-      .filter(_.getPackage.getName == packageName)
-      .filter(classFilter)
-      .map(_.getSimpleName)
-      .toSet -- javaExclusions
-
-    val scalaPackageName = "org.mongodb.scala.model"
-    val localPackage = currentMirror.staticPackage(scalaPackageName).info.decls.map(_.name.toString).toSet
-    val localObjects = new Reflections(scalaPackageName, new SubTypesScanner(false))
-      .getSubTypesOf(classOf[Object])
-      .asScala
-      .filter(_.getPackage.getName == scalaPackageName)
-      .filter(classFilter)
-      .map(_.getSimpleName)
-      .toSet
-    val scalaExclusions = Set("package")
-    val local = (localPackage ++ localObjects) -- scalaExclusions
+    val scalaImplicits = Set("ScalaOptionDoubleToJavaDoubleOrNull")
+    val wrapped = reflectPackage("com.mongodb.client.model")
+    val local = (reflectPackage("org.mongodb.scala.model") ++ scalaAliases) -- scalaImplicits
 
     diff(local, wrapped) shouldBe empty
   }
 
-  it should "mirror all com.mongodb.client.model.search in org.mongdb.scala.model.search" in {
-    val packageName = "com.mongodb.client.model.search"
-    val wrapped = new Reflections(packageName, new SubTypesScanner(false))
-      .getSubTypesOf(classOf[Object])
-      .asScala
-      .filter(_.getPackage.getName == packageName)
-      .filter(classFilter)
-      .map(_.getSimpleName)
-      .toSet
-    val scalaPackageName = "org.mongodb.scala.model.search"
-    val localPackage = currentMirror.staticPackage(scalaPackageName).info.decls.map(_.name.toString).toSet
-    val localObjects = new Reflections(scalaPackageName, new SubTypesScanner(false))
-      .getSubTypesOf(classOf[Object])
-      .asScala
-      .filter(_.getPackage.getName == scalaPackageName)
-      .filter(classFilter)
-      .map(_.getSimpleName)
-      .toSet
-    val local = localPackage ++ localObjects - "package"
-    diff(local, wrapped) shouldBe empty
-  }
+  it should "mirror all com.mongodb.client.model.search in org.mongodb.scala.model.search" in {
+    val scalaAliases = Set(
+      "AddSearchScoreExpression",
+      "AutocompleteSearchOperator",
+      "CompoundSearchOperator",
+      "CompoundSearchOperatorBase",
+      "ConstantSearchScore",
+      "ConstantSearchScoreExpression",
+      "DateNearSearchOperator",
+      "DateRangeSearchOperator",
+      "DateRangeSearchOperatorBase",
+      "DateSearchFacet",
+      "ExistsSearchOperator",
+      "FacetSearchCollector",
+      "FieldSearchPath",
+      "FilterCompoundSearchOperator",
+      "FunctionSearchScore",
+      "GaussSearchScoreExpression",
+      "GeoNearSearchOperator",
+      "Log1pSearchScoreExpression",
+      "LogSearchScoreExpression",
+      "LowerBoundSearchCount",
+      "MultiplySearchScoreExpression",
+      "MustCompoundSearchOperator",
+      "MustNotCompoundSearchOperator",
+      "NumberNearSearchOperator",
+      "NumberRangeSearchOperator",
+      "NumberRangeSearchOperatorBase",
+      "NumberSearchFacet",
+      "PathBoostSearchScore",
+      "PathSearchScoreExpression",
+      "RelevanceSearchScoreExpression",
+      "ShouldCompoundSearchOperator",
+      "StringSearchFacet",
+      "TextSearchOperator",
+      "TotalSearchCount",
+      "ValueBoostSearchScore",
+      "WildcardSearchPath"
+    )
 
-  it should "mirror all com.mongodb.client.model.geojson in org.mongdb.scala.model.geojson" in {
-    val packageName = "com.mongodb.client.model.geojson"
-    val wrapped = new Reflections(packageName, new SubTypesScanner(false))
-      .getSubTypesOf(classOf[Object])
-      .asScala
-      .filter(_.getPackage.getName == packageName)
-      .filter(classFilter)
-      .map(_.getSimpleName)
-      .toSet ++ Set("GeoJsonObjectType", "CoordinateReferenceSystemType")
-
-    val scalaPackageName = "org.mongodb.scala.model.geojson"
-    val local = currentMirror.staticPackage(scalaPackageName).info.decls.map(_.name.toString).toSet - "package"
-
-    diff(local, wrapped) shouldBe empty
-  }
-
-  it should "mirror all com.mongodb.client.result in org.mongdb.scala.result" in {
-    val packageName = "com.mongodb.client.result"
-    val wrapped = new Reflections(packageName, new SubTypesScanner(false))
-      .getSubTypesOf(classOf[Object])
-      .asScala
-      .filter(_.getPackage.getName == packageName)
-      .filter(classFilter)
-      .map(_.getSimpleName)
-      .toSet
-
-    val scalaPackageName = "org.mongodb.scala.result"
-    val local = currentMirror.staticPackage(scalaPackageName).info.decls.map(_.name.toString).toSet - "package"
+    val wrapped = reflectPackage("com.mongodb.client.model.search")
+    val local = reflectPackage("org.mongodb.scala.model.search") ++ scalaAliases
 
     diff(local, wrapped) shouldBe empty
   }
 
-  it should "mirror all com.mongodb.client.vault in org.mongdb.scala.vault" in {
-    val packageName = "com.mongodb.reactivestreams.client.vault"
-    val wrapped = new Reflections(packageName, new SubTypesScanner(false))
-      .getSubTypesOf(classOf[Object])
-      .asScala
-      .filter(_.getPackage.getName == packageName)
-      .filter(classFilter)
-      .map(_.getSimpleName)
-      .toSet
+  it should "mirror all com.mongodb.client.model.geojson in org.mongodb.scala.model.geojson" in {
+    val wrapped = reflectPackage("com.mongodb.client.model.geojson")
+    val local = reflectPackage("org.mongodb.scala.model.geojson")
 
-    val scalaPackageName = "org.mongodb.scala.vault"
-    val localPackage = currentMirror.staticPackage(scalaPackageName).info.decls.map(_.name.toString).toSet
-    val localObjects = new Reflections(scalaPackageName, new SubTypesScanner(false))
-      .getSubTypesOf(classOf[Object])
-      .asScala
-      .filter(classFilter)
-      .map(_.getSimpleName)
-      .toSet
-    val scalaExclusions = Set("package")
-    val local = (localPackage ++ localObjects) -- scalaExclusions
+    diff(local, wrapped) shouldBe empty
+  }
+
+  it should "mirror all com.mongodb.client.result in org.mongodb.scala.result" in {
+    val wrapped = reflectPackage("com.mongodb.client.result")
+    val local = reflectPackage("org.mongodb.scala.result")
+
+    diff(local, wrapped) shouldBe empty
+  }
+
+  it should "mirror all com.mongodb.reactivestreams.client.vault in org.mongodb.scala.vault" in {
+    val wrapped = reflectPackage("com.mongodb.reactivestreams.client.vault")
+    val local = reflectPackage("org.mongodb.scala.vault")
 
     diff(local, wrapped) shouldBe empty
   }
@@ -399,40 +353,49 @@ class ApiAliasAndCompanionSpec extends BaseSpec {
     diff(local, wrapped) shouldBe empty
   }
 
-  it should "mirror com.mongodb.reactivestreams.client.gridfs in org.mongdb.scala.gridfs" in {
-    val javaExclusions = Set("GridFSBuckets", "GridFSDownloadByNameOptions")
-    val wrapped: Set[String] = Set("com.mongodb.reactivestreams.client.gridfs", "com.mongodb.client.gridfs.model")
-      .flatMap(packageName =>
-        new Reflections(packageName, new SubTypesScanner(false))
-          .getSubTypesOf(classOf[Object])
-          .asScala
-          .filter(_.getPackage.getName == packageName)
-          .filter(classFilter)
-          .map(_.getSimpleName.replace("Publisher", "Observable"))
-          .toSet
-      ) -- javaExclusions + "MongoGridFSException"
-
-    val scalaPackageName = "org.mongodb.scala.gridfs"
-    val scalaExclusions = Set(
-      "package",
-      "AsyncOutputStream",
-      "AsyncInputStream",
-      "GridFSUploadStream",
-      "GridFSDownloadStream"
-    )
-
-    val packageObjects =
-      currentMirror.staticPackage(scalaPackageName).info.decls.filter(!_.isImplicit).map(_.name.toString).toSet
-    val local = new Reflections(scalaPackageName, new SubTypesScanner(false))
-      .getSubTypesOf(classOf[Object])
-      .asScala
-      .filter(classFilter)
-      .filter(f => f.getPackage.getName == scalaPackageName)
-      .map(_.getSimpleName)
-      .toSet ++ packageObjects -- scalaExclusions
+  it should "mirror com.mongodb.reactivestreams.client.gridfs in org.mongodb.scala.gridfs" in {
+    val wrapped = reflectPackage("com.mongodb.reactivestreams.client.gridfs") - "GridFSBuckets"
+    val local = reflectPackage("org.mongodb.scala.gridfs") - "ToGridFSUploadObservableUnit"
 
     diff(local, wrapped) shouldBe empty
   }
 
   def diff(a: Set[String], b: Set[String]): Set[String] = a.diff(b) ++ b.diff(a)
+
+  def reflectPackage(
+      packageName: String,
+      classFilter: Class[? <: Object] => Boolean = defaultClassFilter
+  ): Set[String] = {
+    val reflections = new Reflections(packageName, SubTypes.filterResultsBy(_ => true))
+    val objectsAndEnums =
+      reflections.getSubTypesOf(classOf[Object]).asScala ++
+        reflections.getSubTypesOf(classOf[Enum[_]]).asScala
+
+    objectsAndEnums
+      .filter(_.getPackage.getName == packageName)
+      .filter(classFilter)
+      .map(_.getSimpleName)
+      .filter(!_.isBlank)
+      .map(scalaMapper)
+      .toSet
+  }
+
+  def reflectWithBuilder(
+      configurationBuilder: ConfigurationBuilder,
+      classFilter: Class[? <: Object] => Boolean = defaultClassFilter
+  ): Set[String] = reflect(new Reflections(configurationBuilder), classFilter)
+
+  def reflect(reflections: Reflections, classFilter: Class[? <: Object] => Boolean): Set[String] = {
+    val objectsAndEnums =
+      reflections.getSubTypesOf(classOf[Object]).asScala ++
+        reflections.getSubTypesOf(classOf[Enum[_]]).asScala
+
+    objectsAndEnums
+      .filter(classFilter)
+      .map(_.getSimpleName)
+      .filter(!_.isBlank)
+      .map(scalaMapper)
+      .toSet
+  }
+
 }

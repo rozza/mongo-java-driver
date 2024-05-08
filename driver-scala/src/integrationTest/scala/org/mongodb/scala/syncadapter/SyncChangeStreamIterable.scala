@@ -22,8 +22,10 @@ import com.mongodb.client.{ ChangeStreamIterable, MongoChangeStreamCursor }
 import com.mongodb.{ ServerAddress, ServerCursor }
 import org.bson.{ BsonDocument, BsonTimestamp, BsonValue }
 import org.mongodb.scala.ChangeStreamObservable
+import org.mongodb.scala.bsonDocumentToDocument
 
 import java.util.concurrent.TimeUnit
+import scala.concurrent.duration.Duration
 
 case class SyncChangeStreamIterable[T](wrapped: ChangeStreamObservable[T])
     extends SyncMongoIterable[ChangeStreamDocument[T]]
@@ -64,7 +66,7 @@ case class SyncChangeStreamIterable[T](wrapped: ChangeStreamObservable[T])
   }
 
   override def maxAwaitTime(maxAwaitTime: Long, timeUnit: TimeUnit): ChangeStreamIterable[T] = {
-    wrapped.maxAwaitTime(maxAwaitTime, timeUnit)
+    wrapped.maxAwaitTime(Duration(maxAwaitTime, timeUnit))
     this
   }
 

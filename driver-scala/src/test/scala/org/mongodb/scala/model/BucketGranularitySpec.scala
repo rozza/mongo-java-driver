@@ -16,8 +16,6 @@
 
 package org.mongodb.scala.model
 
-import java.lang.reflect.Modifier._
-
 import org.mongodb.scala.BaseSpec
 import org.scalatest.prop.TableDrivenPropertyChecks._
 
@@ -26,21 +24,11 @@ import scala.util.{ Success, Try }
 class BucketGranularitySpec extends BaseSpec {
 
   "BucketGranularity" should "have the same static fields as the wrapped BucketGranularity" in {
-    val BucketGranularityClass: Class[BucketGranularity] = classOf[com.mongodb.client.model.BucketGranularity]
-    val wrappedFields =
-      BucketGranularityClass.getDeclaredFields.filter(f => isStatic(f.getModifiers)).map(_.getName).toSet
-    val wrappedMethods =
-      BucketGranularityClass.getDeclaredMethods.filter(f => isStatic(f.getModifiers)).map(_.getName).toSet
-    val exclusions = Set("$VALUES", "$values", "valueOf", "values")
 
-    val wrapped = (wrappedFields ++ wrappedMethods) -- exclusions
-    val local = BucketGranularity.getClass.getDeclaredMethods.map(_.getName).toSet -- Set(
-      "apply",
-      "$deserializeLambda$",
-      "$anonfun$fromString$1"
-    )
+    val wrapped = getPublicFieldAndMethodNames(classOf[BucketGranularity])
+    val local = getPublicFieldAndMethodNames(classOf[BucketGranularity.type])
 
-    local should equal(wrapped)
+    local should equal(wrapped)(after being normalized)
   }
 
   it should "return the expected BucketGranularity" in {

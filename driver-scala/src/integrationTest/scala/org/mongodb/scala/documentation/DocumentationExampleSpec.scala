@@ -612,11 +612,15 @@ class DocumentationExampleSpec extends RequiresMongoDBISpec with FuturesSpec {
       }
     }).start()
 
-    val observer = new Observer[ChangeStreamDocument[Document]] {
-      def getResumeToken: BsonDocument = Document().underlying
-      override def onNext(result: ChangeStreamDocument[Document]): Unit = {}
-      override def onError(e: Throwable): Unit = {}
-      override def onComplete(): Unit = {}
+    trait ChangeStreamObserver extends Observer[ChangeStreamDocument[Document]] {
+      def getResumeToken(): BsonDocument
+    }
+
+    val observer = new ChangeStreamObserver {
+      def getResumeToken(): BsonDocument = Document().underlying
+      def onNext(result: ChangeStreamDocument[Document]): Unit = {}
+      def onError(e: Throwable): Unit = {}
+      def onComplete(): Unit = {}
     }
 
     // Start Changestream Example 1
@@ -625,13 +629,13 @@ class DocumentationExampleSpec extends RequiresMongoDBISpec with FuturesSpec {
     // End Changestream Example 1
 
     // Start Changestream Example 2
-    observable = inventory.watch.fullDocument(FullDocument.UPDATE_LOOKUP)
+    observable = inventory.watch().fullDocument(FullDocument.UPDATE_LOOKUP)
     observable.subscribe(observer)
     // End Changestream Example 2
 
     // Start Changestream Example 3
-    val resumeToken: BsonDocument = observer.getResumeToken
-    observable = inventory.watch.resumeAfter(resumeToken)
+    val resumeToken: BsonDocument = observer.getResumeToken()
+    observable = inventory.watch().resumeAfter(resumeToken)
     observable.subscribe(observer)
     // End Changestream Example 3
 

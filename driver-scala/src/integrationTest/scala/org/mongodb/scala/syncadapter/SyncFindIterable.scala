@@ -24,8 +24,11 @@ import org.bson.conversions.Bson
 import org.mongodb.scala.FindObservable
 import org.mongodb.scala.bson.BsonValue
 import org.mongodb.scala.bson.DefaultHelper.DefaultsTo
+import org.mongodb.scala.SingleObservableFuture
+import org.mongodb.scala.documentToUntypedDocument
 
 import java.util.concurrent.TimeUnit
+import scala.concurrent.duration.Duration
 import scala.reflect.ClassTag
 
 case class SyncFindIterable[T](wrapped: FindObservable[T]) extends SyncMongoIterable[T] with FindIterable[T] {
@@ -45,12 +48,12 @@ case class SyncFindIterable[T](wrapped: FindObservable[T]) extends SyncMongoIter
   }
 
   override def maxTime(maxTime: Long, timeUnit: TimeUnit): FindIterable[T] = {
-    wrapped.maxTime(maxTime, timeUnit)
+    wrapped.maxTime(Duration(maxTime, timeUnit))
     this
   }
 
   override def maxAwaitTime(maxAwaitTime: Long, timeUnit: TimeUnit): FindIterable[T] = {
-    wrapped.maxAwaitTime(maxAwaitTime, timeUnit)
+    wrapped.maxAwaitTime(Duration(maxAwaitTime, timeUnit))
     this
   }
 

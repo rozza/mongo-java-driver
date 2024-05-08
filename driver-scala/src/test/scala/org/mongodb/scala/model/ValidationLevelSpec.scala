@@ -26,21 +26,10 @@ import scala.util.{ Success, Try }
 class ValidationLevelSpec extends BaseSpec {
 
   "ValidationLevel" should "have the same static fields as the wrapped ValidationLevel" in {
-    val validationLevelClass: Class[ValidationLevel] = classOf[com.mongodb.client.model.ValidationLevel]
-    val wrappedFields =
-      validationLevelClass.getDeclaredFields.filter(f => isStatic(f.getModifiers)).map(_.getName).toSet
-    val wrappedMethods =
-      validationLevelClass.getDeclaredMethods.filter(f => isStatic(f.getModifiers)).map(_.getName).toSet
-    val exclusions = Set("$VALUES", "$values", "valueOf", "values")
+    val wrapped = getPublicFieldAndMethodNames(classOf[ValidationLevel])
+    val local = getPublicFieldAndMethodNames(classOf[ValidationLevel.type])
 
-    val wrapped = (wrappedFields ++ wrappedMethods) -- exclusions
-    val local = ValidationLevel.getClass.getDeclaredMethods.map(_.getName).toSet -- Set(
-      "apply",
-      "$deserializeLambda$",
-      "$anonfun$fromString$1"
-    )
-
-    local should equal(wrapped)
+    local should equal(wrapped)(after being normalized)
   }
 
   it should "return the expected ValidationLevels" in {

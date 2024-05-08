@@ -23,6 +23,7 @@ import org.bson.conversions.Bson
 import org.mongodb.scala.DistinctObservable
 
 import java.util.concurrent.TimeUnit
+import scala.concurrent.duration.Duration
 
 case class SyncDistinctIterable[T](wrapped: DistinctObservable[T])
     extends SyncMongoIterable[T]
@@ -33,7 +34,7 @@ case class SyncDistinctIterable[T](wrapped: DistinctObservable[T])
   }
 
   override def maxTime(maxTime: Long, timeUnit: TimeUnit): DistinctIterable[T] = {
-    wrapped.maxTime(maxTime, timeUnit)
+    wrapped.maxTime(Duration(maxTime, timeUnit))
     this
   }
 

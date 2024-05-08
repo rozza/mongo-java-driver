@@ -25,15 +25,10 @@ import org.scalatest.prop.TableDrivenPropertyChecks._
 class ReadConcernSpec extends BaseSpec {
 
   "ReadConcern" should "have the same static fields as the wrapped ReadConcern" in {
-    val wrapped =
-      classOf[com.mongodb.ReadConcern].getDeclaredFields.filter(f => isStatic(f.getModifiers)).map(_.getName).toSet
-    val local = ReadConcern.getClass.getDeclaredMethods.map(_.getName).toSet -- Set(
-      "apply",
-      "$deserializeLambda$",
-      "$anonfun$fromString$1"
-    )
+    val wrapped = getPublicFieldAndMethodNames(classOf[ReadConcern]) -- Set("isServerDefault", "asDocument", "getLevel")
+    val local = getPublicFieldAndMethodNames(classOf[ReadConcern.type])
 
-    local should equal(wrapped)
+    local should equal(wrapped)(after being normalized)
   }
 
   it should "return the expected ReadConcerns" in {

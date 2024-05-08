@@ -22,6 +22,8 @@ import org.bson.conversions.Bson
 import org.bson.{ BsonValue, Document }
 import org.mongodb.scala.AggregateObservable
 import org.mongodb.scala.bson.DefaultHelper.DefaultsTo
+import org.mongodb.scala.SingleObservableFuture
+import org.mongodb.scala.documentToUntypedDocument
 
 import java.util.concurrent.TimeUnit
 import scala.concurrent.duration.Duration
@@ -43,7 +45,7 @@ case class SyncAggregateIterable[T](wrapped: AggregateObservable[T])
   }
 
   override def maxTime(maxTime: Long, timeUnit: TimeUnit): AggregateIterable[T] = {
-    wrapped.maxTime(maxTime, timeUnit)
+    wrapped.maxTime(Duration(maxTime, timeUnit))
     this
   }
 

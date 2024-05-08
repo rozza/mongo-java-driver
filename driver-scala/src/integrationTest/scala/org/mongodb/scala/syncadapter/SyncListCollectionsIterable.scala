@@ -19,8 +19,10 @@ import com.mongodb.client.ListCollectionsIterable
 import org.bson.conversions.Bson
 import org.mongodb.scala.ListCollectionsObservable
 import org.mongodb.scala.bson.BsonValue
+import org.mongodb.scala.SingleObservableFuture
 
 import java.util.concurrent.TimeUnit
+import scala.concurrent.duration.Duration
 
 case class SyncListCollectionsIterable[T](wrapped: ListCollectionsObservable[T])
     extends SyncMongoIterable[T]
@@ -31,7 +33,7 @@ case class SyncListCollectionsIterable[T](wrapped: ListCollectionsObservable[T])
   }
 
   override def maxTime(maxTime: Long, timeUnit: TimeUnit): ListCollectionsIterable[T] = {
-    wrapped.maxTime(maxTime, timeUnit)
+    wrapped.maxTime(Duration(maxTime, timeUnit))
     this
   }
 

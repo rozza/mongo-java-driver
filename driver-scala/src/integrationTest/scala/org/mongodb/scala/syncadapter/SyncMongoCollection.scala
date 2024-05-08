@@ -36,6 +36,8 @@ import org.mongodb.scala.result.{ InsertManyResult, InsertOneResult }
 import java.util
 import scala.collection.JavaConverters._
 import scala.reflect.ClassTag
+import org.mongodb.scala.SingleObservableFuture
+import org.mongodb.scala.ObservableFuture
 
 case class SyncMongoCollection[T](wrapped: MongoCollection[T]) extends JMongoCollection[T] {
 

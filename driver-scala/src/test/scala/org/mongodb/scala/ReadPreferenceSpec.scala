@@ -16,22 +16,24 @@
 
 package org.mongodb.scala
 
-import java.lang.reflect.Modifier.isStatic
 import java.util.concurrent.TimeUnit.SECONDS
 
 import scala.collection.JavaConverters._
 import scala.concurrent.duration.Duration
+import java.lang.reflect.Modifier.{ isAbstract, isPublic }
 
 class ReadPreferenceSpec extends BaseSpec {
 
   val duration = Duration("95 sec")
 
   "ReadPreference" should "have the same methods as the wrapped ReadPreference" in {
-    val wrapped =
-      classOf[com.mongodb.ReadPreference].getDeclaredMethods.filter(f => isStatic(f.getModifiers)).map(_.getName).toSet
-    val local = ReadPreference.getClass.getDeclaredMethods.map(_.getName).toSet
+    val wrapped = getPublicFieldAndMethodNames(
+      f => isPublic(f.getModifiers) && !isAbstract(f.getModifiers),
+      classOf[ReadPreference]
+    ) - "choose"
+    val local = getPublicFieldAndMethodNames(classOf[ReadPreference.type])
 
-    local should equal(wrapped)
+    local should equal(wrapped)(after being normalized)
   }
 
   it should "return the correct primary ReadPreferences" in {

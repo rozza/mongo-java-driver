@@ -22,8 +22,11 @@ import com.mongodb.client.model.Collation
 import org.bson.{ BsonValue, Document }
 import org.mongodb.scala.ListSearchIndexesObservable
 import org.mongodb.scala.bson.DefaultHelper.DefaultsTo
+import org.mongodb.scala.SingleObservableFuture
+import org.mongodb.scala.documentToUntypedDocument
 
 import java.util.concurrent.TimeUnit
+import scala.concurrent.duration.Duration
 import scala.reflect.ClassTag
 
 case class SyncListSearchIndexesIterable[T](wrapped: ListSearchIndexesObservable[T])
@@ -46,7 +49,7 @@ case class SyncListSearchIndexesIterable[T](wrapped: ListSearchIndexesObservable
   }
 
   override def maxTime(maxTime: Long, timeUnit: TimeUnit): ListSearchIndexesIterable[T] = {
-    wrapped.maxTime(maxTime, timeUnit)
+    wrapped.maxTime(Duration(maxTime, timeUnit))
     this
   }
 

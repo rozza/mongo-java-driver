@@ -53,6 +53,7 @@ when (scalaVersion) {
         }
         sourceSets {
             main { scala { setSrcDirs(listOf("src/main/scala", "src/main/scala-2", "src/main/scala-2.13")) } }
+            test { scala { setSrcDirs(listOf("src/main/scala", "src/main/scala-2")) } }
         }
     }
     "2.12" -> {
@@ -63,6 +64,7 @@ when (scalaVersion) {
         }
         sourceSets {
             main { scala { setSrcDirs(listOf("src/main/scala", "src/main/scala-2", "src/main/scala-2.12")) } }
+            test { scala { setSrcDirs(listOf("src/main/scala", "src/main/scala-2")) } }
         }
     }
     "2.11" -> {
@@ -73,6 +75,7 @@ when (scalaVersion) {
         }
         sourceSets {
             main { scala { setSrcDirs(listOf("src/main/scala", "src/main/scala-2", "src/main/scala-2.12")) } }
+            test { scala { setSrcDirs(listOf("src/main/scala", "src/main/scala-2")) } }
         }
     }
 }

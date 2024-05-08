@@ -6,6 +6,8 @@ import org.bson.Document
 import org.bson.conversions.Bson
 import org.mongodb.scala.MongoClient
 import org.mongodb.scala.bson.DefaultHelper.DefaultsTo
+import org.mongodb.scala.SingleObservableFuture
+import org.mongodb.scala.documentToUntypedDocument
 
 import scala.collection.JavaConverters._
 import scala.concurrent.Await

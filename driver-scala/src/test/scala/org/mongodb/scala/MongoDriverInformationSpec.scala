@@ -20,22 +20,11 @@ import java.lang.reflect.Modifier.isStatic
 
 class MongoDriverInformationSpec extends BaseSpec {
 
-  "MongoDriverInformation" should "have the same static fields as the wrapped MongoDriverInformation" in {
-    val MongoDriverInformationClass: Class[MongoDriverInformation] = classOf[com.mongodb.MongoDriverInformation]
-    val wrappedFields =
-      MongoDriverInformationClass.getDeclaredFields.filter(f => isStatic(f.getModifiers)).map(_.getName).toSet
-    val wrappedMethods =
-      MongoDriverInformationClass.getDeclaredMethods.filter(f => isStatic(f.getModifiers)).map(_.getName).toSet
-    val exclusions = Set("$VALUES", "$values", "valueOf", "values")
+  "MongoDriverInformation" should "just have a builder method Collation" in {
+    val expected = Set("builder")
+    val local = getPublicFieldAndMethodNames(classOf[MongoDriverInformation.type])
 
-    val wrapped = (wrappedFields ++ wrappedMethods) -- exclusions
-    val local = MongoDriverInformation.getClass.getDeclaredMethods.map(_.getName).toSet -- Set(
-      "apply",
-      "$deserializeLambda$",
-      "$anonfun$fromString$1"
-    )
-
-    local should equal(wrapped)
+    local should equal(expected)(after being normalized)
   }
 
   it should "return the underlying builder" in {

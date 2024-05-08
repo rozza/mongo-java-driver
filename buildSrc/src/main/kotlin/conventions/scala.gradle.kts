@@ -41,6 +41,13 @@ afterEvaluate {
         scalaCompileOptions.isDeprecation = false
         val compileOptions = mutableListOf("-target:jvm-1.8")
         compileOptions.addAll(when (scalaVersion) {
+            "3" -> listOf(
+                "-feature",
+                "-unchecked",
+                "-language:reflectiveCalls",
+                "-Wconf:cat=deprecation:ws,any:e",
+                "-Xlint:strict-unsealed-patmat"
+            )
             "2.13" -> listOf(
                 "-feature",
                 "-unchecked",

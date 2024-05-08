@@ -21,12 +21,13 @@ import org.mongodb.scala.ListIndexesObservable
 import org.mongodb.scala.bson.BsonValue
 
 import java.util.concurrent.TimeUnit
+import scala.concurrent.duration.Duration
 
 case class SyncListIndexesIterable[T](wrapped: ListIndexesObservable[T])
     extends SyncMongoIterable[T]
     with ListIndexesIterable[T] {
   override def maxTime(maxTime: Long, timeUnit: TimeUnit): ListIndexesIterable[T] = {
-    wrapped.maxTime(maxTime, timeUnit)
+    wrapped.maxTime(Duration(maxTime, timeUnit))
     this
   }
 

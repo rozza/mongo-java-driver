@@ -30,7 +30,7 @@ class CreateIndexCommitQuorumSpec extends BaseSpec {
           .filter(f => isStatic(f.getModifiers))
           .map(_.getName)
           .toSet
-    val local = CreateIndexCommitQuorum.getClass.getDeclaredMethods.map(_.getName).toSet
+    val local = CreateIndexCommitQuorum.getClass.getDeclaredMethods.map(_.getName).toSet - "writeReplace"
 
     local should equal(wrapped)
   }

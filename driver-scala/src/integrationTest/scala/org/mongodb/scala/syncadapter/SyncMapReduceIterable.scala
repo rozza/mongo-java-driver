@@ -17,11 +17,13 @@
 package org.mongodb.scala.syncadapter
 
 import java.util.concurrent.TimeUnit
-
 import com.mongodb.client.MapReduceIterable
 import com.mongodb.client.model.{ Collation, MapReduceAction }
 import org.bson.conversions.Bson
 import org.mongodb.scala.MapReduceObservable
+import org.mongodb.scala.SingleObservableFuture
+
+import scala.concurrent.duration.Duration
 
 case class SyncMapReduceIterable[T](wrapped: MapReduceObservable[T])
     extends SyncMongoIterable[T]
@@ -69,7 +71,7 @@ case class SyncMapReduceIterable[T](wrapped: MapReduceObservable[T])
   }
 
   override def maxTime(maxTime: Long, timeUnit: TimeUnit): MapReduceIterable[T] = {
-    wrapped.maxTime(maxTime, timeUnit)
+    wrapped.maxTime(Duration(maxTime, timeUnit))
     this
   }
 

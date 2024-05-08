@@ -34,6 +34,7 @@ import org.mongodb.scala.{
   SingleObservable,
   Subscription
 }
+import org.mongodb.scala.bsonDocumentToDocument
 
 import scala.collection.mutable
 import scala.concurrent.{ Await, ExecutionContext }
@@ -41,7 +42,7 @@ import scala.concurrent.{ Await, ExecutionContext }
 //scalastyle:off magic.number regex
 class DocumentationChangeStreamExampleSpec extends RequiresMongoDBISpec with FuturesSpec {
 
-  "The Scala driver" should "be able to use $changeStreams" in withDatabase { database: MongoDatabase =>
+  "The Scala driver" should "be able to use $changeStreams" in withDatabase { (database: MongoDatabase) =>
     assume(false) // Don't run in tests
 
     database.drop().execute()
@@ -72,7 +73,7 @@ class DocumentationChangeStreamExampleSpec extends RequiresMongoDBISpec with Fut
      */
     println("2. Document from the Change Stream, with lookup enabled:")
 
-    observable = collection.watch.fullDocument(FullDocument.UPDATE_LOOKUP)
+    observable = collection.watch().fullDocument(FullDocument.UPDATE_LOOKUP)
     observer = new LatchedObserver[ChangeStreamDocument[Document]]()
     observable.subscribe(observer)
 
@@ -130,11 +131,11 @@ class DocumentationChangeStreamExampleSpec extends RequiresMongoDBISpec with Fut
     println("4. Document from the Change Stream including a resume token:")
 
     // Get the resume token from the last document we saw in the previous change stream cursor.
-    val resumeToken = results(2).getResumeToken
+    val resumeToken = results(2).getResumeToken()
     println(resumeToken)
 
     // Pass the resume token to the resume after function to continue the change stream cursor.
-    observable = collection.watch.resumeAfter(resumeToken)
+    observable = collection.watch().resumeAfter(resumeToken)
     observer = new LatchedObserver[ChangeStreamDocument[Document]]
     observable.subscribe(observer)
 

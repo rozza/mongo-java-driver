@@ -26,23 +26,13 @@ class MergeOptionsSpec extends BaseSpec {
   case class Default(wrapped: String = "")
 
   "MergeOptions" should "mirror com.mongodb.client.model.MergeOptions" in {
-    val setters = classOf[JMergeOptions].getDeclaredMethods
-      .filter(f => isPublic(f.getModifiers) && !f.getName.startsWith("get"))
-      .map(_.getName)
-      .toSet
-    val enums = classOf[JMergeOptions].getDeclaredFields.map(_.getName).toSet
-    val wrapped = (setters ++ enums) -- Set("hashCode", "toString", "equals")
+    val wrapped = getPublicFieldAndMethodNames(classOf[JMergeOptions])
 
-    val exclusions = Default().getClass.getDeclaredMethods
-      .filter(f => isPublic(f.getModifiers))
-      .map(_.getName)
-      .toSet ++ Set("apply", "unapply")
-    val local = MergeOptions().getClass.getDeclaredMethods
-      .filter(f => isPublic(f.getModifiers) && !f.getName.contains("$"))
-      .map(_.getName)
-      .toSet -- exclusions
-
-    local should equal(wrapped)
+    val local = getPublicFieldAndMethodNames(
+      classOf[MergeOptions],
+      classOf[MergeOptions.type]
+    )
+    local should equal(wrapped)(after being normalized)
   }
 
   it should "have the same values for WhenMatched" in {

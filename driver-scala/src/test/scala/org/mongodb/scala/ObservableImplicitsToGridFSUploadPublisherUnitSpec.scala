@@ -88,9 +88,9 @@ class ObservableImplicitsToGridFSUploadPublisherUnitSpec extends BaseSpec {
     override def getId: BsonValue = id
 
     override def subscribe(subscriber: Subscriber[_ >: Void]): Unit = {
-      val mono = error match {
-        case Some(error) => Mono.error(error)
-        case None        => Mono.empty()
+      val mono: Mono[Void] = error match {
+        case Some(error) => Mono.error[Void](error)
+        case None        => Mono.empty[Void]()
       }
       mono.subscribe(subscriber)
     }

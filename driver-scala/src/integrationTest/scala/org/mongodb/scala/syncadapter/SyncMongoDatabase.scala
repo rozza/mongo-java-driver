@@ -23,6 +23,8 @@ import org.bson.codecs.configuration.CodecRegistry
 import org.bson.conversions.Bson
 import org.mongodb.scala.MongoDatabase
 import org.mongodb.scala.bson.DefaultHelper.DefaultsTo
+import org.mongodb.scala.SingleObservableFuture
+import org.mongodb.scala.documentToUntypedDocument
 
 import scala.collection.JavaConverters._
 import scala.reflect.ClassTag

@@ -16,8 +16,6 @@
 
 package org.mongodb.scala.model
 
-import java.lang.reflect.Modifier._
-
 import org.mongodb.scala.BaseSpec
 import org.scalatest.prop.TableDrivenPropertyChecks._
 
@@ -26,21 +24,10 @@ import scala.util.{ Success, Try }
 class CollationStrengthSpec extends BaseSpec {
 
   "CollationStrength" should "have the same static fields as the wrapped CollationStrength" in {
-    val collationStrengthClass: Class[CollationStrength] = classOf[com.mongodb.client.model.CollationStrength]
-    val wrappedFields =
-      collationStrengthClass.getDeclaredFields.filter(f => isStatic(f.getModifiers)).map(_.getName).toSet
-    val wrappedMethods =
-      collationStrengthClass.getDeclaredMethods.filter(f => isStatic(f.getModifiers)).map(_.getName).toSet
-    val exclusions = Set("$VALUES", "$values", "valueOf", "values")
+    val wrapped = getPublicFieldAndMethodNames(classOf[CollationStrength]) -- Set("getIntRepresentation")
+    val local = getPublicFieldAndMethodNames(classOf[CollationStrength.type])
 
-    val wrapped = (wrappedFields ++ wrappedMethods) -- exclusions
-    val local = CollationStrength.getClass.getDeclaredMethods.map(_.getName).toSet -- Set(
-      "apply",
-      "$deserializeLambda$",
-      "$anonfun$fromInt$1"
-    )
-
-    local should equal(wrapped)
+    local should equal(wrapped)(after being normalized)
   }
 
   it should "return the expected CollationStrength" in {

@@ -580,8 +580,12 @@ class ScalaObservableSpec extends BaseSpec {
       override def onNext(result: Int): Unit = {}
     }
 
+    trait CancellableSubscription extends Subscription {
+      def isCancelled: Boolean
+      def cancel(): Unit
+    }
     var requested = 0
-    val subscription = new Subscription {
+    val subscription: CancellableSubscription = new CancellableSubscription {
       var cancelled = false
       def isCancelled: Boolean = cancelled
 

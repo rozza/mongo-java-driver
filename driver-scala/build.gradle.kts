@@ -60,12 +60,22 @@ tasks.withType<ScalaDoc>().forEach {
 //     Scala version specific configuration
 // ============================================
 when (scalaVersion) {
+    "3" -> {
+        dependencies {
+            implementation(libs.bundles.scala.v3)
+
+            testImplementation(libs.bundles.scala.test.v3)
+        }
+
+        sourceSets { test { scala { setSrcDirs(listOf("src/main/scala", "src/main/scala-3")) } } }
+    }
     "2.13" -> {
         dependencies {
             implementation(libs.bundles.scala.v2.v13)
 
             testImplementation(libs.bundles.scala.test.v2.v13)
         }
+        sourceSets { test { scala { setSrcDirs(listOf("src/main/scala", "src/main/scala-2")) } } }
     }
     "2.12" -> {
         dependencies {
@@ -73,6 +83,7 @@ when (scalaVersion) {
 
             testImplementation(libs.bundles.scala.test.v2.v12)
         }
+        sourceSets { test { scala { setSrcDirs(listOf("src/main/scala", "src/main/scala-2")) } } }
     }
     "2.11" -> {
         dependencies {
@@ -80,5 +91,6 @@ when (scalaVersion) {
 
             testImplementation(libs.bundles.scala.test.v2.v11)
         }
+        sourceSets { test { scala { setSrcDirs(listOf("src/main/scala", "src/main/scala-2")) } } }
     }
 }

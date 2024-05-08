@@ -144,13 +144,13 @@ trait RequiresMongoDBISpec extends BaseSpec with BeforeAndAfterAll {
     }
   }
 
-  override def beforeAll() {
+  override def beforeAll(): Unit = {
     if (TestMongoClientHelper.isMongoDBOnline) {
       Await.result(TestMongoClientHelper.mongoClient.getDatabase(databaseName).drop().toFuture(), WAIT_DURATION)
     }
   }
 
-  override def afterAll() {
+  override def afterAll(): Unit = {
     if (TestMongoClientHelper.isMongoDBOnline) {
       Await.result(TestMongoClientHelper.mongoClient.getDatabase(databaseName).drop().toFuture(), WAIT_DURATION)
     }

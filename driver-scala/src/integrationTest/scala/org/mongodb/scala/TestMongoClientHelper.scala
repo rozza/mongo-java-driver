@@ -55,7 +55,7 @@ object TestMongoClientHelper {
   Runtime.getRuntime.addShutdownHook(new ShutdownHook())
 
   private[mongodb] class ShutdownHook extends Thread {
-    override def run() {
+    override def run(): Unit = {
       mongoClient.close()
     }
   }

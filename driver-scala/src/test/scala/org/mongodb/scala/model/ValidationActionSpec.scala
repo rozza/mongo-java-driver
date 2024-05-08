@@ -26,21 +26,10 @@ import scala.util.{ Success, Try }
 class ValidationActionSpec extends BaseSpec {
 
   "ValidationAction" should "have the same static fields as the wrapped ValidationAction" in {
-    val ValidationActionClass: Class[ValidationAction] = classOf[com.mongodb.client.model.ValidationAction]
-    val wrappedFields =
-      ValidationActionClass.getDeclaredFields.filter(f => isStatic(f.getModifiers)).map(_.getName).toSet
-    val wrappedMethods =
-      ValidationActionClass.getDeclaredMethods.filter(f => isStatic(f.getModifiers)).map(_.getName).toSet
-    val exclusions = Set("$VALUES", "$values", "valueOf", "values")
+    val wrapped = getPublicFieldAndMethodNames(classOf[ValidationAction])
+    val local = getPublicFieldAndMethodNames(classOf[ValidationAction.type])
 
-    val wrapped = (wrappedFields ++ wrappedMethods) -- exclusions
-    val local = ValidationAction.getClass.getDeclaredMethods.map(_.getName).toSet -- Set(
-      "apply",
-      "$deserializeLambda$",
-      "$anonfun$fromString$1"
-    )
-
-    local should equal(wrapped)
+    local should equal(wrapped)(after being normalized)
   }
 
   it should "return the expected ValidationActions" in {
