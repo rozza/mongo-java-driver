@@ -43,7 +43,10 @@ when (scalaVersion) {
 
             testImplementation(libs.bundles.scala.test.v3)
         }
-        sourceSets { main { scala { setSrcDirs(listOf("src/main/scala", "src/main/scala-3")) } } }
+        sourceSets {
+            main { scala { setSrcDirs(listOf("src/main/scala", "src/main/scala-3")) } }
+            test { scala { setSrcDirs(listOf("src/test/scala", "src/test/scala-3")) } }
+        }
     }
     "2.13" -> {
         dependencies {
@@ -53,7 +56,7 @@ when (scalaVersion) {
         }
         sourceSets {
             main { scala { setSrcDirs(listOf("src/main/scala", "src/main/scala-2", "src/main/scala-2.13")) } }
-            test { scala { setSrcDirs(listOf("src/main/scala", "src/main/scala-2")) } }
+            test { scala { setSrcDirs(listOf("src/test/scala", "src/test/scala-2")) } }
         }
     }
     "2.12" -> {
@@ -64,7 +67,7 @@ when (scalaVersion) {
         }
         sourceSets {
             main { scala { setSrcDirs(listOf("src/main/scala", "src/main/scala-2", "src/main/scala-2.12")) } }
-            test { scala { setSrcDirs(listOf("src/main/scala", "src/main/scala-2")) } }
+            test { scala { setSrcDirs(listOf("src/test/scala", "src/test/scala-2")) } }
         }
     }
     "2.11" -> {
@@ -75,7 +78,7 @@ when (scalaVersion) {
         }
         sourceSets {
             main { scala { setSrcDirs(listOf("src/main/scala", "src/main/scala-2", "src/main/scala-2.12")) } }
-            test { scala { setSrcDirs(listOf("src/main/scala", "src/main/scala-2")) } }
+            test { scala { setSrcDirs(listOf("src/test/scala", "src/test/scala-2")) } }
         }
     }
 }

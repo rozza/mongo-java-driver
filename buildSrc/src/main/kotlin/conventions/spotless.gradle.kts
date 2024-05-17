@@ -22,7 +22,7 @@ import com.diffplug.gradle.spotless.SpotlessCheck
 plugins { id("com.diffplug.spotless") }
 
 spotless {
-    scala { scalafmt().configFile(rootProject.file("config/scala/scalafmt.conf")) }
+    //scala { scalafmt().configFile(rootProject.file("config/scala/scalafmt.conf")) }
 
     kotlinGradle {
         ktfmt("0.39").dropboxStyle().configure { it.setMaxWidth(120) }
