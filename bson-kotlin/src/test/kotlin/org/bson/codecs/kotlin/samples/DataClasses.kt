@@ -15,7 +15,6 @@
  */
 package org.bson.codecs.kotlin.samples
 
-import kotlin.time.Duration
 import org.bson.BsonDocument
 import org.bson.BsonMaxKey
 import org.bson.BsonType
@@ -27,6 +26,7 @@ import org.bson.codecs.pojo.annotations.BsonIgnore
 import org.bson.codecs.pojo.annotations.BsonProperty
 import org.bson.codecs.pojo.annotations.BsonRepresentation
 import org.bson.types.ObjectId
+import kotlin.time.Duration
 
 data class DataClassWithSimpleValues(
     val char: Char,
@@ -256,3 +256,8 @@ data class DataClassWithJVMErasure(val duration: Duration, val ints: List<Int>)
 data class Box<T>(val boxed: T)
 
 data class DataClassWithNullableGeneric(val box: Box<String?>)
+
+
+data class NestedWildcardDataClassNestedField<out T : Number>(val nestedField: T)
+data class NestedWildcardDataClassField<out V : NestedWildcardDataClassNestedField<*>>(val nestedField: V)
+data class NestedWildcardDataClass(val listValue: List<NestedWildcardDataClassField<*>>)

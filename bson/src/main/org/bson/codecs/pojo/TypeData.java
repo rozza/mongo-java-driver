@@ -23,6 +23,7 @@ import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
 import java.lang.reflect.WildcardType;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -62,13 +63,18 @@ final class TypeData<T> implements TypeWithTypeParameters<T> {
 
     public static <T> TypeData<T> newInstance(final Type genericType, final Class<T> clazz) {
         TypeData.Builder<T> builder = TypeData.builder(clazz);
+
         if (genericType instanceof ParameterizedType) {
             ParameterizedType pType = (ParameterizedType) genericType;
             for (Type argType : pType.getActualTypeArguments()) {
                 getNestedTypeData(builder, argType);
             }
         }
-        return builder.build();
+
+        TypeData<T> typeData = builder.build();
+        System.out.println(" <><>>> " + clazz.getSimpleName() + " ::: " + typeData);
+
+        return typeData;
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
@@ -81,7 +87,12 @@ final class TypeData<T> implements TypeWithTypeParameters<T> {
             }
             builder.addTypeParameter(paramBuilder.build());
         } else if (type instanceof WildcardType) {
-            builder.addTypeParameter(TypeData.builder((Class) ((WildcardType) type).getUpperBounds()[0]).build());
+            Type upperBound = ((WildcardType) type).getUpperBounds()[0];
+            if(upperBound instanceof Class) {
+                builder.addTypeParameter(TypeData.builder((Class) upperBound).build());
+            } else {
+                getNestedTypeData(builder, upperBound);
+            }
         } else if (type instanceof TypeVariable) {
             builder.addTypeParameter(TypeData.builder(Object.class).build());
         } else if (type instanceof Class) {

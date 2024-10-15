@@ -57,6 +57,9 @@ import org.bson.codecs.pojo.entities.InvalidSetterArgsModel;
 import org.bson.codecs.pojo.entities.MapStringObjectModel;
 import org.bson.codecs.pojo.entities.NestedGenericHolderFieldWithMultipleTypeParamsModel;
 import org.bson.codecs.pojo.entities.NestedSimpleIdModel;
+import org.bson.codecs.pojo.entities.NestedWildcardParameterizedTypeField;
+import org.bson.codecs.pojo.entities.NestedWildcardParameterizedTypeNestedField;
+import org.bson.codecs.pojo.entities.NestedWildcardParameterizedTypePojo;
 import org.bson.codecs.pojo.entities.Optional;
 import org.bson.codecs.pojo.entities.OptionalPropertyCodecProvider;
 import org.bson.codecs.pojo.entities.PrimitivesModel;
@@ -110,6 +113,18 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public final class PojoCustomTest extends PojoTestCase {
+
+    @Test
+    public void testWild() {
+        NestedWildcardParameterizedTypePojo nestedWildcardParameterizedTypePojo = new NestedWildcardParameterizedTypePojo(
+                singletonList(new NestedWildcardParameterizedTypeField<>(new NestedWildcardParameterizedTypeNestedField<>(1))));
+
+
+        PojoCodecProvider.Builder builder = PojoCodecProvider.builder().register(NestedWildcardParameterizedTypePojo.class);
+
+        roundTrip(builder, nestedWildcardParameterizedTypePojo, "{_t: 'org.bson.codecs.pojo.entities.SimpleModel', 'integerField': 42,"
+                + "'stringField': 'myString'}");
+    }
 
     @Test
     public void testRegisterClassModelPreferredOverClass() {

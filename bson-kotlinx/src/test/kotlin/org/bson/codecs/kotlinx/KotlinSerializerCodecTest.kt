@@ -109,6 +109,9 @@ import org.bson.codecs.kotlinx.samples.DataClassWithSequence
 import org.bson.codecs.kotlinx.samples.DataClassWithSimpleValues
 import org.bson.codecs.kotlinx.samples.DataClassWithTriple
 import org.bson.codecs.kotlinx.samples.Key
+import org.bson.codecs.kotlinx.samples.NestedWildcardDataClass
+import org.bson.codecs.kotlinx.samples.NestedWildcardDataClassField
+import org.bson.codecs.kotlinx.samples.NestedWildcardDataClassNestedField
 import org.bson.codecs.kotlinx.samples.SealedInterface
 import org.bson.codecs.kotlinx.samples.ValueClass
 import org.bson.json.JsonMode
@@ -223,6 +226,14 @@ class KotlinSerializerCodecTest {
         val expectedDataClass = DataClassWithSimpleValues('c', 1, 2, 10, 10L, 2.0f, 3.0, true, "String")
 
         assertDecodesTo(data, expectedDataClass)
+    }
+
+    @Test
+    fun testWild() {
+        val expected = """{listValue: [{field: {nestedField: 1}}]}"""
+        val dataClass = NestedWildcardDataClass(listOf(NestedWildcardDataClassField(NestedWildcardDataClassNestedField(1))))
+
+        assertRoundTrips(expected, dataClass)
     }
 
     @Test

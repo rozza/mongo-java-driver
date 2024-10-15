@@ -95,7 +95,7 @@ class GridFSPublisherSpecification extends FunctionalSpecification {
         def fileInfo = run(gridFSBucket.find().filter(eq('_id', fileId)).&first)
 
         then:
-        fileInfo.getId().getValue() == fileId
+        fileInfo.getId().getValueList() == fileId
         fileInfo.getChunkSize() == gridFSBucket.getChunkSizeBytes()
         fileInfo.getLength() == expectedLength
         fileInfo.getMetadata() == null
@@ -312,7 +312,7 @@ class GridFSPublisherSpecification extends FunctionalSpecification {
         def fileInfo = run(gridFSBucket.find().filter(eq('_id', fileId)).&first)
 
         then:
-        fileInfo.getId().getValue() == fileId
+        fileInfo.getId().getValueList() == fileId
         fileInfo.getChunkSize() == options.getChunkSizeBytes()
         fileInfo.getLength() == expectedLength
         fileInfo.getMetadata() == options.getMetadata()

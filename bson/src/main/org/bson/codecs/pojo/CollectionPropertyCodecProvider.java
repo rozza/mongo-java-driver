@@ -36,7 +36,10 @@ final class CollectionPropertyCodecProvider implements PropertyCodecProvider {
     @Override
     public <T> Codec<T> get(final TypeWithTypeParameters<T> type, final PropertyCodecRegistry registry) {
         if (Collection.class.isAssignableFrom(type.getType()) && type.getTypeParameters().size() == 1) {
-            return new CollectionCodec(type.getType(), registry.get(type.getTypeParameters().get(0)));
+            System.out.println(" >>> " + type);
+            Codec<?> codec = registry.get(type.getTypeParameters().get(0));
+            System.out.println(" >>> " + type + " :: " + codec);
+            return new CollectionCodec(type.getType(), codec);
         } else {
             return null;
         }

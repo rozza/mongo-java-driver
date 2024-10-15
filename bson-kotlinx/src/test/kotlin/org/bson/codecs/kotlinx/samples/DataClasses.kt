@@ -344,3 +344,11 @@ data class DataClassWithJsonElementsNullable(
     val jsonElements: List<JsonElement?>?,
     val jsonNestedMap: Map<String, JsonElement?>?
 )
+
+
+@Serializable
+data class NestedWildcardDataClassNestedField<out T : Number>(val nestedField: T)
+@Serializable
+data class NestedWildcardDataClassField<out V : NestedWildcardDataClassNestedField<*>>( val field: V)
+@Serializable
+data class NestedWildcardDataClass(val listValue: List<NestedWildcardDataClassField<NestedWildcardDataClassNestedField<Int>>>)

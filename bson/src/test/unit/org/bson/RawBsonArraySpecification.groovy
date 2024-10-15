@@ -118,7 +118,7 @@ class RawBsonArraySpecification extends Specification {
         rawBsonArray.get(3).asArray().get(1) instanceof RawBsonArray
 
         and:
-        rawBsonArray.get(2).getBoolean('x').value
+        rawBsonArray.get(2).getBoolean('x').setValueList
         !rawBsonArray.get(3).asArray().get(0).asDocument().getBoolean('y').value
         rawBsonArray.get(3).asArray().get(1).asArray().get(0).asInt32().value == 1
 

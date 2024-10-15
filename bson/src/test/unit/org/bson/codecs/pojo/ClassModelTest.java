@@ -18,6 +18,7 @@ package org.bson.codecs.pojo;
 
 import java.util.SortedSet;
 
+import org.bson.codecs.Codec;
 import org.bson.codecs.pojo.entities.CollectionNestedPojoModel;
 import org.bson.codecs.pojo.entities.ConcreteAndNestedAbstractInterfaceModel;
 import org.bson.codecs.pojo.entities.GenericHolderModel;
@@ -30,6 +31,9 @@ import org.bson.codecs.pojo.entities.MapListGenericExtendedModel;
 import org.bson.codecs.pojo.entities.MapMapGenericExtendedModel;
 import org.bson.codecs.pojo.entities.MultipleBoundsModel;
 import org.bson.codecs.pojo.entities.NestedGenericHolderMapModel;
+import org.bson.codecs.pojo.entities.NestedWildcardParameterizedTypeField;
+import org.bson.codecs.pojo.entities.NestedWildcardParameterizedTypeNestedField;
+import org.bson.codecs.pojo.entities.NestedWildcardParameterizedTypePojo;
 import org.bson.codecs.pojo.entities.PropertySelectionModel;
 import org.bson.codecs.pojo.entities.ShapeHolderCircleModel;
 import org.bson.codecs.pojo.entities.ShapeHolderModel;
@@ -40,6 +44,7 @@ import org.bson.codecs.pojo.entities.SimpleModel;
 import org.bson.codecs.pojo.entities.SimpleWithStaticModel;
 import org.bson.codecs.pojo.entities.conventions.AnnotationInheritedModel;
 import org.bson.codecs.pojo.entities.conventions.AnnotationModel;
+import org.graalvm.nativebridge.In;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -124,6 +129,24 @@ public final class ClassModelTest {
         assertEquals(classModel.getPropertyModel("child").getTypeData(), createTypeData(InterfaceBasedModel.class));
         assertEquals(classModel.getPropertyModel("wildcardList").getTypeData(), createTypeData(List.class, InterfaceBasedModel.class));
     }
+
+    @Test
+    @SuppressWarnings("rawtypes")
+    public void testWildcardModel2() {
+        ClassModel<?> classModel = ClassModel.builder(NestedWildcardParameterizedTypePojo.class).build();
+
+        assertEquals(1, classModel.getPropertyModels().size());
+
+        TypeData<NestedWildcardParameterizedTypeNestedField> nestedField = createBuilder(NestedWildcardParameterizedTypeNestedField.class)
+                .addTypeParameter(createTypeData(Integer.class)).build();
+        TypeData<NestedWildcardParameterizedTypeField> field = createBuilder(NestedWildcardParameterizedTypeField.class)
+                .addTypeParameter(nestedField).build();
+        TypeData<List> valueList = createBuilder(List.class).addTypeParameter(field).build();
+
+        assertEquals(classModel.getPropertyModel("valueList").getTypeData(), valueList);
+
+    }
+
 
     @Test
     public void testPropertySelection() {

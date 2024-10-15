@@ -116,7 +116,7 @@ class CreateCollectionOperationSpecification extends OperationFunctionalSpecific
 
         then:
         new ListCollectionsOperation(getDatabaseName(), new BsonDocumentCodec())
-                .execute(getBinding()).next().find { it -> it.getString('name').value == getCollectionName() }
+                .execute(getBinding()).next().find { it -> it.getString('name').setValueList == getCollectionName() }
                 .getDocument('options').getDocument('storageEngine') == operation.storageEngineOptions
 
         where:
@@ -138,7 +138,7 @@ class CreateCollectionOperationSpecification extends OperationFunctionalSpecific
 
         then:
         new ListCollectionsOperation(getDatabaseName(), new BsonDocumentCodec())
-                .execute(getBinding()).next().find { it -> it.getString('name').value == getCollectionName() }
+                .execute(getBinding()).next().find { it -> it.getString('name').setValueList == getCollectionName() }
                 .getDocument('options').getDocument('storageEngine') == operation.storageEngineOptions
         where:
         async << [true, false]

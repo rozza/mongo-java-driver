@@ -69,6 +69,9 @@ import org.bson.codecs.kotlin.samples.DataClassWithSequence
 import org.bson.codecs.kotlin.samples.DataClassWithSimpleValues
 import org.bson.codecs.kotlin.samples.DataClassWithTriple
 import org.bson.codecs.kotlin.samples.Key
+import org.bson.codecs.kotlin.samples.NestedWildcardDataClass
+import org.bson.codecs.kotlin.samples.NestedWildcardDataClassField
+import org.bson.codecs.kotlin.samples.NestedWildcardDataClassNestedField
 import org.bson.conversions.Bson
 import org.bson.types.ObjectId
 import org.junit.jupiter.api.Test
@@ -77,6 +80,14 @@ import org.junit.jupiter.api.assertThrows
 class DataClassCodecTest {
     private val numberLong = "\$numberLong"
     private val emptyDocument = "{}"
+
+    @Test
+    fun testWild() {
+        val expected = """{valueList: [{field: {nestedField: 1}}]}"""
+        val dataClass = NestedWildcardDataClass(listOf(NestedWildcardDataClassField(NestedWildcardDataClassNestedField(1))))
+
+        assertRoundTrips(expected, dataClass)
+    }
 
     @Test
     fun testDataClassWithSimpleValues() {

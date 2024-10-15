@@ -165,6 +165,7 @@ final class PojoCodecImpl<T> extends PojoCodec<T> {
                     if (propertyValue == null) {
                         writer.writeNull();
                     } else {
+                        System.out.println("CACHED");
                         encoderContext.encodeWithChildContext(propertyModel.getCachedCodec(), writer, propertyValue);
                     }
                 }

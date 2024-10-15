@@ -30,6 +30,9 @@ import org.bson.codecs.DecoderContext;
 import org.bson.codecs.EncoderContext;
 import org.bson.codecs.configuration.CodecConfigurationException;
 import org.bson.codecs.configuration.CodecRegistry;
+import org.bson.codecs.record.samples.NestedWildcardRecord;
+import org.bson.codecs.record.samples.NestedWildcardRecordField;
+import org.bson.codecs.record.samples.NestedWildcardRecordNestedField;
 import org.bson.codecs.record.samples.TestRecordEmbedded;
 import org.bson.codecs.record.samples.TestRecordParameterized;
 import org.bson.codecs.record.samples.TestRecordWithIllegalBsonCreatorOnConstructor;
@@ -59,14 +62,40 @@ import org.bson.conversions.Bson;
 import org.bson.types.ObjectId;
 import org.junit.jupiter.api.Test;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+import static java.util.Collections.singletonList;
 import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class RecordCodecTest {
+
+    @Test
+    public void testNestedWildCard() {
+        var registry = fromProviders(new RecordCodecProvider(), Bson.DEFAULT_CODEC_REGISTRY);
+        var codec = registry.get(NestedWildcardRecord.class);
+        var testRecord =
+                new NestedWildcardRecord(singletonList(
+                        new NestedWildcardRecordField<>(new NestedWildcardRecordNestedField<>(1))));
+
+        var document = new BsonDocument();
+
+        // when
+        codec.encode(new BsonDocumentWriter(document), testRecord, EncoderContext.builder().build());
+
+        // then
+        assertEquals(BsonDocument.parse("{valueList: [{field: {nestedField: 1}}]}"), document);
+
+        // when
+        var decoded = codec.decode(new BsonDocumentReader(document), DecoderContext.builder().build());
+
+        // then
+        assertEquals(testRecord, decoded);
+    }
+
 
     @Test
     public void testRecordWithPojoAnnotations() {
