@@ -73,9 +73,9 @@ ext {
 }
 
 
-def projectNamesNotToBePublished = ["driver-benchmarks", "driver-lambda", "driver-workload-executor", "graalvm-native-image-app", "util",
-                                    "spock", "taglets"]
-def publishedProjects = subprojects.findAll { !projectNamesNotToBePublished.contains(it.name) }
+def projectNamesNotToBePublished = ["bson", "driver-benchmarks", "driver-lambda", "driver-workload-executor", "graalvm-native-image-app",
+                                    "util", "spock", "taglets"]
+def publishedProjects = [] // subprojects.findAll { !projectNamesNotToBePublished.contains(it.name) }
 def scalaProjects = publishedProjects.findAll { it.name.contains('scala') }
 def javaProjects = publishedProjects - scalaProjects
 def projectsWithManifest = publishedProjects.findAll {it.name != 'driver-legacy' }

@@ -27,8 +27,8 @@ plugins {
     alias(libs.plugins.optional) apply false
     alias(libs.plugins.scala.multiversion) apply false
     alias(libs.plugins.spotbugs) apply false
-    alias(libs.plugins.spotless) apply false
-    alias(libs.plugins.test.logger) apply false
+    //alias(libs.plugins.spotless) apply false
+    //alias(libs.plugins.test.logger) apply false
 }
 
 //////////////////////////////////////////
@@ -42,7 +42,7 @@ ext {
 
 def configDir = ext.configDir
 def utilProjects = project(":util").allprojects
-def coreProjects = subprojects - utilProjects
+def coreProjects = (subprojects - utilProjects) - project(":bson")
 def scalaProjects = subprojects.findAll { it.name.contains('scala') }
 def javaProjects = subprojects - scalaProjects
 def javaMainProjects = javaProjects - utilProjects

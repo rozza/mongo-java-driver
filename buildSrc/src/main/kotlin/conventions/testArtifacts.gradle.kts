@@ -13,20 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package conventions
 
-public final class AtlasManualTaglet extends DocTaglet {
-    @Override
-    public String getName() {
-        return "mongodb.atlas.manual";
+plugins { id("java-library") }
+
+/**
+ * Create a test artifact configuration so that test resources can be consumed by other projects.
+ *
+ * TODO: Migrate to using https://docs.gradle.org/current/userguide/java_testing.html#sec:java_test_fixtures
+ */
+val testArtifacts by configurations.creating
+val testJar by
+    tasks.registering(Jar::class) {
+        archiveBaseName.set("${project.name}-test")
+        from(sourceSets.test.get().output)
     }
 
-    @Override
-    protected String getHeader() {
-        return "MongoDB Atlas documentation";
-    }
+tasks.test { mustRunAfter(testJar) }
 
-    @Override
-    protected String getBaseDocURI() {
-        return "https://www.mongodb.com/docs/atlas/";
-    }
-}
+artifacts { add("testArtifacts", testJar) }

@@ -14,21 +14,23 @@
  * limitations under the License.
  */
 
-public class ServerReleaseTaglet extends DocTaglet {
+package com.mongodb.doclet;
+
+public class ManualTaglet extends DocTaglet {
 
     @Override
     public String getName() {
-        return "mongodb.server.release";
+        return "mongodb.driver.manual";
     }
 
     @Override
     protected String getHeader() {
-        return "Since server release";
+        return "MongoDB documentation";
     }
 
     @Override
     protected String getBaseDocURI() {
-        return "https://www.mongodb.com/docs/manual/release-notes/";
+        return "https://www.mongodb.com/docs/manual/";
     }
 
 }

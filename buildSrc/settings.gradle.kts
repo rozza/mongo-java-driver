@@ -13,6 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+@Suppress("UnstableApiUsage") // TODO check if needed for Gradle 8.12+
+dependencyResolutionManagement { versionCatalogs { create("libs") { from(files("../gradle/libs.versions.toml")) } } }
 
 pluginManagement {
     repositories {
@@ -21,27 +23,3 @@ pluginManagement {
         mavenCentral()
     }
 }
-
-include(":bson")
-//include(":bson-record-codec")
-//include(":driver-benchmarks")
-//include(":driver-workload-executor")
-//include(":driver-lambda")
-//include(":driver-core")
-//include(":driver-legacy")
-//include(":driver-sync")
-//include(":driver-reactive-streams")
-//include(":bson-kotlin")
-//include(":bson-kotlinx")
-//include(":driver-kotlin-extensions")
-//include(":driver-kotlin-sync")
-//include(":driver-kotlin-coroutine")
-//include(":bson-scala")
-//include(":driver-scala")
-//include(":mongodb-crypt")
-//include("util:spock")
-//include("util:taglets")
-
-//if (providers.gradleProperty("includeGraalvm").isPresent) {
-//    include(":graalvm-native-image-app")
-//}

@@ -64,7 +64,7 @@ plugin-scala-multiversion = "2.0.4"
 plugin-shadow = "6.1.0"
 plugin-spotbugs = "6.0.15"
 plugin-spotless = "6.14.0"
-plugin-test-logger = "2.1.0"
+plugin-test-logger = "4.0.0"
 
 [libraries]
 aws-java-sdk-v1-core = { module = "com.amazonaws:aws-java-sdk-core", version.ref = "aws-sdk-v1" }
@@ -146,14 +146,18 @@ project-reactor-test = { module = "io.projectreactor:reactor-test" }
 reactive-streams-tck = { module = " org.reactivestreams:reactive-streams-tck", version.ref = "reactive-streams" }
 reflections = { module = "org.reflections:reflections", version.ref = "reflections" }
 
+# Plugins configured in buildSrc
+buildsrc-plugin-spotless = { group = "com.diffplug.spotless", name = "spotless-plugin-gradle", version.ref = "plugin-spotless"}
+buildsrc-plugin-test-logger = { group = "com.adarshr", name = "gradle-test-logger-plugin", version.ref = "plugin-test-logger"}
+
 [bundles]
 aws-java-sdk-v1 = ["aws-java-sdk-v1-core", "aws-java-sdk-v1-sts"]
 aws-java-sdk-v2 = ["aws-java-sdk-v2-auth", "aws-java-sdk-v2-sts"]
 netty = ["netty-buffer", "netty-handler", "netty-transport"]
 
 # Test
-junit = ["junit-jupiter", "junit-jupiter-params", "junit-jupiter-engine", "junit-jupiter", "logback-classic", "hamcrest-all"]
-junit-vintage = ["junit-vintage-engine", "junit-jupiter-params", "junit-jupiter-engine", "junit-jupiter", "logback-classic", "hamcrest-all"]
+junit = ["junit-jupiter", "junit-jupiter-params", "junit-jupiter-engine", "logback-classic", "hamcrest-all"]
+junit-vintage = ["junit-vintage-engine", "junit-jupiter-params", "junit-jupiter-engine", "logback-classic", "hamcrest-all"]
 scalatest = ["scalatest-flatspec", "scalatest-should-matchers", "scalatest-plus-junit4", "scalatest-plus-mockito"]
 spock = ["spock-core", "spock-junit4"]
 

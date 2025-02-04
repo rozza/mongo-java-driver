@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+package com.mongodb.doclet;
+
 import com.sun.source.doctree.DocTree;
 import com.sun.source.doctree.UnknownBlockTagTree;
 import jdk.javadoc.doclet.Taglet;

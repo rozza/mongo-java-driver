@@ -13,22 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package project
 
-public class ManualTaglet extends DocTaglet {
+plugins {
+    id("eclipse")
+    id("idea")
+}
 
-    @Override
-    public String getName() {
-        return "mongodb.driver.manual";
-    }
+group = "org.mongodb"
 
-    @Override
-    protected String getHeader() {
-        return "MongoDB documentation";
-    }
+version = "5.4.0-SNAPSHOT"
 
-    @Override
-    protected String getBaseDocURI() {
-        return "https://www.mongodb.com/docs/manual/";
-    }
-
+repositories {
+    mavenLocal()
+    google()
+    mavenCentral()
 }

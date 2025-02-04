@@ -13,22 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package config
 
-public class DochubTaglet extends DocTaglet {
+import org.gradle.api.plugins.ExtraPropertiesExtension
 
-    @Override
-    public String getName() {
-        return "mongodb.driver.dochub";
+object Extensions {
+
+    /** Extension function to allow easy setting of multiple items to `project.extra` */
+    fun ExtraPropertiesExtension.setAll(valueMap: Map<String, String>) {
+        valueMap.forEach { set(it.key, it.value) }
     }
-
-    @Override
-    protected String getHeader() {
-        return "MongoDB documentation";
-    }
-
-    @Override
-    protected String getBaseDocURI() {
-        return "https://dochub.mongodb.org/";
-    }
-
 }

@@ -19,6 +19,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 plugins {
     id("org.jetbrains.kotlin.jvm")
     id("java-library")
+    id("com.mongodb.doclet")
 
     // Test based plugins
     alias(libs.plugins.spotless)
