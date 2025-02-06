@@ -13,13 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-@Suppress("UnstableApiUsage") // TODO check if needed for Gradle 8.12+
-dependencyResolutionManagement { versionCatalogs { create("libs") { from(files("../gradle/libs.versions.toml")) } } }
+package conventions
 
-pluginManagement {
-    repositories {
-        gradlePluginPortal()
-        mavenCentral()
-        google()
-    }
+import com.diffplug.gradle.spotless.SpotlessApply
+import com.diffplug.gradle.spotless.SpotlessCheck
+
+plugins { id("codenarc") }
+
+codenarc {
+    toolVersion = "1.6.1"
+    reportFormat = if(project.hasBooleanProperty("xmlReports.enabled")) "xml" else "html"
 }

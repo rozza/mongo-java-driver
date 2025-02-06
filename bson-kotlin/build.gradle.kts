@@ -13,6 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import config.Extensions.setAll
+
+plugins { id("project.kotin") }
+
+base.archivesName.set("bson-kotlin")
+
+extra.setAll(
+    mapOf(
+        "mavenName" to "Bson Kotlin",
+        "mavenDescription" to "Bson Kotlin Codecs",
+        "mavenUrl" to "https://bsonspec.org",
+        "automaticModuleName" to "org.mongodb.bson.kotlin",
+        "importPackage" to "org.slf4j.*;resolution:=optional",
+        "mavenArtifactId" to base.archivesName.get()
+    ))
+
 import io.gitlab.arturbosch.detekt.Detekt
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
@@ -54,60 +70,10 @@ kotlin { explicitApi() }
 
 tasks.withType<KotlinCompile> { kotlinOptions.jvmTarget = "1.8" }
 
-// ===========================
-//     Code Quality checks
-// ===========================
-spotless {
-    kotlinGradle {
-        ktfmt("0.39").dropboxStyle().configure { it.setMaxWidth(120) }
-        trimTrailingWhitespace()
-        indentWithSpaces()
-        endWithNewline()
-        licenseHeaderFile(rootProject.file("config/mongodb.license"), "(group|plugins|import|buildscript|rootProject)")
-    }
 
-    kotlin {
-        target("**/*.kt")
-        ktfmt().dropboxStyle().configure { it.setMaxWidth(120) }
-        trimTrailingWhitespace()
-        indentWithSpaces()
-        endWithNewline()
-        licenseHeaderFile(rootProject.file("config/mongodb.license"))
-    }
 
-    format("extraneous") {
-        target("*.xml", "*.yml", "*.md")
-        trimTrailingWhitespace()
-        indentWithSpaces()
-        endWithNewline()
-    }
-}
-
-tasks.named("check") { dependsOn("spotlessApply") }
-
-detekt {
-    allRules = true // fail build on any finding
-    buildUponDefaultConfig = true // preconfigure defaults
-    config = rootProject.files("config/detekt/detekt.yml") // point to your custom config defining rules to run,
-    // overwriting default behavior
-    baseline = rootProject.file("config/detekt/baseline.xml") // a way of suppressing issues before introducing detekt
-    source =
-        files(
-            file("src/main/kotlin"),
-            file("src/test/kotlin"),
-            file("src/integrationTest/kotlin"),
-        )
-}
-
-tasks.withType<Detekt>().configureEach {
-    reports {
-        html.required.set(true) // observe findings in your browser with structure and code snippets
-        xml.required.set(true) // checkstyle like format mainly for integrations like Jenkins
-        txt.required.set(false) // similar to the console output, contains issue signature to manually edit
-    }
-}
-
-spotbugs { showProgress.set(true) }
+// TODO
+// spotbugs { showProgress.set(true) }
 
 // ===========================
 //     Test Configuration

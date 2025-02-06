@@ -13,13 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-@Suppress("UnstableApiUsage") // TODO check if needed for Gradle 8.12+
-dependencyResolutionManagement { versionCatalogs { create("libs") { from(files("../gradle/libs.versions.toml")) } } }
+package conventions
 
-pluginManagement {
-    repositories {
-        gradlePluginPortal()
-        mavenCentral()
-        google()
-    }
+import org.gradle.api.Project
+import org.gradle.kotlin.dsl.the
+
+val Project.libs get() = the<org.gradle.accessors.dm.LibrariesForLibs>()
+
+fun Project.hasBooleanProperty(name: String): Boolean {
+    return this.hasProperty(name) && this.property(name).toString().toBoolean()
 }

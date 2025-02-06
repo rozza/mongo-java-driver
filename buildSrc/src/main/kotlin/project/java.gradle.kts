@@ -22,6 +22,8 @@ plugins {
     id("project.base")
     id("conventions.publishing")
     id("conventions.spotless")
+    //id("conventions.spotbugs")
+    id("conventions.codenarc")
     id("conventions.javadoc")
 }
 

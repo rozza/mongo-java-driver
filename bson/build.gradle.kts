@@ -26,4 +26,4 @@ extra.setAll(
         "mavenUrl" to "https://bsonspec.org",
         "automaticModuleName" to "org.mongodb.bson",
         "importPackage" to "org.slf4j.*;resolution:=optional",
-        "mavenArtifactId" to "${base.archivesName.get()}"))
+        "mavenArtifactId" to base.archivesName.get()))

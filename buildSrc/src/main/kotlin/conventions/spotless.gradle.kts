@@ -46,6 +46,8 @@ spotless {
     }
 }
 
+tasks.named("check") { dependsOn("spotlessApply") }
+
 tasks {
     withType<SpotlessApply>().configureEach {
         notCompatibleWithConfigurationCache("https://github.com/diffplug/spotless/issues/644")

@@ -13,24 +13,28 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 @Suppress("DSL_SCOPE_VIOLATION") // TODO: Remove once KTIJ-19369 is fixed
 plugins {
-    id("java")
+    id("java-library")
     `kotlin-dsl`
     alias(libs.plugins.spotless)
+    alias(libs.plugins.detekt) apply false
 }
 
 repositories {
     gradlePluginPortal()
     mavenCentral()
+    google()
 }
 
 dependencies {
     // TODO not needed in Gradle 8.12? https://github.com/gradle/gradle/issues/15383
     implementation(files(libs.javaClass.superclass.protectionDomain.codeSource.location))
 
+    // https://docs.gradle.org/current/userguide/implementing_gradle_plugins_precompiled.html#sec:applying_external_plugins
     implementation(libs.buildsrc.plugin.spotless)
+    implementation(libs.buildsrc.plugin.spotbugs)
+    implementation(libs.buildsrc.plugin.detekt)
     implementation(libs.buildsrc.plugin.test.logger)
 }
 
@@ -40,9 +44,10 @@ spotless {
         trimTrailingWhitespace()
         indentWithSpaces()
         endWithNewline()
-        target("src/**/*.gradle.kts", "src/**/*.kt")
-        licenseHeaderFile("../config/mongodb.license", "package")
+        licenseHeaderFile("../config/mongodb.license", "(group|plugins|import|buildscript|rootProject|@Suppress)")
     }
 }
+
+java { toolchain { languageVersion.set(JavaLanguageVersion.of("17")) } }
 
 tasks.withType<GradleBuild> { dependsOn("spotlessApply") }
