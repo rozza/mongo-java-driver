@@ -31,6 +31,7 @@ repositories {
 dependencies {
     dependencies {
         implementation(pluginMarker(libs.plugins.kotlin.gradle))
+        implementation(pluginMarker(libs.plugins.dokka))
         implementation(pluginMarker(libs.plugins.spotless))
         implementation(pluginMarker(libs.plugins.spotbugs))
         implementation(pluginMarker(libs.plugins.detekt))
@@ -51,3 +52,9 @@ spotless {
 java { toolchain { languageVersion.set(JavaLanguageVersion.of("17")) } }
 
 tasks.withType<GradleBuild> { dependsOn("spotlessApply") }
+
+rootProject.task("docs") {
+    dependsOn(tasks.withType<Javadoc>())
+    dependsOn(tasks.withType<ScalaDoc>())
+}
+

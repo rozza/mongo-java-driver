@@ -15,7 +15,7 @@
  */
 import config.Extensions.setAll
 
-plugins { id("project.kotin") }
+plugins { id("project.kotlin") }
 
 base.archivesName.set("bson-kotlin")
 
@@ -26,87 +26,11 @@ extra.setAll(
         "mavenUrl" to "https://bsonspec.org",
         "automaticModuleName" to "org.mongodb.bson.kotlin",
         "importPackage" to "org.slf4j.*;resolution:=optional",
-        "mavenArtifactId" to base.archivesName.get()
-    ))
-
-import io.gitlab.arturbosch.detekt.Detekt
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-
-plugins {
-    id("org.jetbrains.kotlin.jvm")
-    id("java-library")
-    id("com.mongodb.doclet")
-
-    // Test based plugins
-    alias(libs.plugins.spotless)
-    alias(libs.plugins.dokka)
-    alias(libs.plugins.detekt)
-}
-
-repositories {
-    mavenCentral()
-    google()
-}
-
-base.archivesName.set("bson-kotlin")
-
-description = "Bson Kotlin Codecs"
-
-ext.set("pomName", "Bson Kotlin")
+        "mavenArtifactId" to base.archivesName.get()))
 
 dependencies {
-    // Align versions of all Kotlin components
-    implementation(platform(libs.kotlin.bom))
-    implementation(libs.kotlin.stdlib.jdk8)
-
     api(project(path = ":bson", configuration = "default"))
-    implementation(libs.kotlin.reflect)
+    implementation("org.jetbrains.kotlin:kotlin-reflect")
 
-    testImplementation(libs.junit.kotlin)
     testImplementation(project(path = ":driver-core", configuration = "default"))
 }
-
-kotlin { explicitApi() }
-
-tasks.withType<KotlinCompile> { kotlinOptions.jvmTarget = "1.8" }
-
-
-
-// TODO
-// spotbugs { showProgress.set(true) }
-
-// ===========================
-//     Test Configuration
-// ===========================
-
-tasks.test { useJUnitPlatform() }
-
-// ===========================
-//     Dokka Configuration
-// ===========================
-val dokkaOutputDir = "${rootProject.buildDir}/docs/${base.archivesName.get()}"
-
-tasks.dokkaHtml.configure {
-    outputDirectory.set(file(dokkaOutputDir))
-    moduleName.set(base.archivesName.get())
-}
-
-val cleanDokka by tasks.register<Delete>("cleanDokka") { delete(dokkaOutputDir) }
-
-project.parent?.tasks?.named("docs") {
-    dependsOn(tasks.dokkaHtml)
-    mustRunAfter(cleanDokka)
-}
-
-tasks.javadocJar.configure {
-    dependsOn(cleanDokka, tasks.dokkaHtml)
-    archiveClassifier.set("javadoc")
-    from(dokkaOutputDir)
-}
-
-// ===========================
-//     Sources publishing configuration
-// ===========================
-tasks.sourcesJar { from(project.sourceSets.main.map { it.kotlin }) }
-
-afterEvaluate { tasks.jar { manifest { attributes["Automatic-Module-Name"] = "org.mongodb.bson.kotlin" } } }

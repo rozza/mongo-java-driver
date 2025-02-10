@@ -15,16 +15,6 @@
  */
 
 
-plugins {
-    alias(libs.plugins.build.config)
-}
-
-archivesBaseName = 'mongodb-driver-core'
-description = 'Shared components for the Synchronous and Reactive Streams implementations of the MongoDB Java Driver.'
-
-ext {
-    pomName = 'MongoDB Java Driver Core'
-}
 
 configurations {
     consumableTestRuntimeOnly {
@@ -63,13 +53,6 @@ dependencies {
     }
 }
 
-buildConfig {
-    className('MongoDriverVersion')
-    packageName('com.mongodb.internal.build')
-    useJavaOutput()
-    buildConfigField('String', 'NAME', '"mongo-java-driver"')
-    buildConfigField('String', 'VERSION', "\"${gitVersion}\"")
-}
 
 afterEvaluate {
     jar.manifest.attributes['Automatic-Module-Name'] = 'org.mongodb.driver.core'

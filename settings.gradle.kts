@@ -23,6 +23,8 @@ pluginManagement {
 }
 
 include(":bson")
+include(":driver-core")
+include(":bson-kotlin")
 //include(":bson-record-codec")
 //include(":driver-benchmarks")
 //include(":driver-workload-executor")
@@ -31,7 +33,7 @@ include(":bson")
 //include(":driver-legacy")
 //include(":driver-sync")
 //include(":driver-reactive-streams")
-//include(":bson-kotlin")
+//
 //include(":bson-kotlinx")
 //include(":driver-kotlin-extensions")
 //include(":driver-kotlin-sync")

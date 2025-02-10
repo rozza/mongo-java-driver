@@ -13,20 +13,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import config.Extensions.setAll
+package conventions
 
-plugins {
-    id("project.java-legacy")
-    id("conventions.test-artifacts")
+plugins { id("org.jetbrains.dokka")
+    id("conventions.publishing")
 }
 
-base.archivesName.set("bson")
+val dokkaOutputDir: Provider<Directory> = rootProject.layout.buildDirectory.dir("docs/${base.archivesName}")
 
-extra.setAll(
-    mapOf(
-        "mavenName" to "BSON",
-        "mavenDescription" to "The BSON library",
-        "mavenUrl" to "https://bsonspec.org",
-        "automaticModuleName" to "org.mongodb.bson",
-        "importPackage" to "org.slf4j.*;resolution:=optional",
-        "mavenArtifactId" to base.archivesName.get()))
+tasks.dokkaHtml.configure {
+    outputDirectory.set(dokkaOutputDir.get().asFile)
+    moduleName.set(base.archivesName.get())
+}
+
+val cleanDokka by tasks.register<Delete>("cleanDokka") { delete(dokkaOutputDir) }
+
+tasks.named<Jar>("javadocJar").configure {
+    dependsOn(cleanDokka, tasks.dokkaHtml)
+    archiveClassifier.set("javadoc")
+    from(dokkaOutputDir)
+}

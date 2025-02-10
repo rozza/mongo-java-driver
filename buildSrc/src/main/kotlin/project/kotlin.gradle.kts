@@ -15,7 +15,6 @@
  */
 package project
 
-import org.gradle.accessors.dm.LibrariesForLibs
 import org.gradle.jvm.toolchain.JavaLanguageVersion
 
 plugins {
@@ -32,31 +31,14 @@ plugins {
 /* Compiling */
 kotlin { explicitApi() }
 
-java { toolchain { languageVersion.set(JavaLanguageVersion.of("1.8")) } }
+java { toolchain { languageVersion.set(JavaLanguageVersion.of("8")) } }
 
 dependencies {
     // Align versions of all Kotlin components
     implementation(platform(libs.kotlin.bom))
     implementation(libs.kotlin.stdlib.jdk8)
 
-    api(project(path = ":bson", configuration = "default"))
-    implementation(libs.kotlin.reflect)
-
     testImplementation(libs.junit.kotlin)
-    testImplementation(project(path = ":driver-core", configuration = "default"))
-}
-
-
-dependencies {
-    // Align versions of all Kotlin components
-    implementation(platform(libs.kotlin.bom))
-    implementation(libs.kotlin.stdlib.jdk8)
-
-    api(project(path = ":bson", configuration = "default"))
-    implementation(libs.kotlin.reflect)
-
-    testImplementation(libs.junit.kotlin)
-    testImplementation(project(path = ":driver-core", configuration = "default"))
 }
 
 tasks.test { useJUnitPlatform() }
