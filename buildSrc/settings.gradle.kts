@@ -13,8 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-@Suppress("UnstableApiUsage") // TODO check if needed for Gradle 8.12+
-dependencyResolutionManagement { versionCatalogs { create("libs") { from(files("../gradle/libs.versions.toml")) } } }
 
 pluginManagement {
     repositories {
@@ -22,4 +20,10 @@ pluginManagement {
         mavenCentral()
         google()
     }
+}
+
+// Make using libs.versions.toml easy in buildSrc
+// https://github.com/radoslaw-panuszewski/typesafe-conventions-gradle-plugin
+plugins {
+    id("dev.panuszewski.typesafe-conventions") version "0.4.0"
 }

@@ -33,7 +33,7 @@ fun linksOfflineHelper(docVersion: String, packageName: String, options: Standar
     options.apply {
         linksOffline(
             "http://mongodb.github.io/mongo-java-driver/${docVersion}/apidocs/${packageName}/",
-            "${rootProject.buildDir.path}/docs/${packageName}")
+            rootProject.layout.buildDirectory.dir("docs/${packageName}").get().asFile.path)
     }
 }
 

@@ -48,7 +48,7 @@ val mavenName: String by project.extra
 val mavenDescription: String by project.extra
 val mavenUrl: String? by project.extra
 val mavenArtifactId: String? by project.extra
-val localBuildRepo: String = "${rootProject.buildDir}/repo"
+val localBuildRepo: Provider<Directory> = rootProject.layout.buildDirectory.dir("repo")
 
 val sonatypeRepositoryReleaseUrl: Provider<String> = provider {
     if (version.toString().endsWith("SNAPSHOT")) {
@@ -79,8 +79,8 @@ publishing {
 
     publications {
         create<MavenPublication>("mavenJava") {
-            components.findByName("scala").let { from(it) }
-            components.findByName("java").let { from(it) }
+            components.findByName("scala")?.let { from(it) }
+            components.findByName("java")?.let { from(it) }
         }
     }
 
