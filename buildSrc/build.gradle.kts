@@ -13,7 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-@Suppress("DSL_SCOPE_VIOLATION") // TODO: Remove once KTIJ-19369 is fixed
+import dev.panuszewski.gradle.pluginMarker
+
 plugins {
     id("java-library")
     `kotlin-dsl`
@@ -28,14 +29,13 @@ repositories {
 }
 
 dependencies {
-    // TODO not needed in Gradle 8.12? https://github.com/gradle/gradle/issues/15383
-    implementation(files(libs.javaClass.superclass.protectionDomain.codeSource.location))
-
-    // https://docs.gradle.org/current/userguide/implementing_gradle_plugins_precompiled.html#sec:applying_external_plugins
-    implementation(libs.buildsrc.plugin.spotless)
-    implementation(libs.buildsrc.plugin.spotbugs)
-    implementation(libs.buildsrc.plugin.detekt)
-    implementation(libs.buildsrc.plugin.test.logger)
+    dependencies {
+        implementation(pluginMarker(libs.plugins.kotlin.gradle))
+        implementation(pluginMarker(libs.plugins.spotless))
+        implementation(pluginMarker(libs.plugins.spotbugs))
+        implementation(pluginMarker(libs.plugins.detekt))
+        implementation(pluginMarker(libs.plugins.test.logger))
+    }
 }
 
 spotless {

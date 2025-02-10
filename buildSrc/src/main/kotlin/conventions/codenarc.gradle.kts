@@ -15,9 +15,6 @@
  */
 package conventions
 
-import com.diffplug.gradle.spotless.SpotlessApply
-import com.diffplug.gradle.spotless.SpotlessCheck
-
 plugins { id("codenarc") }
 
 codenarc {

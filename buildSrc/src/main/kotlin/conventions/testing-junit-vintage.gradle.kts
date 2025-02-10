@@ -15,12 +15,7 @@
  */
 package conventions
 
-import org.gradle.accessors.dm.LibrariesForLibs
-
 plugins { id("conventions.testing-base") }
-
-// Get Access to libs // https://github.com/gradle/gradle/issues/15383
-val libs = the<LibrariesForLibs>()
 
 dependencies {
     testImplementation(platform(libs.junit.bom))

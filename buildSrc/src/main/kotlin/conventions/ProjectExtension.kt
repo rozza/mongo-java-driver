@@ -15,10 +15,12 @@
  */
 package conventions
 
+import org.gradle.accessors.dm.LibrariesForLibs
 import org.gradle.api.Project
-import org.gradle.kotlin.dsl.the
+import org.gradle.kotlin.dsl.getByType
 
-val Project.libs get() = the<org.gradle.accessors.dm.LibrariesForLibs>()
+internal val Project.libs: LibrariesForLibs
+    get() = extensions.getByType()
 
 fun Project.hasBooleanProperty(name: String): Boolean {
     return this.hasProperty(name) && this.property(name).toString().toBoolean()

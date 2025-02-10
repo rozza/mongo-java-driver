@@ -20,6 +20,11 @@ plugins {
     id("conventions.testing-junit")
 }
 
+dependencies {
+    // https://issues.apache.org/jira/browse/GROOVY-10194
+    testImplementation(libs.groovy)
+}
+
 java.sourceSets["main"].java { srcDir("src/main") }
 
 java.sourceSets["test"].java { srcDirs("src/test/unit", "src/test/functional") }

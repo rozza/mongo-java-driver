@@ -14,16 +14,9 @@
  * limitations under the License.
  */
 
-pluginManagement {
-    repositories {
-        gradlePluginPortal()
-        mavenCentral()
-        google()
-    }
-}
-
-// Make using libs.versions.toml easy in buildSrc
-// https://github.com/radoslaw-panuszewski/typesafe-conventions-gradle-plugin
 plugins {
+    // Add support for libs.versions.toml to buildSrc
+    // https://github.com/radoslaw-panuszewski/typesafe-conventions-gradle-plugin
+    // https://github.com/gradle/gradle/issues/15383
     id("dev.panuszewski.typesafe-conventions") version "0.4.0"
 }

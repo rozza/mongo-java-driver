@@ -146,13 +146,6 @@ project-reactor-test = { module = "io.projectreactor:reactor-test" }
 reactive-streams-tck = { module = " org.reactivestreams:reactive-streams-tck", version.ref = "reactive-streams" }
 reflections = { module = "org.reflections:reflections", version.ref = "reflections" }
 
-# Plugins configured in buildSrc
-buildsrc-plugin-kotlin-dsl = {module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref="kotlin"}
-buildsrc-plugin-spotless = { module = "com.diffplug.spotless:spotless-plugin-gradle", version.ref = "plugin-spotless"}
-buildsrc-plugin-test-logger = { module = "com.adarshr:gradle-test-logger-plugin", version.ref = "plugin-test-logger"}
-buildsrc-plugin-detekt = { module = "io.gitlab.arturbosch.detekt:io.gitlab.arturbosch.detekt.gradle.plugin", version.ref = "plugin-detekt"}
-buildsrc-plugin-spotbugs = { module = "com.github.spotbugs.snom:spotbugs-gradle-plugin", version.ref = "plugin-spotbugs" }
-
 
 [bundles]
 aws-java-sdk-v1 = ["aws-java-sdk-v1-core", "aws-java-sdk-v1-sts"]
@@ -170,6 +163,7 @@ mockito-java8 = ["mockito-junit-jupiter-java8", "mockito-core-java8", "mockito-i
 mockito-kotlin = ["mockito-kotlin", "mockito-junit-jupiter-java8"]
 
 [plugins]
+kotlin-gradle = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 bnd = { id = "biz.aQute.bnd", version.ref = "plugin-bnd" }
 build-config = { id = "com.github.gmazzo.buildconfig", version.ref = "plugin-build-config" }
 detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "plugin-detekt" }

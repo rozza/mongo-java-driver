@@ -22,19 +22,12 @@ plugins {
     id("project.base")
     id("conventions.publishing")
     id("conventions.spotless")
-    //id("conventions.spotbugs")
+    id("conventions.spotbugs")
     id("conventions.codenarc")
     id("conventions.javadoc")
 }
 
 /* Compiling */
-val libs = the<LibrariesForLibs>()
-
 dependencies {
-    compileOnly(libs.findbugs.jsr) // TODO - split out to code check convention
     api(libs.slf4j) // TODO optional
-
-    testImplementation(libs.findbugs.jsr) // TODO - split out to code check convention
-    // https://issues.apache.org/jira/browse/GROOVY-10194
-    testImplementation(libs.groovy) // TODO - split out to spock convention
 }

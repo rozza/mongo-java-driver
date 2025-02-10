@@ -15,21 +15,36 @@
  */
 package conventions
 
+import com.github.spotbugs.snom.SpotBugsTask
+import org.gradle.kotlin.dsl.dependencies
+import project.libs
+
 plugins {
+    id("java-library")
     id("com.github.spotbugs")
+}
+
+dependencies {
+    compileOnly(libs.findbugs.jsr)
+
+    testImplementation(libs.findbugs.jsr)
 }
 
 spotbugs {
     if (!project.hasBooleanProperty("ssdlcReport.enabled")) {
         excludeFilter.set(file("${rootProject.rootDir}/config/spotbugs/exclude.xml"))
     }
-    tasks.spotbugsMain {
-        reports.getByName("xml") { required.set(project.hasBooleanProperty("xmlReports.enabled")) }
-        reports.getByName("html") { required.set(!project.hasBooleanProperty("xmlReports.enabled")) }
-        reports.getByName("sarif") { required.set(trproject.hasBooleanProperty("ssdlcReport.enabled")) }
-    }
+}
 
-    tasks.spotbugsTest {
+
+tasks.withType<SpotBugsTask>().configureEach {
+    if (name == "spotbugsMain") {
+        reports {
+            register("xml") { required.set(project.hasBooleanProperty("xmlReports.enabled")) }
+            register("html") { required.set(!project.hasBooleanProperty("xmlReports.enabled")) }
+            register("sarif") { required.set(project.hasBooleanProperty("ssdlcReport.enabled")) }
+       }
+    } else if (name == "spotbugsTest") {
         enabled = false
     }
 }

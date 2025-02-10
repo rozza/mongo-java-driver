@@ -25,8 +25,8 @@ plugins {
     id("conventions.publishing")
     id("conventions.spotless")
     id("conventions.detekt")
-//    id("conventions.spotbugs")
-//    id("conventions.testing.junit")
+    id("conventions.spotbugs")
+    id("conventions.testing-junit")
 }
 
 /* Compiling */
