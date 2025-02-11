@@ -31,8 +31,6 @@ tasks.withType<Test> {
         exceptionFormat = TestExceptionFormat.FULL
         events("passed", "skipped", "failed")
     }
-
-    useJUnitPlatform { includeEngines("junit-jupiter", "junit-vintage", "spock") }
 }
 
 testlogger {

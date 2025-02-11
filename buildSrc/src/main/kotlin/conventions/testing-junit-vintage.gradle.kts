@@ -15,9 +15,17 @@
  */
 package conventions
 
+import org.gradle.api.tasks.testing.logging.TestExceptionFormat
+
 plugins { id("conventions.testing-base") }
 
 dependencies {
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.bundles.junit.vintage)
 }
+
+tasks.withType<Test>().configureEach {
+    useJUnitPlatform { includeEngines("junit-jupiter-vintage") }
+}
+
+sourceSets["test"].java { srcDirs("src/test", "src/test/unit", "src/test/functional") }

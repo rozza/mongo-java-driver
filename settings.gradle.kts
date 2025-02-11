@@ -23,12 +23,14 @@ pluginManagement {
 }
 
 include(":bson")
+include("util:spock")
 include(":driver-core")
 include(":bson-kotlin")
 include(":bson-kotlinx")
 include(":bson-record-codec")
 
 include(":mongodb-crypt")
+
 
 //include(":driver-benchmarks")
 //include(":driver-workload-executor")

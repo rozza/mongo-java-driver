@@ -13,4 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import config.Extensions.setAll
+plugins {
+    id("project.java")
+}
 
+extra.setAll(
+    mapOf(
+        "automaticModuleName" to "N/A",
+        "importPackage" to "N/A"
+))
+
+tasks.withType<PublishToMavenRepository>().configureEach { enabled = false }
+tasks.withType<PublishToMavenLocal>().configureEach { enabled = false }

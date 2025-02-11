@@ -13,4 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package conventions
+
+plugins {
+    id("java-library")
+    id("conventions.testing-base")
+}
+
+dependencies {
+    if (JavaVersion.current().isJava8) {
+        testImplementation(libs.bundles.mockito.java8)
+    } else {
+        testImplementation(libs.bundles.mockito)
+    }
+}
+
 

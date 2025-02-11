@@ -15,15 +15,38 @@
  */
 package conventions
 
-plugins { id("conventions.testing-base") }
+import org.gradle.api.tasks.testing.Test
+import org.gradle.kotlin.dsl.dependencies
+import org.gradle.kotlin.dsl.withType
+import project.libs
+
+plugins {
+    id("conventions.testing-base")
+    id("groovy")
+}
 
 dependencies {
     testImplementation(platform(libs.junit.bom))
-    testImplementation(libs.bundles.junit)
+    testImplementation(libs.bundles.junit.vintage)
+
+    testImplementation(platform(libs.spock.bom))
+    testImplementation(libs.bundles.spock)
 }
 
 tasks.withType<Test>().configureEach {
-    useJUnitPlatform { includeEngines("junit-jupiter") }
+    useJUnitPlatform { includeEngines("spock") }
 }
 
-sourceSets["test"].java { srcDirs("src/test", "src/test/unit", "src/test/functional") }
+sourceSets {
+    test {
+        groovy {
+            srcDirs("src/test", "src/test/unit", "src/test/functional")
+        }
+
+        // Disable java src directories as groovy allows mixed java and groovy code
+        java {
+            setSrcDirs(emptyList<Any>())
+        }
+    }
+}
+

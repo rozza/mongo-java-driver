@@ -28,7 +28,6 @@ dependencies {
     testImplementation(project(path = ":driver-core", configuration = "default"))
 }
 
-
 extra.setAll(
     mapOf(
         "mavenName" to "BSON Record Codec",
@@ -43,14 +42,7 @@ java {
     targetCompatibility = JavaVersion.VERSION_17
 }
 
-tasks.withType<JavaCompile>().configureEach {
-    options.encoding = "UTF-8"
-    options.release.set(17)
-}
-
-tasks.withType<Test>().configureEach {
-    onlyIf { javaVersion.isCompatibleWith(JavaVersion.VERSION_17) }
-}
+tasks.withType<Test>().configureEach { onlyIf { javaVersion.isCompatibleWith(JavaVersion.VERSION_17) } }
 
 tasks.withType<Javadoc>().configureEach {
     dependsOn(project(":bson").tasks.withType<Javadoc>(), project(":driver-core").tasks.withType<Javadoc>())

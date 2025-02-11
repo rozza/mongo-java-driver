@@ -29,9 +29,6 @@ plugins {
 /* Compiling */
 dependencies {
     api(libs.slf4j) // TODO optional
-
-    // https://issues.apache.org/jira/browse/GROOVY-10194
-    testImplementation(libs.groovy)
 }
 
 java {
@@ -39,6 +36,4 @@ java {
     targetCompatibility = JavaVersion.VERSION_1_8
 }
 
-java.sourceSets["main"].java { srcDir("src/main") }
-
-java.sourceSets["test"].java { srcDirs("src/test", "src/test/unit", "src/test/functional") }
+sourceSets["main"].java { srcDir("src/main") }

@@ -17,6 +17,8 @@ import config.Extensions.setAll
 
 plugins {
     id("project.java")
+    id("conventions.testing-mockito")
+    id("conventions.testing-spock")
     alias(libs.plugins.build.config)
 }
 
@@ -24,10 +26,10 @@ base.archivesName.set("mongodb-driver-core")
 
 dependencies {
     api(project(path = ":bson", configuration = "default"))
-    implementation(project(path= ":bson-record-codec", configuration= "default"))
-    implementation(project(path= ":bson-kotlin", configuration= "default"))  // TODO optional
-    implementation(project(path= ":bson-kotlinx", configuration= "default"))  // TODO optional
-    api(project(path= ":mongodb-crypt"))  // TODO optional
+    implementation(project(path = ":bson-record-codec", configuration = "default"))
+    implementation(project(path = ":bson-kotlin", configuration = "default")) // TODO optional
+    implementation(project(path = ":bson-kotlinx", configuration = "default")) // TODO optional
+    api(project(path = ":mongodb-crypt")) // TODO optional
 
     implementation(libs.jnr.unixsocket) // TODO optional
     api(platform(libs.netty.bom)) // TODO optional
@@ -35,15 +37,16 @@ dependencies {
     compileOnly(libs.graal.sdk)
 
     // Optionally depend on both AWS SDK v2 and v1.
-    // The driver will use v2 is present, v1 if present, or built-in functionality if neither are present
+    // The driver will use v2 is present, v1 if present, or built-in functionality if neither are
+    // present
     implementation(libs.bundles.aws.java.sdk.v1) // TODO optional
     implementation(libs.bundles.aws.java.sdk.v2) // TODO optional
 
     implementation(libs.snappy.java) // TODO optional
     implementation(libs.zstd.jni) // TODO optional
 
+    testImplementation(project(path = ":util:spock", configuration = "default"))
     testImplementation(project(path = ":bson", configuration = "testArtifacts"))
-    testImplementation(libs.bundles.junit)
     testImplementation(libs.reflections)
 
     testRuntimeOnly(libs.netty.boringssl)
@@ -66,27 +69,31 @@ buildConfig {
 extra.setAll(
     mapOf(
         "mavenName" to "MongoDB Java Driver Core",
-        "mavenDescription" to "Shared components for the Synchronous and Reactive Streams implementations of the MongoDB Java Driver.",
+        "mavenDescription" to
+            "Shared components for the Synchronous and Reactive Streams implementations of the MongoDB Java Driver.",
         "automaticModuleName" to "org.mongodb.driver.core",
         "bundleSymbolicName" to "org.mongodb.driver-core",
         "mavenArtifactId" to base.archivesName.get(),
-        "importPackage" to listOf(
-            "!sun.misc.*",  // Used by DirectBufferDeallocator only for java 8
-            "!sun.nio.ch.*",  // Used by DirectBufferDeallocator only for java 8
-            "!javax.annotation.*", // Brought in by com.google.code.findbugs:annotations
-            "!com.oracle.svm.core.annotate.*", // this dependency is provided by the GraalVM runtime
-            "io.netty.*;resolution:=optional",
-            "com.amazonaws.*;resolution:=optional",
-            "software.amazon.awssdk.*;resolution:=optional",
-            "org.xerial.snappy.*;resolution:=optional",
-            "com.github.luben.zstd.*;resolution:=optional",
-            "org.slf4j.*;resolution:=optional",
-            "jnr.unixsocket.*;resolution:=optional",
-            "com.mongodb.internal.crypt.capi.*;resolution:=optional",
-            "jdk.net.*;resolution:=optional", // Used by SocketStreamHelper & depends on JDK version
-            "org.bson.codecs.record.*;resolution:=optional", // Depends on JDK version
-            "org.bson.codecs.kotlin.*;resolution:=optional",
-            "org.bson.codecs.kotlinx.*;resolution:=optional",
-            "*" // import all that is not excluded or modified before
-        ).joinToString(",")
-))
+        "importPackage" to
+            listOf(
+                    "!sun.misc.*", // Used by DirectBufferDeallocator only for java 8
+                    "!sun.nio.ch.*", // Used by DirectBufferDeallocator only for java 8
+                    "!javax.annotation.*", // Brought in by com.google.code.findbugs:annotations
+                    "!com.oracle.svm.core.annotate.*", // this dependency is provided by the GraalVM
+                    // runtime
+                    "io.netty.*;resolution:=optional",
+                    "com.amazonaws.*;resolution:=optional",
+                    "software.amazon.awssdk.*;resolution:=optional",
+                    "org.xerial.snappy.*;resolution:=optional",
+                    "com.github.luben.zstd.*;resolution:=optional",
+                    "org.slf4j.*;resolution:=optional",
+                    "jnr.unixsocket.*;resolution:=optional",
+                    "com.mongodb.internal.crypt.capi.*;resolution:=optional",
+                    "jdk.net.*;resolution:=optional", // Used by SocketStreamHelper & depends on JDK
+                    // version
+                    "org.bson.codecs.record.*;resolution:=optional", // Depends on JDK version
+                    "org.bson.codecs.kotlin.*;resolution:=optional",
+                    "org.bson.codecs.kotlinx.*;resolution:=optional",
+                    "*" // import all that is not excluded or modified before
+                    )
+                .joinToString(",")))

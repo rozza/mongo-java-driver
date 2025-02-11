@@ -17,6 +17,7 @@ import config.Extensions.setAll
 
 plugins {
     id("project.java")
+    id("conventions.testing-junit-vintage")
     id("conventions.test-artifacts")
 }
 
