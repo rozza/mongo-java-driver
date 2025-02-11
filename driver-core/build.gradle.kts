@@ -16,7 +16,7 @@
 import config.Extensions.setAll
 
 plugins {
-    id("project.java-legacy")
+    id("project.java")
     alias(libs.plugins.build.config)
 }
 
@@ -24,6 +24,10 @@ base.archivesName.set("mongodb-driver-core")
 
 dependencies {
     api(project(path = ":bson", configuration = "default"))
+    implementation(project(path= ":bson-record-codec", configuration= "default"))
+    implementation(project(path= ":bson-kotlin", configuration= "default"))  // TODO optional
+    implementation(project(path= ":bson-kotlinx", configuration= "default"))  // TODO optional
+    api(project(path= ":mongodb-crypt"))  // TODO optional
 
     implementation(libs.jnr.unixsocket) // TODO optional
     api(platform(libs.netty.bom)) // TODO optional

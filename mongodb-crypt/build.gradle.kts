@@ -14,29 +14,31 @@
  * limitations under the License.
  *
  */
-
+import config.Extensions.setAll
 import de.undercouch.gradle.tasks.download.Download
 
 plugins {
+    id("project.java")
     alias(libs.plugins.download)
 }
 
-group = "org.mongodb"
-base.archivesName.set("mongodb-crypt")
-description = "MongoDB client-side crypto support"
-ext.set("pomName", "MongoCrypt")
+extra.setAll(
+    mapOf(
+        "mavenName" to "MongoCrypt",
+        "mavenDescription" to "MongoDB client-side crypto support",
+        "mavenArtifactId" to base.archivesName.get(),
+        "-exportcontents" to "com.mongodb.*;-noimport:=true",
+        "automaticModuleName" to "com.mongodb.crypt.capi",
+        "importPackage" to "org.slf4j.*;resolution:=optional,org.bson.*",
+        "bundle-Name" to "MongoCrypt",
+        "bundleSymbolicName" to "com.mongodb.crypt.capi",
+        "Private-Package" to ""
+    ))
 
-java {
-    sourceCompatibility = JavaVersion.VERSION_1_8
-    targetCompatibility = JavaVersion.VERSION_1_8
-}
 
 dependencies {
     api(project(path = ":bson", configuration = "default"))
     api(libs.jna)
-
-    // Tests
-    testImplementation(libs.bundles.junit)
 }
 
 /*
@@ -154,23 +156,3 @@ tasks.jar {
    dependsOn("downloadJnaLibs")
 }
 
-tasks.javadoc {
-    if (JavaVersion.current().isJava9Compatible) {
-        (options as StandardJavadocDocletOptions).addBooleanOption("html5", true)
-    }
-}
-
-afterEvaluate {
-    tasks.jar {
-        manifest {
-            attributes(
-                "-exportcontents" to "com.mongodb.*;-noimport:=true",
-                "Automatic-Module-Name" to "com.mongodb.crypt.capi",
-                "Import-Package" to "org.slf4j.*;resolution:=optional,org.bson.*",
-                "Bundle-Name" to "MongoCrypt",
-                "Bundle-SymbolicName" to "com.mongodb.crypt.capi",
-                "Private-Package" to ""
-            )
-        }
-    }
-}

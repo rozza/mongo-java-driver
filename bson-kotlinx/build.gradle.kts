@@ -14,12 +14,10 @@
  * limitations under the License.
  */
 import config.Extensions.setAll
-import io.gitlab.arturbosch.detekt.Detekt
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     id("project.kotlin")
-    kotlin("plugin.serialization")
+    alias(libs.plugins.kotlin.serialization)
 }
 
 base.archivesName.set("bson-kotlinx")

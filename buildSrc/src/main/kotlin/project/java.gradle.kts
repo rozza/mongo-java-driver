@@ -15,8 +15,6 @@
  */
 package project
 
-import org.gradle.accessors.dm.LibrariesForLibs
-
 plugins {
     id("java-library")
     id("project.base")
@@ -25,9 +23,22 @@ plugins {
     id("conventions.spotbugs")
     id("conventions.codenarc")
     id("conventions.javadoc")
+    id("conventions.testing-junit")
 }
 
 /* Compiling */
 dependencies {
     api(libs.slf4j) // TODO optional
+
+    // https://issues.apache.org/jira/browse/GROOVY-10194
+    testImplementation(libs.groovy)
 }
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_1_8
+    targetCompatibility = JavaVersion.VERSION_1_8
+}
+
+java.sourceSets["main"].java { srcDir("src/main") }
+
+java.sourceSets["test"].java { srcDirs("src/test", "src/test/unit", "src/test/functional") }

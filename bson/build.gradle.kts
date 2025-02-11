@@ -16,7 +16,7 @@
 import config.Extensions.setAll
 
 plugins {
-    id("project.java-legacy")
+    id("project.java")
     id("conventions.test-artifacts")
 }
 
