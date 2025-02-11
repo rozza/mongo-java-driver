@@ -15,22 +15,31 @@
  */
 import config.Extensions.setAll
 
-plugins { id("project.kotlin") }
+plugins {
+    id("project.java-legacy")
+    id("conventions.test-artifacts")
+}
 
-base.archivesName.set("bson-kotlin")
+base.archivesName.set("bson-record-codec")
 
 extra.setAll(
     mapOf(
-        "mavenName" to "Bson Kotlin",
-        "mavenDescription" to "Bson Kotlin Codecs",
-        "mavenUrl" to "https://bsonspec.org",
-        "automaticModuleName" to "org.mongodb.bson.kotlin",
+        "mavenName" to "BSON Record Codec",
+        "mavenDescription" to "The BSON Codec for Java records'
+        "automaticModuleName" to "org.mongodb.bson.record.codec",
+        "bundleSymbolicName" to "org.mongodb.bson.record.codec",
         "importPackage" to "org.slf4j.*;resolution:=optional",
         "mavenArtifactId" to base.archivesName.get()))
 
-dependencies {
-    api(project(path = ":bson", configuration = "default"))
-    implementation(libs.kotlin.reflect)
+tasks.withType<JavaCompile>().configureEach {
+    options.encoding = "UTF-8"
+    options.release.set(17)
+}
 
-    testImplementation(project(path = ":driver-core", configuration = "default"))
+tasks.withType<Test>().configureEach {
+    onlyIf { javaVersion.isCompatibleWith(javaVersion.VERSION_17) }
+}
+
+tasks.withType<Javadoc>().configureEach {
+    dependsOn(project(':bson').tasks.withType<Javadoc>, project(':driver-core').tasks.withType<Javadoc>)
 }
