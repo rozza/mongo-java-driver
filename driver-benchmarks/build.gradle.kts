@@ -14,31 +14,31 @@
  * limitations under the License.
  */
 
-apply plugin: 'application'
+plugins {
+    id("application")
+    id("java-library")
+}
 
-mainClassName = "com.mongodb.benchmark.benchmarks.BenchmarkSuite"
+application {
+    mainClass = "com.mongodb.benchmark.benchmarks.BenchmarkSuite"
+    applicationDefaultJvmArgs = listOf(
+        "-Dorg.mongodb.benchmarks.data=${System.getProperty("org.mongodb.benchmarks.data")}",
+        "-Dorg.mongodb.benchmarks.output=${System.getProperty("org.mongodb.benchmarks.output")}")
+}
 
 sourceSets {
     main {
-        java {
-            srcDir 'src/main'
-        }
-        resources {
-            srcDir 'src/resources'
-        }
+        java { setSrcDirs(listOf("src/main")) }
+        resources { setSrcDirs(listOf("src/resources")) }
     }
 }
 
 dependencies {
-    api project(':driver-sync')
-    api project(':mongodb-crypt')
+    // api(project(":driver-sync")) TODO Post sync
+    api(project(":mongodb-crypt"))
     implementation(libs.logback.classic)
 }
 
-javadoc {
+tasks.withType<Javadoc>().configureEach {
     enabled = false
 }
-
-applicationDefaultJvmArgs = ["-Dorg.mongodb.benchmarks.data=" + System.getProperty('org.mongodb.benchmarks.data'),
-                             "-Dorg.mongodb.benchmarks.output=" + System.getProperty('org.mongodb.benchmarks.output')]
-

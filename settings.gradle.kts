@@ -30,14 +30,15 @@ include(":bson-kotlinx")
 include(":bson-record-codec")
 include(":bson-scala")
 include(":mongodb-crypt")
+include(":driver-sync")
 
 
-//include(":driver-benchmarks")
+include(":driver-benchmarks")
 //include(":driver-workload-executor")
 //include(":driver-lambda")
 
 //include(":driver-legacy")
-//include(":driver-sync")
+//
 //include(":driver-reactive-streams")
 
 

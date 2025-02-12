@@ -17,7 +17,6 @@ package conventions
 
 plugins {
     id("java-library")
-    id("conventions.testing-base")
 }
 
 dependencies {

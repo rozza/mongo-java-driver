@@ -21,8 +21,8 @@ import org.gradle.kotlin.dsl.withType
 import project.libs
 
 plugins {
-    id("conventions.testing-base")
     id("groovy")
+    id("conventions.testing-base")
 }
 
 dependencies {
@@ -40,7 +40,7 @@ tasks.withType<Test>().configureEach {
 sourceSets {
     test {
         groovy {
-            srcDirs("src/test", "src/test/unit", "src/test/functional")
+            srcDirs("src/test", "src/test/unit", "src/test/functional", "src/examples")
         }
 
         // Disable java src directories as groovy allows mixed java and groovy code

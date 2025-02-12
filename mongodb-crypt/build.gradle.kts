@@ -35,7 +35,6 @@ extra.setAll(
         "Private-Package" to ""
     ))
 
-
 dependencies {
     api(project(path = ":bson", configuration = "default"))
     api(libs.jna)
