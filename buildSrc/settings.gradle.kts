@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 plugins {
     // Add support for libs.versions.toml to buildSrc
     // https://github.com/radoslaw-panuszewski/typesafe-conventions-gradle-plugin

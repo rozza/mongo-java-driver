@@ -29,7 +29,9 @@ kotlinx-coroutines-bom = "1.6.4"
 kotlinx-datetime = "0.4.0"
 kotlinx-serialization = "1.5.0"
 
-scala = "%scala-version%" # Handled by the scala multiversion plugin
+scala-v2-v13 = "2.13.16"
+scala-v2-v12 = "2.12.20"
+scala-v2-v11 = "2.11.12"
 
 # Test
 assertj = "3.24.2"
@@ -51,6 +53,8 @@ scalatest = "3.2.9"
 scalatest-plus = "3.2.10.0"
 slf4j = "1.7.6"
 spock-bom = "2.1-groovy-3.0"
+scala-test = "3.2.18"
+scala-test-plus = "3.2.18.0"
 
 # Plugins
 plugin-bnd = "5.1.2"
@@ -60,7 +64,6 @@ plugin-dokka = "1.8.10"
 plugin-download = "5.6.0"
 plugin-graalvm = "0.9.23"
 plugin-optional-base = "7.0.0"
-plugin-scala-multiversion = "2.0.4"
 plugin-shadow = "6.1.0"
 plugin-spotbugs = "6.0.15"
 plugin-spotless = "6.14.0"
@@ -102,8 +105,14 @@ kotlinx-serialization-core = { module = "org.jetbrains.kotlinx:kotlinx-serializa
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json" }
 kotlinx-serialization-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinx-datetime" }
 
-scala-library = {module = "org.scala-lang:scala-library", version.ref = "scala" }
-scala-reflect = {module = "org.scala-lang:scala-reflect", version.ref = "scala" }
+scala-library-v2-v13 = { module = "org.scala-lang:scala-library", version.ref = "scala-v2-v13" }
+scala-reflect-v2-v13 = { module = "org.scala-lang:scala-reflect", version.ref = "scala-v2-v13" }
+
+scala-library-v2-v12 = { module = "org.scala-lang:scala-library", version.ref = "scala-v2-v12" }
+scala-reflect-v2-v12 = { module = "org.scala-lang:scala-reflect", version.ref = "scala-v2-v12" }
+
+scala-library-v2-v11 = { module = "org.scala-lang:scala-library", version.ref = "scala-v2-v11" }
+scala-reflect-v2-v11 = { module = "org.scala-lang:scala-reflect", version.ref = "scala-v2-v11" }
 
 # Test
 junit-bom = { module = "org.junit:junit-bom", version.ref = "junit-bom" }
@@ -124,10 +133,21 @@ mockito-core-java8 = { module = "org.mockito:mockito-core", version.ref = "mocki
 mockito-inline-java8 = { module = "org.mockito:mockito-inline", version.ref = "mockito-java8" }
 mockito-kotlin = { module = "org.mockito.kotlin:mockito-kotlin", version.ref = "mockito-kotlin" }
 
-scalatest-flatspec = { module = "org.scalatest:scalatest-flatspec_%%", version.ref = "scalatest" }
-scalatest-should-matchers = { module = "org.scalatest:scalatest-shouldmatchers_%%", version.ref = "scalatest" }
-scalatest-plus-junit4 = { module = "org.scalatestplus:junit-4-13_%%", version.ref = "scalatest-plus" }
-scalatest-plus-mockito = { module = "org.scalatestplus:mockito-3-12_%%", version.ref = "scalatest-plus" }
+
+scala-test-flatspec-v2-v13 = { module = "org.scalatest:scalatest-flatspec_2.13", version.ref = "scala-test" }
+scala-test-shouldmatchers-v2-v13 = { module = "org.scalatest:scalatest-shouldmatchers_2.13", version.ref = "scala-test" }
+scala-test-mockito-v2-v13 = { module = "org.scalatestplus:mockito-4-11_2.13", version.ref = "scala-test-plus" }
+scala-test-junit-runner-v2-v13 = { module = "org.scalatestplus:junit-5-10_2.13", version.ref = "scala-test-plus" }
+
+scala-test-flatspec-v2-v12 = { module = "org.scalatest:scalatest-flatspec_2.12", version.ref = "scala-test" }
+scala-test-shouldmatchers-v2-v12 = { module = "org.scalatest:scalatest-shouldmatchers_2.12", version.ref = "scala-test" }
+scala-test-mockito-v2-v12 = { module = "org.scalatestplus:mockito-4-11_2.12", version.ref = "scala-test-plus" }
+scala-test-junit-runner-v2-v12 = { module = "org.scalatestplus:junit-5-10_2.12", version.ref = "scala-test-plus" }
+
+scala-test-flatspec-v2-v11 = { module = "org.scalatest:scalatest-flatspec_2.11", version.ref = "scala-test" }
+scala-test-shouldmatchers-v2-v11 = { module = "org.scalatest:scalatest-shouldmatchers_2.11", version.ref = "scala-test" }
+scala-test-mockito-v2-v11 = { module = "org.scalatestplus:mockito-4-11_2.11", version.ref = "scala-test-plus" }
+scala-test-junit-runner-v2-v11 = { module = "org.scalatestplus:junit-5-10_2.11", version.ref = "scala-test-plus" }
 
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test" }
 
@@ -152,15 +172,25 @@ aws-java-sdk-v1 = ["aws-java-sdk-v1-core", "aws-java-sdk-v1-sts"]
 aws-java-sdk-v2 = ["aws-java-sdk-v2-auth", "aws-java-sdk-v2-sts"]
 netty = ["netty-buffer", "netty-handler", "netty-transport"]
 
+scala-v2-v13 = ["scala-library-v2-v13", "scala-reflect-v2-v13"]
+scala-v2-v12 = ["scala-library-v2-v12", "scala-reflect-v2-v12"]
+scala-v2-v11 = ["scala-library-v2-v11", "scala-reflect-v2-v11"]
+
 # Test
 junit = ["junit-jupiter", "junit-jupiter-params", "junit-jupiter-engine", "logback-classic", "hamcrest-all"]
 junit-vintage = ["junit-vintage-engine", "junit-jupiter-params", "junit-jupiter-engine", "logback-classic", "hamcrest-all"]
-scalatest = ["scalatest-flatspec", "scalatest-should-matchers", "scalatest-plus-junit4", "scalatest-plus-mockito"]
 spock = ["spock-core", "spock-junit4"]
 
 mockito = ["mockito-junit-jupiter", "mockito-core"]
 mockito-java8 = ["mockito-junit-jupiter-java8", "mockito-core-java8", "mockito-inline-java8"]
 mockito-kotlin = ["mockito-kotlin", "mockito-junit-jupiter-java8"]
+
+scala-test-v2-v13 = ["scala-test-flatspec-v2-v13", "scala-test-shouldmatchers-v2-v13", "scala-test-mockito-v2-v13",
+    "scala-test-junit-runner-v2-v13", "reflections"]
+scala-test-v2-v12 = ["scala-test-flatspec-v2-v12", "scala-test-shouldmatchers-v2-v12", "scala-test-mockito-v2-v12",
+    "scala-test-junit-runner-v2-v12", "reflections"]
+scala-test-v2-v11 = ["scala-test-flatspec-v2-v11", "scala-test-shouldmatchers-v2-v11", "scala-test-mockito-v2-v11",
+    "scala-test-junit-runner-v2-v11", "reflections"]
 
 [plugins]
 kotlin-gradle = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
@@ -173,7 +203,6 @@ graalvm-buildtools = { id = "org.graalvm.buildtools.native", version.ref = "plug
 kotlin = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 optional = { id = "nebula.optional-base", version.ref = "plugin-optional-base" }
-scala-multiversion = { id = "com.adtran.scala-multiversion-plugin", version.ref = "plugin-scala-multiversion" }
 shadow = { id = "com.github.johnrengelman.shadow", version.ref = "plugin-shadow" }
 spotbugs = { id = "com.github.spotbugs", version.ref = "plugin-spotbugs" }
 spotless = { id = "com.diffplug.spotless", version.ref = "plugin-spotless" }

@@ -28,7 +28,7 @@ include(":driver-core")
 include(":bson-kotlin")
 include(":bson-kotlinx")
 include(":bson-record-codec")
-
+include(":bson-scala")
 include(":mongodb-crypt")
 
 

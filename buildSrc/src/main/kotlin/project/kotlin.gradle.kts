@@ -18,7 +18,7 @@ package project
 import org.gradle.jvm.toolchain.JavaLanguageVersion
 
 plugins {
-    id("java-library")
+    id("java-library") // TODO NEEDED?
     kotlin("jvm")
     id("project.base")
     id("conventions.publishing")

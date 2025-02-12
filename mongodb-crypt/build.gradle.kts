@@ -44,8 +44,8 @@ dependencies {
 /*
  * Jna copy or download resources
  */
-val jnaDownloadsDir = "$buildDir/jnaLibs/downloads/"
-val jnaResourcesDir = "$buildDir/jnaLibs/resources/"
+val jnaDownloadsDir = rootProject.file("build/jnaLibs/downloads/").path
+val jnaResourcesDir = rootProject.file("build/jnaLibs/resources/").path
 val jnaLibPlatform: String = if (com.sun.jna.Platform.RESOURCE_PREFIX.startsWith("darwin")) "darwin" else com.sun.jna.Platform.RESOURCE_PREFIX
 val jnaLibsPath: String = System.getProperty("jnaLibsPath", "${jnaResourcesDir}${jnaLibPlatform}")
 val jnaResources: String = System.getProperty("jna.library.path", jnaLibsPath)

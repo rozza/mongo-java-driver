@@ -57,4 +57,3 @@ rootProject.task("docs") {
     dependsOn(tasks.withType<Javadoc>())
     dependsOn(tasks.withType<ScalaDoc>())
 }
-

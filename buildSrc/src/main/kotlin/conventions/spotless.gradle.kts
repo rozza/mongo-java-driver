@@ -29,6 +29,10 @@ spotless {
         licenseHeaderFile(rootProject.file("config/mongodb.license"), "(group|plugins|import|buildscript|rootProject)")
     }
 
+    scala {
+        scalafmt().configFile(rootProject.file("config/scala/scalafmt.conf"))
+    }
+
     kotlin {
         target("**/*.kt")
         ktfmt().dropboxStyle().configure { it.setMaxWidth(120) }

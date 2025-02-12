@@ -15,7 +15,8 @@
  */
 package conventions
 
-plugins { id("org.jetbrains.dokka")
+plugins {
+    id("org.jetbrains.dokka")
     id("conventions.publishing")
 }
 

@@ -15,6 +15,7 @@
  */
 package config
 
+import org.gradle.api.Project
 import org.gradle.api.plugins.ExtraPropertiesExtension
 
 object Extensions {
@@ -23,4 +24,24 @@ object Extensions {
     fun ExtraPropertiesExtension.setAll(valueMap: Map<String, String>) {
         valueMap.forEach { set(it.key, it.value) }
     }
+
+    /**
+     * Extension function to get and validate the current scala version
+     *
+     * See: gradle.properties for `supportedScalaVersions` and `defaultScalaVersion`
+     *
+     */
+    fun Project.scalaVersion(): String {
+        val supportedScalaVersions = (project.property("supportedScalaVersions") as String).split(",")
+        val scalaVersion: String = (project.findProperty("scalaVersion") ?: project.property("defaultScalaVersion")) as String
+
+        if (!supportedScalaVersions.contains(scalaVersion)) {
+            throw UnsupportedOperationException("""Scala version: $scalaVersion is not a supported scala version.
+                |Supported versions: $supportedScalaVersions
+            """.trimMargin())
+        }
+
+        return scalaVersion
+    }
+
 }

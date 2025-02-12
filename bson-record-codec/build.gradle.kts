@@ -22,12 +22,6 @@ plugins {
 
 base.archivesName.set("bson-record-codec")
 
-dependencies {
-    api(project(path = ":bson", configuration = "default"))
-    testImplementation(project(path = ":bson", configuration = "testArtifacts"))
-    testImplementation(project(path = ":driver-core", configuration = "default"))
-}
-
 extra.setAll(
     mapOf(
         "mavenName" to "BSON Record Codec",
@@ -40,6 +34,12 @@ extra.setAll(
 java {
     sourceCompatibility = JavaVersion.VERSION_17
     targetCompatibility = JavaVersion.VERSION_17
+}
+
+dependencies {
+    api(project(path = ":bson", configuration = "default"))
+    testImplementation(project(path = ":bson", configuration = "testArtifacts"))
+    testImplementation(project(path = ":driver-core", configuration = "default"))
 }
 
 tasks.withType<Test>().configureEach { onlyIf { javaVersion.isCompatibleWith(JavaVersion.VERSION_17) } }

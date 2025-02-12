@@ -15,11 +15,6 @@
  */
 package project
 
-plugins {
-    id("eclipse")
-    id("idea")
-}
-
 group = "org.mongodb"
 
 version = "5.4.0-SNAPSHOT"
