@@ -44,7 +44,7 @@ include(":driver-reactive-streams")
 
 //include(":driver-kotlin-extensions")
 //include(":driver-kotlin-sync")
-//include(":driver-kotlin-coroutine")
+include(":driver-kotlin-coroutine")
 //include(":bson-scala")
 //include(":driver-scala")
 //

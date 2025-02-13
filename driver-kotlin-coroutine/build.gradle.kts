@@ -59,5 +59,3 @@ dependencies {
     integrationTestImplementation(project(path = ":driver-core"))
     integrationTestImplementation(project(path = ":bson"))
 }
-
-
