@@ -37,8 +37,7 @@ include(":driver-benchmarks")
 //include(":driver-workload-executor")
 include(":driver-lambda")
 
-//include(":driver-legacy")
-//
+include(":driver-legacy")
 include(":driver-reactive-streams")
 
 

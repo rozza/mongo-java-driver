@@ -18,41 +18,27 @@ import config.Extensions.setAll
 plugins {
     id("project.java")
     id("conventions.testing-junit-vintage")
-    id("conventions.testing-mockito")
     id("conventions.testing-spock")
     id("conventions.test-artifacts")
 }
 
-base.archivesName.set("mongodb-driver-sync")
+base.archivesName.set("mongodb-driver-legacy")
 
 extra.setAll(
     mapOf(
-        "mavenName" to "MongoDB Driver",
-        "mavenDescription" to "The MongoDB Synchronous Driver",
-        "automaticModuleName" to "org.mongodb.driver.sync.client",
-        "bundleSymbolicName" to "'org.mongodb.driver-sync",
-        "importPackage" to
-            listOf(
-                    "com.mongodb.crypt.capi.*;resolution:=optional",
-                    "com.mongodb.internal.crypt.capi.*;resolution:=optional",
-                    "*",
-                )
-                .joinToString(","),
-        "mavenArtifactId" to base.archivesName.get()))
+        "mavenName" to "The Legacy MongoDB Driver",
+        "mavenDescription" to "The Legacy MongoDB Driver",
+        "mavenArtifactId" to base.archivesName.get(),
+        "importPackage" to "org.slf4j.*;resolution:=optional", // TODO check this
+        "automaticModuleName" to "org.mongodb"))
 
 dependencies {
     api(project(path = ":bson", configuration = "default"))
     api(project(path = ":driver-core", configuration = "default"))
+    api(project(path = ":driver-sync", configuration = "default"))
 
     testImplementation(project(path = ":bson", configuration = "testArtifacts"))
     testImplementation(project(path = ":driver-core", configuration = "testArtifacts"))
+    testImplementation(project(path = ":driver-sync", configuration = "testArtifacts"))
     testImplementation(project(path = ":util:spock", configuration = "default"))
-
-    testImplementation(libs.aws.lambda.core)
 }
-
-// TODO confirm checkstyle
-// tasks.withType<Checkstyle> {
-//    // needed so the Javadoc checks can find the code in other modules
-//    classpath = files(project(':driver-core').sourceSets.main.output, sourceSets.main.output)
-// }

@@ -37,3 +37,7 @@ java {
 }
 
 sourceSets["main"].java { srcDir("src/main") }
+
+tasks.withType<Test> {
+    exclude("tour/**")
+}
