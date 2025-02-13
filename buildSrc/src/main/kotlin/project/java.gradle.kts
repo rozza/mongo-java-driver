@@ -37,6 +37,7 @@ java {
 }
 
 sourceSets["main"].java { srcDir("src/main") }
+sourceSets["integrationTest"].java.srcDir("src/integrationTest/java")
 
 tasks.withType<Test> {
     exclude("tour/**")

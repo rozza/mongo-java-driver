@@ -28,7 +28,6 @@ include(":driver-core")
 include(":bson-kotlin")
 include(":bson-kotlinx")
 include(":bson-record-codec")
-include(":bson-scala")
 include(":mongodb-crypt")
 include(":driver-sync")
 
@@ -44,11 +43,9 @@ include(":driver-reactive-streams")
 include(":driver-kotlin-extensions")
 include(":driver-kotlin-sync")
 include(":driver-kotlin-coroutine")
-//include(":bson-scala")
-//include(":driver-scala")
-//
-//include("util:spock")
-//include("util:taglets")
+include(":bson-scala")
+include(":driver-scala")
+
 
 //if (providers.gradleProperty("includeGraalvm").isPresent) {
 //    include(":graalvm-native-image-app")

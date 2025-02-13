@@ -24,7 +24,7 @@ plugins {
 }
 
 application {
-    mainClass = "com.mongodb.lambdatest.LambdaTestApp"
+    mainClass = "com.mongodb.workload.WorkloadExecutor"
 }
 
 sourceSets {

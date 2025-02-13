@@ -16,6 +16,7 @@
 package project
 
 import config.Extensions.scalaVersion
+import gradle.kotlin.dsl.accessors._3c8ca98133d760ef314a80482018d6cb.sourceSets
 
 plugins {
     id("scala")
@@ -28,6 +29,9 @@ plugins {
 
 val scalaVersion: String by lazy { extra.get("scalaVersion") as String? ?: "unknown" }
 
+sourceSets["integrationTest"].scala.srcDir("src/integrationTest/scala")
+val integrationTestTask = tasks.findByName("integrationTestTask")
+tasks.findByName("scalaCheck")?.dependsOn(integrationTestTask)
 
 tasks.register("scalaCheck") {
     description = "Runs all the Scala checks"

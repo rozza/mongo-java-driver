@@ -15,6 +15,8 @@
  */
 import dev.panuszewski.gradle.pluginMarker
 
+// TODO fix Github publish action.
+
 plugins {
     id("java-library")
     `kotlin-dsl`

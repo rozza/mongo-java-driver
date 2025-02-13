@@ -17,31 +17,28 @@ package conventions
 
 plugins {
     id("java-library")
-    id("scala")
 }
 
 // https://docs.gradle.org/current/samples/sample_jvm_multi_project_with_additional_test_types.html
-val integrationTest by sourceSets.creating {
-    scala.srcDir("src/integrationTest/scala")
-    java.srcDir("src/integrationTest/java")
-    resources.srcDir("src/integrationTest/resources")
-}
+val integrationTest by sourceSets.creating
 
 configurations[integrationTest.implementationConfigurationName].extendsFrom(configurations.testImplementation.get())
 configurations[integrationTest.runtimeOnlyConfigurationName].extendsFrom(configurations.testRuntimeOnly.get())
 
-val integrationTestTask = tasks.register<Test>("integrationTest") {
-    description = "Runs integration tests."
-    group = "verification"
-    useJUnitPlatform()
+afterEvaluate {
+    val integrationTestTask = tasks.register<Test>("integrationTest") {
+        description = "Runs integration tests."
+        group = "verification"
+        useJUnitPlatform()
 
-    testClassesDirs = integrationTest.output.classesDirs
-    classpath = configurations[integrationTest.runtimeClasspathConfigurationName] + integrationTest.output
-    shouldRunAfter(tasks.test)
+        testClassesDirs = integrationTest.output.classesDirs
+        classpath = configurations[integrationTest.runtimeClasspathConfigurationName] + integrationTest.output
+        shouldRunAfter(tasks.test)
+    }
+
+    tasks.findByName("check")?.dependsOn(integrationTestTask)
 }
 
-tasks.findByName("scalaCheck")?.dependsOn(integrationTestTask)
-tasks.findByName("check")?.dependsOn(integrationTestTask)
 
 dependencies {
     "integrationTestImplementation"(project)

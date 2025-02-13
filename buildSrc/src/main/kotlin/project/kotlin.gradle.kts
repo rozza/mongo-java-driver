@@ -15,6 +15,7 @@
  */
 package project
 
+import gradle.kotlin.dsl.accessors._3c8ca98133d760ef314a80482018d6cb.sourceSets
 import org.gradle.jvm.toolchain.JavaLanguageVersion
 
 plugins {
@@ -42,4 +43,4 @@ dependencies {
     testImplementation(libs.junit.kotlin)
 }
 
-tasks.test { useJUnitPlatform() }
+sourceSets["integrationTest"].kotlin.srcDir("src/integrationTest/kotlin")
