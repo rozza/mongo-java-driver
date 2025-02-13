@@ -27,18 +27,8 @@ extra.setAll(
         "importPackage" to "org.slf4j.*;resolution:=optional",
         "mavenArtifactId" to base.archivesName.get()))
 
-dependencies {
-    api(project(path = ":bson", configuration = "default"))
-    implementation(libs.kotlin.reflect)
-
-    testImplementation(project(path = ":driver-core", configuration = "default"))
-}
 
 dependencies {
-    // Align versions of all Kotlin components
-    implementation(platform(libs.kotlin.bom))
-    implementation(libs.kotlin.stdlib.jdk8)
-
     implementation(platform(libs.kotlinx.coroutines.bom))
     api(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.coroutines.reactive)

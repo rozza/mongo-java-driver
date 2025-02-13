@@ -25,7 +25,7 @@ extra.setAll(
         "mavenDescription" to "Bson Kotlin Codecs",
         "mavenUrl" to "https://bsonspec.org",
         "automaticModuleName" to "org.mongodb.bson.kotlin",
-        "importPackage" to "org.slf4j.*;resolution:=optional",
+        "importPackage" to "org.slf4j.*;resolution:=optional", // TODO check this
         "mavenArtifactId" to base.archivesName.get()))
 
 dependencies {
