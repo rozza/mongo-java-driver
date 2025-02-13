@@ -27,7 +27,6 @@ extra.setAll(
         "importPackage" to "org.slf4j.*;resolution:=optional",
         "mavenArtifactId" to base.archivesName.get()))
 
-
 dependencies {
     implementation(platform(libs.kotlinx.coroutines.bom))
     api(libs.kotlinx.coroutines.core)
