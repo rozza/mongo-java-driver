@@ -12,7 +12,6 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *
  */
 import config.Extensions.setAll
 import de.undercouch.gradle.tasks.download.Download
@@ -32,8 +31,7 @@ extra.setAll(
         "importPackage" to "org.slf4j.*;resolution:=optional,org.bson.*",
         "bundle-Name" to "MongoCrypt",
         "bundleSymbolicName" to "com.mongodb.crypt.capi",
-        "Private-Package" to ""
-    ))
+        "Private-Package" to ""))
 
 dependencies {
     api(project(path = ":bson", configuration = "default"))
@@ -45,7 +43,8 @@ dependencies {
  */
 val jnaDownloadsDir = rootProject.file("build/jnaLibs/downloads/").path
 val jnaResourcesDir = rootProject.file("build/jnaLibs/resources/").path
-val jnaLibPlatform: String = if (com.sun.jna.Platform.RESOURCE_PREFIX.startsWith("darwin")) "darwin" else com.sun.jna.Platform.RESOURCE_PREFIX
+val jnaLibPlatform: String =
+    if (com.sun.jna.Platform.RESOURCE_PREFIX.startsWith("darwin")) "darwin" else com.sun.jna.Platform.RESOURCE_PREFIX
 val jnaLibsPath: String = System.getProperty("jnaLibsPath", "${jnaResourcesDir}${jnaLibPlatform}")
 val jnaResources: String = System.getProperty("jna.library.path", jnaLibsPath)
 
@@ -60,26 +59,19 @@ val binariesArchiveName = "libmongocrypt-java.tar.gz"
  */
 val localBinariesArchiveName = "libmongocrypt-java-$downloadRevision.tar.gz"
 
-val downloadUrl: String = "https://mciuploads.s3.amazonaws.com/libmongocrypt/java/$downloadRevision/$binariesArchiveName"
+val downloadUrl: String =
+    "https://mciuploads.s3.amazonaws.com/libmongocrypt/java/$downloadRevision/$binariesArchiveName"
 
-val jnaMapping: Map<String, String> = mapOf(
-    "rhel-62-64-bit" to "linux-x86-64",
-    "rhel72-zseries-test" to "linux-s390x",
-    "rhel-71-ppc64el" to "linux-ppc64le",
-    "ubuntu1604-arm64" to "linux-aarch64",
-    "windows-test" to "win32-x86-64",
-    "macos" to "darwin"
-)
+val jnaMapping: Map<String, String> =
+    mapOf(
+        "rhel-62-64-bit" to "linux-x86-64",
+        "rhel72-zseries-test" to "linux-s390x",
+        "rhel-71-ppc64el" to "linux-ppc64le",
+        "ubuntu1604-arm64" to "linux-aarch64",
+        "windows-test" to "win32-x86-64",
+        "macos" to "darwin")
 
-sourceSets {
-    main {
-        java {
-            resources {
-                srcDirs(jnaResourcesDir)
-            }
-        }
-    }
-}
+sourceSets { main { java { resources { srcDirs(jnaResourcesDir) } } } }
 
 tasks.register<Download>("downloadJava") {
     src(downloadUrl)
@@ -91,57 +83,49 @@ tasks.register<Download>("downloadJava") {
 
 tasks.register<Copy>("unzipJava") {
     /*
-        Clean up the directory first if the task is not UP-TO-DATE.
-        This can happen if the download revision has been changed and the archive is downloaded again.
-     */
+       Clean up the directory first if the task is not UP-TO-DATE.
+       This can happen if the download revision has been changed and the archive is downloaded again.
+    */
     doFirst {
         println("Cleaning up $jnaResourcesDir")
         delete(jnaResourcesDir)
     }
     from(tarTree(resources.gzip("${jnaDownloadsDir}/$localBinariesArchiveName")))
-    include(jnaMapping.keys.flatMap {
-        listOf("${it}/nocrypto/**/libmongocrypt.so", "${it}/lib/**/libmongocrypt.dylib", "${it}/bin/**/mongocrypt.dll" )
-    })
-    eachFile {
-        path = "${jnaMapping[path.substringBefore("/")]}/${name}"
-    }
+    include(
+        jnaMapping.keys.flatMap {
+            listOf(
+                "${it}/nocrypto/**/libmongocrypt.so", "${it}/lib/**/libmongocrypt.dylib", "${it}/bin/**/mongocrypt.dll")
+        })
+    eachFile { path = "${jnaMapping[path.substringBefore("/")]}/${name}" }
     into(jnaResourcesDir)
     dependsOn("downloadJava")
 
-    doLast {
-        println("jna.library.path contents: \n  ${fileTree(jnaResourcesDir).files.joinToString(",\n  ")}")
-    }
+    doLast { println("jna.library.path contents: \n  ${fileTree(jnaResourcesDir).files.joinToString(",\n  ")}") }
 }
 
-// The `processResources` task (defined by the `java-library` plug-in) consumes files in the main source set.
+// The `processResources` task (defined by the `java-library` plug-in) consumes files in the main
+// source set.
 // Add a dependency on `unzipJava`. `unzipJava` adds libmongocrypt libraries to the main source set.
-tasks.processResources {
-    mustRunAfter(tasks.named("unzipJava"))
-}
+tasks.processResources { mustRunAfter(tasks.named("unzipJava")) }
 
-tasks.register("downloadJnaLibs") {
-    dependsOn("downloadJava", "unzipJava")
-}
+tasks.register("downloadJnaLibs") { dependsOn("downloadJava", "unzipJava") }
 
 tasks.test {
     systemProperty("jna.debug_load", "true")
     systemProperty("jna.library.path", jnaResources)
     useJUnitPlatform()
-    testLogging {
-        events("passed", "skipped", "failed")
-    }
+    testLogging { events("passed", "skipped", "failed") }
 
     doFirst {
         println("jna.library.path contents:")
-        println(fileTree(jnaResources)  {
-            this.setIncludes(listOf("*.*"))
-        }.files.joinToString(",\n  ", "  "))
+        println(fileTree(jnaResources) { this.setIncludes(listOf("*.*")) }.files.joinToString(",\n  ", "  "))
     }
     dependsOn("downloadJnaLibs", "downloadJava", "unzipJava")
 }
 
 tasks.withType<AbstractPublishToMaven> {
-    description = """$description
+    description =
+        """$description
         | System properties:
         | =================
         |
@@ -151,7 +135,6 @@ tasks.withType<AbstractPublishToMaven> {
 }
 
 tasks.jar {
-    //NOTE this enables depending on the mongocrypt from driver-core
-   dependsOn("downloadJnaLibs")
+    // NOTE this enables depending on the mongocrypt from driver-core
+    dependsOn("downloadJnaLibs")
 }
-

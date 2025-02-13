@@ -24,32 +24,47 @@ import org.bson.json.JsonReader;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
+import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.nio.file.Paths;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 import static java.nio.file.Files.isDirectory;
 import static java.util.stream.Collectors.toMap;
+import static org.bson.assertions.Assertions.assertNotNull;
 
 public final class JsonPoweredTestHelper {
 
-    public static BsonDocument getTestDocument(final File file) throws IOException {
-        return new BsonDocumentCodec().decode(new JsonReader(getFileAsString(file)), DecoderContext.builder().build());
+    public static BsonDocument getTestDocument(final File file) {
+        return getTestDocument(file.toPath().toString());
     }
 
-    public static BsonDocument getTestDocument(final String resourcePath) throws IOException, URISyntaxException {
-        return getTestDocument(new File(JsonPoweredTestHelper.class.getResource(resourcePath).toURI()));
+    public static BsonDocument getTestDocument(final String resourcePath) {
+        return getTestDocument(() -> JsonPoweredTestHelper.class.getResourceAsStream(resourcePath));
+    }
+
+    public static BsonDocument getTestDocument(final Supplier<InputStream> inputStreamSupplier) {
+        return new BsonDocumentCodec().decode(new JsonReader(inputStreamToString(inputStreamSupplier)), DecoderContext.builder().build());
     }
 
     public static Path testDir(final String resourceName) {
@@ -73,33 +88,52 @@ public final class JsonPoweredTestHelper {
         try {
             return Files.list(dir)
                     .filter(jsonMatcher::matches)
-                    .collect(toMap(Function.identity(), path -> {
-                        try {
-                            return getTestDocument(path.toFile());
-                        } catch (IOException e) {
-                            throw new RuntimeException(e);
-                        }
-                    }));
+                    .collect(toMap(Function.identity(), path -> getTestDocument(path.toFile())));
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
-    public static List<File> getTestFiles(final String resourcePath) throws URISyntaxException {
-        List<File> files = new ArrayList<>();
-        addFilesFromDirectory(new File(JsonPoweredTestHelper.class.getResource(resourcePath).toURI()), files);
+    public static List<BsonDocument> getTestDocuments(final String resourcePath) throws URISyntaxException, IOException {
+        List<BsonDocument> files = new ArrayList<>();
+        URI resource = JsonPoweredTestHelper.class.getResource(resourcePath).toURI();
+        try (FileSystem fileSystem = (resource.getScheme().equals("jar") ? FileSystems.newFileSystem(resource, Collections.emptyMap()) : null)) {
+            Path myPath = Paths.get(resource);
+            Files.walkFileTree(myPath, new SimpleFileVisitor<Path>() {
+                @Override
+                public FileVisitResult visitFile(final Path file, final BasicFileAttributes attrs) throws IOException {
+                    if (file.toString().endsWith(".json")) {
+                        files.add(getTestDocument(file.toString()));
+                    }
+                    return super.visitFile(file, attrs);
+                }
+            });
+        }
         return files;
     }
 
-    private static String getFileAsString(final File file) throws IOException {
+    public static List<File> getTestFiles(final String resourcePath) throws URISyntaxException, IOException {
+        List<File> files = new ArrayList<>();
+
+        URL resource = JsonPoweredTestHelper.class.getResource(resourcePath);
+        File directory = new File(assertNotNull(resource).toExternalForm());
+        addFilesFromDirectory(directory, files);
+        return files;
+    }
+
+    private static String inputStreamToString(final Supplier<InputStream> inputStreamSupplier)  {
         StringBuilder stringBuilder = new StringBuilder();
         String line;
         String ls = System.getProperty("line.separator");
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8))) {
-            while ((line = reader.readLine()) != null) {
-                stringBuilder.append(line);
-                stringBuilder.append(ls);
+        try (InputStream inputStream = inputStreamSupplier.get()) {
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
+                while ((line = reader.readLine()) != null) {
+                    stringBuilder.append(line);
+                    stringBuilder.append(ls);
+                }
             }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
         return stringBuilder.toString();
     }
@@ -117,6 +151,22 @@ public final class JsonPoweredTestHelper {
             }
         }
     }
+
+    private static String[] loadSource(String name) {
+
+        System.out.println(name);
+        try (
+                InputStream stream = JsonPoweredTestHelper.class.getResourceAsStream(name);
+                BufferedReader reader = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))
+        ) {
+            return reader.lines().toArray(String[]::new);
+        }
+
+        catch (IOException ex) {
+            throw new AssertionError(ex);
+        }
+    }
+
 
     private JsonPoweredTestHelper() {
     }

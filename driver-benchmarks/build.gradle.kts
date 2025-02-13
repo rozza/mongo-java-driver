@@ -17,6 +17,7 @@
 plugins {
     id("application")
     id("java-library")
+    id("project.base")
 }
 
 application {
@@ -34,7 +35,7 @@ sourceSets {
 }
 
 dependencies {
-    // api(project(":driver-sync")) TODO Post sync
+    api(project(":driver-sync"))
     api(project(":mongodb-crypt"))
     implementation(libs.logback.classic)
 }

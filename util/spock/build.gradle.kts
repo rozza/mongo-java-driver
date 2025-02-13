@@ -14,15 +14,11 @@
  * limitations under the License.
  */
 import config.Extensions.setAll
-plugins {
-    id("project.java")
-}
 
-extra.setAll(
-    mapOf(
-        "automaticModuleName" to "N/A",
-        "importPackage" to "N/A"
-))
+plugins { id("project.java") }
+
+extra.setAll(mapOf("automaticModuleName" to "N/A", "importPackage" to "N/A"))
 
 tasks.withType<PublishToMavenRepository>().configureEach { enabled = false }
+
 tasks.withType<PublishToMavenLocal>().configureEach { enabled = false }

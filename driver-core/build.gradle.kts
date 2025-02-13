@@ -68,7 +68,6 @@ buildConfig {
     buildConfigField("String", "VERSION", "\"${gitVersion}\"")
 }
 
-
 dependencies {
     api(project(path = ":bson", configuration = "default"))
     implementation(project(path = ":bson-record-codec", configuration = "default"))

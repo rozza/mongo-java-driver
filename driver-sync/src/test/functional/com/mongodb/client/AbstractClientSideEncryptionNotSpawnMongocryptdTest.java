@@ -34,6 +34,8 @@ import org.junit.jupiter.api.Test;
 import java.io.File;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.URI;
+import java.net.URL;
 import java.time.Duration;
 import java.util.AbstractMap.SimpleImmutableEntry;
 import java.util.HashMap;
@@ -216,21 +218,11 @@ public abstract class AbstractClientSideEncryptionNotSpawnMongocryptdTest {
     }
 
     private static BsonDocument externalSchema() {
-        try {
-            return getTestDocument(new File(Assertions.assertNotNull(AbstractClientSideEncryptionNotSpawnMongocryptdTest.class
-                    .getResource("/client-side-encryption-external/external-schema.json")).toURI()));
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+            return getTestDocument("/client-side-encryption-external/external-schema.json");
     }
 
     private static BsonDocument externalKey() {
-        try {
-            return getTestDocument(new File(Assertions.assertNotNull(AbstractClientSideEncryptionNotSpawnMongocryptdTest.class
-                    .getResource("/client-side-encryption-external/external-key.json")).toURI()));
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+        return getTestDocument("/client-side-encryption-external/external-key.json");
     }
 
     @SafeVarargs

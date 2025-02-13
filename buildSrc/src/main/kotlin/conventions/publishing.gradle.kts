@@ -103,6 +103,10 @@ tasks.named<Delete>("clean") { delete.add(localBuildRepo) }
 
 tasks.withType<GenerateModuleMetadata> { enabled = false }
 
+
+// TODO - mongoPublish with pom config :)
+// https://github.com/search?q=repo%3Arealm%2Frealm-kotlin%20pom&type=code
+
 tasks.withType<Jar> {
     afterEvaluate {
         manifest {

@@ -39,7 +39,7 @@ include(":driver-benchmarks")
 
 //include(":driver-legacy")
 //
-//include(":driver-reactive-streams")
+include(":driver-reactive-streams")
 
 
 //include(":driver-kotlin-extensions")

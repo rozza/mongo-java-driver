@@ -46,5 +46,5 @@ tasks.withType<SpotBugsTask>().configureEach {
        }
     } else if (name == "spotbugsTest") {
         enabled = false
-    }
+    } else if (name == "spotbugsIntegrationTest") { enabled = false }
 }
