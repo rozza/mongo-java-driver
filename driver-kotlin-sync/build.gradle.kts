@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import config.ProjectExtensions.configureJarManifest
-import config.ProjectExtensions.configureMavenPublication
+import ProjectExtensions.configureJarManifest
+import ProjectExtensions.configureMavenPublication
 
 plugins { id("project.kotlin") }
 

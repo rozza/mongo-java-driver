@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package config
 
 import gradle.kotlin.dsl.accessors._3c8ca98133d760ef314a80482018d6cb.publishing
 import org.gradle.api.Project

@@ -15,8 +15,8 @@
  */
 package project
 
-import config.ProjectExtensions.configureMavenPublication
-import config.ProjectExtensions.scalaVersion
+import ProjectExtensions.configureMavenPublication
+import ProjectExtensions.scalaVersion
 
 plugins {
     id("scala")
@@ -41,7 +41,7 @@ tasks.register("scalaCheck") {
 
 tasks.withType<Test> {
     doFirst { println("Running Test task using scala version: $scalaVersion") }
-    useJUnitPlatform { includeEngines("scalatest") }
+    useJUnitPlatform()
 }
 
 tasks.withType<ScalaDoc> {

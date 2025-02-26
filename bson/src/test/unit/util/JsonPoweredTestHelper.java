@@ -55,6 +55,7 @@ import static org.bson.assertions.Assertions.assertNotNull;
 
 public final class JsonPoweredTestHelper {
 
+    // TODO - migrate to JsonPoweredTestHelper.getTestDocuments
     public static BsonDocument getTestDocument(final File file) {
         return getTestDocument(file.toPath().toString());
     }
@@ -70,7 +71,6 @@ public final class JsonPoweredTestHelper {
     }
 
     public static BsonDocument getTestDocument(final String resourcePath) {
-        InputStream resourceAsStream = JsonPoweredTestHelper.class.getResourceAsStream(resourcePath);
         return getTestDocument(() -> JsonPoweredTestHelper.class.getResourceAsStream(resourcePath));
     }
 
@@ -107,7 +107,7 @@ public final class JsonPoweredTestHelper {
 
     public static List<BsonDocument> getTestDocuments(final String resourcePath) throws URISyntaxException, IOException {
         List<BsonDocument> files = new ArrayList<>();
-        URI resource = JsonPoweredTestHelper.class.getResource(resourcePath).toURI();
+        URI resource = assertNotNull(JsonPoweredTestHelper.class.getResource(resourcePath)).toURI();
         try (FileSystem fileSystem = (resource.getScheme().equals("jar") ? FileSystems.newFileSystem(resource, Collections.emptyMap()) : null)) {
             Path myPath = Paths.get(resource);
             Files.walkFileTree(myPath, new SimpleFileVisitor<Path>() {
@@ -166,7 +166,6 @@ public final class JsonPoweredTestHelper {
             }
         }
     }
-
 
     private JsonPoweredTestHelper() {
     }

@@ -35,7 +35,20 @@ dependencies {
 }
 
 tasks.withType<Test>().configureEach {
-    useJUnitPlatform { includeEngines("spock") }
+    useJUnitPlatform {
+        excludeTags("Slow")
+    }
+
+    systemProperty("spock.configuration", "${rootProject.file("config/spock/ExcludeSlow.groovy")}")
+}
+
+tasks.register("testSlowOnly", Test::class.java) {
+    dependsOn("testSlowGroovy")
+    useJUnitPlatform {
+        includeTags("Slow")
+    }
+
+    systemProperty("spock.configuration", "${rootProject.file("config/spock/OnlySlow.groovy")}")
 }
 
 sourceSets {

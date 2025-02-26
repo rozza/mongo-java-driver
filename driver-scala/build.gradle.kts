@@ -13,9 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import config.ProjectExtensions.configureJarManifest
-import config.ProjectExtensions.configureMavenPublication
-import config.ProjectExtensions.scalaVersion
+import ProjectExtensions.configureJarManifest
+import ProjectExtensions.configureMavenPublication
+import ProjectExtensions.scalaVersion
 
 plugins { id("project.scala") }
 

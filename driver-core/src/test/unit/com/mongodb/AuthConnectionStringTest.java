@@ -29,7 +29,6 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import util.JsonPoweredTestHelper;
 
-import java.io.File;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
@@ -63,10 +62,10 @@ public class AuthConnectionStringTest extends TestCase {
     @Parameterized.Parameters(name = "{1}")
     public static Collection<Object[]> data() throws URISyntaxException, IOException {
         List<Object[]> data = new ArrayList<>();
-        for (File file : JsonPoweredTestHelper.getTestFiles("/auth/legacy")) {
-            BsonDocument testDocument = JsonPoweredTestHelper.getTestDocument(file);
+        for (BsonDocument testDocument : JsonPoweredTestHelper.getTestDocuments("/auth/legacy")) {
+            System.out.println(testDocument.toJson());
             for (BsonValue test : testDocument.getArray("tests")) {
-                data.add(new Object[]{file.getName(), test.asDocument().getString("description").getValue(),
+                data.add(new Object[]{"HMM", test.asDocument().getString("description").getValue(),
                         test.asDocument().getString("uri").getValue(), test.asDocument()});
             }
         }

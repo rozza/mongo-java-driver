@@ -20,7 +20,7 @@ plugins {
 }
 
 dependencies {
-    if (JavaVersion.current().isJava8) {
+    if (project.findProperty("javaVersion")?.toString().equals("8")) {
         testImplementation(libs.bundles.mockito.java8)
     } else {
         testImplementation(libs.bundles.mockito)

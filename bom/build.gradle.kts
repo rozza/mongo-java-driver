@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import config.ProjectExtensions.configureMavenPublication
+import ProjectExtensions.configureMavenPublication
 import groovy.util.Node
 import groovy.util.NodeList
 
@@ -46,6 +46,9 @@ dependencies {
     }
 }
 
+/*
+ * Handle the multiple versions of Scala we support as defined in `gradle.properties`
+ */
 val defaultScalaVersion: String = project.findProperty("defaultScalaVersion")!!.toString()
 val scalaVersions: List<String>? = project.findProperty("supportedScalaVersions")?.toString()?.split(",")
 
@@ -102,7 +105,9 @@ configureMavenPublication {
     }
 }
 
-// Validate the BOM
+/*
+ * Validate the Bom file.
+ */
 tasks.withType<GenerateMavenPom> {
     doLast {
         pom.withXml {
@@ -121,7 +126,8 @@ tasks.withType<GenerateMavenPom> {
                         "BOM must contain only 'org.mongodb' dependencies, but found '$groupId':\n$destination"
                     }
 
-                    /* The <scope> and <optional> tags should be omitted in BOM dependencies.
+                    /*
+                     * The <scope> and <optional> tags should be omitted in BOM dependencies.
                      * This ensures that consuming projects have the flexibility to decide whether a dependency is optional in their context.
                      *
                      * The BOM's role is to provide version information, not to dictate inclusion or exclusion of dependencies.
@@ -138,7 +144,7 @@ tasks.withType<GenerateMavenPom> {
 }
 
 /** A node lookup helper. */
-fun Node?.getNode(nodeName: String): Node? {
+private fun Node?.getNode(nodeName: String): Node? {
     val found = this?.get(nodeName)
     if (found is NodeList && found.isNotEmpty()) {
         return found[0] as Node

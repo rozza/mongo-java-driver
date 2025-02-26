@@ -23,7 +23,7 @@ dependencies {
 }
 
 tasks.withType<Test>().configureEach {
-    useJUnitPlatform { includeEngines("junit-jupiter") }
+    useJUnitPlatform()
 }
 
 sourceSets["test"].java { srcDirs("src/test", "src/test/unit", "src/test/functional") }
