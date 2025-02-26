@@ -94,6 +94,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 import static org.junit.jupiter.api.Assumptions.assumeFalse;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import static util.JsonPoweredTestHelper.getTestDocument;
+import static util.JsonPoweredTestHelper.getTestDocuments;
 import static util.JsonPoweredTestHelper.getTestFiles;
 
 @ExtendWith(AfterBeforeParameterResolver.class)
@@ -158,9 +159,7 @@ public abstract class UnifiedTest {
     @NonNull
     protected static Collection<Arguments> getTestData(final String directory) throws URISyntaxException, IOException {
         List<Arguments> data = new ArrayList<>();
-        for (File file : getTestFiles("/" + directory + "/")) {
-            BsonDocument fileDocument = getTestDocument(file);
-
+        for (BsonDocument fileDocument : getTestDocuments( "/" + directory + "/")) {
             for (BsonValue cur : fileDocument.getArray("tests")) {
                 data.add(UnifiedTest.createTestData(directory, fileDocument, cur.asDocument()));
             }
