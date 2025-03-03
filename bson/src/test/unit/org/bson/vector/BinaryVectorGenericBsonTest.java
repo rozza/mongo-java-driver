@@ -256,8 +256,7 @@ class BinaryVectorGenericBsonTest {
 
     private static Stream<Arguments> provideTestCases() throws URISyntaxException, IOException {
         List<Arguments> data = new ArrayList<>();
-        for (File file : JsonPoweredTestHelper.getTestFiles("/bson-binary-vector")) {
-            BsonDocument testDocument = JsonPoweredTestHelper.getTestDocument(file);
+        for (BsonDocument testDocument : JsonPoweredTestHelper.getTestDocuments("/bson-binary-vector")) {
             for (BsonValue curValue : testDocument.getArray("tests", new BsonArray())) {
                 BsonDocument testCaseDocument = curValue.asDocument();
                 data.add(Arguments.of(createTestCaseDescription(testDocument, testCaseDocument), testDocument, testCaseDocument));

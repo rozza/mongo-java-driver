@@ -31,7 +31,7 @@ import java.util.List;
 @RunWith(Parameterized.class)
 public class ReactiveInitialDnsSeedlistDiscoveryTest extends InitialDnsSeedlistDiscoveryTest {
 
-    public ReactiveInitialDnsSeedlistDiscoveryTest(final String filename, final Path parentDirectory, final String uri,
+    public ReactiveInitialDnsSeedlistDiscoveryTest(final String filename, final String parentDirectory, final String uri,
             final List<String> seeds, final Integer numSeeds, final List<String> hosts, final Integer numHosts,
             final BsonDocument options, final BsonDocument parsedOptions,
             final boolean isError, final boolean executePingCommand) {

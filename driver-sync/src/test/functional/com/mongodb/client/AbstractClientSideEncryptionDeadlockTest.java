@@ -225,9 +225,8 @@ public abstract class AbstractClientSideEncryptionDeadlockTest {
                 .build();
     }
 
-    private static BsonDocument bsonDocumentFromPath(final String path) throws URISyntaxException, IOException {
-        return getTestDocument(new File(ClientSideEncryptionExternalKeyVaultTest.class
-                .getResource("/client-side-encryption-external/" + path).toURI()));
+    private static BsonDocument bsonDocumentFromPath(final String path) {
+        return getTestDocument("/client-side-encryption-external/" + path);
     }
 
     private static final class ExpectedEvent {

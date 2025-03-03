@@ -96,8 +96,8 @@ public abstract class AbstractClientSideEncryptionRangeExplicitEncryptionTest {
         assumeFalse(isServerlessTest());
 
         MongoNamespace dataKeysNamespace = new MongoNamespace("keyvault.datakeys");
-        BsonDocument encryptedFields = bsonDocumentFromPath("range-encryptedFields-" + type.value + ".json");
-        BsonDocument key1Document = bsonDocumentFromPath("keys/key1-document.json");
+        BsonDocument encryptedFields = getTestDocument("/client-side-encryption-data/range-encryptedFields-" + type.value + ".json");
+        BsonDocument key1Document = getTestDocument("/client-side-encryption-data/keys/key1-document.json");
         key1Id = key1Document.getBinary("_id");
 
         MongoDatabase explicitEncryptionDatabase = getDefaultDatabase();
@@ -354,15 +354,4 @@ public abstract class AbstractClientSideEncryptionRangeExplicitEncryptionTest {
             }
         }
     }
-
-    private static BsonDocument bsonDocumentFromPath(final String path) {
-        try {
-            return getTestDocument(new File(AbstractClientSideEncryptionRangeExplicitEncryptionTest.class
-                    .getResource("/client-side-encryption-data/" + path).toURI()));
-        } catch (Exception e) {
-            fail("Unable to load resource", e);
-            return null;
-        }
-    }
-
 }
