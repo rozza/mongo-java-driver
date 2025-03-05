@@ -13,4 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package com.mongodb.doclet;
 
+public class ServerReleaseTaglet extends DocTaglet {
+
+    @Override
+    public String getName() {
+        return "mongodb.server.release";
+    }
+
+    @Override
+    protected String getHeader() {
+        return "Since server release";
+    }
+
+    @Override
+    protected String getBaseDocURI() {
+        return "https://www.mongodb.com/docs/manual/release-notes/";
+    }
+}

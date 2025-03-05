@@ -13,4 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package com.mongodb.doclet;
 
+public class DochubTaglet extends DocTaglet {
+
+    @Override
+    public String getName() {
+        return "mongodb.driver.dochub";
+    }
+
+    @Override
+    protected String getHeader() {
+        return "MongoDB documentation";
+    }
+
+    @Override
+    protected String getBaseDocURI() {
+        return "https://dochub.mongodb.org/";
+    }
+}

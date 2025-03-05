@@ -13,15 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-import com.sun.source.doctree.DocTree;
-import com.sun.source.doctree.UnknownBlockTagTree;
-import jdk.javadoc.doclet.Taglet;
-
-import javax.lang.model.element.Element;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+package com.mongodb.doclet;
 
 import static java.util.Arrays.asList;
 import static jdk.javadoc.doclet.Taglet.Location.CONSTRUCTOR;
@@ -30,6 +22,14 @@ import static jdk.javadoc.doclet.Taglet.Location.METHOD;
 import static jdk.javadoc.doclet.Taglet.Location.OVERVIEW;
 import static jdk.javadoc.doclet.Taglet.Location.PACKAGE;
 import static jdk.javadoc.doclet.Taglet.Location.TYPE;
+
+import com.sun.source.doctree.DocTree;
+import com.sun.source.doctree.UnknownBlockTagTree;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import javax.lang.model.element.Element;
+import jdk.javadoc.doclet.Taglet;
 
 public abstract class DocTaglet implements Taglet {
 
@@ -49,7 +49,8 @@ public abstract class DocTaglet implements Taglet {
             return null;
         }
 
-        StringBuilder buf = new StringBuilder(String.format("<dl><dt><span class=\"strong\">%s</span></dt>", getHeader()));
+        StringBuilder buf =
+                new StringBuilder(String.format("<dl><dt><span class=\"strong\">%s</span></dt>", getHeader()));
         for (DocTree tag : tags) {
             String text = ((UnknownBlockTagTree) tag).getContent().get(0).toString();
             buf.append("<dd>").append(genLink(text)).append("</dd>");

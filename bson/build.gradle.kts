@@ -13,22 +13,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import ProjectExtensions.configureJarManifest
+import ProjectExtensions.configureMavenPublication
 
-public class ServerReleaseTaglet extends DocTaglet {
+plugins {
+    id("project.java")
+    id("conventions.testing-junit-vintage")
+    id("conventions.test-artifacts")
+}
 
-    @Override
-    public String getName() {
-        return "mongodb.server.release";
+base.archivesName.set("bson")
+
+configureMavenPublication {
+    pom {
+        name.set("BSON")
+        description.set("The BSON library")
+        url.set("https://bsonspec.org")
     }
+}
 
-    @Override
-    protected String getHeader() {
-        return "Since server release";
-    }
-
-    @Override
-    protected String getBaseDocURI() {
-        return "https://www.mongodb.com/docs/manual/release-notes/";
-    }
-
+configureJarManifest {
+    attributes["Automatic-Module-Name"] = "org.mongodb.bson"
+    attributes["Import-Package"] = "org.slf4j.*;resolution:=optional"
 }

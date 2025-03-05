@@ -13,22 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package com.mongodb.doclet;
 
-public class DochubTaglet extends DocTaglet {
-
+public final class AtlasManualTaglet extends DocTaglet {
     @Override
     public String getName() {
-        return "mongodb.driver.dochub";
+        return "mongodb.atlas.manual";
     }
 
     @Override
     protected String getHeader() {
-        return "MongoDB documentation";
+        return "MongoDB Atlas documentation";
     }
 
     @Override
     protected String getBaseDocURI() {
-        return "https://dochub.mongodb.org/";
+        return "https://www.mongodb.com/docs/atlas/";
     }
-
 }

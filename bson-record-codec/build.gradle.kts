@@ -16,23 +16,37 @@
 import ProjectExtensions.configureJarManifest
 import ProjectExtensions.configureMavenPublication
 
-plugins { id("project.kotlin") }
+plugins {
+    id("project.java")
+    id("conventions.test-artifacts")
+}
 
-base.archivesName.set("bson-kotlin")
+base.archivesName.set("bson-record-codec")
 
 dependencies {
     api(project(path = ":bson", configuration = "default"))
-    implementation(libs.kotlin.reflect)
-
+    testImplementation(project(path = ":bson", configuration = "testArtifacts"))
     testImplementation(project(path = ":driver-core", configuration = "default"))
 }
 
 configureMavenPublication {
     pom {
-        name.set("BSON Kotlin")
-        description.set("The BSON Codec for Kotlin")
+        name.set("BSON Record Codec")
+        description.set("The BSON Codec for Java records")
         url.set("https://bsonspec.org")
     }
 }
 
-configureJarManifest { attributes["Automatic-Module-Name"] = "org.mongodb.bson.kotlin" }
+configureJarManifest {
+    attributes["Automatic-Module-Name"] = "org.mongodb.bson.record.codec"
+    attributes["Bundle-SymbolicName"] = "org.mongodb.bson.record.codec"
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+tasks.withType<JavaCompile> { options.release.set(17) }
+
+tasks.withType<Test>().configureEach { onlyIf { javaVersion.isCompatibleWith(JavaVersion.VERSION_17) } }

@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package com.mongodb.doclet;
 
 public class ManualTaglet extends DocTaglet {
 
@@ -30,5 +31,4 @@ public class ManualTaglet extends DocTaglet {
     protected String getBaseDocURI() {
         return "https://www.mongodb.com/docs/manual/";
     }
-
 }

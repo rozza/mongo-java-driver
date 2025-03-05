@@ -17,32 +17,30 @@ import ProjectExtensions.configureJarManifest
 import ProjectExtensions.configureMavenPublication
 
 plugins {
-    id("project.kotlin")
+    id("project.java")
+    id("conventions.testing-junit-vintage")
+    id("conventions.testing-spock")
     id("conventions.test-artifacts")
 }
 
-base.archivesName.set("mongodb-driver-kotlin-sync")
+base.archivesName.set("mongodb-driver-legacy")
 
 dependencies {
     api(project(path = ":bson", configuration = "default"))
+    api(project(path = ":driver-core", configuration = "default"))
     api(project(path = ":driver-sync", configuration = "default"))
-    implementation(project(path = ":bson-kotlin", configuration = "default"))
 
-    testImplementation(libs.bundles.mockito.kotlin)
-    testImplementation(libs.assertj)
-    testImplementation(libs.classgraph)
-
-    integrationTestImplementation(libs.junit.kotlin)
-    integrationTestImplementation(project(path = ":bson", configuration = "testArtifacts"))
-    integrationTestImplementation(project(path = ":driver-sync", configuration = "testArtifacts"))
-    integrationTestImplementation(project(path = ":driver-core", configuration = "testArtifacts"))
+    testImplementation(project(path = ":bson", configuration = "testArtifacts"))
+    testImplementation(project(path = ":driver-core", configuration = "testArtifacts"))
+    testImplementation(project(path = ":driver-sync", configuration = "testArtifacts"))
+    testRuntimeOnly(project(path = ":driver-core", configuration = "consumableTestRuntimeOnly"))
 }
 
 configureMavenPublication {
     pom {
-        name.set("MongoDB Kotlin Driver")
-        description.set("The MongoDB Kotlin Driver")
+        name.set("The Legacy MongoDB Driver")
+        description.set("The Legacy MongoDB Driver")
     }
 }
 
-configureJarManifest { attributes["Automatic-Module-Name"] = "org.mongodb.driver.kotlin.sync" }
+configureJarManifest { attributes["Automatic-Module-Name"] = "org.mongodb" }
