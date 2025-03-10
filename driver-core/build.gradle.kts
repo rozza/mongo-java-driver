@@ -37,23 +37,23 @@ buildConfig {
 dependencies {
     api(project(path = ":bson", configuration = "default"))
     implementation(project(path = ":bson-record-codec", configuration = "default"))
-    implementation(project(path = ":bson-kotlin", configuration = "default")) // TODO optional
-    implementation(project(path = ":bson-kotlinx", configuration = "default")) // TODO optional
-    api(project(path = ":mongodb-crypt")) // TODO optional
+    optionalImplementation(project(path = ":bson-kotlin", configuration = "default"))
+    optionalImplementation(project(path = ":bson-kotlinx", configuration = "default"))
+    optionalApi(project(path = ":mongodb-crypt"))
 
-    implementation(libs.jnr.unixsocket) // TODO optional
-    api(platform(libs.netty.bom)) // TODO optional
-    api(libs.bundles.netty) // TODO optional
+    optionalImplementation(libs.jnr.unixsocket)
+    optionalApi(platform(libs.netty.bom))
+    optionalApi(libs.bundles.netty)
     compileOnly(libs.graal.sdk)
 
     // Optionally depend on both AWS SDK v2 and v1.
     // The driver will use v2 is present, v1 if present, or built-in functionality if neither are
     // present
-    implementation(libs.bundles.aws.java.sdk.v1) // TODO optional
-    implementation(libs.bundles.aws.java.sdk.v2) // TODO optional
+    optionalImplementation(libs.bundles.aws.java.sdk.v1)
+    optionalImplementation(libs.bundles.aws.java.sdk.v2)
 
-    implementation(libs.snappy.java) // TODO optional
-    implementation(libs.zstd.jni) // TODO optional
+    optionalImplementation(libs.snappy.java)
+    optionalImplementation(libs.zstd.jni)
 
     testImplementation(project(path = ":bson", configuration = "testArtifacts"))
     testImplementation(libs.reflections)
@@ -62,11 +62,6 @@ dependencies {
     listOf("linux-x86_64", "linux-aarch_64", "osx-x86_64", "osx-aarch_64", "windows-x86_64").forEach { arch ->
         testRuntimeOnly(variantOf(libs.netty.tcnative.boringssl) { classifier(arch) })
     }
-}
-
-configurations.create("consumableTestRuntimeOnly") {
-    extendsFrom(configurations.testRuntimeOnly.get())
-    setCanBeConsumed(true)
 }
 
 configureMavenPublication {

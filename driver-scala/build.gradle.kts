@@ -32,7 +32,6 @@ dependencies {
     testImplementation(project(path = ":driver-core", configuration = "testArtifacts"))
     testImplementation(project(path = ":driver-sync", configuration = "testArtifacts"))
     testImplementation(project(path = ":driver-reactive-streams", configuration = "testArtifacts"))
-    testRuntimeOnly(project(path = ":driver-core", configuration = "consumableTestRuntimeOnly"))
 }
 
 configureMavenPublication {

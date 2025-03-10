@@ -31,6 +31,7 @@ dependencies {
     api(libs.reactive.streams)
     implementation(platform(libs.project.reactor.bom))
     implementation(libs.project.reactor.core)
+    optionalApi(project(path = ":mongodb-crypt"))
 
     testImplementation(libs.project.reactor.test)
     testImplementation(libs.reactive.streams.tck)
@@ -38,7 +39,6 @@ dependencies {
     testImplementation(project(path = ":bson", configuration = "testArtifacts"))
     testImplementation(project(path = ":driver-core", configuration = "testArtifacts"))
     testImplementation(project(path = ":driver-sync", configuration = "testArtifacts"))
-    testRuntimeOnly(project(path = ":driver-core", configuration = "consumableTestRuntimeOnly"))
 }
 
 configureMavenPublication {

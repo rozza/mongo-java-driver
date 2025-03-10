@@ -22,15 +22,14 @@ plugins {
     id("conventions.bnd")
     id("conventions.codenarc")
     id("conventions.javadoc")
+    id("conventions.optional")
     id("conventions.publishing")
     id("conventions.spotbugs")
     id("conventions.spotless")
     id("conventions.testing-junit")
 }
 
-dependencies {
-    api(libs.slf4j) // TODO optional
-}
+dependencies { "optionalApi"(libs.slf4j) }
 
 logger.info("Compiling ${project.name} using JDK${DEFAULT_JAVA_VERSION}")
 

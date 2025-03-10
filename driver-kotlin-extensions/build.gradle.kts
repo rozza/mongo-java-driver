@@ -21,15 +21,13 @@ plugins { id("project.kotlin") }
 
 base.archivesName.set("mongodb-driver-kotlin-extensions")
 
-java { registerFeature("kotlinDrivers") { usingSourceSet(sourceSets["main"]) } }
-
 dependencies {
     api(project(path = ":driver-core", configuration = "default"))
 
     // Some extensions require higher API like MongoCollection which are defined in the sync &
     // coroutine Kotlin driver
-    "kotlinDriversImplementation"(project(path = ":driver-kotlin-sync", configuration = "default"))
-    "kotlinDriversImplementation"(project(path = ":driver-kotlin-coroutine", configuration = "default"))
+    optionalImplementation(project(path = ":driver-kotlin-sync", configuration = "default"))
+    optionalImplementation(project(path = ":driver-kotlin-coroutine", configuration = "default"))
 
     testImplementation(libs.bundles.mockito.kotlin)
     testImplementation(libs.assertj)
@@ -41,9 +39,6 @@ configureMavenPublication {
         name.set("MongoDB Kotlin Driver Extensions")
         description.set("The MongoDB Kotlin Driver Extensions")
     }
-
-    suppressPomMetadataWarningsFor("kotlinDriversApiElements")
-    suppressPomMetadataWarningsFor("kotlinDriversRuntimeElements")
 }
 
 configureJarManifest { attributes["Automatic-Module-Name"] = "org.mongodb.driver.kotlin.extensions" }

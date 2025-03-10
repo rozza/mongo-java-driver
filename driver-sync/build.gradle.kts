@@ -28,12 +28,12 @@ base.archivesName.set("mongodb-driver-sync")
 
 dependencies {
     api(project(path = ":bson", configuration = "default"))
-    api(project(path = ":driver-core", configuration = "default"))
+    api(project(path = ":driver-core"))
+    optionalApi(project(path = ":mongodb-crypt"))
 
     testImplementation(libs.aws.lambda.core)
     testImplementation(project(path = ":bson", configuration = "testArtifacts"))
     testImplementation(project(path = ":driver-core", configuration = "testArtifacts"))
-    testRuntimeOnly(project(path = ":driver-core", configuration = "consumableTestRuntimeOnly"))
 }
 
 configureMavenPublication {

@@ -23,18 +23,13 @@ plugins {
 
 base.archivesName.set("bson-kotlinx")
 
-java {
-    registerFeature("dateTimeSupport") { usingSourceSet(sourceSets["main"]) }
-    registerFeature("jsonSupport") { usingSourceSet(sourceSets["main"]) }
-}
-
 dependencies {
     api(project(path = ":bson", configuration = "default"))
     implementation(platform(libs.kotlinx.serialization))
     implementation(libs.kotlinx.serialization.core)
     implementation(libs.kotlin.reflect)
-    "dateTimeSupportImplementation"(libs.kotlinx.serialization.datetime)
-    "jsonSupportImplementation"(libs.kotlinx.serialization.json)
+    optionalImplementation(libs.kotlinx.serialization.datetime)
+    optionalImplementation(libs.kotlinx.serialization.json)
 
     testImplementation(project(path = ":driver-core", configuration = "default"))
     testImplementation(libs.kotlinx.serialization.datetime)
@@ -47,12 +42,6 @@ configureMavenPublication {
         description.set("The BSON Codec for Kotlinx serialization")
         url.set("https://bsonspec.org")
     }
-
-    suppressPomMetadataWarningsFor("dateTimeSupportApiElements")
-    suppressPomMetadataWarningsFor("dateTimeSupportRuntimeElements")
-
-    suppressPomMetadataWarningsFor("jsonSupportApiElements")
-    suppressPomMetadataWarningsFor("jsonSupportRuntimeElements")
 }
 
 configureJarManifest { attributes["Automatic-Module-Name"] = "org.mongodb.bson.kotlinx" }

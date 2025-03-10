@@ -24,6 +24,7 @@ plugins {
     id("conventions.bnd")
     id("conventions.detekt")
     id("conventions.dokka")
+    id("conventions.optional")
     id("conventions.publishing")
     id("conventions.spotbugs")
     id("conventions.spotless")
@@ -50,7 +51,7 @@ java {
 }
 
 dependencies {
-    api(libs.slf4j) // TODO optional
+    "optionalApi"(libs.slf4j)
 
     // Align versions of all Kotlin components
     implementation(platform(libs.kotlin.bom))
