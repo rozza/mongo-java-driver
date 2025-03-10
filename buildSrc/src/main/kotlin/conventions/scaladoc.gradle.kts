@@ -31,4 +31,3 @@ tasks.withType<ScalaDoc> {
 
     destinationDir = rootProject.file("build/docs/${project.base.archivesName.get()}")
 }
-

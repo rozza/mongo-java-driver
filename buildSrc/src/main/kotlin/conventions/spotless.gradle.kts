@@ -21,6 +21,7 @@ import com.diffplug.gradle.spotless.SpotlessCheck
 plugins { id("com.diffplug.spotless") }
 
 val doesNotHaveACustomLicenseHeader = "/^(?s)(?!.*@custom-license-header).*/"
+
 spotless {
     kotlinGradle {
         ktfmt("0.39").dropboxStyle().configure { it.setMaxWidth(120) }

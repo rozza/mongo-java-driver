@@ -16,7 +16,6 @@
 package conventions
 
 import com.adarshr.gradle.testlogger.theme.ThemeType
-import gradle.kotlin.dsl.accessors._a385512aa2a6d9de27a30994ba3c1989.javaToolchains
 import project.DEFAULT_JAVA_VERSION
 
 plugins {
