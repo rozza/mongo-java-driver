@@ -101,10 +101,10 @@ public class ServerSelectionSelectionTest {
     @Parameterized.Parameters(name = "{0}")
     public static Collection<Object[]> data() {
         List<Object[]> data = new ArrayList<>();
-        for (BsonDocument testDocument : JsonPoweredTestHelper.getTestDocuments("/server-selection/server_selection")) {
+        for (BsonDocument testDocument : JsonPoweredTestHelper.getSpecTestDocuments("server-selection/server_selection")) {
             data.add(new Object[]{testDocument.getString("resourcePath").getValue(), testDocument});
         }
-        for (BsonDocument testDocument : JsonPoweredTestHelper.getTestDocuments("/max-staleness/server_selection")) {
+        for (BsonDocument testDocument : JsonPoweredTestHelper.getSpecTestDocuments("max-staleness/server_selection")) {
             data.add(new Object[]{testDocument.getString("resourcePath").getValue(), testDocument});
         }
         return data;

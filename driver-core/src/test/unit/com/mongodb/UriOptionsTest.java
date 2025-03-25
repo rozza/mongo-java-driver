@@ -49,6 +49,6 @@ public class UriOptionsTest extends AbstractConnectionStringTest {
 
     @Parameterized.Parameters(name = "{1}")
     public static Collection<Object[]> data() {
-        return JsonPoweredTestHelper.getTestData("/uri-options");
+        return JsonPoweredTestHelper.getLegacyTestData("uri-options");
     }
 }

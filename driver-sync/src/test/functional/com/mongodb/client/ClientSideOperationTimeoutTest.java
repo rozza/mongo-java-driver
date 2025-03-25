@@ -29,7 +29,7 @@ import static org.junit.jupiter.api.Assumptions.assumeFalse;
 public class ClientSideOperationTimeoutTest extends UnifiedSyncTest {
 
     private static Collection<Arguments> data() {
-        return getTestData("unified-test-format/client-side-operation-timeout");
+        return getTestData("client-side-operations-timeout");
     }
 
     @Override

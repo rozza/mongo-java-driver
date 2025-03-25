@@ -80,15 +80,13 @@ public final class UnifiedTestModifications {
 
         def.skipNoncompliant("") // TODO-JAVA-5711
                 .when(() -> !def.isReactive() && isServerlessTest()) // TODO-JAVA-5711 why reactive check?
-                .directory("command-logging")
-                .directory("command-monitoring");
+                .directory("command-logging-and-monitoring");
 
         def.skipNoncompliant("The driver has a hack where getLastError command "
                         + "is executed as part of the handshake in order to "
                         + "get a connectionId even when the hello command "
                         + "response doesn't contain it.")
-                .file("command-monitoring", "pre-42-server-connection-id")
-                .file("command-logging", "pre-42-server-connection-id");
+                .file("command-logging-and-monitoring", "pre-42-server-connection-id");
 
         // connection-monitoring-and-pooling
 
@@ -97,7 +95,10 @@ public final class UnifiedTestModifications {
         // The implementation of the functionality related to clearing the connection pool before closing the connection
         // will be carried out once the specification is finalized and ready.
         def.skipUnknownReason("")
-                .test("connection-monitoring-and-pooling/logging", "connection-logging", "Connection checkout fails due to error establishing connection");
+                .test("connection-monitoring-and-pooling/tests/logging", "connection-logging", "Connection checkout fails due to error establishing connection");
+        def.skipUnknownReason("")
+                .test("connection-monitoring-and-pooling/tests/logging", "connection-pool-options", "waitQueueSize should be included in connection pool created message when specified")
+                .test("connection-monitoring-and-pooling/tests/logging", "connection-pool-options", "waitQueueMultiple should be included in connection pool created message when specified");
 
         // load-balancers
 
@@ -143,12 +144,26 @@ public final class UnifiedTestModifications {
                 .test("crud", "findOneAndDelete-hint-unacknowledged", "Unacknowledged findOneAndDelete with hint string on 4.4+ server")
                 .test("crud", "findOneAndDelete-hint-unacknowledged", "Unacknowledged findOneAndDelete with hint document on 4.4+ server");
 
+        def.skipJira("https://jira.mongodb.org/browse/JAVA-5827")
+                        .file("crud", "bypassDocumentValidation");
+        def.skipNoncompliant("Find with batchSize equal to limit - batchSize is set to limit if limit is smaller")
+                        .test("crud", "find", "Find with batchSize equal to limit");
+        def.skipNoncompliant("Updates and Replace bulk operations are split in the java driver")
+                        .file("crud", "bulkWrite-comment");
+
         // gridfs
 
         def.skipDeprecated("contentType is deprecated in GridFS spec, and 4.x Java driver no longer supports it")
                 .test("gridfs", "gridfs-upload", "upload when contentType is provided");
         def.skipJira("https://jira.mongodb.org/browse/JAVA-4214")
                 .test("gridfs", "gridfs-delete", "delete when files entry does not exist and there are orphaned chunks");
+        def.skipJira("https://jira.mongodb.org/browse/JAVA-5677")
+                .file("gridfs", "gridfs-rename");
+        def.skipJira("https://jira.mongodb.org/browse/JAVA-5689")
+                .file("gridfs", "gridfs-deleteByName")
+                .file("gridfs", "gridfs-renameByName");
+
+
 
         // retryable-reads
 
@@ -221,6 +236,12 @@ public final class UnifiedTestModifications {
                 .test("server-discovery-and-monitoring", "serverMonitoringMode", "poll waits after successful heartbeat");
         def.skipJira("https://jira.mongodb.org/browse/JAVA-4536")
                 .file("server-discovery-and-monitoring", "interruptInUse");
+        def.skipJira("https://jira.mongodb.org/browse/JAVA-5664")
+                .file("server-discovery-and-monitoring", "pool-clear-application-error");
+        def.skipJira("https://jira.mongodb.org/browse/JAVA-5664")
+                .file("server-discovery-and-monitoring", "pool-clear-on-error-checkout");
+        def.skipJira("https://jira.mongodb.org/browse/JAVA-5664")
+                .file("server-discovery-and-monitoring", "pool-cleared-on-min-pool-size-population-error");
 
         // transactions
 
@@ -244,14 +265,23 @@ public final class UnifiedTestModifications {
                         + "than handle that in code, we skip the test on older "
                         + "server versions.")
                 .when(() -> serverVersionLessThan(4, 4))
-                .test("valid-pass", "poc-retryable-writes", "InsertOne fails after multiple retryable writeConcernErrors");
+                .test("unified-test-format/tests/valid-pass", "poc-retryable-writes", "InsertOne fails after multiple retryable writeConcernErrors");
         def.skipJira("https://jira.mongodb.org/browse/JAVA-5389")
-                .file("valid-pass", "expectedEventsForClient-topologyDescriptionChangedEvent");
+                .file("unified-test-format/tests/valid-pass", "expectedEventsForClient-topologyDescriptionChangedEvent");
         def.skipJira("https://jira.mongodb.org/browse/JAVA-4862")
-                .file("valid-pass", "entity-commandCursor");
+                .file("unified-test-format/tests/valid-pass", "entity-commandCursor");
         def.skipJira("https://jira.mongodb.org/browse/JAVA-5631")
-                .file("valid-pass", "kmsProviders-explicit_kms_credentials")
-                .file("valid-pass", "kmsProviders-mixed_kms_credential_fields");
+                .file("unified-test-format/tests/valid-pass", "kmsProviders-explicit_kms_credentials")
+                .file("unified-test-format/tests/valid-pass", "kmsProviders-mixed_kms_credential_fields");
+        def.skipJira("https://jira.mongodb.org/browse/JAVA-5672")
+                .file("unified-test-format/tests/valid-pass", "operator-matchAsRoot");
+        def.skipJira("https://jira.mongodb.org/browse/JAVA-5682")
+                .file("unified-test-format/tests/valid-pass", "operator-type-number_alias");
+
+        // valid fail
+
+        def.skipJira("https://jira.mongodb.org/browse/JAVA-5672")
+                .file("unified-test-format/tests/valid-fail", "operator-matchAsDocument");
     }
 
     private UnifiedTestModifications() {}
@@ -274,6 +304,17 @@ public final class UnifiedTestModifications {
             this.file = assertNotNull(file);
             this.test = assertNotNull(test);
             this.reactive = reactive;
+        }
+
+        @Override
+        public String toString() {
+            return "TestDef{"
+                    + "modifiers=" + modifiers
+                    + ", reactive=" + reactive
+                    + ", test='" + test + '\''
+                    + ", file='" + file + '\''
+                    + ", dir='" + dir + '\''
+                    + '}';
         }
 
         /**
@@ -406,7 +447,7 @@ public final class UnifiedTestModifications {
          * @return this
          */
         public TestApplicator directory(final String dir) {
-            boolean match = ("unified-test-format/" + dir).equals(testDef.dir);
+            boolean match = (dir).equals(testDef.dir);
             return onMatch(match);
         }
 
@@ -417,7 +458,7 @@ public final class UnifiedTestModifications {
          * @return this
          */
         public TestApplicator file(final String dir, final String file) {
-            boolean match = ("unified-test-format/" + dir).equals(testDef.dir)
+            boolean match = (dir).equals(testDef.dir)
                     && file.equals(testDef.file);
             return onMatch(match);
         }
@@ -430,7 +471,7 @@ public final class UnifiedTestModifications {
          * @return this
          */
         public TestApplicator test(final String dir, final String file, final String test) {
-            boolean match = testDef.dir.equals("unified-test-format/" + dir)
+            boolean match = testDef.dir.equals(dir)
                     && testDef.file.equals(file)
                     && testDef.test.equals(test);
             return onMatch(match);
@@ -443,13 +484,13 @@ public final class UnifiedTestModifications {
          * @return this
          */
         public TestApplicator testContains(final String dir, final String fragment) {
-            boolean match = ("unified-test-format/" + dir).equals(testDef.dir)
+            boolean match = (dir).equals(testDef.dir)
                     && testDef.test.contains(fragment);
             if (match) {
                 System.out.printf(
                         "!!! REPLACE %s WITH: .test(\"%s\", \"%s\", \"%s\")%n",
                         fragment,
-                        testDef.dir.replace("unified-test-format/", ""),
+                        testDef.dir,
                         testDef.file,
                         testDef.test);
             }
@@ -507,6 +548,7 @@ public final class UnifiedTestModifications {
             };
             return this;
         }
+
     }
 
     public enum Modifier {

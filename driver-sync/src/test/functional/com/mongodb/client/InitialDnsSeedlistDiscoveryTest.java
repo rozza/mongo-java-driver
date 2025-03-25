@@ -304,7 +304,7 @@ public abstract class InitialDnsSeedlistDiscoveryTest {
     @Parameterized.Parameters(name = "{0}")
     public static Collection<Object[]> data() {
         List<Object[]> data = new ArrayList<>();
-        for (BsonDocument testDocument : JsonPoweredTestHelper.getTestDocuments("/initial-dns-seedlist-discovery")) {
+        for (BsonDocument testDocument : JsonPoweredTestHelper.getSpecTestDocuments("initial-dns-seedlist-discovery")) {
             String resourcePath = testDocument.getString("resourcePath").getValue();
             data.add(new Object[]{
                     testDocument.getString("fileName").getValue(),

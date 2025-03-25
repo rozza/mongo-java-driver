@@ -565,7 +565,7 @@ public abstract class AbstractConnectionPoolTest {
     @Parameterized.Parameters(name = "{0}: {1}")
     public static Collection<Object[]> data() {
         List<Object[]> data = new ArrayList<>();
-        for (BsonDocument testDocument : JsonPoweredTestHelper.getTestDocuments("/connection-monitoring-and-pooling/cmap-format")) {
+        for (BsonDocument testDocument : JsonPoweredTestHelper.getSpecTestDocuments("connection-monitoring-and-pooling/cmap-format")) {
             data.add(new Object[]{testDocument.getString("fileName").getValue(),
                     testDocument.getString("description").getValue(),
                     testDocument, JsonTestServerVersionChecker.skipTest(testDocument, BsonDocument.parse("{}"))});
