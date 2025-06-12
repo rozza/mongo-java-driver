@@ -608,7 +608,6 @@ public final class Entities {
 
         if (entity.containsKey("observeLogMessages")) {
             BsonDocument observeLogMessagesDocument = entity.getDocument("observeLogMessages");
-
             Map<LogMessage.Component, LogMessage.Level> filterConfig = observeLogMessagesDocument.entrySet().stream()
                     .collect(Collectors.toMap(Entities::toComponent, Entities::toLevel));
 

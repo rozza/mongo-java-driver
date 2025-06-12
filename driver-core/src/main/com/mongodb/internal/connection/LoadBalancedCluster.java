@@ -275,7 +275,7 @@ final class LoadBalancedCluster implements Cluster {
             }
             ClusterClosedEvent clusterClosedEvent = new ClusterClosedEvent(clusterId);
             clusterListener.clusterClosed(clusterClosedEvent);
-            logTopologyClosedEvent(clusterId, clusterClosedEvent);
+            logTopologyClosedEvent(clusterId);
         }
     }
 

@@ -239,7 +239,7 @@ public final class UnifiedTestModifications {
                 .test("server-discovery-and-monitoring", "serverMonitoringMode", "connect with serverMonitoringMode=auto >=4.4")
                 .test("server-discovery-and-monitoring", "serverMonitoringMode", "connect with serverMonitoringMode=stream >=4.4");
         def.skipJira("https://jira.mongodb.org/browse/JAVA-4770")
-                .file("server-discovery-and-monitoring", "standalone-logging")
+                //.file("server-discovery-and-monitoring", "standalone-logging")
                 .file("server-discovery-and-monitoring", "replicaset-logging")
                 .file("server-discovery-and-monitoring", "sharded-logging")
                 .file("server-discovery-and-monitoring", "loadbalanced-logging");

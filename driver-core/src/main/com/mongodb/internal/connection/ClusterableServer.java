@@ -17,10 +17,28 @@
 package com.mongodb.internal.connection;
 
 import com.mongodb.MongoException;
+import com.mongodb.connection.ConnectionDescription;
+import com.mongodb.connection.ServerId;
+import com.mongodb.internal.logging.LogMessage;
+import com.mongodb.internal.logging.StructuredLogger;
+import org.bson.BsonDocument;
 
 import java.util.List;
 
+import static com.mongodb.internal.logging.LogMessage.Component.TOPOLOGY;
+import static com.mongodb.internal.logging.LogMessage.Entry.Name.AWAITED;
+import static com.mongodb.internal.logging.LogMessage.Entry.Name.DRIVER_CONNECTION_ID;
+import static com.mongodb.internal.logging.LogMessage.Entry.Name.DURATION_MS;
+import static com.mongodb.internal.logging.LogMessage.Entry.Name.FAILURE;
+import static com.mongodb.internal.logging.LogMessage.Entry.Name.REPLY;
+import static com.mongodb.internal.logging.LogMessage.Entry.Name.SERVER_CONNECTION_ID;
+import static com.mongodb.internal.logging.LogMessage.Entry.Name.SERVER_HOST;
+import static com.mongodb.internal.logging.LogMessage.Entry.Name.SERVER_PORT;
+import static com.mongodb.internal.logging.LogMessage.Entry.Name.TOPOLOGY_ID;
+import static com.mongodb.internal.logging.LogMessage.Level.DEBUG;
 import static java.util.Arrays.asList;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import static java.util.concurrent.TimeUnit.NANOSECONDS;
 
 /**
  * A logical connection to a MongoDB server that supports clustering along with other servers.

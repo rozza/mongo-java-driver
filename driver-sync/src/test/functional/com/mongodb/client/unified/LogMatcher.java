@@ -51,6 +51,16 @@ final class LogMatcher {
             final List<LogMessage> actualMessages, final Iterable<Tweak> tweaks) {
         context.push(ContextElement.ofLogMessages(client, expectedMessages, actualMessages));
 
+        // TODO handle ignoreMessages!
+        System.out.println("----- Expected messages " + ignoreExtraMessages + " -----");
+        expectedMessages.forEach(expectedMessage -> {
+            System.out.println(expectedMessage.asDocument().getDocument("data", new BsonDocument()).getString("message", new BsonString("")).getValue());
+        });
+        System.out.println("----- actual messages -----");
+        actualMessages.forEach(actualMessage -> {
+            System.out.println(actualMessage.getMessageId());
+        });
+
         if (ignoreExtraMessages) {
             assertTrue(context.getMessage("Number of messages must be greater than or equal to the expected number of messages"),
                     actualMessages.size() >= expectedMessages.size());
