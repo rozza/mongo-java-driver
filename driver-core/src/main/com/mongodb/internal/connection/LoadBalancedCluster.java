@@ -214,10 +214,10 @@ final class LoadBalancedCluster implements Cluster {
             throw createResolvedToMultipleHostsException();
         }
         ClusterDescription curDescription = description;
-        logServerSelectionStarted(clusterId, operationContext.getId(), serverSelector, curDescription);
+        logServerSelectionStarted(operationContext, clusterId, serverSelector, curDescription);
         ServerTuple serverTuple = new ServerTuple(assertNotNull(server), curDescription.getServerDescriptions().get(0));
-        logServerSelectionSucceeded(clusterId, operationContext.getId(), serverTuple.getServerDescription().getAddress(),
-                serverSelector, curDescription);
+        logServerSelectionSucceeded(operationContext, clusterId, serverTuple.getServerDescription().getAddress(), serverSelector,
+                curDescription);
         return serverTuple;
     }
 
@@ -300,10 +300,9 @@ final class LoadBalancedCluster implements Cluster {
             serverSelectionRequest.onError(createResolvedToMultipleHostsException());
         } else {
             ClusterDescription curDescription = description;
-            logServerSelectionStarted(
-                    clusterId, serverSelectionRequest.operationId, serverSelectionRequest.serverSelector, curDescription);
+            logServerSelectionStarted(serverSelectionRequest.operationContext, clusterId, serverSelectionRequest.serverSelector, curDescription);
             ServerTuple serverTuple = new ServerTuple(assertNotNull(server), curDescription.getServerDescriptions().get(0));
-            logServerSelectionSucceeded(clusterId, serverSelectionRequest.operationId,
+            logServerSelectionSucceeded(serverSelectionRequest.operationContext, clusterId,
                     serverTuple.getServerDescription().getAddress(), serverSelectionRequest.serverSelector, curDescription);
             serverSelectionRequest.onSuccess(serverTuple);
         }

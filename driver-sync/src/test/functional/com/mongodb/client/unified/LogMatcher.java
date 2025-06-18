@@ -53,6 +53,8 @@ final class LogMatcher {
             final List<LogMessage> actualMessages, final Iterable<Tweak> tweaks) {
         context.push(ContextElement.ofLogMessages(client, expectedMessages, actualMessages));
 
+        actualMessages.stream().map(LogMatcher::logMessageAsDocument).forEach(System.out::println);
+
         List<LogMessage> logMessages = actualMessages.stream()
                 .filter(logMessage -> !ignoreMessages.contains(logMessageAsIgnoreMessageDocument(logMessage)))
                 .collect(Collectors.toList());

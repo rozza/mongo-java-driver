@@ -374,9 +374,11 @@ public abstract class UnifiedTest {
             }
 
             if (definition.containsKey("expectLogMessages")) {
-                ArrayList<LogMatcher.Tweak> tweaks = new ArrayList<>(singletonList(
-                        // `LogMessage.Entry.Name.OPERATION` is not supported, therefore we skip matching its value
-                        LogMatcher.Tweak.skip(LogMessage.Entry.Name.OPERATION)));
+//                // TODO - JAVA-5197
+//                ArrayList<LogMatcher.Tweak> tweaks = new ArrayList<>(singletonList(
+//                        // `LogMessage.Entry.Name.OPERATION` is not supported, therefore we skip matching its value
+//                        LogMatcher.Tweak.skip(LogMessage.Entry.Name.OPERATION)));
+                ArrayList<LogMatcher.Tweak> tweaks = new ArrayList<>();
                 if (getMongoClientSettings().getClusterSettings()
                         .getHosts().stream().anyMatch(serverAddress -> serverAddress instanceof UnixServerAddress)) {
                     tweaks.add(LogMatcher.Tweak.skip(LogMessage.Entry.Name.SERVER_PORT));

@@ -49,7 +49,6 @@ import static com.mongodb.internal.connection.ServerDescriptionHelper.unknownCon
 
 class DefaultServer implements ClusterableServer {
     private static final Logger LOGGER = Loggers.getLogger("connection");
-    private static final StructuredLogger STRUCTURED_LOGGER = new StructuredLogger("connection");
     private final ServerId serverId;
     private final ConnectionPool connectionPool;
     private final ClusterConnectionMode clusterConnectionMode;

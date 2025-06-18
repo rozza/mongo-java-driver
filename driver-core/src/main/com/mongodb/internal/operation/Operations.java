@@ -88,6 +88,7 @@ import java.util.stream.Collectors;
 
 import static com.mongodb.assertions.Assertions.assertNotNull;
 import static com.mongodb.assertions.Assertions.notNull;
+import static com.mongodb.internal.operation.NamedWriteOperation.createNamedWriteOperation;
 import static java.lang.String.format;
 import static java.util.Collections.singletonList;
 
@@ -439,10 +440,10 @@ final class Operations<TDocument> {
             requests.add(new InsertRequest(documentToBsonDocument(document)));
         }
 
-        return new MixedBulkWriteOperation(assertNotNull(namespace),
+        return createNamedWriteOperation("insertMany", new MixedBulkWriteOperation(assertNotNull(namespace),
                 requests, options.isOrdered(), writeConcern, retryWrites)
                 .bypassDocumentValidation(options.getBypassDocumentValidation())
-                .comment(options.getComment());
+                .comment(options.getComment()));
     }
 
     @SuppressWarnings("unchecked")

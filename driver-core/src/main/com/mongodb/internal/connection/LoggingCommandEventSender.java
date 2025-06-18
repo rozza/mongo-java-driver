@@ -50,6 +50,7 @@ import static com.mongodb.internal.logging.LogMessage.Entry.Name.COMMAND_NAME;
 import static com.mongodb.internal.logging.LogMessage.Entry.Name.DATABASE_NAME;
 import static com.mongodb.internal.logging.LogMessage.Entry.Name.DRIVER_CONNECTION_ID;
 import static com.mongodb.internal.logging.LogMessage.Entry.Name.DURATION_MS;
+import static com.mongodb.internal.logging.LogMessage.Entry.Name.OPERATION;
 import static com.mongodb.internal.logging.LogMessage.Entry.Name.OPERATION_ID;
 import static com.mongodb.internal.logging.LogMessage.Entry.Name.REPLY;
 import static com.mongodb.internal.logging.LogMessage.Entry.Name.REQUEST_ID;

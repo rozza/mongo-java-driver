@@ -76,6 +76,8 @@ import static com.mongodb.assertions.Assertions.isTrue;
 import static com.mongodb.assertions.Assertions.isTrueArgument;
 import static com.mongodb.assertions.Assertions.notNull;
 import static com.mongodb.internal.TimeoutContext.createTimeoutContext;
+import static com.mongodb.internal.binding.OperationNameHelper.getReadOperationName;
+import static com.mongodb.internal.binding.OperationNameHelper.getWriteOperationName;
 
 final class MongoClusterImpl implements MongoCluster {
     @Nullable
@@ -415,7 +417,7 @@ final class MongoClusterImpl implements MongoCluster {
             }
 
             ClientSession actualClientSession = getClientSession(session);
-            ReadBinding binding = getReadBinding(readPreference, readConcern, actualClientSession, session == null);
+            ReadBinding binding = getReadBinding(operation, readPreference, readConcern, actualClientSession, session == null);
 
             try {
                 if (actualClientSession.hasActiveTransaction() && !binding.getReadPreference().equals(primary())) {
@@ -440,7 +442,7 @@ final class MongoClusterImpl implements MongoCluster {
             }
 
             ClientSession actualClientSession = getClientSession(session);
-            WriteBinding binding = getWriteBinding(readConcern, actualClientSession, session == null);
+            WriteBinding binding = getWriteBinding(operation, readConcern, actualClientSession, session == null);
 
             try {
                 return operation.execute(binding);
@@ -467,20 +469,21 @@ final class MongoClusterImpl implements MongoCluster {
             return executorTimeoutSettings;
         }
 
-        WriteBinding getWriteBinding(final ReadConcern readConcern, final ClientSession session, final boolean ownsSession) {
-            return getReadWriteBinding(primary(), readConcern, session, ownsSession);
-        }
-
-        ReadBinding getReadBinding(final ReadPreference readPreference, final ReadConcern readConcern, final ClientSession session,
+        WriteBinding getWriteBinding(final WriteOperation<?> operation, final ReadConcern readConcern, final ClientSession session,
                 final boolean ownsSession) {
-            return getReadWriteBinding(readPreference, readConcern, session, ownsSession);
+            return getReadWriteBinding(getWriteOperationName(operation), primary(), readConcern, session, ownsSession);
         }
 
-        ReadWriteBinding getReadWriteBinding(final ReadPreference readPreference,
+        ReadBinding getReadBinding(final ReadOperation<?> operation, final ReadPreference readPreference, final ReadConcern readConcern,
+                final ClientSession session, final boolean ownsSession) {
+            return getReadWriteBinding(getReadOperationName(operation), readPreference, readConcern, session, ownsSession);
+        }
+
+        private ReadWriteBinding getReadWriteBinding(final String operationName, final ReadPreference readPreference,
                 final ReadConcern readConcern, final ClientSession session, final boolean ownsSession) {
 
             ClusterAwareReadWriteBinding readWriteBinding = new ClusterBinding(cluster,
-                    getReadPreferenceForBinding(readPreference, session), readConcern, getOperationContext(session, readConcern));
+                    getReadPreferenceForBinding(readPreference, session), readConcern, getOperationContext(session, readConcern, operationName));
 
             if (crypt != null) {
                 readWriteBinding = new CryptBinding(readWriteBinding, crypt);
@@ -489,12 +492,12 @@ final class MongoClusterImpl implements MongoCluster {
             return new ClientSessionBinding(session, ownsSession, readWriteBinding);
         }
 
-        private OperationContext getOperationContext(final ClientSession session, final ReadConcern readConcern) {
+        private OperationContext getOperationContext(final ClientSession session, final ReadConcern readConcern, @Nullable final String operationName) {
             return new OperationContext(
                     getRequestContext(),
                     new ReadConcernAwareNoOpSessionContext(readConcern),
                     createTimeoutContext(session, executorTimeoutSettings),
-                    serverApi);
+                    serverApi, operationName);
         }
 
         private RequestContext getRequestContext() {
