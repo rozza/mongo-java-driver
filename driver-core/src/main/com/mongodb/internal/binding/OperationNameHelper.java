@@ -19,8 +19,10 @@ package com.mongodb.internal.binding;
 
 import com.mongodb.internal.operation.ClientBulkWriteOperation;
 import com.mongodb.internal.operation.MixedBulkWriteOperation;
+import com.mongodb.internal.operation.NamedWriteOperation;
 import com.mongodb.internal.operation.ReadOperation;
 import com.mongodb.internal.operation.WriteOperation;
+import com.mongodb.lang.Nullable;
 
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -32,19 +34,15 @@ public class OperationNameHelper  {
         return readOperation.getClass().getSimpleName();
     }
 
+    @Nullable
     public static String getWriteOperationName(final WriteOperation<?> writeOperation) {
+        if (writeOperation instanceof NamedWriteOperation) {
+            return ((NamedWriteOperation<?>) writeOperation).getOperationName();
+        }
         if (writeOperation instanceof ClientBulkWriteOperation) {
             return "bulkWrite";
-        } else if(writeOperation instanceof MixedBulkWriteOperation) {
-            MixedBulkWriteOperation mixedBulkWriteOperation = (MixedBulkWriteOperation) writeOperation;
-
-            Set<String> writeRequests = mixedBulkWriteOperation.getWriteRequests().stream().map(w -> w.getClass().getSimpleName())
-                    .collect(Collectors.toSet());
-
-
-            return "bulkWrite";
         }
-        return writeOperation.getClass().getSimpleName();
+        return null;
     }
 
     private OperationNameHelper() {
