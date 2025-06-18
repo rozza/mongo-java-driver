@@ -22,7 +22,7 @@ import com.mongodb.client.cursor.TimeoutMode;
 import com.mongodb.internal.TimeoutSettings;
 import com.mongodb.internal.VisibleForTesting;
 import com.mongodb.internal.async.AsyncBatchCursor;
-import com.mongodb.internal.operation.AsyncOperations;
+import com.mongodb.internal.operation.AOperations;
 import com.mongodb.internal.operation.AsyncReadOperation;
 import com.mongodb.lang.Nullable;
 import com.mongodb.reactivestreams.client.ClientSession;
@@ -58,7 +58,7 @@ public abstract class BatchCursorPublisher<T> implements Publisher<T> {
     }
 
     abstract AsyncReadOperation<AsyncBatchCursor<T>> asAsyncReadOperation(int initialBatchSize);
-    abstract Function<AsyncOperations<?>, TimeoutSettings> getTimeoutSettings();
+    abstract Function<AOperations<?>, TimeoutSettings> getTimeoutSettings();
 
     AsyncReadOperation<AsyncBatchCursor<T>> asAsyncFirstReadOperation() {
         return asAsyncReadOperation(1);
@@ -73,7 +73,7 @@ public abstract class BatchCursorPublisher<T> implements Publisher<T> {
         return mongoOperationPublisher;
     }
 
-    AsyncOperations<T> getOperations() {
+    AOperations<T> getOperations() {
         return mongoOperationPublisher.getOperations();
     }
 

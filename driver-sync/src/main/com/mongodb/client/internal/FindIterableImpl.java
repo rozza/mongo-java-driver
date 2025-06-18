@@ -29,7 +29,7 @@ import com.mongodb.internal.TimeoutSettings;
 import com.mongodb.internal.client.model.FindOptions;
 import com.mongodb.internal.operation.BatchCursor;
 import com.mongodb.internal.operation.ExplainableReadOperation;
-import com.mongodb.internal.operation.SyncOperations;
+import com.mongodb.internal.operation.Operations;
 import com.mongodb.lang.Nullable;
 import org.bson.BsonValue;
 import org.bson.Document;
@@ -42,7 +42,7 @@ import static com.mongodb.assertions.Assertions.notNull;
 
 class FindIterableImpl<TDocument, TResult> extends MongoIterableImpl<TResult> implements FindIterable<TResult> {
 
-    private final SyncOperations<TDocument> operations;
+    private final Operations<TDocument> operations;
 
     private final Class<TResult> resultClass;
     private final FindOptions findOptions;
@@ -55,7 +55,7 @@ class FindIterableImpl<TDocument, TResult> extends MongoIterableImpl<TResult> im
             final ReadConcern readConcern, final OperationExecutor executor, final Bson filter, final boolean retryReads,
             final TimeoutSettings timeoutSettings) {
         super(clientSession, executor, readConcern, readPreference, retryReads, timeoutSettings);
-        this.operations = new SyncOperations<>(namespace, documentClass, readPreference, codecRegistry, retryReads, timeoutSettings);
+        this.operations = new Operations<>(namespace, documentClass, readPreference, codecRegistry, retryReads, timeoutSettings);
         this.resultClass = notNull("resultClass", resultClass);
         this.filter = notNull("filter", filter);
         this.findOptions = new FindOptions();

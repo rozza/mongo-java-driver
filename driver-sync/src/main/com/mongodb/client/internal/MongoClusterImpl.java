@@ -53,8 +53,8 @@ import com.mongodb.internal.connection.Cluster;
 import com.mongodb.internal.connection.OperationContext;
 import com.mongodb.internal.connection.ReadConcernAwareNoOpSessionContext;
 import com.mongodb.internal.operation.OperationHelper;
+import com.mongodb.internal.operation.Operations;
 import com.mongodb.internal.operation.ReadOperation;
-import com.mongodb.internal.operation.SyncOperations;
 import com.mongodb.internal.operation.WriteOperation;
 import com.mongodb.internal.session.ServerSessionPool;
 import com.mongodb.lang.Nullable;
@@ -100,7 +100,7 @@ final class MongoClusterImpl implements MongoCluster {
     private final TimeoutSettings timeoutSettings;
     private final UuidRepresentation uuidRepresentation;
     private final WriteConcern writeConcern;
-    private final SyncOperations<BsonDocument> operations;
+    private final Operations<BsonDocument> operations;
 
     MongoClusterImpl(
             @Nullable final AutoEncryptionSettings autoEncryptionSettings, final Cluster cluster, final CodecRegistry codecRegistry,
@@ -125,7 +125,7 @@ final class MongoClusterImpl implements MongoCluster {
         this.timeoutSettings = timeoutSettings;
         this.uuidRepresentation = uuidRepresentation;
         this.writeConcern = writeConcern;
-        operations = new SyncOperations<>(
+        operations = new Operations<>(
                 null,
                 BsonDocument.class,
                 readPreference,

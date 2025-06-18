@@ -60,7 +60,7 @@ import com.mongodb.client.result.UpdateResult;
 import com.mongodb.internal.TimeoutSettings;
 import com.mongodb.internal.async.SingleResultCallback;
 import com.mongodb.internal.bulk.WriteRequest;
-import com.mongodb.internal.operation.AsyncOperations;
+import com.mongodb.internal.operation.AOperations;
 import com.mongodb.internal.operation.AsyncReadOperation;
 import com.mongodb.internal.operation.AsyncWriteOperation;
 import com.mongodb.internal.operation.IndexHelper;
@@ -93,7 +93,7 @@ import static org.bson.codecs.configuration.CodecRegistries.withUuidRepresentati
  */
 public final class MongoOperationPublisher<T> {
 
-    private final AsyncOperations<T> operations;
+    private final AOperations<T> operations;
     private final UuidRepresentation uuidRepresentation;
     @Nullable
     private final AutoEncryptionSettings autoEncryptionSettings;
@@ -115,7 +115,7 @@ public final class MongoOperationPublisher<T> {
             final boolean retryWrites, final boolean retryReads, final UuidRepresentation uuidRepresentation,
             @Nullable final AutoEncryptionSettings autoEncryptionSettings, final TimeoutSettings timeoutSettings,
             final OperationExecutor executor) {
-        this.operations = new AsyncOperations<>(namespace, notNull("documentClass", documentClass),
+        this.operations = new AOperations<>(namespace, notNull("documentClass", documentClass),
                                            notNull("readPreference", readPreference), notNull("codecRegistry", codecRegistry),
                                            notNull("readConcern", readConcern), notNull("writeConcern", writeConcern),
                                            retryWrites, retryReads, timeoutSettings);
@@ -165,7 +165,7 @@ public final class MongoOperationPublisher<T> {
         return operations.getDocumentClass();
     }
 
-    public AsyncOperations<T> getOperations() {
+    public AOperations<T> getOperations() {
         return operations;
     }
 
@@ -275,13 +275,13 @@ public final class MongoOperationPublisher<T> {
 
     Publisher<Long> estimatedDocumentCount(final EstimatedDocumentCountOptions options) {
         return createReadOperationMono(
-                (asyncOperations -> asyncOperations.createTimeoutSettings(options)),
+                (aOperations -> aOperations.createTimeoutSettings(options)),
                 () -> operations.estimatedDocumentCount(notNull("options", options)), null);
     }
 
     Publisher<Long> countDocuments(@Nullable final ClientSession clientSession, final Bson filter, final CountOptions options) {
         return createReadOperationMono(
-                (asyncOperations -> asyncOperations.createTimeoutSettings(options)),
+                (aOperations -> aOperations.createTimeoutSettings(options)),
                 () -> operations.countDocuments(notNull("filter", filter), notNull("options", options)
         ), clientSession);
     }
@@ -498,7 +498,7 @@ public final class MongoOperationPublisher<T> {
     }
 
 
-    <R> Mono<R> createReadOperationMono(final Function<AsyncOperations<?>, TimeoutSettings> timeoutSettingsFunction,
+    <R> Mono<R> createReadOperationMono(final Function<AOperations<?>, TimeoutSettings> timeoutSettingsFunction,
             final Supplier<AsyncReadOperation<R>> operation, @Nullable final ClientSession clientSession) {
         return createReadOperationMono(() -> timeoutSettingsFunction.apply(operations), operation, clientSession, getReadPreference());
     }
@@ -512,7 +512,7 @@ public final class MongoOperationPublisher<T> {
                 .execute(readOperation, readPreference, getReadConcern(), clientSession);
     }
 
-    <R> Mono<R> createWriteOperationMono(final Function<AsyncOperations<?>, TimeoutSettings> timeoutSettingsFunction,
+    <R> Mono<R> createWriteOperationMono(final Function<AOperations<?>, TimeoutSettings> timeoutSettingsFunction,
             final Supplier<AsyncWriteOperation<R>> operationSupplier, @Nullable final ClientSession clientSession) {
         return createWriteOperationMono(() -> timeoutSettingsFunction.apply(operations), operationSupplier, clientSession);
     }

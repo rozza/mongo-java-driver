@@ -19,6 +19,8 @@ package com.mongodb;
 import com.mongodb.bulk.BulkWriteError;
 import com.mongodb.bulk.BulkWriteResult;
 import com.mongodb.bulk.WriteConcernError;
+import com.mongodb.internal.async.SingleResultCallback;
+import com.mongodb.internal.binding.AsyncWriteBinding;
 import com.mongodb.internal.binding.WriteBinding;
 import com.mongodb.internal.bulk.DeleteRequest;
 import com.mongodb.internal.bulk.InsertRequest;
@@ -47,6 +49,7 @@ import static com.mongodb.internal.bulk.WriteRequest.Type.UPDATE;
  * Operation for bulk writes for the legacy API.
  */
 final class LegacyMixedBulkWriteOperation implements WriteOperation<WriteConcernResult> {
+    private final String operationName;
     private final WriteConcern writeConcern;
     private final MongoNamespace namespace;
     private final List<? extends WriteRequest> writeRequests;
@@ -57,29 +60,31 @@ final class LegacyMixedBulkWriteOperation implements WriteOperation<WriteConcern
 
     static LegacyMixedBulkWriteOperation createBulkWriteOperationForInsert(final MongoNamespace namespace, final boolean ordered,
             final WriteConcern writeConcern, final boolean retryWrites, final List<InsertRequest> insertRequests) {
-        return new LegacyMixedBulkWriteOperation(namespace, ordered, writeConcern, retryWrites, insertRequests, INSERT);
+        return new LegacyMixedBulkWriteOperation("insert", namespace, ordered, writeConcern, retryWrites, insertRequests, INSERT);
     }
 
     static LegacyMixedBulkWriteOperation createBulkWriteOperationForUpdate(final MongoNamespace namespace, final boolean ordered,
             final WriteConcern writeConcern, final boolean retryWrites, final List<UpdateRequest> updateRequests) {
         assertTrue(updateRequests.stream().allMatch(updateRequest -> updateRequest.getType() == UPDATE));
-        return new LegacyMixedBulkWriteOperation(namespace, ordered, writeConcern, retryWrites, updateRequests, UPDATE);
+        return new LegacyMixedBulkWriteOperation("update", namespace, ordered, writeConcern, retryWrites, updateRequests, UPDATE);
     }
 
     static LegacyMixedBulkWriteOperation createBulkWriteOperationForReplace(final MongoNamespace namespace, final boolean ordered,
             final WriteConcern writeConcern, final boolean retryWrites, final List<UpdateRequest> replaceRequests) {
         assertTrue(replaceRequests.stream().allMatch(updateRequest -> updateRequest.getType() == REPLACE));
-        return new LegacyMixedBulkWriteOperation(namespace, ordered, writeConcern, retryWrites, replaceRequests, REPLACE);
+        return new LegacyMixedBulkWriteOperation("replace", namespace, ordered, writeConcern, retryWrites, replaceRequests, REPLACE);
     }
 
     static LegacyMixedBulkWriteOperation createBulkWriteOperationForDelete(final MongoNamespace namespace, final boolean ordered,
             final WriteConcern writeConcern, final boolean retryWrites, final List<DeleteRequest> deleteRequests) {
-        return new LegacyMixedBulkWriteOperation(namespace, ordered, writeConcern, retryWrites, deleteRequests, DELETE);
+        return new LegacyMixedBulkWriteOperation("delete", namespace, ordered, writeConcern, retryWrites, deleteRequests, DELETE);
     }
 
-    private LegacyMixedBulkWriteOperation(final MongoNamespace namespace, final boolean ordered, final WriteConcern writeConcern,
-            final boolean retryWrites, final List<? extends WriteRequest> writeRequests, final WriteRequest.Type type) {
+    private LegacyMixedBulkWriteOperation(final String operationName, final MongoNamespace namespace, final boolean ordered,
+            final WriteConcern writeConcern, final boolean retryWrites, final List<? extends WriteRequest> writeRequests,
+            final WriteRequest.Type type) {
         isTrueArgument("writeRequests not empty", !writeRequests.isEmpty());
+        this.operationName = notNull("operationName", operationName);
         this.writeRequests = notNull("writeRequests", writeRequests);
         this.type = type;
         this.ordered = ordered;
@@ -98,9 +103,14 @@ final class LegacyMixedBulkWriteOperation implements WriteOperation<WriteConcern
     }
 
     @Override
+    public String getOperationName() {
+        return operationName;
+    }
+
+    @Override
     public WriteConcernResult execute(final WriteBinding binding) {
         try {
-            BulkWriteResult result = new MixedBulkWriteOperation(namespace, writeRequests, ordered, writeConcern, retryWrites)
+            BulkWriteResult result = new MixedBulkWriteOperation(operationName, namespace, writeRequests, ordered, writeConcern, retryWrites)
                     .bypassDocumentValidation(bypassDocumentValidation).execute(binding);
             if (result.wasAcknowledged()) {
                 return translateBulkWriteResult(result);
@@ -110,6 +120,11 @@ final class LegacyMixedBulkWriteOperation implements WriteOperation<WriteConcern
         } catch (MongoBulkWriteException e) {
             throw convertBulkWriteException(e);
         }
+    }
+
+    @Override
+    public void executeAsync(final AsyncWriteBinding binding, final SingleResultCallback<WriteConcernResult> callback) {
+        throw new UnsupportedOperationException("executeAsync not implemented for Legacy bulk writes");
     }
 
     private MongoException convertBulkWriteException(final MongoBulkWriteException e) {

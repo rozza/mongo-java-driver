@@ -20,7 +20,7 @@ import com.mongodb.client.cursor.TimeoutMode;
 import com.mongodb.client.model.Collation;
 import com.mongodb.internal.TimeoutSettings;
 import com.mongodb.internal.async.AsyncBatchCursor;
-import com.mongodb.internal.operation.AsyncOperations;
+import com.mongodb.internal.operation.AOperations;
 import com.mongodb.internal.operation.AsyncReadOperation;
 import com.mongodb.lang.Nullable;
 import com.mongodb.reactivestreams.client.ClientSession;
@@ -115,7 +115,7 @@ final class DistinctPublisherImpl<T> extends BatchCursorPublisher<T> implements 
     }
 
     @Override
-    Function<AsyncOperations<?>, TimeoutSettings> getTimeoutSettings() {
-        return (asyncOperations -> asyncOperations.createTimeoutSettings(maxTimeMS));
+    Function<AOperations<?>, TimeoutSettings> getTimeoutSettings() {
+        return (aOperations -> aOperations.createTimeoutSettings(maxTimeMS));
     }
 }

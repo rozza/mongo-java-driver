@@ -21,7 +21,7 @@ import com.mongodb.ReadPreference;
 import com.mongodb.internal.TimeoutSettings;
 import com.mongodb.internal.async.AsyncBatchCursor;
 import com.mongodb.internal.async.SingleResultCallback;
-import com.mongodb.internal.operation.AsyncOperations;
+import com.mongodb.internal.operation.AOperations;
 import com.mongodb.internal.operation.AsyncReadOperation;
 import org.bson.Document;
 import org.junit.jupiter.api.Test;
@@ -174,8 +174,8 @@ public class BatchCursorPublisherTest {
             }
 
             @Override
-            Function<AsyncOperations<?>, TimeoutSettings> getTimeoutSettings() {
-                return (AsyncOperations::getTimeoutSettings);
+            Function<AOperations<?>, TimeoutSettings> getTimeoutSettings() {
+                return (AOperations::getTimeoutSettings);
             }
         };
 

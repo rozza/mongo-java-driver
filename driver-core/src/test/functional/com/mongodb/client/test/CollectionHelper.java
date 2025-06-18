@@ -262,7 +262,7 @@ public final class CollectionHelper<T> {
         for (BsonDocument document : documents) {
             insertRequests.add(new InsertRequest(document));
         }
-        new MixedBulkWriteOperation(namespace, insertRequests, true, writeConcern, false).execute(binding);
+        new MixedBulkWriteOperation("insert", namespace, insertRequests, true, writeConcern, false).execute(binding);
     }
 
     public void insertDocuments(final Document... documents) {
@@ -337,7 +337,7 @@ public final class CollectionHelper<T> {
     }
 
     public void updateOne(final Bson filter, final Bson update, final boolean isUpsert) {
-        new MixedBulkWriteOperation(namespace,
+        new MixedBulkWriteOperation("update", namespace,
                                     singletonList(new UpdateRequest(filter.toBsonDocument(Document.class, registry),
                                                                     update.toBsonDocument(Document.class, registry),
                                                                     WriteRequest.Type.UPDATE)
@@ -347,7 +347,7 @@ public final class CollectionHelper<T> {
     }
 
     public void replaceOne(final Bson filter, final Bson update, final boolean isUpsert) {
-        new MixedBulkWriteOperation(namespace,
+        new MixedBulkWriteOperation("replace", namespace,
                                     singletonList(new UpdateRequest(filter.toBsonDocument(Document.class, registry),
                         update.toBsonDocument(Document.class, registry),
                         WriteRequest.Type.REPLACE)
@@ -365,7 +365,7 @@ public final class CollectionHelper<T> {
     }
 
     private void delete(final Bson filter, final boolean multi) {
-        new MixedBulkWriteOperation(namespace,
+        new MixedBulkWriteOperation("delete", namespace,
                 singletonList(new DeleteRequest(filter.toBsonDocument(Document.class, registry)).multi(multi)),
                 true, WriteConcern.ACKNOWLEDGED, false)
                 .execute(getBinding());

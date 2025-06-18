@@ -32,7 +32,7 @@ import com.mongodb.internal.TimeoutSettings;
 import com.mongodb.internal.client.model.changestream.ChangeStreamLevel;
 import com.mongodb.internal.operation.BatchCursor;
 import com.mongodb.internal.operation.ReadOperation;
-import com.mongodb.internal.operation.SyncOperations;
+import com.mongodb.internal.operation.Operations;
 import com.mongodb.lang.Nullable;
 import org.bson.BsonDocument;
 import org.bson.BsonString;
@@ -58,7 +58,7 @@ public class ChangeStreamIterableImpl<TResult> extends MongoIterableImpl<ChangeS
     private final List<? extends Bson> pipeline;
     private final Codec<ChangeStreamDocument<TResult>> codec;
     private final ChangeStreamLevel changeStreamLevel;
-    private final SyncOperations<TResult> operations;
+    private final Operations<TResult> operations;
     private FullDocument fullDocument = FullDocument.DEFAULT;
     private FullDocumentBeforeChange fullDocumentBeforeChange = FullDocumentBeforeChange.DEFAULT;
     private BsonDocument resumeToken;
@@ -86,7 +86,7 @@ public class ChangeStreamIterableImpl<TResult> extends MongoIterableImpl<ChangeS
         this.pipeline = notNull("pipeline", pipeline);
         this.codec = ChangeStreamDocument.createCodec(notNull("resultClass", resultClass), codecRegistry);
         this.changeStreamLevel = notNull("changeStreamLevel", changeStreamLevel);
-        this.operations = new SyncOperations<>(namespace, resultClass, readPreference, codecRegistry, retryReads, timeoutSettings);
+        this.operations = new Operations<>(namespace, resultClass, readPreference, codecRegistry, retryReads, timeoutSettings);
     }
 
     @Override

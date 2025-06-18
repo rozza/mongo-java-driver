@@ -16,6 +16,8 @@
 
 package com.mongodb.internal.operation;
 
+import com.mongodb.internal.async.SingleResultCallback;
+import com.mongodb.internal.binding.AsyncWriteBinding;
 import com.mongodb.internal.binding.WriteBinding;
 
 /**
@@ -26,10 +28,23 @@ import com.mongodb.internal.binding.WriteBinding;
 public interface WriteOperation<T> {
 
     /**
+     * @return the simplified name of the operation, e.g. "insert", "update", "delete", "bulkWrite", etc.
+     */
+    String getOperationName();
+
+    /**
      * General execute which can return anything of type T
      *
      * @param binding the binding to execute in the context of
      * @return T, the result of the execution
      */
     T execute(WriteBinding binding);
+
+    /**
+     * General execute which can return anything of type T
+     *
+     * @param binding the binding to execute in the context of
+     * @param callback the callback to be called when the operation has been executed
+     */
+    void executeAsync(AsyncWriteBinding binding, SingleResultCallback<T> callback);
 }

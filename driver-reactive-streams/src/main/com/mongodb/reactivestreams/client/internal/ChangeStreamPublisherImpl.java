@@ -23,7 +23,7 @@ import com.mongodb.client.model.changestream.FullDocumentBeforeChange;
 import com.mongodb.internal.TimeoutSettings;
 import com.mongodb.internal.async.AsyncBatchCursor;
 import com.mongodb.internal.client.model.changestream.ChangeStreamLevel;
-import com.mongodb.internal.operation.AsyncOperations;
+import com.mongodb.internal.operation.AOperations;
 import com.mongodb.internal.operation.AsyncReadOperation;
 import com.mongodb.lang.Nullable;
 import com.mongodb.reactivestreams.client.ChangeStreamPublisher;
@@ -143,8 +143,8 @@ final class ChangeStreamPublisherImpl<T> extends BatchCursorPublisher<ChangeStre
             }
 
             @Override
-            Function<AsyncOperations<?>, TimeoutSettings> getTimeoutSettings() {
-                return (asyncOperations -> asyncOperations.createTimeoutSettings(0, maxAwaitTimeMS));
+            Function<AOperations<?>, TimeoutSettings> getTimeoutSettings() {
+                return (aOperations -> aOperations.createTimeoutSettings(0, maxAwaitTimeMS));
             }
         };
     }
@@ -174,8 +174,8 @@ final class ChangeStreamPublisherImpl<T> extends BatchCursorPublisher<ChangeStre
 
 
     @Override
-    Function<AsyncOperations<?>, TimeoutSettings> getTimeoutSettings() {
-        return (asyncOperations -> asyncOperations.createTimeoutSettings(0, maxAwaitTimeMS));
+    Function<AOperations<?>, TimeoutSettings> getTimeoutSettings() {
+        return (aOperations -> aOperations.createTimeoutSettings(0, maxAwaitTimeMS));
     }
 
     private <S> AsyncReadOperation<AsyncBatchCursor<S>> createChangeStreamOperation(final Codec<S> codec, final int initialBatchSize) {

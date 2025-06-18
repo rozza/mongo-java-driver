@@ -25,7 +25,7 @@ import com.mongodb.internal.async.AsyncBatchCursor;
 import com.mongodb.internal.client.model.AggregationLevel;
 import com.mongodb.internal.client.model.FindOptions;
 import com.mongodb.internal.operation.AsyncExplainableReadOperation;
-import com.mongodb.internal.operation.AsyncOperations;
+import com.mongodb.internal.operation.AOperations;
 import com.mongodb.internal.operation.AsyncReadOperation;
 import com.mongodb.lang.Nullable;
 import com.mongodb.reactivestreams.client.AggregatePublisher;
@@ -146,7 +146,7 @@ final class AggregatePublisherImpl<T> extends BatchCursorPublisher<T> implements
             throw new IllegalStateException("The last stage of the aggregation pipeline must be $out or $merge");
         }
         return getMongoOperationPublisher().createReadOperationMono(
-                (asyncOperations) -> asyncOperations.createTimeoutSettings(maxTimeMS, maxAwaitTimeMS),
+                (aOperations) -> aOperations.createTimeoutSettings(maxTimeMS, maxAwaitTimeMS),
                 this::getAggregateToCollectionOperation, getClientSession());
     }
 
@@ -173,7 +173,7 @@ final class AggregatePublisherImpl<T> extends BatchCursorPublisher<T> implements
     private <E> Publisher<E> publishExplain(final Class<E> explainResultClass, @Nullable final ExplainVerbosity verbosity) {
         notNull("explainDocumentClass", explainResultClass);
         return getMongoOperationPublisher().createReadOperationMono(
-                AsyncOperations::getTimeoutSettings,
+                AOperations::getTimeoutSettings,
                 () -> asAggregateOperation(1).asAsyncExplainableOperation(verbosity,
                         getCodecRegistry().get(explainResultClass)), getClientSession());
     }
@@ -197,8 +197,8 @@ final class AggregatePublisherImpl<T> extends BatchCursorPublisher<T> implements
     }
 
     @Override
-    Function<AsyncOperations<?>, TimeoutSettings> getTimeoutSettings() {
-        return (asyncOperations -> asyncOperations.createTimeoutSettings(maxTimeMS, maxAwaitTimeMS));
+    Function<AOperations<?>, TimeoutSettings> getTimeoutSettings() {
+        return (aOperations -> aOperations.createTimeoutSettings(maxTimeMS, maxAwaitTimeMS));
     }
 
     private AsyncExplainableReadOperation<AsyncBatchCursor<T>> asAggregateOperation(final int initialBatchSize) {

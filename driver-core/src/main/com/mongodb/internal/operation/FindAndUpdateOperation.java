@@ -159,6 +159,11 @@ public class FindAndUpdateOperation<T> extends BaseFindAndModifyOperation<T> {
         return this;
     }
 
+    @Override
+    public String getOperationName() {
+        return "findAndUpdate";
+    }
+
     protected FieldNameValidator getFieldNameValidator() {
         return new MappedFieldNameValidator(NoOpFieldNameValidator.INSTANCE, singletonMap("update", new UpdateFieldNameValidator()));
     }

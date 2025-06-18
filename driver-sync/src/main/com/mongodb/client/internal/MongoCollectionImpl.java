@@ -64,7 +64,7 @@ import com.mongodb.internal.bulk.WriteRequest;
 import com.mongodb.internal.client.model.AggregationLevel;
 import com.mongodb.internal.client.model.changestream.ChangeStreamLevel;
 import com.mongodb.internal.operation.IndexHelper;
-import com.mongodb.internal.operation.SyncOperations;
+import com.mongodb.internal.operation.Operations;
 import com.mongodb.internal.operation.WriteOperation;
 import com.mongodb.lang.Nullable;
 import org.bson.BsonDocument;
@@ -98,7 +98,7 @@ class MongoCollectionImpl<TDocument> implements MongoCollection<TDocument> {
     private final boolean retryWrites;
     private final boolean retryReads;
     private final ReadConcern readConcern;
-    private final SyncOperations<TDocument> operations;
+    private final Operations<TDocument> operations;
     private final UuidRepresentation uuidRepresentation;
     @Nullable
     private final AutoEncryptionSettings autoEncryptionSettings;
@@ -123,7 +123,7 @@ class MongoCollectionImpl<TDocument> implements MongoCollection<TDocument> {
         this.uuidRepresentation = notNull("uuidRepresentation", uuidRepresentation);
         this.autoEncryptionSettings = autoEncryptionSettings;
         this.timeoutSettings = timeoutSettings;
-        this.operations = new SyncOperations<>(namespace, documentClass, readPreference, codecRegistry, readConcern, writeConcern,
+        this.operations = new Operations<>(namespace, documentClass, readPreference, codecRegistry, readConcern, writeConcern,
                 retryWrites, retryReads, timeoutSettings);
     }
 
@@ -467,7 +467,7 @@ class MongoCollectionImpl<TDocument> implements MongoCollection<TDocument> {
                                              final BulkWriteOptions options) {
         notNull("requests", requests);
         return getExecutor(timeoutSettings)
-                .execute(operations.bulkWrite(requests, options), readConcern, clientSession);
+                .execute(operations.bulkWrite("bulkWrite", requests, options), readConcern, clientSession);
     }
 
     @Override

@@ -2026,7 +2026,7 @@ public class DBCollection {
                                               final List<WriteRequest> writeRequests,
                                               final WriteConcern writeConcern) {
         try {
-            return translateBulkWriteResult(executor.execute(new MixedBulkWriteOperation(
+            return translateBulkWriteResult(executor.execute(new MixedBulkWriteOperation("bulkWrite",
                     getNamespace(), translateWriteRequestsToNew(writeRequests), ordered, writeConcern, false)
                     .bypassDocumentValidation(bypassDocumentValidation), getReadConcern()), getObjectCodec());
         } catch (MongoBulkWriteException e) {

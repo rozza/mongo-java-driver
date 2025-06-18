@@ -130,6 +130,11 @@ public class FindAndReplaceOperation<T> extends BaseFindAndModifyOperation<T> {
         return this;
     }
 
+    @Override
+    public String getOperationName() {
+        return "findAndReplace";
+    }
+
     protected FieldNameValidator getFieldNameValidator() {
         return new MappedFieldNameValidator(
                 NoOpFieldNameValidator.INSTANCE,

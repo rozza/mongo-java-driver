@@ -62,4 +62,9 @@ public class AbortTransactionOperation extends TransactionOperation {
     protected Function<BsonDocument, BsonDocument> getRetryCommandModifier(final TimeoutContext timeoutContext) {
         return cmd -> cmd;
     }
+
+    @Override
+    public String getOperationName() {
+        return getCommandName();
+    }
 }

@@ -26,7 +26,7 @@ import com.mongodb.internal.async.SingleResultCallback;
 import com.mongodb.internal.binding.AsyncReadBinding;
 import com.mongodb.internal.binding.AsyncWriteBinding;
 import com.mongodb.internal.client.model.FindOptions;
-import com.mongodb.internal.operation.AsyncOperations;
+import com.mongodb.internal.operation.AOperations;
 import com.mongodb.internal.operation.AsyncReadOperation;
 import com.mongodb.internal.operation.AsyncWriteOperation;
 import com.mongodb.internal.operation.MapReduceAsyncBatchCursor;
@@ -167,7 +167,7 @@ final class MapReducePublisherImpl<T> extends BatchCursorPublisher<T> implements
             throw new IllegalStateException("The options must specify a non-inline result");
         }
         return getMongoOperationPublisher().createWriteOperationMono(
-                (asyncOperations -> asyncOperations.createTimeoutSettings(maxTimeMS)),
+                (aOperations -> aOperations.createTimeoutSettings(maxTimeMS)),
                 this::createMapReduceToCollectionOperation,
                 getClientSession());
     }
@@ -188,8 +188,8 @@ final class MapReducePublisherImpl<T> extends BatchCursorPublisher<T> implements
     }
 
     @Override
-    Function<AsyncOperations<?>, TimeoutSettings> getTimeoutSettings() {
-        return (asyncOperations -> asyncOperations.createTimeoutSettings(maxTimeMS));
+    Function<AOperations<?>, TimeoutSettings> getTimeoutSettings() {
+        return (aOperations -> aOperations.createTimeoutSettings(maxTimeMS));
     }
 
     @Override

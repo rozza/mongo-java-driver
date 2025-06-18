@@ -40,7 +40,8 @@ import static com.mongodb.internal.operation.WriteConcernHelper.appendWriteConce
  *
  * <p>This class is not part of the public API and may be removed or changed at any time</p>
  */
-public class DropIndexOperation implements AsyncWriteOperation<Void>, WriteOperation<Void> {
+public class DropIndexOperation implements WriteOperation<Void> {
+    private static final String COMMAND_NAME = "dropIndexes";
     private final MongoNamespace namespace;
     private final String indexName;
     private final BsonDocument indexKeys;
@@ -62,6 +63,11 @@ public class DropIndexOperation implements AsyncWriteOperation<Void>, WriteOpera
 
     public WriteConcern getWriteConcern() {
         return writeConcern;
+    }
+
+    @Override
+    public String getOperationName() {
+        return COMMAND_NAME;
     }
 
     @Override
@@ -90,7 +96,7 @@ public class DropIndexOperation implements AsyncWriteOperation<Void>, WriteOpera
 
     private CommandOperationHelper.CommandCreator getCommandCreator() {
         return (operationContext, serverDescription, connectionDescription) -> {
-            BsonDocument command = new BsonDocument("dropIndexes", new BsonString(namespace.getCollectionName()));
+            BsonDocument command = new BsonDocument(COMMAND_NAME, new BsonString(namespace.getCollectionName()));
             if (indexName != null) {
                 command.put("index", new BsonString(indexName));
             } else {

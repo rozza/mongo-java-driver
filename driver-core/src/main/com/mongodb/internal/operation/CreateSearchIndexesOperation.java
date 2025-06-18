@@ -41,6 +41,11 @@ public final class CreateSearchIndexesOperation extends AbstractWriteSearchIndex
         this.indexRequests = assertNotNull(indexRequests);
     }
 
+    @Override
+    public String getOperationName() {
+        return COMMAND_NAME;
+    }
+
     private static BsonArray convert(final List<SearchIndexRequest> requests) {
         return requests.stream()
                 .map(CreateSearchIndexesOperation::convert)

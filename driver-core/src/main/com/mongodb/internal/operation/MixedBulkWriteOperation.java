@@ -77,7 +77,8 @@ import static com.mongodb.internal.operation.SyncOperationHelper.withSourceAndCo
  *
  * <p>This class is not part of the public API and may be removed or changed at any time</p>
  */
-public class MixedBulkWriteOperation implements AsyncWriteOperation<BulkWriteResult>, WriteOperation<BulkWriteResult> {
+public class MixedBulkWriteOperation implements WriteOperation<BulkWriteResult> {
+    private final String operationName;
     private final MongoNamespace namespace;
     private final List<? extends WriteRequest> writeRequests;
     private final boolean ordered;
@@ -87,8 +88,11 @@ public class MixedBulkWriteOperation implements AsyncWriteOperation<BulkWriteRes
     private BsonValue comment;
     private BsonDocument variables;
 
-    public MixedBulkWriteOperation(final MongoNamespace namespace, final List<? extends WriteRequest> writeRequests,
+    public MixedBulkWriteOperation(
+            final String operationName,
+            final MongoNamespace namespace, final List<? extends WriteRequest> writeRequests,
             final boolean ordered, final WriteConcern writeConcern, final boolean retryWrites) {
+        this.operationName = notNull("operationName", operationName);
         this.namespace = notNull("namespace", namespace);
         this.writeRequests = notNull("writes", writeRequests);
         this.ordered = ordered;
@@ -173,6 +177,11 @@ public class MixedBulkWriteOperation implements AsyncWriteOperation<BulkWriteRes
             bulkWriteTracker.advance();
         }
         return decision;
+    }
+
+    @Override
+    public String getOperationName() {
+        return operationName;
     }
 
     @Override

@@ -58,7 +58,7 @@ import static java.util.Arrays.asList;
  *
  * <p>This class is not part of the public API and may be removed or changed at any time</p>
  */
-public class MapReduceToCollectionOperation implements AsyncWriteOperation<MapReduceStatistics>, WriteOperation<MapReduceStatistics> {
+public class MapReduceToCollectionOperation implements WriteOperation<MapReduceStatistics> {
     private final MongoNamespace namespace;
     private final BsonJavaScript mapFunction;
     private final BsonJavaScript reduceFunction;
@@ -206,6 +206,11 @@ public class MapReduceToCollectionOperation implements AsyncWriteOperation<MapRe
     public MapReduceToCollectionOperation collation(@Nullable final Collation collation) {
         this.collation = collation;
         return this;
+    }
+
+    @Override
+    public String getOperationName() {
+        return "mapReduce";
     }
 
     @Override

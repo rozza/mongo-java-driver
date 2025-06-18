@@ -38,6 +38,11 @@ final class DropSearchIndexOperation extends AbstractWriteSearchIndexOperation {
     }
 
     @Override
+    public String getOperationName() {
+        return COMMAND_NAME;
+    }
+
+    @Override
     <E extends Throwable> void swallowOrThrow(@Nullable final E mongoExecutionException) throws E {
         if (mongoExecutionException != null && !isNamespaceError(mongoExecutionException)) {
             throw mongoExecutionException;

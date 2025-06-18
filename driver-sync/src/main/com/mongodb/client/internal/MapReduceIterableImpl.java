@@ -30,7 +30,7 @@ import com.mongodb.internal.operation.BatchCursor;
 import com.mongodb.internal.operation.MapReduceBatchCursor;
 import com.mongodb.internal.operation.MapReduceStatistics;
 import com.mongodb.internal.operation.ReadOperation;
-import com.mongodb.internal.operation.SyncOperations;
+import com.mongodb.internal.operation.Operations;
 import com.mongodb.internal.operation.WriteOperation;
 import com.mongodb.lang.Nullable;
 import org.bson.BsonDocument;
@@ -44,7 +44,7 @@ import static com.mongodb.assertions.Assertions.notNull;
 
 @SuppressWarnings("deprecation")
 class MapReduceIterableImpl<TDocument, TResult> extends MongoIterableImpl<TResult> implements com.mongodb.client.MapReduceIterable<TResult> {
-    private final SyncOperations<TDocument> operations;
+    private final Operations<TDocument> operations;
     private final MongoNamespace namespace;
     private final Class<TResult> resultClass;
     private final String mapFunction;
@@ -70,7 +70,7 @@ class MapReduceIterableImpl<TDocument, TResult> extends MongoIterableImpl<TResul
                           final ReadConcern readConcern, final WriteConcern writeConcern, final OperationExecutor executor,
                           final String mapFunction, final String reduceFunction, final TimeoutSettings timeoutSettings) {
         super(clientSession, executor, readConcern, readPreference, false, timeoutSettings);
-        this.operations = new SyncOperations<>(namespace, documentClass, readPreference, codecRegistry, readConcern, writeConcern,
+        this.operations = new Operations<>(namespace, documentClass, readPreference, codecRegistry, readConcern, writeConcern,
                 false, false, timeoutSettings);
         this.namespace = notNull("namespace", namespace);
         this.resultClass = notNull("resultClass", resultClass);

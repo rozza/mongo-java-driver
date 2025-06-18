@@ -22,7 +22,7 @@ import com.mongodb.client.model.Collation;
 import com.mongodb.internal.TimeoutSettings;
 import com.mongodb.internal.async.AsyncBatchCursor;
 import com.mongodb.internal.operation.AsyncExplainableReadOperation;
-import com.mongodb.internal.operation.AsyncOperations;
+import com.mongodb.internal.operation.AOperations;
 import com.mongodb.internal.operation.AsyncReadOperation;
 import com.mongodb.lang.Nullable;
 import com.mongodb.reactivestreams.client.ListSearchIndexesPublisher;
@@ -128,7 +128,7 @@ final class ListSearchIndexesPublisherImpl<T> extends BatchCursorPublisher<T> im
 
     private <E> Publisher<E> publishExplain(final Class<E> explainResultClass, @Nullable final ExplainVerbosity verbosity) {
         return getMongoOperationPublisher().createReadOperationMono(
-                (asyncOperations -> asyncOperations.createTimeoutSettings(maxTimeMS)),
+                (aOperations -> aOperations.createTimeoutSettings(maxTimeMS)),
                 () -> asAggregateOperation(1).asAsyncExplainableOperation(verbosity,
                         getCodecRegistry().get(explainResultClass)), getClientSession());
     }
@@ -139,8 +139,8 @@ final class ListSearchIndexesPublisherImpl<T> extends BatchCursorPublisher<T> im
     }
 
     @Override
-    Function<AsyncOperations<?>, TimeoutSettings> getTimeoutSettings() {
-        return  (asyncOperations -> asyncOperations.createTimeoutSettings(maxTimeMS));
+    Function<AOperations<?>, TimeoutSettings> getTimeoutSettings() {
+        return  (aOperations -> aOperations.createTimeoutSettings(maxTimeMS));
     }
 
     private AsyncExplainableReadOperation<AsyncBatchCursor<T>> asAggregateOperation(final int initialBatchSize) {

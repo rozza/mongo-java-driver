@@ -96,4 +96,8 @@ public class FindAndDeleteOperation<T> extends BaseFindAndModifyOperation<T> {
         commandDocument.put("remove", BsonBoolean.TRUE);
     }
 
+    @Override
+    public String getOperationName() {
+        return "findAndDelete";
+    }
 }

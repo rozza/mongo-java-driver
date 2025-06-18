@@ -90,7 +90,6 @@ import java.util.stream.Collectors;
 
 import static com.mongodb.assertions.Assertions.assertNotNull;
 import static com.mongodb.assertions.Assertions.notNull;
-import static com.mongodb.internal.operation.NamedWriteOperation.createNamedWriteOperation;
 import static java.lang.String.format;
 import static java.util.Collections.singletonList;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
@@ -328,7 +327,7 @@ public final class Operations<TDocument> {
     public AggregateToCollectionOperation aggregateToCollection(final List<? extends Bson> pipeline, @Nullable final TimeoutMode timeoutMode,
             final Boolean allowDiskUse, final Boolean bypassDocumentValidation, final Collation collation, @Nullable final Bson hint,
             @Nullable final String hintString, final BsonValue comment, final Bson variables, final AggregationLevel aggregationLevel) {
-        return createNamedWriteOperation("aggregation", new AggregateToCollectionOperation(assertNotNull(namespace),
+        return new AggregateToCollectionOperation(assertNotNull(namespace),
                 assertNotNull(toBsonDocumentList(pipeline)), readConcern, writeConcern, aggregationLevel)
                 .allowDiskUse(allowDiskUse)
                 .bypassDocumentValidation(bypassDocumentValidation)
@@ -336,7 +335,7 @@ public final class Operations<TDocument> {
                 .hint(hint != null ? toBsonDocument(hint) : (hintString != null ? new BsonString(hintString) : null))
                 .comment(comment)
                 .let(toBsonDocument(variables))
-                .timeoutMode(timeoutMode));
+                .timeoutMode(timeoutMode);
     }
 
     @SuppressWarnings("deprecation")
@@ -513,10 +512,10 @@ public final class Operations<TDocument> {
             requests.add(new InsertRequest(documentToBsonDocument(document)));
         }
 
-        return createNamedWriteOperation("insert", new MixedBulkWriteOperation(assertNotNull(namespace),
+        return new MixedBulkWriteOperation("insert", assertNotNull(namespace),
                 requests, options.isOrdered(), writeConcern, retryWrites)
                 .bypassDocumentValidation(options.getBypassDocumentValidation())
-                .comment(options.getComment()));
+                .comment(options.getComment());
     }
 
     @SuppressWarnings("unchecked")
@@ -584,11 +583,11 @@ public final class Operations<TDocument> {
             }
             writeRequests.add(writeRequest);
         }
-        return createNamedWriteOperation(operationName, new MixedBulkWriteOperation(assertNotNull(namespace), writeRequests,
+        return new MixedBulkWriteOperation(operationName, assertNotNull(namespace), writeRequests,
                 options.isOrdered(), writeConcern, retryWrites)
                 .bypassDocumentValidation(options.getBypassDocumentValidation())
                 .comment(options.getComment())
-                .let(toBsonDocument(options.getLet())));
+                .let(toBsonDocument(options.getLet()));
     }
 
     public <TResult> CommandReadOperation<TResult> commandRead(final Bson command, final Class<TResult> resultClass) {

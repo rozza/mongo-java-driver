@@ -64,7 +64,6 @@ import com.mongodb.internal.connection.StreamFactoryFactory;
 import com.mongodb.internal.connection.TlsChannelStreamFactoryFactory;
 import com.mongodb.internal.connection.netty.NettyStreamFactoryFactory;
 import com.mongodb.internal.operation.AsyncReadOperation;
-import com.mongodb.internal.operation.AsyncWriteOperation;
 import com.mongodb.internal.operation.BatchCursor;
 import com.mongodb.internal.operation.CommandReadOperation;
 import com.mongodb.internal.operation.DropDatabaseOperation;
@@ -709,12 +708,12 @@ public final class ClusterFixture {
     }
 
     @SuppressWarnings("overloads")
-    public static <T> T executeAsync(final AsyncWriteOperation<T> op) throws Throwable {
+    public static <T> T executeAsync(final WriteOperation<T> op) throws Throwable {
         return executeAsync(op, getAsyncBinding());
     }
 
     @SuppressWarnings("overloads")
-    public static <T> T executeAsync(final AsyncWriteOperation<T> op, final AsyncWriteBinding binding) throws Throwable {
+    public static <T> T executeAsync(final WriteOperation<T> op, final AsyncWriteBinding binding) throws Throwable {
         FutureResultCallback<T> futureResultCallback = new FutureResultCallback<>();
         op.executeAsync(binding, futureResultCallback);
         return futureResultCallback.get(TIMEOUT, SECONDS);

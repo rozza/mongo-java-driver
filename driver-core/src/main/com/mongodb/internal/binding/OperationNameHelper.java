@@ -18,14 +18,9 @@ package com.mongodb.internal.binding;
 
 
 import com.mongodb.internal.operation.ClientBulkWriteOperation;
-import com.mongodb.internal.operation.MixedBulkWriteOperation;
-import com.mongodb.internal.operation.NamedWriteOperation;
 import com.mongodb.internal.operation.ReadOperation;
 import com.mongodb.internal.operation.WriteOperation;
 import com.mongodb.lang.Nullable;
-
-import java.util.Set;
-import java.util.stream.Collectors;
 
 // TODO Location
 public class OperationNameHelper  {
@@ -34,15 +29,8 @@ public class OperationNameHelper  {
         return readOperation.getClass().getSimpleName();
     }
 
-    @Nullable
     public static String getWriteOperationName(final WriteOperation<?> writeOperation) {
-        if (writeOperation instanceof NamedWriteOperation) {
-            return ((NamedWriteOperation<?>) writeOperation).getOperationName();
-        }
-        if (writeOperation instanceof ClientBulkWriteOperation) {
-            return "bulkWrite";
-        }
-        return null;
+        return writeOperation.getOperationName();
     }
 
     private OperationNameHelper() {
