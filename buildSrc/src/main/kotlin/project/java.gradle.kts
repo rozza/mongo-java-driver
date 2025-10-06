@@ -15,6 +15,11 @@
  */
 package project
 
+import com.diffplug.spotless.FormatterFunc
+import com.diffplug.spotless.FormatterStep
+import libs
+import java.io.Serializable
+
 plugins {
     id("java-library")
     id("checkstyle")
@@ -31,6 +36,20 @@ plugins {
 dependencies { "optionalApi"(libs.slf4j) }
 
 logger.info("Compiling ${project.name} using JDK${DEFAULT_JAVA_VERSION}")
+
+spotless {
+    java {
+        importOrder()
+
+        removeUnusedImports()
+
+        palantirJavaFormat("2.71.0").formatJavadoc(true)
+
+        formatAnnotations()
+
+        targetExclude("build/generated/sources/buildConfig/**/*.java")
+    }
+}
 
 java {
     sourceCompatibility = JavaVersion.VERSION_1_8

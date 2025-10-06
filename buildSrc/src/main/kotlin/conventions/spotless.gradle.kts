@@ -27,23 +27,31 @@ val doesNotHaveACustomLicenseHeader = "/^(?s)(?!.*@custom-license-header).*/"
 
 spotless {
     kotlinGradle {
-        ktfmt("0.39").dropboxStyle().configure { it.setMaxWidth(120) }
+        ktfmt().configure {
+            it.setMaxWidth(120)
+            it.setBlockIndent(4)
+            it.setRemoveUnusedImports(true)
+        }
         trimTrailingWhitespace()
-        indentWithSpaces()
+        leadingTabsToSpaces()
         endWithNewline()
         licenseHeaderFile(rootProject.file("config/mongodb.license"), "(group|plugins|import|buildscript|rootProject)")
     }
 
     scala {
         target("**/*.scala")
-        scalafmt().configFile(rootProject.file("config/scala/scalafmt.conf"))
+        scalafmt("3.7.1").configFile(rootProject.file("config/scala/scalafmt.conf")).scalaMajorVersion("2.13")
     }
 
     kotlin {
         target("**/*.kt")
-        ktfmt().dropboxStyle().configure { it.setMaxWidth(120) }
+        ktfmt().configure {
+            it.setMaxWidth(120)
+            it.setBlockIndent(4)
+            it.setRemoveUnusedImports(true)
+        }
         trimTrailingWhitespace()
-        indentWithSpaces()
+        leadingTabsToSpaces()
         endWithNewline()
         licenseHeaderFile(rootProject.file("config/mongodb.license"))
             .named("standard")
@@ -53,7 +61,7 @@ spotless {
     format("extraneous") {
         target("*.xml", "*.yml", "*.md")
         trimTrailingWhitespace()
-        indentWithSpaces()
+        leadingTabsToSpaces()
         endWithNewline()
     }
 }

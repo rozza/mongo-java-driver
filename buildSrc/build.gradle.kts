@@ -1,3 +1,5 @@
+import org.gradle.kotlin.dsl.configure
+
 /*
  * Copyright 2008-present MongoDB, Inc.
  *
@@ -30,12 +32,13 @@ repositories {
 spotless {
     kotlinGradle {
         target("**/*.gradle.kts")
-        ktfmt("0.39").dropboxStyle().configure {
+        ktfmt().configure {
             it.setMaxWidth(120)
-            it.setRemoveUnusedImport(true)
+            it.setBlockIndent(4)
+            it.setRemoveUnusedImports(true)
         }
         trimTrailingWhitespace()
-        indentWithSpaces()
+        leadingTabsToSpaces()
         endWithNewline()
         licenseHeaderFile(
             "../config/mongodb.license", "(package|group|plugins|import|buildscript|rootProject|@Suppress)")
@@ -43,12 +46,13 @@ spotless {
 
     kotlin {
         target("**/*.kt")
-        ktfmt().dropboxStyle().configure {
+        ktfmt().configure {
             it.setMaxWidth(120)
-            it.setRemoveUnusedImport(true)
+            it.setBlockIndent(4)
+            it.setRemoveUnusedImports(true)
         }
         trimTrailingWhitespace()
-        indentWithSpaces()
+        leadingTabsToSpaces()
         endWithNewline()
         licenseHeaderFile(rootProject.file("../config/mongodb.license"))
     }
@@ -58,7 +62,7 @@ spotless {
         target("src/*/java/**/*.java")
         removeUnusedImports()
         trimTrailingWhitespace()
-        indentWithSpaces()
+        leadingTabsToSpaces()
         endWithNewline()
         licenseHeaderFile(rootProject.file("../config/mongodb.license"))
     }
