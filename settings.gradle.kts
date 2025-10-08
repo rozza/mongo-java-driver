@@ -25,9 +25,9 @@ pluginManagement {
 include(":bom")
 
 include(":bson")
+include(":bson-record-codec")
 include(":bson-kotlin")
 include(":bson-kotlinx")
-include(":bson-record-codec")
 include(":bson-scala")
 
 include(":driver-core")
@@ -43,6 +43,31 @@ include(":driver-scala")
 
 include(":driver-benchmarks")
 include(":driver-lambda")
+
+// Set paths
+project(":bom").projectDir = file("driver/bom")
+project(":bson").projectDir = file("driver/bson/bson")
+project(":bson-record-codec").projectDir = file("driver/bson/record-codec")
+project(":bson-kotlin").projectDir = file("driver/kotlin/bson/kotlin")
+project(":bson-kotlinx").projectDir = file("driver/kotlin/bson/kotlinx")
+project(":bson-scala").projectDir = file("driver/scala/bson")
+
+project(":driver-core").projectDir = file("driver/core")
+project(":driver-sync").projectDir = file("driver/sync")
+project(":driver-legacy").projectDir = file("driver/legacy")
+project(":driver-reactive-streams").projectDir = file("driver/reactive-streams")
+project(":mongodb-crypt").projectDir = file("driver/mongodb-crypt")
+
+project(":driver-kotlin-coroutine").projectDir = file("driver/kotlin/coroutine")
+project(":driver-kotlin-extensions").projectDir = file("driver/kotlin/extensions")
+project(":driver-kotlin-sync").projectDir = file("driver/kotlin/sync")
+project(":driver-scala").projectDir = file("driver/scala/reactive-streams")
+
+project(":driver-benchmarks").projectDir = file("testing/benchmarks/")
+project(":driver-lambda").projectDir = file("testing/lambda/")
+
+
 if (providers.gradleProperty("includeGraalvm").isPresent) {
     include(":graalvm-native-image-app")
+    project(":graalvm-native-image-app").projectDir = file("testing/lambda/graalvm-native-image-app")
 }
