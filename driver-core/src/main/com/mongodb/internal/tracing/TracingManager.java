@@ -24,6 +24,7 @@ import com.mongodb.internal.connection.CommandMessage;
 import com.mongodb.internal.connection.OperationContext;
 import com.mongodb.internal.session.SessionContext;
 import com.mongodb.lang.Nullable;
+import com.mongodb.tracing.TracingSettings;
 import io.micrometer.common.KeyValues;
 import io.micrometer.observation.ObservationRegistry;
 import org.bson.BsonDocument;
@@ -31,7 +32,6 @@ import org.bson.BsonDocument;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
-import static com.mongodb.MongoClientSettings.ENV_OTEL_ENABLED;
 import static com.mongodb.internal.tracing.MongodbObservation.LowCardinalityKeyNames.CLIENT_CONNECTION_ID;
 import static com.mongodb.internal.tracing.MongodbObservation.LowCardinalityKeyNames.COLLECTION;
 import static com.mongodb.internal.tracing.MongodbObservation.LowCardinalityKeyNames.COMMAND_NAME;
@@ -45,6 +45,7 @@ import static com.mongodb.internal.tracing.MongodbObservation.LowCardinalityKeyN
 import static com.mongodb.internal.tracing.MongodbObservation.LowCardinalityKeyNames.SESSION_ID;
 import static com.mongodb.internal.tracing.MongodbObservation.LowCardinalityKeyNames.SYSTEM;
 import static com.mongodb.internal.tracing.MongodbObservation.LowCardinalityKeyNames.TRANSACTION_NUMBER;
+import static com.mongodb.tracing.TracingSettings.ENV_OTEL_ENABLED;
 import static java.lang.System.getenv;
 
 /**
@@ -58,24 +59,24 @@ public class TracingManager {
     /**
      * A no-op instance of the TracingManager used when tracing is disabled.
      */
-    public static final TracingManager NO_OP = new TracingManager(ObservationRegistry.NOOP, false);
+    public static final TracingManager NO_OP = new TracingManager(TracingSettings.builder().build());
     private final Tracer tracer;
     private final boolean enableCommandPayload;
 
     /**
      * Constructs a new TracingManager with the specified observation registry.
      *
-     * @param observationRegistry The observation registry to use for tracing operations, may be null.
-     * @param enableCommandPayload Whether to enable command payload tracing.
+     * @param settings The tracing settings
      */
-    public TracingManager(@Nullable final ObservationRegistry observationRegistry, final boolean enableCommandPayload) {
+    public TracingManager(final TracingSettings settings) {
         String envOtelInstrumentationEnabled = getenv(ENV_OTEL_ENABLED);
         boolean enableTracing = true;
         if (envOtelInstrumentationEnabled != null) {
             enableTracing = Boolean.parseBoolean(envOtelInstrumentationEnabled);
         }
+        ObservationRegistry observationRegistry = settings.getObservationRegistry();
         tracer = (observationRegistry == null) ? Tracer.NO_OP
-                : (enableTracing) ? new MicrometerTracer(observationRegistry, enableCommandPayload)
+                : (enableTracing) ? new MicrometerTracer(observationRegistry, settings.isEnableCommandPayloadTracing())
                 : Tracer.NO_OP;
 
         this.enableCommandPayload = tracer.includeCommandPayload();

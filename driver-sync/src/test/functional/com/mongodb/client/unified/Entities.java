@@ -588,7 +588,8 @@ public final class Entities {
 
             putEntity(id + "-tracing", tracer, clientTracing);
             inMemoryOTelInstances.add(inMemoryOtel);
-            clientSettingsBuilder.observationRegistry(observationRegistry, enableCommandPayload);
+            clientSettingsBuilder.applyToTracingSettings(b -> b.observationRegistry(observationRegistry)
+                    .enableCommandPayloadTracing(enableCommandPayload));
         }
 
         MongoClientSettings clientSettings = clientSettingsBuilder.build();

@@ -31,11 +31,11 @@ import org.bson.json.JsonWriterSettings;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 
-import static com.mongodb.MongoClientSettings.ENV_OTEL_QUERY_TEXT_MAX_LENGTH;
 import static com.mongodb.internal.tracing.MongodbObservation.LowCardinalityKeyNames.EXCEPTION_MESSAGE;
 import static com.mongodb.internal.tracing.MongodbObservation.LowCardinalityKeyNames.EXCEPTION_STACKTRACE;
 import static com.mongodb.internal.tracing.MongodbObservation.LowCardinalityKeyNames.EXCEPTION_TYPE;
 import static com.mongodb.internal.tracing.MongodbObservation.MONGODB_OBSERVATION;
+import static com.mongodb.tracing.TracingSettings.ENV_OTEL_QUERY_TEXT_MAX_LENGTH;
 import static java.lang.System.getenv;
 import static java.util.Optional.ofNullable;
 

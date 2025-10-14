@@ -35,9 +35,9 @@ import java.lang.reflect.Field;
 import java.util.Map;
 
 import static com.mongodb.ClusterFixture.getDefaultDatabaseName;
-import static com.mongodb.MongoClientSettings.ENV_OTEL_ENABLED;
-import static com.mongodb.MongoClientSettings.ENV_OTEL_QUERY_TEXT_MAX_LENGTH;
 import static com.mongodb.internal.tracing.MongodbObservation.HighCardinalityKeyNames.QUERY_TEXT;
+import static com.mongodb.tracing.TracingSettings.ENV_OTEL_ENABLED;
+import static com.mongodb.tracing.TracingSettings.ENV_OTEL_QUERY_TEXT_MAX_LENGTH;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -79,8 +79,9 @@ public class MicrometerProseTest {
     @Test
     void testControlOtelInstrumentationViaEnvironmentVariable() throws Exception {
         setEnv(ENV_OTEL_ENABLED, "false");
+        // don't enable command payload by default
         MongoClientSettings clientSettings = Fixture.getMongoClientSettingsBuilder()
-                .observationRegistry(observationRegistry).build();
+                .applyToTracingSettings(builder -> builder.observationRegistry(observationRegistry)).build();
 
         try (MongoClient client = MongoClients.create(clientSettings)) {
             MongoDatabase database = client.getDatabase(getDefaultDatabaseName());
@@ -108,7 +109,10 @@ public class MicrometerProseTest {
     void testControlCommandPayloadViaEnvironmentVariable() throws Exception {
         setEnv(ENV_OTEL_QUERY_TEXT_MAX_LENGTH, "42");
         MongoClientSettings clientSettings = Fixture.getMongoClientSettingsBuilder()
-                .observationRegistry(observationRegistry, true).build();
+                .applyToTracingSettings(builder -> builder
+                        .observationRegistry(observationRegistry)
+                        .enableCommandPayloadTracing(true))
+                .build();
 
         try (MongoClient client = MongoClients.create(clientSettings)) {
             MongoDatabase database = client.getDatabase(getDefaultDatabaseName());
@@ -134,7 +138,7 @@ public class MicrometerProseTest {
         setEnv(ENV_OTEL_QUERY_TEXT_MAX_LENGTH, null); // Unset the environment variable
 
         clientSettings = Fixture.getMongoClientSettingsBuilder()
-                .observationRegistry(observationRegistry).build();  // don't enable command payload by default
+                .applyToTracingSettings(builder -> builder.observationRegistry(observationRegistry)).build();
         try (MongoClient client = MongoClients.create(clientSettings)) {
             MongoDatabase database = client.getDatabase(getDefaultDatabaseName());
             MongoCollection<Document> collection = database.getCollection("test");
