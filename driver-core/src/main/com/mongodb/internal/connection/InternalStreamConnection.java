@@ -71,6 +71,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 import static com.mongodb.assertions.Assertions.assertNotNull;
 import static com.mongodb.assertions.Assertions.assertNull;
@@ -444,46 +445,44 @@ public class InternalStreamConnection implements InternalConnection {
         Span tracingSpan;
         try (ByteBufferBsonOutput bsonOutput = new ByteBufferBsonOutput(this)) {
             message.encode(bsonOutput, operationContext);
-            tracingSpan = operationContext
-                    .getTracingManager()
-                    .createTracingSpan(message,
-                            operationContext,
-                            () -> message.getCommandDocument(bsonOutput),
-                            cmdName -> SECURITY_SENSITIVE_COMMANDS.contains(cmdName)
-                                    || SECURITY_SENSITIVE_HELLO_COMMANDS.contains(cmdName),
-                            () -> getDescription().getServerAddress(),
-                            () -> getDescription().getConnectionId()
-                    );
+            try (ByteBufBsonDocument commandDocument = message.getCommandDocument(bsonOutput)) {
+                tracingSpan = operationContext
+                        .getTracingManager()
+                        .createTracingSpan(message,
+                                operationContext,
+                                commandDocument,
+                                cmdName -> SECURITY_SENSITIVE_COMMANDS.contains(cmdName)
+                                        || SECURITY_SENSITIVE_HELLO_COMMANDS.contains(cmdName),
+                                () -> getDescription().getServerAddress(),
+                                () -> getDescription().getConnectionId()
+                        );
 
-            boolean isLoggingCommandNeeded = isLoggingCommandNeeded();
-            boolean isTracingCommandPayloadNeeded = tracingSpan != null && operationContext.getTracingManager().isCommandPayloadEnabled();
+                boolean isLoggingCommandNeeded = isLoggingCommandNeeded();
 
-            // Only hydrate the command document if necessary
-            BsonDocument commandDocument = null;
-            if (isLoggingCommandNeeded || isTracingCommandPayloadNeeded) {
-                commandDocument = message.getCommandDocument(bsonOutput);
-            }
-            if (isLoggingCommandNeeded) {
-                commandEventSender = new LoggingCommandEventSender(
-                        SECURITY_SENSITIVE_COMMANDS, SECURITY_SENSITIVE_HELLO_COMMANDS, description, commandListener,
-                        operationContext, message, commandDocument,
-                        COMMAND_PROTOCOL_LOGGER, loggerSettings);
-                commandEventSender.sendStartedEvent();
-            } else {
-                commandEventSender = new NoOpCommandEventSender();
-            }
-            if (isTracingCommandPayloadNeeded) {
-                tracingSpan.tagHighCardinality(QUERY_TEXT.asString(), commandDocument);
-            }
-
-            try {
-                sendCommandMessage(message, bsonOutput, operationContext);
-            } catch (Exception e) {
-                if (tracingSpan != null) {
-                    tracingSpan.error(e);
+                if (isLoggingCommandNeeded) {
+                    commandEventSender = new LoggingCommandEventSender(
+                            SECURITY_SENSITIVE_COMMANDS, SECURITY_SENSITIVE_HELLO_COMMANDS, description, commandListener,
+                            operationContext, message, commandDocument,
+                            COMMAND_PROTOCOL_LOGGER, loggerSettings);
+                    commandEventSender.sendStartedEvent();
+                } else {
+                    commandEventSender = new NoOpCommandEventSender();
                 }
-                commandEventSender.sendFailedEvent(e);
-                throw e;
+
+                boolean isTracingCommandPayloadNeeded = tracingSpan != null && operationContext.getTracingManager().isCommandPayloadEnabled();
+                if (isTracingCommandPayloadNeeded) {
+                    tracingSpan.tagHighCardinality(QUERY_TEXT.asString(), commandDocument);
+                }
+
+                try {
+                    sendCommandMessage(commandDocument.getFirstKey(), message, bsonOutput, operationContext);
+                } catch (Exception e) {
+                    if (tracingSpan != null) {
+                        tracingSpan.error(e);
+                    }
+                    commandEventSender.sendFailedEvent(e);
+                    throw e;
+                }
             }
         }
 
@@ -502,7 +501,9 @@ public class InternalStreamConnection implements InternalConnection {
     public <T> void send(final CommandMessage message, final Decoder<T> decoder, final OperationContext operationContext) {
         try (ByteBufferBsonOutput bsonOutput = new ByteBufferBsonOutput(this)) {
             message.encode(bsonOutput, operationContext);
-            sendCommandMessage(message, bsonOutput, operationContext);
+            try (ByteBufBsonDocument commandDocument = message.getCommandDocument(bsonOutput)) {
+                sendCommandMessage(commandDocument.getFirstKey(), message, bsonOutput, operationContext);
+            }
             if (message.isResponseExpected()) {
                 hasMoreToCome = true;
             }
@@ -520,11 +521,10 @@ public class InternalStreamConnection implements InternalConnection {
         return hasMoreToCome;
     }
 
-    private void sendCommandMessage(final CommandMessage message, final ByteBufferBsonOutput bsonOutput,
-            final OperationContext operationContext) {
-
+    private void sendCommandMessage(final String commandName, final CommandMessage message,
+            final ByteBufferBsonOutput bsonOutput, final OperationContext operationContext) {
         Compressor localSendCompressor = sendCompressor;
-        if (localSendCompressor == null || SECURITY_SENSITIVE_COMMANDS.contains(message.getCommandDocument(bsonOutput).getFirstKey())) {
+        if (localSendCompressor == null || SECURITY_SENSITIVE_COMMANDS.contains(commandName)) {
             trySendMessage(message, bsonOutput, operationContext);
         } else {
             ByteBufferBsonOutput compressedBsonOutput;
@@ -536,7 +536,6 @@ public class InternalStreamConnection implements InternalConnection {
                 compressedMessage.encode(compressedBsonOutput, operationContext);
             } finally {
                 ResourceUtil.release(byteBuffers);
-                bsonOutput.close();
             }
             trySendMessage(message, compressedBsonOutput, operationContext);
         }
@@ -553,7 +552,6 @@ public class InternalStreamConnection implements InternalConnection {
             sendMessage(byteBuffers, message.getId(), operationContext);
         } finally {
             ResourceUtil.release(byteBuffers);
-            bsonOutput.close();
         }
     }
 
@@ -606,43 +604,45 @@ public class InternalStreamConnection implements InternalConnection {
 
         ByteBufferBsonOutput bsonOutput = new ByteBufferBsonOutput(this);
         ByteBufferBsonOutput compressedBsonOutput = new ByteBufferBsonOutput(this);
+        SingleResultCallback<T> bsonOutputClosingCallback = (result, t) -> {
+            bsonOutput.close();
+            compressedBsonOutput.close();
+            callback.onResult(result, t);
+        };
 
         try {
             message.encode(bsonOutput, operationContext);
-
-            CommandEventSender commandEventSender;
-            if (isLoggingCommandNeeded()) {
-                BsonDocument commandDocument = message.getCommandDocument(bsonOutput);
-                commandEventSender = new LoggingCommandEventSender(
-                        SECURITY_SENSITIVE_COMMANDS, SECURITY_SENSITIVE_HELLO_COMMANDS, description, commandListener,
-                        operationContext, message, commandDocument,
-                        COMMAND_PROTOCOL_LOGGER, loggerSettings);
-            } else {
-                commandEventSender = new NoOpCommandEventSender();
-            }
-
-            commandEventSender.sendStartedEvent();
-            Compressor localSendCompressor = sendCompressor;
-            if (localSendCompressor == null || SECURITY_SENSITIVE_COMMANDS.contains(message.getCommandDocument(bsonOutput).getFirstKey())) {
-                sendCommandMessageAsync(message.getId(), decoder, operationContext, callback, bsonOutput, commandEventSender,
-                        message.isResponseExpected());
-            } else {
-                List<ByteBuf> byteBuffers = bsonOutput.getByteBuffers();
-                try {
-                    CompressedMessage compressedMessage = new CompressedMessage(message.getOpCode(), byteBuffers, localSendCompressor,
-                            getMessageSettings(description, initialServerDescription));
-                    compressedMessage.encode(compressedBsonOutput, operationContext);
-                } finally {
-                    ResourceUtil.release(byteBuffers);
-                    bsonOutput.close();
+            try (ByteBufBsonDocument commandDocument = message.getCommandDocument(bsonOutput)) {
+                CommandEventSender commandEventSender;
+                if (isLoggingCommandNeeded()) {
+                    commandEventSender = new LoggingCommandEventSender(
+                            SECURITY_SENSITIVE_COMMANDS, SECURITY_SENSITIVE_HELLO_COMMANDS, description, commandListener,
+                            operationContext, message, commandDocument,
+                            COMMAND_PROTOCOL_LOGGER, loggerSettings);
+                } else {
+                    commandEventSender = new NoOpCommandEventSender();
                 }
-                sendCommandMessageAsync(message.getId(), decoder, operationContext, callback, compressedBsonOutput, commandEventSender,
-                        message.isResponseExpected());
+
+                commandEventSender.sendStartedEvent();
+                Compressor localSendCompressor = sendCompressor;
+                if (localSendCompressor == null || SECURITY_SENSITIVE_COMMANDS.contains(commandDocument.getFirstKey())) {
+                    sendCommandMessageAsync(message.getId(), decoder, operationContext, bsonOutputClosingCallback, bsonOutput,
+                            commandEventSender, message.isResponseExpected());
+                } else {
+                    List<ByteBuf> byteBuffers = bsonOutput.getByteBuffers();
+                    try {
+                        CompressedMessage compressedMessage = new CompressedMessage(message.getOpCode(), byteBuffers, localSendCompressor,
+                                getMessageSettings(description, initialServerDescription));
+                        compressedMessage.encode(compressedBsonOutput, operationContext);
+                    } finally {
+                        ResourceUtil.release(byteBuffers);
+                    }
+                    sendCommandMessageAsync(message.getId(), decoder, operationContext, bsonOutputClosingCallback, compressedBsonOutput,
+                            commandEventSender, message.isResponseExpected());
+                }
             }
         } catch (Throwable t) {
-            bsonOutput.close();
-            compressedBsonOutput.close();
-            callback.onResult(null, t);
+            bsonOutputClosingCallback.onResult(null, t);
         }
     }
 
@@ -651,7 +651,6 @@ public class InternalStreamConnection implements InternalConnection {
                                              final CommandEventSender commandEventSender, final boolean responseExpected) {
         boolean[] shouldReturn = {false};
         Timeout.onExistsAndExpired(operationContext.getTimeoutContext().timeoutIncludingRoundTrip(), () -> {
-            bsonOutput.close();
             MongoOperationTimeoutException operationTimeoutException = TimeoutContext.createMongoRoundTripTimeoutException();
             commandEventSender.sendFailedEvent(operationTimeoutException);
             callback.onResult(null, operationTimeoutException);
@@ -664,7 +663,6 @@ public class InternalStreamConnection implements InternalConnection {
         List<ByteBuf> byteBuffers = bsonOutput.getByteBuffers();
         sendMessageAsync(byteBuffers, messageId, operationContext, (result, t) -> {
             ResourceUtil.release(byteBuffers);
-            bsonOutput.close();
             if (t != null) {
                 commandEventSender.sendFailedEvent(t);
                 callback.onResult(null, t);
@@ -682,18 +680,19 @@ public class InternalStreamConnection implements InternalConnection {
                     T commandResult;
                     try {
                         updateSessionContext(operationContext.getSessionContext(), responseBuffers);
-                        boolean commandOk =
-                                isCommandOk(new BsonBinaryReader(new ByteBufferBsonInput(responseBuffers.getBodyByteBuffer())));
-                        responseBuffers.reset();
-                        if (!commandOk) {
-                            MongoException commandFailureException = getCommandFailureException(
-                                    responseBuffers.getResponseDocument(messageId, new BsonDocumentCodec()),
-                                    description.getServerAddress(), operationContext.getTimeoutContext());
-                            commandEventSender.sendFailedEvent(commandFailureException);
-                            throw commandFailureException;
+                        try (ByteBufferBsonInput byteBufferBsonInput =
+                                     new ByteBufferBsonInput(responseBuffers.getBodyByteBuffer().duplicate())) {
+                            boolean commandOk = isCommandOk(new BsonBinaryReader(byteBufferBsonInput));
+                            responseBuffers.reset();
+                            if (!commandOk) {
+                                MongoException commandFailureException = getCommandFailureException(
+                                        responseBuffers.getResponseDocument(messageId, new BsonDocumentCodec()),
+                                        description.getServerAddress(), operationContext.getTimeoutContext());
+                                commandEventSender.sendFailedEvent(commandFailureException);
+                                throw commandFailureException;
+                            }
                         }
                         commandEventSender.sendSucceededEvent(responseBuffers);
-
                         commandResult = getCommandResult(decoder, responseBuffers, messageId, operationContext.getTimeoutContext());
                     } catch (Throwable localThrowable) {
                         callback.onResult(null, localThrowable);
@@ -981,37 +980,26 @@ public class InternalStreamConnection implements InternalConnection {
                     callback.onResult(null, t);
                     return;
                 }
-                boolean releaseResult = true;
                 assertNotNull(result);
                 try {
                     ReplyHeader replyHeader;
                     ByteBuf responseBuffer;
                     if (messageHeader.getOpCode() == OP_COMPRESSED.getValue()) {
-                        try {
-                            CompressedHeader compressedHeader = new CompressedHeader(result, messageHeader);
-                            Compressor compressor = getCompressor(compressedHeader);
-                            ByteBuf buffer = getBuffer(compressedHeader.getUncompressedSize());
-                            compressor.uncompress(result, buffer);
+                        CompressedHeader compressedHeader = new CompressedHeader(result, messageHeader);
+                        Compressor compressor = getCompressor(compressedHeader);
+                        ByteBuf buffer = getBuffer(compressedHeader.getUncompressedSize());
+                        compressor.uncompress(result, buffer);
 
-                            buffer.flip();
-                            replyHeader = new ReplyHeader(buffer, compressedHeader);
-                            responseBuffer = buffer;
-                        } finally {
-                            releaseResult = false;
-                            result.release();
-                        }
+                        buffer.flip();
+                        replyHeader = new ReplyHeader(buffer, compressedHeader);
+                        responseBuffer = buffer;
                     } else {
                         replyHeader = new ReplyHeader(result, messageHeader);
                         responseBuffer = result;
-                        releaseResult = false;
                     }
                     callback.onResult(new ResponseBuffers(replyHeader, responseBuffer), null);
                 } catch (Throwable localThrowable) {
                     callback.onResult(null, localThrowable);
-                } finally {
-                    if (releaseResult) {
-                        result.release();
-                    }
                 }
             }
         }

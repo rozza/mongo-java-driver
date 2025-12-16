@@ -304,6 +304,7 @@ public abstract class UnifiedTest {
 
     @AfterEach
     public void cleanUp() {
+        System.gc();
         for (FailPoint failPoint : failPoints) {
             failPoint.disableFailPoint();
         }

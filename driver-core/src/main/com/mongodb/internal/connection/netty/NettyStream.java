@@ -68,6 +68,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Consumer;
 
 import static com.mongodb.assertions.Assertions.assertNotNull;
 import static com.mongodb.internal.Locks.withLock;
@@ -86,6 +87,24 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
  * {@linkplain #readAsync(int, OperationContext, AsyncCompletionHandler) asynchronous})
  * are not supported by {@link NettyStream}.
  * However, this class does not have a fail-fast mechanism checking for such situations.
+ *
+ * <h2>ByteBuf Ownership and Reference Counting</h2>
+ * <p>This class manages Netty {@link io.netty.buffer.ByteBuf} instances which use reference counting for memory management.
+ * The following ownership rules apply:</p>
+ * <ul>
+ *   <li><b>Inbound buffers from Netty:</b> When Netty delivers a buffer via {@link InboundBufferHandler#channelRead0},
+ *       the buffer is owned by Netty and will be released after the method returns. If we need to keep the buffer,
+ *       we must call {@link io.netty.buffer.ByteBuf#retain()}.</li>
+ *   <li><b>{@link #pendingInboundBuffers}:</b> All buffers in this queue have been retained and are owned by this class.
+ *       They must be released when consumed or when the stream is closed.</li>
+ *   <li><b>Read completion:</b> When a read operation completes successfully, ownership of the returned {@link ByteBuf}
+ *       transfers to the caller (via {@link AsyncCompletionHandler#completed}). The caller is responsible for releasing it.</li>
+ *   <li><b>Handler exceptions:</b> If {@link AsyncCompletionHandler#completed} throws an exception, ownership was not
+ *       transferred, and this class releases the buffer.</li>
+ *   <li><b>Stream closure:</b> When {@link #close()} is called, all buffers in {@link #pendingInboundBuffers} are released.
+ *       Callers must ensure any previously returned buffers are released before calling close.</li>
+ * </ul>
+ *
  * <hr>
  * <sup>1</sup>We cannot simply say that read methods are not allowed be run concurrently because strictly speaking they are allowed,
  * as explained below.
@@ -127,6 +146,19 @@ final class NettyStream implements Stream {
     private boolean isClosed;
     private volatile Channel channel;
 
+    /**
+     * Queue of inbound buffers received from Netty that have not yet been consumed by read operations.
+     *
+     * <p><b>Ownership:</b> All buffers in this queue have been {@link io.netty.buffer.ByteBuf#retain() retained}
+     * and are owned by this class. When a buffer is removed from this queue, the remover takes ownership and
+     * is responsible for either:</p>
+     * <ul>
+     *   <li>Transferring ownership to a caller (e.g., via {@link AsyncCompletionHandler#completed}), or</li>
+     *   <li>Releasing the buffer via {@link io.netty.buffer.ByteBuf#release()}</li>
+     * </ul>
+     *
+     * <p>When the stream is {@link #close() closed}, all remaining buffers are released.</p>
+     */
     private final LinkedList<io.netty.buffer.ByteBuf> pendingInboundBuffers = new LinkedList<>();
     private final Lock lock = new ReentrantLock();
     // access to the fields `pendingReader`, `pendingException` is guarded by `lock`
@@ -285,6 +317,15 @@ final class NettyStream implements Stream {
      *                          Timeouts may be scheduled only by the public read methods. Taking into account that concurrent pending
      *                          readers are not allowed, there must not be a situation when threads attempt to schedule a timeout
      *                          before the previous one is either cancelled or completed.
+     *
+     * <h3>Buffer Ownership</h3>
+     * <p>When this method completes a read operation successfully:</p>
+     * <ul>
+     *   <li>Buffers are removed from {@link #pendingInboundBuffers} and assembled into a composite buffer</li>
+     *   <li>Ownership of the composite buffer is transferred to the handler via {@link AsyncCompletionHandler#completed}</li>
+     *   <li>If the handler throws an exception, the buffer is released by {@link #invokeHandlerWithBuffer}</li>
+     * </ul>
+     * <p>If an exception occurs during buffer assembly, the partially-built composite is released before propagating the exception.</p>
      */
     private void readAsync(final int numBytes, final AsyncCompletionHandler<ByteBuf> handler, final long readTimeoutMillis) {
         ByteBuf buffer = null;
@@ -299,23 +340,29 @@ final class NettyStream implements Stream {
                     }
                 } else {
                     CompositeByteBuf composite = allocator.compositeBuffer(pendingInboundBuffers.size());
-                    int bytesNeeded = numBytes;
-                    for (Iterator<io.netty.buffer.ByteBuf> iter = pendingInboundBuffers.iterator(); iter.hasNext();) {
-                        io.netty.buffer.ByteBuf next = iter.next();
-                        int bytesNeededFromCurrentBuffer = Math.min(next.readableBytes(), bytesNeeded);
-                        if (bytesNeededFromCurrentBuffer == next.readableBytes()) {
-                            composite.addComponent(next);
-                            iter.remove();
-                        } else {
-                            composite.addComponent(next.readRetainedSlice(bytesNeededFromCurrentBuffer));
+                    try {
+                        int bytesNeeded = numBytes;
+                        for (Iterator<io.netty.buffer.ByteBuf> iter = pendingInboundBuffers.iterator(); iter.hasNext();) {
+                            io.netty.buffer.ByteBuf next = iter.next();
+                            int bytesNeededFromCurrentBuffer = Math.min(next.readableBytes(), bytesNeeded);
+                            if (bytesNeededFromCurrentBuffer == next.readableBytes()) {
+                                composite.addComponent(next);
+                                iter.remove();
+                            } else {
+                                composite.addComponent(next.readRetainedSlice(bytesNeededFromCurrentBuffer));
+                                next.release(); // Release ByteBuf due to using a retained slice
+                            }
+                            composite.writerIndex(composite.writerIndex() + bytesNeededFromCurrentBuffer);
+                            bytesNeeded -= bytesNeededFromCurrentBuffer;
+                            if (bytesNeeded == 0) {
+                                break;
+                            }
                         }
-                        composite.writerIndex(composite.writerIndex() + bytesNeededFromCurrentBuffer);
-                        bytesNeeded -= bytesNeededFromCurrentBuffer;
-                        if (bytesNeeded == 0) {
-                            break;
-                        }
+                        buffer = new NettyByteBuf(composite).flip();
+                    } catch (Throwable t) {
+                        composite.release();
+                        throw t;
                     }
-                    buffer = new NettyByteBuf(composite).flip();
                 }
             }
             if (!(exceptionResult == null && buffer == null)//the read operation has completed
@@ -328,9 +375,8 @@ final class NettyStream implements Stream {
         }
         if (exceptionResult != null) {
             handler.failed(exceptionResult);
-        }
-        if (buffer != null) {
-            handler.completed(buffer);
+        } else if (buffer != null) {
+            invokeHandlerWithBuffer(buffer, handler);
         }
     }
 
@@ -345,11 +391,31 @@ final class NettyStream implements Stream {
         return false;
     }
 
+    /**
+     * Handles an inbound buffer or exception from Netty's event loop.
+     *
+     * <h3>Buffer Ownership</h3>
+     * <p>The {@code buffer} parameter, if non-null, is owned by Netty and will be released after
+     * {@link InboundBufferHandler#channelRead0} returns. This method must call {@link io.netty.buffer.ByteBuf#retain()}
+     * if it wants to keep the buffer beyond the scope of the channel read.</p>
+     *
+     * <p>Behavior:</p>
+     * <ul>
+     *   <li>If the stream is open: the buffer is retained and added to {@link #pendingInboundBuffers}</li>
+     *   <li>If the stream is closed: the buffer is NOT retained (Netty will release it), and a
+     *       {@link MongoSocketException} is recorded as the pending exception</li>
+     * </ul>
+     *
+     * @param buffer The inbound buffer from Netty, or null if this is an exception notification.
+     *               If non-null, this buffer is owned by Netty and must be retained to keep it.
+     * @param t The exception, or null if this is a successful read notification.
+     */
     private void handleReadResponse(@Nullable final io.netty.buffer.ByteBuf buffer, @Nullable final Throwable t) {
         PendingReader localPendingReader = withLock(lock, () -> {
             if (buffer != null) {
                 if (isClosed) {
                     pendingException = new MongoSocketException("Received data after the stream was closed.", address);
+                    // Do not retain the buffer since we're not storing it - let it be released by the caller
                 } else {
                     pendingInboundBuffers.add(buffer.retain());
                 }
@@ -370,6 +436,17 @@ final class NettyStream implements Stream {
         return address;
     }
 
+    /**
+     * Closes this stream and releases all resources.
+     *
+     * <h3>Buffer Cleanup</h3>
+     * <p>All buffers remaining in {@link #pendingInboundBuffers} are released. This method forcefully releases
+     * all reference counts (not just one) to prevent silent leaks in case of reference counting errors elsewhere.</p>
+     *
+     * <p><b>Important:</b> Callers must ensure that any {@link ByteBuf} instances previously returned by
+     * {@link #read} or {@link #readAsync} have been released before calling this method. This class does not
+     * track buffers after ownership has been transferred to callers.</p>
+     */
     @Override
     public void close() {
         withLock(lock, () ->  {
@@ -411,6 +488,37 @@ final class NettyStream implements Stream {
 
     public ByteBufAllocator getAllocator() {
         return allocator;
+    }
+
+    /**
+     * Invokes the handler with the buffer, ensuring the buffer is released if the handler throws an exception.
+     *
+     * <h3>Ownership Transfer Protocol</h3>
+     * <p>This method implements a safe ownership transfer:</p>
+     * <ol>
+     *   <li>The buffer is passed to {@link AsyncCompletionHandler#completed}</li>
+     *   <li>If the handler returns normally, ownership has been successfully transferred to the handler/caller</li>
+     *   <li>If the handler throws an exception, ownership was NOT transferred, so this method releases the buffer
+     *       before re-throwing the exception</li>
+     * </ol>
+     *
+     * <p>This ensures that buffers are never leaked, regardless of whether the handler succeeds or fails.</p>
+     *
+     * @param buffer  The buffer to pass to the handler. Must not be null. Ownership is transferred to the handler
+     *                on successful completion.
+     * @param handler The handler to invoke with the buffer.
+     * @throws RuntimeException if the handler throws an exception (after releasing the buffer)
+     */
+    private void invokeHandlerWithBuffer(final ByteBuf buffer, final AsyncCompletionHandler<ByteBuf> handler) {
+        try {
+            handler.completed(buffer);
+        } catch (Throwable t) {
+            // Handler threw an exception, so it didn't take ownership - release the buffer
+            if (buffer.getReferenceCount() > 0) {
+                buffer.release();
+            }
+            throw t;
+        }
     }
 
     private void addSslHandler(final SocketChannel channel) {

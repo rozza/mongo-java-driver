@@ -16,6 +16,7 @@
 
 package com.mongodb.internal.connection;
 
+import com.mongodb.internal.VisibleForTesting;
 import org.bson.ByteBuf;
 
 import java.nio.Buffer;
@@ -24,18 +25,22 @@ import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
+import static com.mongodb.internal.VisibleForTesting.AccessModifier.PRIVATE;
 import static java.lang.String.format;
 import static org.bson.assertions.Assertions.isTrueArgument;
 import static org.bson.assertions.Assertions.notNull;
 
-class CompositeByteBuf implements ByteBuf {
+@VisibleForTesting(otherwise = PRIVATE)
+public final class CompositeByteBuf implements ByteBuf {
     private final List<Component> components;
     private final AtomicInteger referenceCount = new AtomicInteger(1);
     private int position;
     private int limit;
 
-    CompositeByteBuf(final List<ByteBuf> buffers) {
+    @VisibleForTesting(otherwise = PRIVATE)
+    public CompositeByteBuf(final List<ByteBuf> buffers) {
         notNull("buffers", buffers);
         isTrueArgument("buffer list not empty", !buffers.isEmpty());
         components = new ArrayList<>(buffers.size());
@@ -50,7 +55,9 @@ class CompositeByteBuf implements ByteBuf {
     }
 
     private CompositeByteBuf(final CompositeByteBuf from) {
-        components = from.components;
+        components = from.components.stream().map(c ->
+            new Component(c.buffer.retain(), c.offset))
+            .collect(Collectors.toList());
         position = from.position();
         limit = from.limit();
     }
@@ -306,6 +313,7 @@ class CompositeByteBuf implements ByteBuf {
             referenceCount.decrementAndGet();
             throw new IllegalStateException("Attempted to increment the reference count when it is already 0");
         }
+        components.forEach(c -> c.buffer.retain());
         return this;
     }
 
@@ -315,6 +323,7 @@ class CompositeByteBuf implements ByteBuf {
             referenceCount.incrementAndGet();
             throw new IllegalStateException("Attempted to decrement the reference count below 0");
         }
+        components.forEach(c -> c.buffer.release());
     }
 
     private Component findComponent(final int index) {
