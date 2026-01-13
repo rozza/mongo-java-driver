@@ -2435,6 +2435,7 @@ buildvariants:
     display_name: "Netty: ${version} ${topology} ${ssl} ${auth} ${jdk} ${os} "
     tags: [ "tests-netty-variant" ]
     tasks:
+      - name: "test-sync-task"
       - name: "test-reactive-task"
       - name: "test-core-task"
 

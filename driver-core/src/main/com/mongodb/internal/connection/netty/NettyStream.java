@@ -29,6 +29,8 @@ import com.mongodb.connection.SocketSettings;
 import com.mongodb.connection.SslSettings;
 import com.mongodb.internal.connection.OperationContext;
 import com.mongodb.internal.connection.Stream;
+import com.mongodb.internal.diagnostics.logging.Logger;
+import com.mongodb.internal.diagnostics.logging.Loggers;
 import com.mongodb.lang.Nullable;
 import com.mongodb.spi.dns.InetAddressResolver;
 import io.netty.bootstrap.Bootstrap;
@@ -58,6 +60,7 @@ import javax.net.ssl.SSLParameters;
 import java.io.IOException;
 import java.net.SocketAddress;
 import java.security.NoSuchAlgorithmException;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -68,7 +71,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 import static com.mongodb.assertions.Assertions.assertNotNull;
 import static com.mongodb.internal.Locks.withLock;
@@ -76,6 +79,7 @@ import static com.mongodb.internal.connection.ServerAddressHelper.getSocketAddre
 import static com.mongodb.internal.connection.SslHelper.enableHostNameVerification;
 import static com.mongodb.internal.connection.SslHelper.enableSni;
 import static com.mongodb.internal.thread.InterruptionUtil.interruptAndCreateMongoInterruptedException;
+import static java.lang.String.format;
 import static java.util.Optional.ofNullable;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
@@ -132,6 +136,7 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
  * is invoked after the first operation has completed reading despite the method has not returned yet.
  */
 final class NettyStream implements Stream {
+    private static final Logger LOGGER = Loggers.getLogger("connection");
     private static final byte NO_SCHEDULE_TIME = 0;
     private final ServerAddress address;
     private final InetAddressResolver inetAddressResolver;
@@ -350,7 +355,6 @@ final class NettyStream implements Stream {
                                 iter.remove();
                             } else {
                                 composite.addComponent(next.readRetainedSlice(bytesNeededFromCurrentBuffer));
-                                next.release(); // Release ByteBuf due to using a retained slice
                             }
                             composite.writerIndex(composite.writerIndex() + bytesNeededFromCurrentBuffer);
                             bytesNeeded -= bytesNeededFromCurrentBuffer;
@@ -446,6 +450,10 @@ final class NettyStream implements Stream {
      * <p><b>Important:</b> Callers must ensure that any {@link ByteBuf} instances previously returned by
      * {@link #read} or {@link #readAsync} have been released before calling this method. This class does not
      * track buffers after ownership has been transferred to callers.</p>
+     *
+     * <p>This method validates that each pending buffer has a reference count of 1 (indicating
+     * no external references exist). If a buffer has a higher reference count, it logs a warning
+     * but still releases all references to prevent silent leaks.</p>
      */
     @Override
     public void close() {
@@ -458,9 +466,16 @@ final class NettyStream implements Stream {
             for (Iterator<io.netty.buffer.ByteBuf> iterator = pendingInboundBuffers.iterator(); iterator.hasNext();) {
                 io.netty.buffer.ByteBuf nextByteBuf = iterator.next();
                 iterator.remove();
-                // Drops all retains to prevent silent leaks; assumes callers have already released
-                // ByteBuffers returned by that NettyStream before calling close.
-                nextByteBuf.release(nextByteBuf.refCnt());
+                int refCount = nextByteBuf.refCnt();
+                if (refCount > 1) {
+                    // Log warning: external references may still exist, but we must clean up
+                    // to prevent silent leaks. Callers should have released their references first.
+                    LOGGER.warn(format("LEAK: ByteBuf in NettyStream has unexpected reference count %d during close. "
+                            + "External references may still exist.", refCount));
+                    String collect = Arrays.stream(Thread.currentThread().getStackTrace()).map(StackTraceElement::toString).collect(Collectors.joining("\n"));
+                    LOGGER.warn(format("LEAK: stacktrace: \n %s", collect));
+                }
+
             }
         });
     }

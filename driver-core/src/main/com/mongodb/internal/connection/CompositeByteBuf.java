@@ -32,6 +32,29 @@ import static java.lang.String.format;
 import static org.bson.assertions.Assertions.isTrueArgument;
 import static org.bson.assertions.Assertions.notNull;
 
+/**
+ * A composite {@link ByteBuf} that provides a unified view over a list of component buffers.
+ *
+ * <h2>ByteBuf Ownership and Reference Counting</h2>
+ * <p>This class manages the lifecycle of its component buffers with the following rules:</p>
+ * <ul>
+ *   <li><b>Constructor:</b> Takes buffers as input but does NOT take ownership. The buffers are made
+ *       read-only via {@link ByteBuf#asReadOnly()}, which creates shallow copies that share the same
+ *       underlying data and reference count. The original buffers remain owned by the caller.</li>
+ *   <li><b>{@link #duplicate()}:</b> Creates a new composite with independent position/limit but calls
+ *       {@link ByteBuf#retain()} on each component, incrementing their reference counts. The duplicate
+ *       owns these retained references and releases them when it is released.</li>
+ *   <li><b>{@link #retain()}:</b> Increments the composite's reference count AND retains all component
+ *       buffers. Each retain() call must be paired with a {@link #release()}.</li>
+ *   <li><b>{@link #release()}:</b> Decrements the composite's reference count AND releases all component
+ *       buffers. When the count reaches 0, subsequent access will throw {@link IllegalStateException}.</li>
+ * </ul>
+ *
+ * <p><strong>Important:</strong> The composite's reference count is independent from its components'
+ * reference counts, but they are kept in sync via {@link #retain()} and {@link #release()} methods.</p>
+ *
+ * <p>This class is not part of the public API and may be removed or changed at any time</p>
+ */
 @VisibleForTesting(otherwise = PRIVATE)
 public final class CompositeByteBuf implements ByteBuf {
     private final List<Component> components;
@@ -39,6 +62,20 @@ public final class CompositeByteBuf implements ByteBuf {
     private int position;
     private int limit;
 
+    /**
+     * Creates a composite buffer from the given list of buffers.
+     *
+     * <p><strong>ByteBuf Ownership:</strong> This constructor does NOT take ownership of the input buffers.
+     * It calls {@link ByteBuf#asReadOnly()} on each buffer, which creates a shallow read-only view that
+     * shares the same underlying data and reference count as the original. The caller retains ownership
+     * of the original buffers and is responsible for their lifecycle.</p>
+     *
+     * <p>The composite starts with a reference count of 1. When {@link #release()} is called and the
+     * reference count reaches 0, it does NOT automatically release the original buffers - the caller
+     * must handle that separately.</p>
+     *
+     * @param buffers the list of buffers to compose, must not be null or empty
+     */
     @VisibleForTesting(otherwise = PRIVATE)
     public CompositeByteBuf(final List<ByteBuf> buffers) {
         notNull("buffers", buffers);
@@ -284,6 +321,19 @@ public final class CompositeByteBuf implements ByteBuf {
         throw new UnsupportedOperationException();
     }
 
+    /**
+     * Creates a duplicate of this composite buffer with independent position and limit.
+     *
+     * <p><strong>ByteBuf Ownership:</strong> The duplicate calls {@link ByteBuf#retain()} on each
+     * component buffer, incrementing their reference counts. The duplicate owns these retained
+     * references and starts with its own reference count of 1. <strong>The caller is responsible
+     * for releasing the duplicate</strong> when done, which will release the component buffers.</p>
+     *
+     * <p>The duplicate shares the underlying buffer data with this composite but has independent
+     * reference counting and position/limit state.</p>
+     *
+     * @return a new composite buffer that shares data with this one but has independent state
+     */
     @Override
     public ByteBuf duplicate() {
         return new CompositeByteBuf(this);

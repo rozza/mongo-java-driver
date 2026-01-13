@@ -391,21 +391,27 @@ public class ByteBufferBsonOutput extends OutputBuffer {
      *
      * <p><strong>ByteBuf Management:</strong> Releases all internal buffers and clears the buffer list.
      * After this method returns, all buffers that were allocated by this output will have been released
-     * back to the buffer provider. For the base {@link ByteBufferBsonOutput} class, this method also
-     * verifies that no buffers are still retained (reference count > 0), failing if any leaks are detected.</p>
+     * back to the buffer provider. For the base {@link ByteBufferBsonOutput} class, this method validates
+     * that each buffer has a reference count of exactly 1 before releasing, failing if any unexpected
+     * references exist (which could indicate a leak or incorrect usage).</p>
      */
     @Override
     public void close() {
         if (isOpen()) {
-            bufferList.forEach(ByteBuf::release);
-            if (this.getClass() == ByteBufferBsonOutput.class) {
-                if (bufferList.stream().anyMatch(b -> b.getReferenceCount() > 0)) {
-                    fail("BsonOutput was closed but some ByteBufs in the buffer list are still retained.");
+            try {
+                // Validate reference counts BEFORE releasing to detect leaks
+                if (this.getClass() == ByteBufferBsonOutput.class) {
+                    if (bufferList.stream().anyMatch(b -> b.getReferenceCount() != 1)) {
+                        fail("BsonOutput has buffers with unexpected reference counts before close. Expected 1 for all buffers.");
+                    }
                 }
+            } finally {
+                // Always release buffers even if validation fails, to prevent leaks
+                bufferList.forEach(ByteBuf::release);
+                currentByteBuffer = null;
+                bufferList.clear();
+                closed = true;
             }
-            currentByteBuffer = null;
-            bufferList.clear();
-            closed = true;
         }
     }
 

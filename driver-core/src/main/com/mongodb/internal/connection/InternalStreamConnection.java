@@ -71,7 +71,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
 
 import static com.mongodb.assertions.Assertions.assertNotNull;
 import static com.mongodb.assertions.Assertions.assertNull;
@@ -521,6 +520,19 @@ public class InternalStreamConnection implements InternalConnection {
         return hasMoreToCome;
     }
 
+    /**
+     * Sends a command message, optionally compressing it if a compressor is configured.
+     *
+     * <p><strong>ByteBuf Lifecycle:</strong> This method obtains buffers from {@code bsonOutput} via
+     * {@link ByteBufferBsonOutput#getByteBuffers()}, which returns duplicates with independent reference
+     * counts. These buffers are properly released in a finally block after use, ensuring no leaks occur
+     * even if compression or sending fails.</p>
+     *
+     * @param commandName the command name (used to determine if compression should be skipped)
+     * @param message the command message to send
+     * @param bsonOutput the output containing the encoded message
+     * @param operationContext the operation context
+     */
     private void sendCommandMessage(final String commandName, final CommandMessage message,
             final ByteBufferBsonOutput bsonOutput, final OperationContext operationContext) {
         Compressor localSendCompressor = sendCompressor;
@@ -542,6 +554,18 @@ public class InternalStreamConnection implements InternalConnection {
         responseTo = message.getId();
     }
 
+    /**
+     * Attempts to send a message, checking for timeout expiration before sending.
+     *
+     * <p><strong>ByteBuf Lifecycle:</strong> This method obtains buffers from {@code bsonOutput} via
+     * {@link ByteBufferBsonOutput#getByteBuffers()}, which returns duplicates with independent reference
+     * counts. These buffers are properly released in a finally block after sending, ensuring no leaks
+     * occur even if the send operation fails or times out.</p>
+     *
+     * @param message the command message being sent
+     * @param bsonOutput the output containing the encoded message
+     * @param operationContext the operation context with timeout information
+     */
     private void trySendMessage(final CommandMessage message, final ByteBufferBsonOutput bsonOutput,
             final OperationContext operationContext) {
         Timeout.onExistsAndExpired(operationContext.getTimeoutContext().timeoutIncludingRoundTrip(), () -> {
@@ -646,6 +670,26 @@ public class InternalStreamConnection implements InternalConnection {
         }
     }
 
+    /**
+     * Asynchronously sends a command message and optionally receives a response.
+     *
+     * <p><strong>ByteBuf Lifecycle:</strong> This method obtains buffers from {@code bsonOutput} via
+     * {@link ByteBufferBsonOutput#getByteBuffers()}, which returns duplicates with independent reference
+     * counts. The buffers are captured in the async callback and released when the send completes (either
+     * successfully or with an error). This ensures no leaks occur even if the async operation fails.</p>
+     *
+     * <p>The buffers remain valid during the async send operation and are released as the first action
+     * in the completion callback, before any error handling or response processing.</p>
+     *
+     * @param messageId the message identifier
+     * @param decoder the decoder for the response (if expected)
+     * @param operationContext the operation context
+     * @param callback the callback to invoke when the operation completes
+     * @param bsonOutput the output containing the encoded message
+     * @param commandEventSender the event sender for command monitoring
+     * @param responseExpected whether a response is expected
+     * @param <T> the type of the decoded response
+     */
     private <T> void sendCommandMessageAsync(final int messageId, final Decoder<T> decoder, final OperationContext operationContext,
                                              final SingleResultCallback<T> callback, final ByteBufferBsonOutput bsonOutput,
                                              final CommandEventSender commandEventSender, final boolean responseExpected) {
@@ -653,8 +697,11 @@ public class InternalStreamConnection implements InternalConnection {
         Timeout.onExistsAndExpired(operationContext.getTimeoutContext().timeoutIncludingRoundTrip(), () -> {
             MongoOperationTimeoutException operationTimeoutException = TimeoutContext.createMongoRoundTripTimeoutException();
             commandEventSender.sendFailedEvent(operationTimeoutException);
-            callback.onResult(null, operationTimeoutException);
-            shouldReturn[0] = true;
+            try {
+                callback.onResult(null, operationTimeoutException);
+            } finally {
+                shouldReturn[0] = true;
+            }
         });
         if (shouldReturn[0]) {
             return;

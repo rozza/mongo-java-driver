@@ -16,7 +16,6 @@
 
 package com.mongodb.internal.session;
 
-import com.mongodb.MongoException;
 import com.mongodb.ReadPreference;
 import com.mongodb.ServerApi;
 import com.mongodb.connection.ClusterDescription;
@@ -158,8 +157,10 @@ public class ServerSessionPool {
             connection.command("admin",
                     new BsonDocument("endSessions", new BsonArray(identifiers)), NoOpFieldNameValidator.INSTANCE,
                     ReadPreference.primaryPreferred(), new BsonDocumentCodec(), operationContext);
-        } catch (MongoException e) {
-            // ignore exceptions
+        } catch (Throwable t) {
+            // Ignore all exceptions during endSessions - this is a best-effort cleanup operation
+            // Catching Throwable instead of just MongoException prevents ByteBuf leaks that can occur
+            // when RuntimeExceptions are thrown during command encoding/sending
         } finally {
             if (connection != null) {
                 connection.release();
