@@ -2293,6 +2293,24 @@ buildvariants:
       - name: "atlas-connectivity-task"
       - name:  "atlas-x509-auth-test-task"
 
+  - name: "atlas-connectivity-variant-linux"
+    display_name: "Atlas Connectivity (Linux)"
+    run_on: rhel80-small
+    tasks:
+      - name: "atlas-connectivity-task"
+
+  - name: "atlas-connectivity-variant-osx"
+    display_name: "Atlas Connectivity (MacOS)"
+    run_on: macos-14
+    tasks:
+      - name: "atlas-connectivity-task"
+
+  - name: "atlas-connectivity-variant-windows"
+    display_name: "Atlas Connectivity - (Windows)"
+    run_on:  windows-2022-latest-small
+    tasks:
+      - name: "atlas-connectivity-task"
+
   - name: "reactive-streams-tck-test"
     display_name: "Reactive Streams TCK tests"
     run_on: rhel80-small

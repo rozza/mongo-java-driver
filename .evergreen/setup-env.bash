@@ -1,22 +1,82 @@
 # Java configurations for evergreen
 
-export JDK8="/opt/java/jdk8"
-export JDK11="/opt/java/jdk11"
-export JDK17="/opt/java/jdk17"
-export JDK21="/opt/java/jdk21"
+# find_jdk <suffix>
+# Searches platform-specific paths for a JDK directory matching the given suffix
+# (e.g. "jdk17", "jdk21-graalce"). Sets REPLY to the found path, or empty string.
+find_jdk() {
+  local suffix="$1"
+  local candidates=()
+
+  case "$(uname -s)" in
+    CYGWIN*|MINGW*|MSYS*)
+      candidates=(
+        "/cygdrive/c/java/${suffix}"
+        "C:/java/${suffix}"
+      )
+      ;;
+    Darwin)
+      candidates=(
+        "/opt/java/${suffix}"
+        "/Library/Java/JavaVirtualMachines/${suffix}"
+      )
+      ;;
+    *)
+      candidates=(
+        "/opt/java/${suffix}"
+      )
+      ;;
+  esac
+
+  REPLY=""
+  for path in "${candidates[@]}"; do
+    if [ -d "$path" ]; then
+      # Gradle on macOS unconditionally uses Contents/Home if that directory exists,
+      # even when it has no bin/java inside. If the JDK has a broken Contents/Home,
+      # create a local wrapper with a correct Contents/Home symlink.
+      if [ "$(uname -s)" = "Darwin" ] && [ -x "$path/bin/java" ] && [ ! -x "$path/Contents/Home/bin/java" ]; then
+        local wrapper="${LOCAL_JDKS}/$(basename "$path")"
+        mkdir -p "$wrapper/Contents"
+        ln -sfn "$path" "$wrapper/Contents/Home"
+        ln -sfn "$path/bin" "$wrapper/bin"
+        ln -sfn "$path/lib" "$wrapper/lib"
+        REPLY="$wrapper"
+      else
+        REPLY="$path"
+      fi
+      return
+    fi
+  done
+}
+
+LOCAL_JDKS="$(pwd)/.jdks"
+mkdir -p "$LOCAL_JDKS"
+
+find_jdk "jdk8";          [ -n "$REPLY" ] && export JDK8="$REPLY"
+find_jdk "jdk11";         [ -n "$REPLY" ] && export JDK11="$REPLY"
+find_jdk "jdk17";         [ -n "$REPLY" ] && export JDK17="$REPLY"
+find_jdk "jdk21";         [ -n "$REPLY" ] && export JDK21="$REPLY"
 # note that `JDK21_GRAALVM` is used in `run-graalvm-native-image-app.sh`
 # by dynamically constructing the variable name
-export JDK21_GRAALVM="/opt/java/jdk21-graalce"
+find_jdk "jdk21-graalce"; [ -n "$REPLY" ] && export JDK21_GRAALVM="$REPLY"
 
-if [ -d "$JDK17" ]; then
-  export JAVA_HOME=$JDK17
+if [ -z "$JDK17" ]; then
+  echo "ERROR: JDK17 not found. Aborting." >&2
+  return 1 2>/dev/null || exit 1
 fi
+
+export JAVA_HOME=$JDK17
 
 export JAVA_VERSION=${JAVA_VERSION:-17}
 
 echo "Java Configs:"
-echo "Java Home: ${JAVA_HOME}"
+echo "JAVA_HOME: ${JAVA_HOME}"
 echo "Java test version: ${JAVA_VERSION}"
+echo "Found JDKs:"
+[ -n "$JDK8" ]          && echo "  JDK8:          $JDK8"
+[ -n "$JDK11" ]         && echo "  JDK11:         $JDK11"
+[ -n "$JDK17" ]         && echo "  JDK17:         $JDK17"
+[ -n "$JDK21" ]         && echo "  JDK21:         $JDK21"
+[ -n "$JDK21_GRAALVM" ] && echo "  JDK21_GRAALVM: $JDK21_GRAALVM"
 
 # Rename environment variables for AWS, Azure, and GCP
 if [ -f secrets-export.sh ]; then
