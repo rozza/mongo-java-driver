@@ -47,6 +47,8 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import org.mockito.Mockito;
+
 @ExtendWith(MockitoExtension.class)
 class ClientSessionBindingTest {
 
@@ -144,7 +146,7 @@ class ClientSessionBindingTest {
     @SuppressWarnings("unchecked")
     private AsyncClusterAwareReadWriteBinding createStubBinding() {
         Cluster cluster = mock(Cluster.class);
-        doAnswer(invocation -> {
+        Mockito.lenient().doAnswer(invocation -> {
             SingleResultCallback<ServerTuple> callback = invocation.getArgument(2);
             callback.onResult(new ServerTuple(mock(Server.class), ServerDescription.builder()
                     .type(ServerType.STANDALONE)

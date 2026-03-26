@@ -128,7 +128,7 @@ class GridFSPublisherTest extends FunctionalSpecification {
 
         GridFSFile fileInfo = Mono.from(gridFSBucket.find().filter(eq("_id", fileId)).first()).block(TIMEOUT_DURATION);
 
-        assertEquals(fileId, fileInfo.getId().getValue());
+        assertEquals(fileId, fileInfo.getObjectId());
         assertEquals(gridFSBucket.getChunkSizeBytes(), fileInfo.getChunkSize());
         assertEquals(expectedLength, fileInfo.getLength());
         assertNull(fileInfo.getMetadata());
@@ -297,7 +297,11 @@ class GridFSPublisherTest extends FunctionalSpecification {
         GridFSUploadOptions options = new GridFSUploadOptions()
                 .chunkSizeBytes(chunkSize)
                 .metadata(metadata);
-        String content = "qwerty".repeat(1024);
+        StringBuilder sb = new StringBuilder(6 * 1024);
+        for (int i = 0; i < 1024; i++) {
+            sb.append("qwerty");
+        }
+        String content = sb.toString();
         byte[] contentBytes = content.getBytes();
         long expectedLength = contentBytes.length;
         int expectedNoChunks = (int) Math.ceil((double) expectedLength / chunkSize);
@@ -310,7 +314,7 @@ class GridFSPublisherTest extends FunctionalSpecification {
 
         GridFSFile fileInfo = Mono.from(gridFSBucket.find().filter(eq("_id", fileId)).first()).block(TIMEOUT_DURATION);
 
-        assertEquals(fileId, fileInfo.getId().getValue());
+        assertEquals(fileId, fileInfo.getObjectId());
         assertEquals(options.getChunkSizeBytes(), fileInfo.getChunkSize());
         assertEquals(expectedLength, fileInfo.getLength());
         assertEquals(options.getMetadata(), fileInfo.getMetadata());

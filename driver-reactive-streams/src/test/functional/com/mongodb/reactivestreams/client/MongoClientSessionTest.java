@@ -17,6 +17,7 @@
 package com.mongodb.reactivestreams.client;
 
 import com.mongodb.ClientSessionOptions;
+import com.mongodb.MongoClientSettings;
 import com.mongodb.MongoClientException;
 import com.mongodb.ReadConcern;
 import com.mongodb.ReadPreference;

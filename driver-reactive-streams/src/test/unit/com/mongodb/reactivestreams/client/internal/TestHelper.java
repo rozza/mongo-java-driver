@@ -163,7 +163,7 @@ public class TestHelper {
             return emptyMap();
         }
         return Arrays.stream(instance.getClass().getDeclaredFields())
-                .filter(field -> Modifier.isPrivate(field.getModifiers()))
+                .filter(field -> Modifier.isPrivate(field.getModifiers()) && !field.isSynthetic())
                 .collect(toMap(Field::getName, field -> {
                     Optional<Object> value = Optional.empty();
                     field.setAccessible(true);
@@ -236,11 +236,15 @@ public class TestHelper {
         return (Optional<Publisher<?>>) getScannableFieldValue(scannable, "source");
     }
 
+    @SuppressWarnings("unchecked")
     private static Optional<Publisher<?>> getScannableArray(final Scannable scannable) {
-        return getScannableFieldValue(scannable, "array")
-                .flatMap((Function<Object, Optional<? extends Publisher<?>>>) o ->
-                        Arrays.stream((Publisher<?>[]) o).map(TestHelper::getRootSource)
-                        .reduce((first, second) -> first));
+        Optional<?> value = getScannableFieldValue(scannable, "array");
+        if (!value.isPresent()) {
+            return Optional.empty();
+        }
+        return Arrays.stream((Publisher<?>[]) value.get())
+                .map(TestHelper::getRootSource)
+                .reduce((first, second) -> first);
     }
 
     private static Optional<?> getScannableFieldValue(final Scannable scannable, final String fieldName) {

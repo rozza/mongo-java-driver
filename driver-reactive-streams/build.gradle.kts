@@ -24,6 +24,7 @@ plugins {
     id("conventions.test-include-optionals")
     id("conventions.testing-mockito")
     id("conventions.testing-junit")
+    id("conventions.testing-junit-vintage")
 }
 
 base.archivesName.set("mongodb-driver-reactivestreams")
@@ -81,7 +82,7 @@ configureJarManifest {
             .joinToString(",")
 }
 
-sourceSets { test { java { setSrcDirs(listOf("src/test/tck")) } } }
+sourceSets { test { java { setSrcDirs(listOf("src/test/tck", "src/test/unit", "src/test/functional", "src/examples")) } } }
 
 // Reactive Streams TCK uses TestNG
 tasks.register("tckTest", Test::class) {

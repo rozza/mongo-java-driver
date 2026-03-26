@@ -125,21 +125,21 @@ public class ClientSideEncryptionBsonSizeLimitsTest extends FunctionalSpecificat
         // Insert a document over 2MiB but under 16MiB
         Mono.from(autoEncryptingDataCollection.insertOne(
                 new BsonDocument("_id", new BsonString("over_2mib_under_16mib"))
-                        .append("unencrypted", new BsonString("a".repeat(2097152))))).block(TIMEOUT_DURATION);
+                        .append("unencrypted", new BsonString(repeatChar('a', 2097152))))).block(TIMEOUT_DURATION);
 
         // Insert encrypted document that exceeds 2MiB
         Mono.from(autoEncryptingDataCollection.insertOne(getTestDocument("client-side-encryption/limits/limits-doc.json")
                 .append("_id", new BsonString("encryption_exceeds_2mib"))
-                .append("unencrypted", new BsonString("a".repeat(2097152 - 2000))))).block(TIMEOUT_DURATION);
+                .append("unencrypted", new BsonString(repeatChar('a', 2097152 - 2000))))).block(TIMEOUT_DURATION);
 
         // Insert many documents over 2MiB - should result in 2 insert commands
         commandListener.reset();
         Mono.from(autoEncryptingDataCollection.insertMany(
                 Arrays.asList(
                         new BsonDocument("_id", new BsonString("over_2mib_1"))
-                                .append("unencrypted", new BsonString("a".repeat(2097152))),
+                                .append("unencrypted", new BsonString(repeatChar('a', 2097152))),
                         new BsonDocument("_id", new BsonString("over_2mib_2"))
-                                .append("unencrypted", new BsonString("a".repeat(2097152)))
+                                .append("unencrypted", new BsonString(repeatChar('a', 2097152)))
                 ))).block(TIMEOUT_DURATION);
         assertEquals(2, countStartedEvents("insert"));
 
@@ -149,23 +149,29 @@ public class ClientSideEncryptionBsonSizeLimitsTest extends FunctionalSpecificat
                 Arrays.asList(
                         getTestDocument("client-side-encryption/limits/limits-doc.json")
                                 .append("_id", new BsonString("encryption_exceeds_2mib_1"))
-                                .append("unencrypted", new BsonString("a".repeat(2097152 - 2000))),
+                                .append("unencrypted", new BsonString(repeatChar('a', 2097152 - 2000))),
                         getTestDocument("client-side-encryption/limits/limits-doc.json")
                                 .append("_id", new BsonString("encryption_exceeds_2mib_2"))
-                                .append("unencrypted", new BsonString("a".repeat(2097152 - 2000)))
+                                .append("unencrypted", new BsonString(repeatChar('a', 2097152 - 2000)))
                 ))).block(TIMEOUT_DURATION);
         assertEquals(2, countStartedEvents("insert"));
 
         // Insert a document under 16MiB
         Mono.from(autoEncryptingDataCollection.insertOne(
                 new BsonDocument("_id", new BsonString("under_16mib"))
-                        .append("unencrypted", new BsonString("a".repeat(16777216 - 2000))))).block(TIMEOUT_DURATION);
+                        .append("unencrypted", new BsonString(repeatChar('a', 16777216 - 2000))))).block(TIMEOUT_DURATION);
 
         // Insert encrypted document that exceeds 16MiB - should throw
         assertThrows(MongoWriteException.class, () ->
                 Mono.from(autoEncryptingDataCollection.insertOne(getTestDocument("client-side-encryption/limits/limits-doc.json")
                         .append("_id", new BsonString("encryption_exceeds_16mib"))
-                        .append("unencrypted", new BsonString("a".repeat(16777216 - 2000))))).block(TIMEOUT_DURATION));
+                        .append("unencrypted", new BsonString(repeatChar('a', 16777216 - 2000))))).block(TIMEOUT_DURATION));
+    }
+
+    private static String repeatChar(final char c, final int count) {
+        char[] chars = new char[count];
+        java.util.Arrays.fill(chars, c);
+        return new String(chars);
     }
 
     private int countStartedEvents(final String name) {
