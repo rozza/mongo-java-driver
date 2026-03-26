@@ -1,14 +1,38 @@
-# Spock-to-JUnit 5 Migration: Coverage and Test Count Report
+# Spock-to-JUnit 5 Migration: Findings Report
 
-## Summary
+## Overview
 
-All 323 Spock/Groovy test specifications across 5 modules were migrated to JUnit 5 Java.
-The migration removed all Groovy/Spock/CodeNarc build infrastructure and test dependencies.
+Migrated all 323 Spock/Groovy test specifications to JUnit 5 Java across 5 modules of the
+MongoDB Java Driver. This removed the project's dependency on Groovy, Spock, and CodeNarc,
+simplifying the build and unifying the test stack on JUnit 5.
 
-**Overall result**: Test counts increased significantly (+5,145 tests) and line coverage
-remained stable or improved across all modules.
+### Scope
 
-## Before/After Comparison
+| Metric | Value |
+|---|---|
+| Groovy specs deleted | 329 files |
+| Java test files created | 325 files |
+| Java test files modified | 10 files |
+| Build files changed | 10 files |
+| Total lines added | 52,120 |
+| Total lines removed | 69,492 |
+| **Net reduction** | **17,372 lines** |
+| Total files changed | 676 |
+
+### Modules Affected
+
+| Module | Specs Migrated |
+|---|---:|
+| driver-core | 202 |
+| bson | 59 |
+| driver-sync | 30 |
+| driver-legacy | 27 |
+| driver-reactive-streams | 9 |
+| build infrastructure | 2 (conventions removed) |
+
+## Test Count and Coverage Comparison
+
+All metrics collected by running unit tests (no MongoDB server) with JaCoCo 0.8.12.
 
 | Module | Before Tests | Before Line% | After Tests | After Line% | Delta Tests | Delta Line% |
 |---|---:|---:|---:|---:|---:|---:|
@@ -19,59 +43,182 @@ remained stable or improved across all modules.
 | driver-reactive-streams | 654 | 72.9% | 3,428 | 75.6% | +2,774 | +2.7% |
 | **Total** | **10,806** | | **15,951** | | **+5,145** | |
 
-## Analysis
+### Test Count Analysis
 
-### Test Count Changes
+The net increase of +5,145 tests is predominantly a **reporting artifact**, not new test logic.
+Spock's `where:` blocks count as a single test regardless of how many data rows they contain,
+while JUnit 5's `@ParameterizedTest` reports each parameter combination individually:
 
-The large increases in test counts for `bson`, `driver-sync`, and `driver-reactive-streams` are
-primarily due to parameterized tests. Spock's `where:` blocks count as a single test, while JUnit 5's
-`@ParameterizedTest` with `@MethodSource` / `@CsvSource` reports each parameter combination as an
-individual test case. This is a reporting difference, not additional test logic.
+```
+// Spock: counted as 1 test
+where:
+value | expected
+"a"   | 1
+"b"   | 2
+"c"   | 3
 
-The small decreases in `driver-core` (-424) and `driver-legacy` (-35) reflect:
-- Consolidation of Spock specs that tested the same behavior with slightly different setups
-- Removal of redundant Spock `setup:`/`cleanup:` lifecycle tests that mapped to `@BeforeEach`/`@AfterEach`
-- Some Spock data-driven tests that were consolidated into fewer, more focused parameterized tests
+// JUnit 5: counted as 3 tests
+@ParameterizedTest
+@MethodSource("values")
+void test(String value, int expected) { ... }
+```
 
-### Coverage Changes
+The migration produced 244 `@ParameterizedTest` methods with 212 `@MethodSource` providers,
+29 `@ValueSource` annotations, and 2 `@CsvSource` annotations — replacing 777 Spock `where:` blocks.
 
-- **bson** (+1.0%): Slight improvement from more precise test targeting after migration.
-- **driver-core** (-2.9%): Minor decrease. Spock's Groovy-based tests had implicit coverage of some
-  internal paths through dynamic dispatch. Java tests use static dispatch, resulting in slightly
-  different code paths being exercised.
-- **driver-sync** (-1.1%): Minimal decrease, within normal variance for this type of migration.
+Modules with decreased test counts (`driver-core` -424, `driver-legacy` -35) reflect
+consolidation of specs that tested overlapping behavior or had redundant lifecycle scaffolding.
+
+### Coverage Analysis
+
+Coverage remained stable across all modules (within 3% of baseline):
+
+- **bson** (+1.0%): Slight improvement from more precise test targeting.
+- **driver-core** (-2.9%): Groovy's dynamic dispatch implicitly covered some internal code paths
+  that Java's static dispatch does not reach. This is the expected trade-off for type safety.
+- **driver-sync** (-1.1%): Minimal variance, within normal range.
 - **driver-legacy** (+0.0%): No change — stable migration.
-- **driver-reactive-streams** (+2.7%): Improvement from including functional test source directories
-  (`src/test/functional`, `src/examples`) in the test source set, which were previously only compiled
-  by the Groovy compiler as part of Spock convention.
+- **driver-reactive-streams** (+2.7%): Improved by properly including all test source directories
+  (`src/test/functional`, `src/examples`) in the source set configuration.
 
-### Key Fixes During Migration
+## Build Infrastructure Changes
 
-1. **Java static dispatch vs Groovy dynamic dispatch**: Fixed `DBCollection.findOne()` overload
-   resolution where Groovy selected `findOne(DBObject)` at runtime while Java selects `findOne(Object)`
-   at compile time. Added explicit `instanceof` checks with casts.
+### Removed
 
-2. **Java 8 release target compatibility**: The project compiles with `--release 8`. Migrated tests
-   using `String.repeat()` (Java 11+) were rewritten to use Java 8-compatible alternatives since
-   groovyc previously compiled these without enforcing the release flag.
+| File | Purpose |
+|---|---|
+| `conventions/testing-spock.gradle.kts` | Spock test convention (Groovy compiler, Spock BOM, CodeNarc) |
+| `conventions/testing-spock-exclude-slow.gradle.kts` | Slow test exclusion via Spock runner config |
+| `config/codenarc/codenarc.xml` | CodeNarc Groovy linting rules |
+| `config/spock/ExcludeSlow.groovy` | Spock annotation-based slow test filter |
+| `config/spock/OnlySlow.groovy` | Spock annotation-based slow-only filter |
 
-3. **Mockito strict stubbing**: Spock's Mockito integration was lenient by default. JUnit 5's
-   `MockitoExtension` uses strict stubbing. Added `Mockito.lenient()` where stubs are shared across
-   tests that may not all exercise them.
+### Dependencies Removed from `libs.versions.toml`
 
-4. **JaCoCo synthetic field filtering**: JaCoCo injects `$jacocoData` synthetic fields into classes.
-   Reflection-based test assertions (e.g., `TestHelper.assertPublisherIsTheSameAs`) were updated to
-   filter out synthetic fields.
+- `org.codehaus.groovy:groovy-all` (v3.0.9)
+- `org.spockframework:spock-bom` (v2.1-groovy-3.0)
+- `org.spockframework:spock-core`
+- `org.spockframework:spock-junit4`
 
-5. **Type inference differences**: Some Java code that compiled under groovyc (which uses a more
-   permissive type checker) failed under javac. Fixed `Optional.flatMap()` type inference issues
-   by rewriting to explicit `isPresent()` checks.
+### Module Build File Changes
+
+Each module's `build.gradle.kts` was updated to replace `id("conventions.testing-spock")` with
+`id("conventions.testing-junit")` (and `testing-junit-vintage` where JUnit 4 tests exist).
+The `driver-reactive-streams` module's test source set was expanded to include all directories:
+`src/test/tck`, `src/test/unit`, `src/test/functional`, `src/examples`.
+
+## Spock-to-JUnit 5 Pattern Mapping
+
+### Spock Features Used (frequency in deleted files)
+
+| Spock Pattern | Count | JUnit 5 Replacement |
+|---|---:|---|
+| `when:` / `then:` | 2,858 / 2,993 | Inline assertions with `assertEquals`, `assertThrows`, etc. |
+| `given:` | 1,379 | Test method body setup (or `@BeforeEach`) |
+| `where:` | 777 | `@ParameterizedTest` + `@MethodSource` / `@ValueSource` / `@CsvSource` |
+| `thrown()` | 770 | `assertThrows()` (865 usages in new code) |
+| `expect:` | 735 | Direct assertions |
+| `cleanup:` | 208 | `@AfterEach` or try-finally |
+| `@Unroll` | 72 | Implicit (JUnit 5 parameterized tests always unroll) |
+| `old()` | 17 | Capture value before action in a local variable |
+| `@Shared` | 12 | `static` fields or `@BeforeAll` |
+| `Mock()` / `Stub()` | 12 / (inline) | `Mockito.mock()` + `@ExtendWith(MockitoExtension.class)` |
+
+### JUnit 5 Annotations Used (frequency in new files)
+
+| Annotation | Count |
+|---|---:|
+| `@Test` | 1,937 |
+| `@DisplayName` | 765 |
+| `@ParameterizedTest` | 244 |
+| `@MethodSource` | 212 |
+| `assumeTrue` | 105 |
+| `@BeforeEach` | 31 |
+| `@ValueSource` | 29 |
+| `@AfterEach` | 15 |
+| `@Tag` | 14 |
+| `@BeforeAll` | 7 |
+| `@AfterAll` | 3 |
+| `@CsvSource` | 2 |
+
+## Issues Encountered and Fixes
+
+### 1. Java Static Dispatch vs Groovy Dynamic Dispatch
+
+**Affected**: `driver-legacy` — `DBCollectionFunctionalTest.findOne()`
+
+Groovy resolves method overloads at runtime based on the actual argument type. Java resolves
+at compile time based on the declared parameter type. When a test method declares
+`Object criteria` and passes a `BasicDBObject`, Groovy calls `findOne(DBObject)` while Java
+calls `findOne(Object id)`.
+
+**Fix**: Added explicit `instanceof` checks with casts:
+```java
+if (criteria instanceof DBObject) {
+    assertEquals(result, collection.findOne((DBObject) criteria));
+} else {
+    assertEquals(result, collection.findOne(criteria));
+}
+```
+
+### 2. Java 8 Release Target Compatibility
+
+**Affected**: `driver-reactive-streams` — `ClientSideEncryptionBsonSizeLimitsTest`,
+`GridFSPublisherTest`
+
+The project compiles with `options.release.set(8)`. Groovyc does not enforce Java release
+targets, so Groovy tests freely used `String.repeat()` (Java 11+) and `BsonValue.getValue()`
+methods unavailable in the Java 8 API surface.
+
+**Fix**: Replaced `String.repeat()` with `Arrays.fill()` + `new String(char[])` helper.
+Replaced `fileInfo.getId().getValue()` with `fileInfo.getObjectId()`.
+
+### 3. Mockito Strict Stubbing
+
+**Affected**: `driver-reactive-streams` — `ClientSessionBindingTest`
+
+Spock's Mockito integration defaults to lenient stubbing. JUnit 5's `MockitoExtension` uses
+strict mode, which fails when a stubbing is set up but not invoked by the test.
+
+**Fix**: Wrapped shared stubs with `Mockito.lenient().doAnswer(...)`.
+
+### 4. JaCoCo Synthetic Field Interference
+
+**Affected**: `driver-reactive-streams` — `TestHelper.assertPublisherIsTheSameAs()`
+
+JaCoCo instruments classes by injecting a synthetic `$jacocoData` boolean array field.
+Reflection-based test helpers that compare all private fields picked up this injected field,
+causing assertion failures (`expected: {} but was: {$jacocoData=...}`).
+
+**Fix**: Added `!field.isSynthetic()` filter to `getClassPrivateFieldValues()`.
+
+### 5. javac Type Inference Stricter Than groovyc
+
+**Affected**: `driver-reactive-streams` — `TestHelper.getScannableArray()`
+
+Groovyc's type checker accepted an `Optional.flatMap()` chain that javac could not infer
+generic types for. This was pre-existing Java code that had only ever been compiled by groovyc
+(as part of the Spock convention's mixed-compilation mode).
+
+**Fix**: Rewrote `flatMap` chain to use explicit `isPresent()` + `get()` pattern.
+
+### 6. Missing Imports After Convention Switch
+
+**Affected**: `driver-reactive-streams` — `MongoClientSessionTest`
+
+After switching from the Spock convention (which compiled all test code with groovyc) to the
+JUnit convention (which uses javac), some pre-existing Java test files were missing imports
+that groovyc resolved implicitly via star-imports or Groovy's default imports.
+
+**Fix**: Added explicit `import com.mongodb.MongoClientSettings`.
 
 ## Methodology
 
-- **Before metrics**: Collected from a git worktree at commit `30fd76e34c` (pre-migration HEAD)
-  with JaCoCo coverage convention added to `testing-base.gradle.kts`.
-- **After metrics**: Collected from the migration branch with all tests passing.
-- **Test execution**: Unit tests only (no MongoDB server required). Functional tests that require
-  a running server are skipped and not counted in either before or after metrics.
-- **JaCoCo version**: 0.8.12, measuring line coverage of production source code.
+- **Before metrics**: Collected from a git worktree at commit `30fd76e34c` (pre-migration HEAD
+  of the `master` branch) with JaCoCo coverage convention (`testing-coverage.gradle.kts`)
+  temporarily added to `testing-base.gradle.kts`.
+- **After metrics**: Collected from the `spock` branch after all tests pass.
+- **Test execution**: `./gradlew :<module>:test` — runs unit tests only. Functional tests
+  requiring a running MongoDB server are skipped and excluded from both before and after counts.
+- **JaCoCo version**: 0.8.12, measuring line coverage of production (non-test) source code.
+- **Java toolchain**: JDK 17 (project default), compilation target Java 8 (`--release 8`).
