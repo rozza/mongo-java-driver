@@ -255,7 +255,13 @@ Step 2**, save a copy to `/tmp/spock-originals-<module>/`. Then use these copies
 
 Procedure — run this for every migrated spec pair:
 
-1. Use the `Agent` tool (with `model=claude-sonnet-4-6`) to spawn a review sub-agent with this prompt:
+1. Use the `Agent` tool (with `model=claude-sonnet-4-6`) to spawn a review sub-agent.
+   Sonnet 4.6 is used because this is structured code comparison with a clear rubric — it doesn't
+   require Opus-level reasoning, and it runs significantly faster when spawning one sub-agent per
+   spec (up to 202 for driver-core). Haiku is too lightweight to reliably catch subtle differences
+   in Groovy↔Java translation.
+
+   Prompt:
 
    ```
    You are reviewing a Spock-to-JUnit 5 test migration for logic equivalence.
