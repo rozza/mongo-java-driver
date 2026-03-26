@@ -141,6 +141,323 @@ The `driver-reactive-streams` module's test source set was expanded to include a
 | `@AfterAll` | 3 |
 | `@CsvSource` | 2 |
 
+## Challenging Migration Patterns
+
+Several Spock patterns required non-trivial translation to JUnit 5. This section documents
+the most challenging ones with before/after examples to serve as a reference.
+
+### 1. Spock `where:` Data Tables with Complex Object Types
+
+Spock data tables allow inline object construction using Groovy's concise syntax (map literals,
+list literals, type coercion). In Java, each data row becomes a `static` method returning
+`Stream<Arguments>`, and every object must be fully constructed with explicit `new` calls.
+
+**Before (Spock):**
+```groovy
+@Unroll
+def 'should decode binary subtype 3 for UUID'() {
+    given:
+    def reader = new BsonDocumentReader(parse(document))
+    def codec = new IterableCodec(fromCodecs(new UuidCodec(representation), new BinaryCodec()),
+            new BsonTypeClassMap(), null).withUuidRepresentation(representation)
+
+    when:
+    reader.readStartDocument()
+    reader.readName('array')
+    def iterable = codec.decode(reader, DecoderContext.builder().build())
+    reader.readEndDocument()
+
+    then:
+    value == iterable
+
+    where:
+    representation | value                                                     | document
+    JAVA_LEGACY    | [UUID.fromString('08070605-0403-0201-100f-0e0d0c0b0a09')] | '{"array": [...]}'
+    C_SHARP_LEGACY | [UUID.fromString('04030201-0605-0807-090a-0b0c0d0e0f10')] | '{"array": [...]}'
+    STANDARD       | [new Binary((byte) 3, [1, 2, 3, ...] as byte[])]          | '{"array": [...]}'
+}
+```
+
+**After (JUnit 5):**
+```java
+@ParameterizedTest
+@MethodSource("decodeBinarySubtype3ForUuidArgs")
+@DisplayName("should decode binary subtype 3 for UUID")
+void shouldDecodeBinarySubtype3ForUuid(UuidRepresentation representation,
+        List<?> value, String document) {
+    BsonDocumentReader reader = new BsonDocumentReader(parse(document));
+    IterableCodec codec = new IterableCodec(fromCodecs(new UuidCodec(representation),
+            new BinaryCodec()), new BsonTypeClassMap(), null)
+            .withUuidRepresentation(representation);
+
+    reader.readStartDocument();
+    reader.readName("array");
+    Iterable<?> iterable = codec.decode(reader, DecoderContext.builder().build());
+    reader.readEndDocument();
+
+    assertEquals(value, iterable);
+}
+
+private static Stream<Arguments> decodeBinarySubtype3ForUuidArgs() {
+    return Stream.of(
+        Arguments.of(JAVA_LEGACY,
+            singletonList(UUID.fromString("08070605-0403-0201-100f-0e0d0c0b0a09")),
+            "{\"array\": [...]}"),
+        Arguments.of(C_SHARP_LEGACY,
+            singletonList(UUID.fromString("04030201-0605-0807-090a-0b0c0d0e0f10")),
+            "{\"array\": [...]}"),
+        Arguments.of(STANDARD,
+            singletonList(new Binary((byte) 3, new byte[]{1, 2, 3, ...})),
+            "{\"array\": [...]}")
+    );
+}
+```
+
+**Challenge**: Every `where:` block requires a new `static` method returning `Stream<Arguments>`.
+Groovy's collection literals (`[1, 2, 3]`), byte array coercion (`[1, 2] as byte[]`), and map
+constructors (`['key': value]`) all become verbose `Arrays.asList()`, `new byte[]{...}`, and
+`new BasicBSONObject(...)` calls. Data tables with 20+ rows and 5+ columns generated substantial
+boilerplate.
+
+### 2. Spock `Mock()`/`Stub()` with Inline Closure Configuration
+
+Spock allows defining stub behavior inline using closure syntax. The closure body configures
+return values using `>>` (return) and `>>>` (return sequence). This maps to Mockito's `when/thenReturn`
+but loses the visual grouping and conciseness.
+
+**Before (Spock):**
+```groovy
+def dnsResolver = Mock(DnsResolver) {
+    _ * resolveHostFromSrvRecords(hostName, srvServiceName) >>>
+            [expectedResolvedHostsOne, expectedResolvedHostsTwo]
+}
+```
+
+**After (Mockito):**
+```java
+DnsResolver dnsResolver = mock(DnsResolver.class);
+when(dnsResolver.resolveHostFromSrvRecords(hostName, srvServiceName))
+        .thenReturn(expectedResolvedHostsOne, expectedResolvedHostsTwo);
+```
+
+**Before (Spock) — nested stub with closure:**
+```groovy
+def cluster = Stub(Cluster) {
+    getCurrentDescription() >> connectedDescription
+}
+```
+
+**After (Mockito):**
+```java
+Cluster cluster = mock(Cluster.class);
+when(cluster.getCurrentDescription()).thenReturn(connectedDescription);
+```
+
+**Challenge**: Spock's `>>>` operator for returning sequential values on successive calls had no
+single direct equivalent — it maps to Mockito's `thenReturn(first, second, ...)` varargs form.
+Spock's `_ *` (any number of invocations) required understanding whether the test needed `lenient()`
+or strict verification. The 514 interaction verifications across the codebase each required
+understanding the intent to choose between `verify()`, `when().thenReturn()`, and `doAnswer()`.
+
+### 3. Spock `>>>` Chained Mock Responses
+
+The `>>>` operator returns different values on successive calls. This is particularly tricky
+when the number of calls varies or when combined with other mock behaviors.
+
+**Before (Spock):**
+```groovy
+def batchCursor = Stub(BatchCursor)
+batchCursor.hasNext() >>> [true, true, true, true, false]
+batchCursor.next() >>> [firstBatch, secondBatch]
+batchCursor.available() >>> [2, 2, 0, 0, 0, 1, 0, 0, 0]
+```
+
+**After (Mockito):**
+```java
+BatchCursor<Document> batchCursor = mock(BatchCursor.class);
+when(batchCursor.hasNext()).thenReturn(true, true, true, true, false);
+when(batchCursor.next()).thenReturn(firstBatch, secondBatch);
+when(batchCursor.available()).thenReturn(2, 2, 0, 0, 0, 1, 0, 0, 0);
+```
+
+**Challenge**: While the basic translation is straightforward, the `>>>` operator in Spock
+interacts with the test's lifecycle in subtle ways — stubs configured with `>>>` in a `given:`
+block reset per test iteration in data-driven tests (via `where:`), while Mockito stubs persist
+across the whole method. Tests with `>>>` combined with `where:` required restructuring to
+ensure the mock state was fresh for each parameter combination.
+
+### 4. Spock `>> { }` Closure Responses with Argument Capture
+
+Spock allows returning values computed from the arguments via closure syntax. The closure
+receives the arguments and can perform assertions, side effects, or compute return values.
+
+**Before (Spock):**
+```groovy
+1 * connection.command(*_) >> {
+    connectionA.getCount() == 1
+    connectionSource.getCount() == 1
+    response
+}
+```
+
+**Before (Spock) — callback invocation pattern:**
+```groovy
+getReadConnectionSource(*_) >> { it.last().onResult(connectionSource, null) }
+getWriteConnectionSource(_ as OperationContext, _ as SingleResultCallback) >> {
+    it[1].onResult(connectionSource, null)
+}
+```
+
+**After (Mockito):**
+```java
+doAnswer(invocation -> {
+    assertEquals(1, connectionA.getCount());
+    assertEquals(1, connectionSource.getCount());
+    return response;
+}).when(connection).command(any(), any(), any(), any());
+```
+
+```java
+doAnswer(invocation -> {
+    SingleResultCallback<AsyncConnectionSource> callback = invocation.getArgument(1);
+    callback.onResult(connectionSource, null);
+    return null;
+}).when(binding).getWriteConnectionSource(any(OperationContext.class), any());
+```
+
+**Challenge**: Spock's `*_` wildcard matcher (match any number of arguments of any type) has no
+direct Mockito equivalent. Each `*_` required inspecting the method signature to determine the
+correct number and types of `any()` matchers. The closure's implicit last expression as return
+value (`response` above) needed to be made explicit with `return`. Assertions embedded in
+closures (lines like `connectionA.getCount() == 1`) were Groovy truth assertions — in Java
+they need explicit `assertEquals` calls.
+
+### 5. Groovy Dynamic Method Invocation via GString
+
+Spock allowed calling methods by name using GString interpolation, enabling data-driven tests
+that verify different methods are called with different arguments.
+
+**Before (Spock):**
+```groovy
+def 'should call BSONCallback.#method when meet #type'() {
+    setup:
+    BSONCallback callback = Mock()
+
+    when:
+    bsonDecoder.decode((byte[]) bytes, callback)
+
+    then:
+    1 * callback.objectStart()
+    1 * callback."$method"(* _) >> { assert it == args }
+    1 * callback.objectDone()
+
+    where:
+    method      | type      | bytes        | args
+    'gotInt'    | 'INT32'   | [...]        | ['i1', -12]
+    'gotLong'   | 'INT64'   | [...]        | ['i4', Long.MAX_VALUE]
+    'gotDouble' | 'DOUBLE'  | [...]        | ['d1', -1.01d]
+}
+```
+
+**After (JUnit 5):**
+
+This pattern has no direct Java equivalent. The dynamic method invocation `callback."$method"(*_)`
+cannot be expressed in Java's type system. The migration options were:
+
+1. **Reflection**: Use `Method.invoke()` to call the callback method by name — preserves the
+   data-driven structure but adds complexity and loses type safety.
+2. **Expand to individual tests**: Write one `@Test` method per callback method — simple but
+   verbose.
+3. **Simplify the assertion**: Replace mock interaction verification with output-based assertion
+   (verify the decoded result rather than the callback calls) — different test strategy but
+   more maintainable.
+
+Most instances were migrated using option 3, verifying the decoded output against expected
+`BasicBSONObject` values rather than verifying individual mock callback invocations.
+
+### 6. Groovy Operator Overloading and Metaclass Modification
+
+Groovy tests used operator overloading and metaclass modification for concise test setup.
+
+**Before (Spock):**
+```groovy
+def setupSpec() {
+    Map.metaClass.bitwiseNegate = { new BasicBSONObject(delegate as Map) }
+    Pattern.metaClass.equals = { Pattern other ->
+        delegate.pattern() == other.pattern() && delegate.flags() == other.flags()
+    }
+}
+
+// In tests: ~['a': 1] creates a BasicBSONObject
+document == ~['a': 1]
+```
+
+**After (JUnit 5):**
+```java
+// Direct construction — no operator overloading available
+assertEquals(new BasicBSONObject("a", 1), document);
+```
+
+**Challenge**: The `~` operator (bitwise negate) was overloaded on `Map` to construct
+`BasicBSONObject` instances. Every occurrence of `~[...]` needed manual expansion to explicit
+constructor calls. Similarly, Groovy list literals used as byte arrays (`[1, 2, 3] as byte[]`)
+became `new byte[]{1, 2, 3}`, and Groovy map literals (`['key': value]`) became
+`new BasicBSONObject("key", value)`.
+
+### 7. Spock `notThrown()` — Asserting No Exception
+
+Spock's `notThrown(ExceptionType)` explicitly asserts that a specific exception was NOT thrown.
+JUnit 5 has no direct equivalent — a passing test implicitly means no exception was thrown.
+
+**Before (Spock):**
+```groovy
+when:
+execute(operation.bypassDocumentValidation(true), async)
+
+then:
+notThrown(MongoCommandException)
+```
+
+**After (JUnit 5):**
+```java
+// Simply execute — if it throws, the test fails
+execute(operation.bypassDocumentValidation(true), async);
+// assertDoesNotThrow() is available but adds no value when the call is already inline
+```
+
+**Challenge**: While the translation is simple (just remove the assertion), `notThrown()` often
+appeared paired with a preceding `thrown()` block in the same test. The intent was: "this variant
+throws, but this other variant does not." Preserving this intent in JUnit 5 required careful
+structuring — typically splitting into separate test methods or using `assertThrows` for the
+failure case and a plain call for the success case.
+
+### 8. Spock `with()` Assertion Blocks
+
+Spock's `with()` provides a scope where all unqualified method calls are directed at a specific
+object, enabling concise multi-field assertions.
+
+**Before (Spock):**
+```groovy
+with(jmxListener.getMBean(SERVER_ID)) {
+    serverId == SERVER_ID
+    state == 'Connected'
+    type == 'StandAlone'
+}
+```
+
+**After (JUnit 5):**
+```java
+ServerMBean mBean = jmxListener.getMBean(SERVER_ID);
+assertEquals(SERVER_ID, mBean.getServerId());
+assertEquals("Connected", mBean.getState());
+assertEquals("StandAlone", mBean.getType());
+```
+
+**Challenge**: Each field access in the `with()` block needed to be expanded into an explicit
+getter call with an assertion. Groovy's property access syntax (`state`) maps to Java's
+`getState()`. When `with()` blocks were nested or contained complex expressions, the expansion
+required careful attention to receiver objects.
+
 ## Issues Encountered and Fixes
 
 ### 1. Java Static Dispatch vs Groovy Dynamic Dispatch
