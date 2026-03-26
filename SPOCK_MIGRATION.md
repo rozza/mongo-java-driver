@@ -255,7 +255,7 @@ Step 2**, save a copy to `/tmp/spock-originals-<module>/`. Then use these copies
 
 Procedure — run this for every migrated spec pair:
 
-1. Use the `Agent` tool to spawn a review sub-agent with this prompt:
+1. Use the `Agent` tool (with `model=claude-sonnet-4-6`) to spawn a review sub-agent with this prompt:
 
    ```
    You are reviewing a Spock-to-JUnit 5 test migration for logic equivalence.
