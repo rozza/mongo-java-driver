@@ -527,80 +527,88 @@ Migrate <module> Spock specs to JUnit 5 (<N> files)
 
 Set `post_migration_cleanup` to `"in-progress"` in `progress.json` before starting.
 
-### Remove Spock/Groovy from build
+### Remove Spock/Groovy from build, verify, and clean up
 
-**`gradle/libs.versions.toml`** — delete these entries:
-- Versions: `groovy`, `spock-bom`
-- Libraries: `spock-bom`, `spock-core`, `spock-junit4`, `groovy`
-- Bundles: `spock`
+Use a sub-agent (via the `Agent` tool with `model=claude-sonnet-4-6`) to perform the full
+post-migration cleanup: remove build infrastructure, check for leftover artifacts, and report.
 
-**`buildSrc/src/main/kotlin/conventions/`** — delete:
-- `testing-spock.gradle.kts`
-- `testing-spock-exclude-slow.gradle.kts`
-
-**`config/`** — delete:
-- `config/codenarc/codenarc.xml`
-- `config/spock/ExcludeSlow.groovy`
-- `config/spock/OnlySlow.groovy`
-
-### Check if JUnit Vintage is still needed
-
-```bash
-grep -r "import org.junit.Test" --include="*.java" -l
-grep -r "@RunWith" --include="*.java" -l
-```
-
-If no matches, also remove `testing-junit-vintage.gradle.kts` and the `junit-vintage` bundle.
-
-### Final verification
-
-Run a clean build:
-```bash
-./gradlew clean build --continue
-```
-
-Then use a sub-agent (via the `Agent` tool with `model=claude-haiku-4-5-20251001`) to scan the
-entire repository for any remaining Spock/Groovy/CodeNarc artifacts.
-
-<!-- Haiku 4.5 rationale: this is a simple pattern-matching sweep across files — no code reasoning
-is needed, just searching for known strings and file extensions. -->
+<!-- Sonnet 4.6 rationale: this task combines file deletion, build file editing (removing entries
+from libs.versions.toml and deleting convention plugins), and a codebase-wide artifact scan. It
+requires reading and modifying structured files (TOML, Gradle KTS) which needs more capability
+than Haiku's pattern matching, but doesn't need Opus-level reasoning since all the targets are
+explicitly listed. Sonnet strikes the right balance of reliability and speed for a one-shot
+cleanup task. -->
 
 Spawn the sub-agent with this prompt:
 
 ```
-Scan the repository for any remaining Spock, Groovy, or CodeNarc artifacts that should have
-been removed during the migration. Check ALL of the following:
+You are performing post-migration cleanup for a Spock-to-JUnit 5 migration.
+Execute ALL of the following steps in order.
 
-1. Groovy test files:
-   - Search for any `.groovy` files under `*/src/test*` directories.
+## Step 1 — Remove Spock/Groovy dependency declarations
 
-2. Spock references in build files:
-   - Search for "spock" (case-insensitive) in all `.kts`, `.toml`, `.xml`, and `.gradle` files.
+Edit `gradle/libs.versions.toml`:
+- Delete version entries: `groovy`, `spock-bom`
+- Delete library entries: `spock-bom`, `spock-core`, `spock-junit4`, `groovy`
+- Delete bundle entries: `spock`
 
-3. Groovy references in build files:
-   - Search for "groovy" (case-insensitive) in all `.kts`, `.toml`, `.xml`, and `.gradle` files.
-   - Exclude false positives in comments or documentation.
+## Step 2 — Delete Spock convention plugins
 
-4. CodeNarc references:
-   - Search for "codenarc" (case-insensitive) in all build and config files.
-   - Check if `config/codenarc/` directory still exists.
+Delete these files:
+- `buildSrc/src/main/kotlin/conventions/testing-spock.gradle.kts`
+- `buildSrc/src/main/kotlin/conventions/testing-spock-exclude-slow.gradle.kts`
 
-5. Spock config files:
-   - Check if `config/spock/` directory still exists.
+## Step 3 — Delete Spock/CodeNarc config files
 
-6. Spock imports in Java files:
-   - Search for "import spock" in any `.java` file.
+Delete these files/directories:
+- `config/codenarc/codenarc.xml`
+- `config/spock/ExcludeSlow.groovy`
+- `config/spock/OnlySlow.groovy`
+- Remove `config/codenarc/` and `config/spock/` directories if empty after deletion.
 
-7. Leftover Spock convention plugins:
-   - Check if `testing-spock.gradle.kts` or `testing-spock-exclude-slow.gradle.kts` still exist
-     in `buildSrc/src/main/kotlin/conventions/`.
+## Step 4 — Check if JUnit Vintage is still needed
 
-Output format:
-- PASS: No Spock/Groovy/CodeNarc artifacts remain.
-- FAIL: <list each finding with file path and line content>
+Search for JUnit 4 usage:
+- `import org.junit.Test` in any `.java` file
+- `@RunWith` in any `.java` file
+
+If NO matches are found, also delete:
+- `buildSrc/src/main/kotlin/conventions/testing-junit-vintage.gradle.kts`
+- The `junit-vintage` bundle from `gradle/libs.versions.toml`
+
+If matches ARE found, list the files that still use JUnit 4.
+
+## Step 5 — Scan for any remaining artifacts
+
+Check ALL of the following:
+
+1. `.groovy` files under any `*/src/test*` directory.
+2. "spock" (case-insensitive) in all `.kts`, `.toml`, `.xml`, and `.gradle` files.
+3. "groovy" (case-insensitive) in all `.kts`, `.toml`, `.xml`, and `.gradle` files.
+   Exclude false positives in comments or documentation.
+4. "codenarc" (case-insensitive) in all build and config files.
+5. `config/codenarc/` or `config/spock/` directories still existing.
+6. "import spock" in any `.java` file.
+7. `testing-spock.gradle.kts` or `testing-spock-exclude-slow.gradle.kts` in
+   `buildSrc/src/main/kotlin/conventions/`.
+
+## Output
+
+Report:
+- Files deleted: <list>
+- Files edited: <list with summary of changes>
+- JUnit Vintage: <still needed (list files) | removed>
+- Artifact scan: PASS | FAIL <list each finding with file path and line content>
 ```
 
-**FAIL condition**: Any artifact found by the sub-agent. Fix before committing.
+After the sub-agent completes:
+
+1. If the artifact scan reports **FAIL**, fix any remaining items before proceeding.
+2. Run a clean build to verify everything compiles:
+   ```bash
+   ./gradlew clean build --continue
+   ```
+3. If the build fails, fix and re-run until it passes.
 
 Commit:
 ```
