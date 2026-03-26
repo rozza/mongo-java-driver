@@ -24,7 +24,7 @@ plugins {
     id("conventions.test-include-optionals")
     id("conventions.testing-mockito")
     id("conventions.testing-junit")
-    id("conventions.testing-spock-exclude-slow")
+    id("conventions.testing-junit-vintage")
 }
 
 base.archivesName.set("mongodb-driver-sync")

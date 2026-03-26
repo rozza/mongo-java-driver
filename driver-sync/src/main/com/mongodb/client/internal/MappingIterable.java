@@ -79,7 +79,7 @@ public class MappingIterable<U, V> implements MongoIterable<V> {
         return new MappingIterable<>(this, newMap);
     }
 
-    MongoIterable<U> getMapped() {
+    public MongoIterable<U> getMapped() {
         return iterable;
     }
 }

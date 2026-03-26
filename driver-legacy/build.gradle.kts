@@ -22,7 +22,8 @@ plugins {
     id("conventions.test-artifacts-runtime-dependencies")
     id("conventions.test-include-optionals")
     id("conventions.testing-junit")
-    id("conventions.testing-spock-exclude-slow")
+    id("conventions.testing-junit-vintage")
+    id("conventions.testing-mockito")
 }
 
 base.archivesName.set("mongodb-driver-legacy")

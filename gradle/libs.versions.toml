@@ -44,7 +44,7 @@ aws-lambda-events = "3.11.1"
 cglib = "2.2.2"
 classgraph = "4.8.154"
 findbugs-jsr = "1.3.9"
-groovy = "3.0.9"
+
 hamcrest = "1.3"
 jmh = "1.37"
 junit-bom = "5.14.3"
@@ -55,7 +55,7 @@ mockito-kotlin = "4.1.0"
 objenesis = "1.3"
 reflections = "0.9.10"
 slf4j = "1.7.6"
-spock-bom = "2.1-groovy-3.0"
+
 scala-test = "3.2.19"
 scala-test-plus = "3.2.18.0"
 
@@ -136,9 +136,6 @@ junit-jupiter-engine = { module = "org.junit.jupiter:junit-jupiter-engine" }
 junit-vintage-engine = { module = "org.junit.vintage:junit-vintage-engine" }
 junit-kotlin = { module = "org.jetbrains.kotlin:kotlin-test-junit5" }
 
-spock-bom = { module = "org.spockframework:spock-bom", version.ref = "spock-bom" }
-spock-core = { module = "org.spockframework:spock-core" }
-spock-junit4 = { module = "org.spockframework:spock-junit4" }
 
 mockito-core = { module = "org.mockito:mockito-core", version.ref = "mockito" }
 mockito-junit-jupiter = { module = "org.mockito:mockito-junit-jupiter", version.ref = "mockito" }
@@ -175,7 +172,7 @@ aws-lambda-events = { module = " com.amazonaws:aws-lambda-java-events", version.
 cglib = { module = "cglib:cglib-nodep", version.ref = "cglib" }
 classgraph = { module = "io.github.classgraph:classgraph", version.ref = "classgraph" }
 findbugs-jsr = { module = "com.google.code.findbugs:jsr305", version.ref = "findbugs-jsr" }
-groovy = { module = "org.codehaus.groovy:groovy-all", version.ref = "groovy" }
+
 hamcrest-all = { module = "org.hamcrest:hamcrest-all", version.ref = "hamcrest" }
 logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "logback" }
 netty-tcnative-boringssl-static = { module = "io.netty:netty-tcnative-boringssl-static" }
@@ -200,7 +197,6 @@ scala-v2-v11 = ["scala-library-v2-v11", "scala-reflect-v2-v11"]
 # Test
 junit = ["junit-jupiter", "junit-jupiter-params", "junit-jupiter-engine", "junit-jupiter-platform-launcher", "logback-classic", "hamcrest-all"]
 junit-vintage = ["junit-vintage-engine", "junit-jupiter-params", "junit-jupiter-engine", "logback-classic", "hamcrest-all"]
-spock = ["spock-core", "spock-junit4"]
 
 mockito = ["mockito-junit-jupiter", "mockito-core"]
 mockito-java8 = ["mockito-junit-jupiter-java8", "mockito-core-java8", "mockito-inline-java8"]

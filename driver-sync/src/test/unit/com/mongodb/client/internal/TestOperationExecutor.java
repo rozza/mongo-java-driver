@@ -38,7 +38,7 @@ public class TestOperationExecutor implements OperationExecutor {
     private final List<WriteOperation> writeOperations = new ArrayList<>();
 
     public TestOperationExecutor(final List<Object> responses) {
-        this.responses = responses;
+        this.responses = new java.util.ArrayList<>(responses);
     }
 
     @Override

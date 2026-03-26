@@ -21,7 +21,7 @@ plugins {
     id("conventions.test-artifacts")
     id("conventions.testing-mockito")
     id("conventions.testing-junit")
-    id("conventions.testing-spock-exclude-slow")
+    id("conventions.testing-junit-vintage")
     alias(libs.plugins.build.config)
 }
 

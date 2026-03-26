@@ -50,8 +50,14 @@ public final class ClassModelBuilderTest {
     public void testDefaults() {
         Class<SimpleGenericsModel> clazz = SimpleGenericsModel.class;
         ClassModelBuilder<SimpleGenericsModel> builder = ClassModel.builder(clazz);
-        assertEquals(4, builder.getPropertyModelBuilders().size());
+        long nonSyntheticFieldCount = java.util.Arrays.stream(clazz.getDeclaredFields())
+                .filter(f -> !f.isSynthetic()).count();
+        assertEquals(nonSyntheticFieldCount, builder.getPropertyModelBuilders().stream()
+                .filter(p -> !p.getName().startsWith("$")).count());
         for (Field field : clazz.getDeclaredFields()) {
+            if (field.isSynthetic()) {
+                continue;
+            }
             assertEquals(field.getName(), builder.getProperty(field.getName()).getWriteName());
         }
 
@@ -62,7 +68,9 @@ public final class ClassModelBuilderTest {
         fieldNameToTypeParameterMap.put("myMapField", TypeParameterMap.builder().addIndex(0, TypeParameterMap.builder().build())
                 .addIndex(1, 2).build());
 
-        assertEquals(fieldNameToTypeParameterMap, builder.getPropertyNameToTypeParameterMap());
+        Map<String, TypeParameterMap> actualMap = new HashMap<>(builder.getPropertyNameToTypeParameterMap());
+        actualMap.keySet().removeIf(k -> k.startsWith("$"));
+        assertEquals(fieldNameToTypeParameterMap, actualMap);
         assertEquals(3, builder.getConventions().size());
         assertTrue(builder.getAnnotations().isEmpty());
         assertEquals(clazz, builder.getType());

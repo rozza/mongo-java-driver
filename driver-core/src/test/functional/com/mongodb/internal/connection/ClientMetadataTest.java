@@ -156,10 +156,11 @@ public class ClientMetadataTest {
     public void test07InvalidWrongTypes() {
         withWrapper()
                 .withEnvironmentVariable("AWS_EXECUTION_ENV", "AWS_Lambda_java8")
+                .withEnvironmentVariable("AWS_REGION", "us-east-1")
                 .withEnvironmentVariable("AWS_LAMBDA_FUNCTION_MEMORY_SIZE", "big")
                 .run(() -> {
                     BsonDocument expected = createExpectedClientMetadataDocument(APP_NAME);
-                    expected.put("env", BsonDocument.parse("{'name': 'aws.lambda'}"));
+                    expected.put("env", BsonDocument.parse("{'name': 'aws.lambda', 'region': 'us-east-1'}"));
                     BsonDocument actual = createActualClientMetadataDocument();
                     assertEquals(expected, actual);
 

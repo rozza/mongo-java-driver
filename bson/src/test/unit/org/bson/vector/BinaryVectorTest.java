@@ -41,7 +41,7 @@ import static java.util.Arrays.asList;
 import static org.bson.BsonHelper.decodeToDocument;
 import static org.bson.BsonHelper.encodeToHex;
 import static org.bson.internal.vector.BinaryVectorHelper.determineVectorDType;
-import static org.junit.Assert.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assumptions.assumeFalse;
 

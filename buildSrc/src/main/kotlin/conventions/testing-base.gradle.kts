@@ -25,6 +25,7 @@ import project.DEFAULT_JAVA_VERSION
 // https://plugins.gradle.org/plugin/com.adarshr.test-logger
 plugins {
     id("java-library")
+    id("conventions.testing-coverage")
     alias(libs.plugins.test.logger)
 }
 
