@@ -124,6 +124,7 @@ Add JaCoCo coverage convention for Spock migration baseline
 ## Per-Module Migration Procedure
 
 Repeat this procedure for each module in order. Do NOT skip steps.
+Do NOT begin the next module until the current module has passed the User Acceptance Gate (Step 6).
 
 ### Step 1 — Switch build convention
 
@@ -238,28 +239,72 @@ grep -r "import spock" <module>/src/test --include="*.java"
 ```
 **FAIL condition**: Any output.
 
-**Check 5 — Test count and coverage:**
+**Check 5 — Test count:**
 
 Collect post-migration metrics using the same Python script from the baseline step.
 
 | Metric | Acceptance Criterion |
 |---|---|
-| Test count | Must not decrease by more than 5% vs baseline |
-| Line coverage | Must not decrease by more than 3% vs baseline |
+| Test count | **MUST NOT** decrease vs baseline. If the post count is lower, investigate and fix before proceeding. Test count increases are expected (Spock `where:` = 1 test; JUnit `@ParameterizedTest` = N tests). |
 
-### Step 6 — Commit
+**FAIL condition**: Post-migration test count < baseline test count.
+
+**Check 6 — Test coverage:**
+
+| Metric | Acceptance Criterion |
+|---|---|
+| Line coverage | **SHOULD NOT** decrease vs baseline. |
+
+If line coverage **decreases**, Claude MUST:
+1. Identify and explain **why** coverage dropped (e.g., a Spock test exercised code implicitly that
+   the JUnit version does not, parameterised expansion changed coverage accounting, etc.).
+2. Present the explanation to the user with the exact numbers:
+   ```
+   Coverage change for <module>: <before>% → <after>% (delta: <-N>%)
+   Reason: <explanation>
+   Accept this coverage change? (Y/N)
+   ```
+3. If the user answers **Y** — record the explanation in the Cross-Run Log and proceed.
+4. If the user answers **N** — ask the user for input. The user may:
+   - Clarify the actual reason for the drop.
+   - Suggest a specific fix or additional test to recover coverage.
+   Claude must then implement the user's suggestion, re-run tests, and re-check coverage.
+   Repeat until the user accepts.
+
+### Step 6 — User Acceptance Gate
+
+Present a summary of all checks to the user:
+
+```
+Module: <module>
+Spock specs migrated: <N>
+Groovy files remaining: 0
+Test count: <before> → <after> (delta: <+/-N>)
+Line coverage: <before>% → <after>% (delta: <+/-N>%)
+Missing test names: <count, with explanation if any>
+
+All acceptance checks passed. Proceed to commit? (Y/N)
+```
+
+**Do NOT commit or move to the next module until the user explicitly approves.**
+
+If the user answers **N**, ask what needs to change, implement the changes, re-run checks, and
+present the summary again.
+
+### Step 7 — Commit
 
 ```
 Migrate <module> Spock specs to JUnit 5 (<N> files)
 ```
 
-### Step 7 — Update the Cross-Run Log
+### Step 8 — Update the Cross-Run Log
 
 Append findings to the **Cross-Run Log** section at the bottom of this file. Include:
 - Any non-obvious fixes applied
 - Any deviations from the standard procedure
 - Any new patterns encountered not already documented
 - Final test count and coverage numbers
+- Any coverage explanations accepted by the user
 
 ---
 
@@ -524,9 +569,11 @@ module. Append to it after completing each module.
 - Specs migrated: <N>
 - Before: <test count> tests, <line%> line coverage
 - After: <test count> tests, <line%> line coverage
+- Coverage delta explanation: <if coverage dropped, the accepted explanation; "N/A" if no drop>
 - Issues: <list any non-obvious problems and fixes>
 - New patterns: <any translations not in the Pattern Reference>
 - Deviations: <anything done differently from the standard procedure>
+- User accepted: Yes
 ```
 
 ### driver-reactive-streams — completed (trial run)
