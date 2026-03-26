@@ -6,6 +6,72 @@ removing the Groovy/Spock/CodeNarc toolchain dependency.
 > **Convention**: HTML comments (`<!-- ... -->`) are human-readable notes explaining design
 > decisions. Claude should skip them — they contain no instructions.
 
+## Resume Protocol
+
+This plan is designed to be stopped and restarted across multiple Claude sessions. All progress
+is persisted to the `.migration/` directory in the project root.
+
+**On every session start**, before doing any work:
+
+1. Check if `.migration/progress.json` exists.
+   - If it does **not** exist → this is a fresh start. Begin at **Pre-Migration Setup**.
+   - If it **does** exist → read it and resume from wherever the plan left off.
+2. Read `.migration/progress.json` to determine:
+   - Whether pre-migration setup is complete.
+   - Which module is currently in progress and at which step.
+   - Which modules are already completed.
+3. Skip all completed phases. Resume at the exact step indicated.
+4. Read the **Cross-Run Log** section (bottom of this file) for context from prior sessions.
+
+### Progress file: `.migration/progress.json`
+
+```json
+{
+  "pre_migration_setup": "not-started | in-progress | completed",
+  "baselines": {
+    "<module>": {
+      "test_count": 0,
+      "line_pct": 0.0,
+      "spock_spec_count": 0,
+      "spock_test_count": 0
+    }
+  },
+  "modules": {
+    "driver-reactive-streams": { "status": "not-started | in-progress | completed", "step": 0 },
+    "driver-legacy":           { "status": "not-started", "step": 0 },
+    "driver-sync":             { "status": "not-started", "step": 0 },
+    "bson":                    { "status": "not-started", "step": 0 },
+    "driver-core":             { "status": "not-started", "step": 0 }
+  },
+  "post_migration_cleanup": "not-started | in-progress | completed"
+}
+```
+
+Update `progress.json` at every step transition. This is the single source of truth for
+where the plan is.
+
+### Directory structure: `.migration/`
+
+```
+.migration/
+├── progress.json              # current state (read on every session start)
+├── baselines/
+│   └── <module>.json          # baseline metrics per module
+├── spock-originals/
+│   └── <module>/              # copies of .groovy files before deletion
+├── spock-names/
+│   ├── <module>-test-names.txt    # extracted Spock test method names
+│   └── <module>-class-names.txt   # extracted Spock class names
+└── verification/
+    ├── <module>-junit-classes.txt       # post-migration JUnit class names
+    ├── <module>-junit-test-names.txt    # post-migration @DisplayName names
+    └── <module>-missing-tests.txt       # any unaccounted test names
+```
+
+**Important**: Add `.migration/` to `.gitignore` during pre-migration setup so it is not committed.
+
+---
+
 ## Execution Order
 
 Process modules in this order (fewest Spock specs first):
@@ -21,6 +87,22 @@ Process modules in this order (fewest Spock specs first):
 ---
 
 ## Pre-Migration Setup (once, before first module)
+
+**Resume guard**: Check `.migration/progress.json` — if `pre_migration_setup` is `"completed"`,
+skip this entire section and proceed to **Per-Module Migration Procedure**.
+
+### 0. Initialise progress tracking
+
+```bash
+mkdir -p .migration/baselines .migration/spock-originals .migration/spock-names .migration/verification
+```
+
+Create `.migration/progress.json` with all statuses set to `"not-started"` and all steps to `0`.
+
+Add `.migration/` to `.gitignore`:
+```bash
+echo '.migration/' >> .gitignore
+```
 
 ### 1. Create `buildSrc/src/main/kotlin/conventions/testing-coverage.gradle.kts`
 
@@ -78,7 +160,6 @@ Parse the JUnit XML test results and JaCoCo coverage report:
    `<module>/build/test-results/test/*.xml`. Sum the `tests` attribute from each root element.
 
 2. Test names: extract every `classname::name` pair from <testcase> elements.
-   Save the sorted list to `/tmp/spock-test-names-baseline-<module>.txt`.
 
 3. Line coverage: parse `<module>/build/reports/jacoco/test/jacocoTestReport.xml`.
    Find the <counter type="LINE"> element, compute: covered / (covered + missed) * 100.
@@ -89,13 +170,17 @@ Extract from source (before any migration changes):
 
 1. Spock test names: find all `.groovy` files under `<module>/src/test` and extract test
    method names from lines matching `def 'name'` or `def "name"`.
-   Save the sorted list to `/tmp/spock-test-names-<module>.txt`.
+   Save the sorted list to `.migration/spock-names/<module>-test-names.txt`.
 
 2. Spock class names: find all `*Specification.groovy` files under `<module>/src/test` and
    extract the basename (without `.groovy`).
-   Save the sorted list to `/tmp/spock-classes-<module>.txt`.
+   Save the sorted list to `.migration/spock-names/<module>-class-names.txt`.
 
 ## Output
+Save baseline to `.migration/baselines/<module>.json`:
+```json
+{ "test_count": <N>, "line_pct": <N>, "spock_spec_count": <N>, "spock_test_count": <N> }
+```
 Return a summary:
 - Module: <module>
 - Test count: <N>
@@ -120,12 +205,25 @@ Expected baseline values from prior run (use to sanity-check results):
 Add JaCoCo coverage convention for Spock migration baseline
 ```
 
+### 5. Mark pre-migration setup complete
+
+Update `.migration/progress.json`: set `pre_migration_setup` to `"completed"` and populate
+the `baselines` object with values from each module's `.migration/baselines/<module>.json`.
+
 ---
 
 ## Per-Module Migration Procedure
 
 Repeat this procedure for each module in order. Do NOT skip steps.
 Do NOT begin the next module until the current module has passed the User Acceptance Gate (Step 6).
+
+**Resume guard**: Read `.migration/progress.json` to find the current module and step.
+- Skip any module where `status` is `"completed"`.
+- For a module where `status` is `"in-progress"`, resume at the recorded `step`.
+- For the next `"not-started"` module, set it to `"in-progress"` with `step: 1` and begin.
+
+**At the start of each step**, update `progress.json` with the current step number. This ensures
+that if the session is interrupted mid-step, the next session knows exactly where to resume.
 
 ### Step 1 — Switch build convention
 
@@ -165,9 +263,11 @@ sourceSets {
 
 Before starting, save all Spock originals for later logic-equivalence review:
 ```bash
-mkdir -p /tmp/spock-originals-<module>
-cp <module>/src/test/**/*.groovy /tmp/spock-originals-<module>/
+cp <module>/src/test/**/*.groovy .migration/spock-originals/<module>/
 ```
+
+**Resume note**: If resuming mid-step-2, check which `.groovy` files have already been deleted
+(and have a corresponding `.java` file). Only migrate the remaining `.groovy` files.
 
 Migrate unit tests before functional tests within each module.
 
@@ -243,13 +343,15 @@ Run ALL of the following checks. Every check must pass before committing.
 ```bash
 # List new Java test classes
 find <module>/src/test -name '*Test.java' -newer <module>/build.gradle.kts \
-    -exec basename {} .java \; | sort > /tmp/junit-classes-<module>.txt
+    -exec basename {} .java \; | sort > .migration/verification/<module>-junit-classes.txt
 
 # Normalise Spock names: FooSpecification → FooTest
-sed 's/Specification$/Test/' /tmp/spock-classes-<module>.txt > /tmp/spock-normalised-<module>.txt
+sed 's/Specification$/Test/' .migration/spock-names/<module>-class-names.txt \
+    > .migration/verification/<module>-spock-normalised.txt
 
 # Find missing — output must be empty
-comm -23 /tmp/spock-normalised-<module>.txt /tmp/junit-classes-<module>.txt
+comm -23 .migration/verification/<module>-spock-normalised.txt \
+         .migration/verification/<module>-junit-classes.txt
 ```
 **FAIL condition**: Any class listed in the output → a spec was deleted without replacement.
 
@@ -258,13 +360,14 @@ comm -23 /tmp/spock-normalised-<module>.txt /tmp/junit-classes-<module>.txt
 # Extract JUnit 5 test names
 find <module>/src/test -name '*Test.java' -exec \
     sed -n 's/.*@DisplayName("\(.*\)").*/\1/p' {} \; \
-    | sort > /tmp/junit5-test-names-<module>.txt
+    | sort > .migration/verification/<module>-junit-test-names.txt
 
 # Find names in Spock that are missing from JUnit 5
-comm -23 /tmp/spock-test-names-<module>.txt /tmp/junit5-test-names-<module>.txt \
-    > /tmp/missing-tests-<module>.txt
+comm -23 .migration/spock-names/<module>-test-names.txt \
+         .migration/verification/<module>-junit-test-names.txt \
+    > .migration/verification/<module>-missing-tests.txt
 
-cat /tmp/missing-tests-<module>.txt
+cat .migration/verification/<module>-missing-tests.txt
 ```
 **PASS conditions** (any missing name must match one of these):
 - Name contains `#variable` (Spock interpolation) → verify the parameterized test exists with a simplified name.
@@ -291,8 +394,7 @@ For each migrated Spock spec, spawn a sub-agent (using the `Agent` tool with `su
 to verify that the JUnit replacement preserves the original test logic. The sub-agent receives the
 original `.groovy` source and the new `.java` source as context.
 
-To avoid losing the original Spock source after deletion, **before deleting each `.groovy` file in
-Step 2**, save a copy to `/tmp/spock-originals-<module>/`. Then use these copies during this check.
+The original Spock sources were saved to `.migration/spock-originals/<module>/` during Step 2.
 
 Procedure — run this for every migrated spec pair:
 
@@ -309,7 +411,7 @@ Procedure — run this for every migrated spec pair:
    You are reviewing a Spock-to-JUnit 5 test migration for logic equivalence.
 
    ## Original Spock spec
-   <contents of /tmp/spock-originals-<module>/<SpecName>.groovy>
+   <contents of .migration/spock-originals/<module>/<SpecName>.groovy>
 
    ## Migrated JUnit 5 test
    <contents of <module>/src/test/.../<TestName>.java>
@@ -401,18 +503,29 @@ present the summary again.
 Migrate <module> Spock specs to JUnit 5 (<N> files)
 ```
 
-### Step 8 — Update the Cross-Run Log
+### Step 8 — Update progress and Cross-Run Log
 
-Append findings to the **Cross-Run Log** section at the bottom of this file. Include:
-- Any non-obvious fixes applied
-- Any deviations from the standard procedure
-- Any new patterns encountered not already documented
-- Final test count and coverage numbers
-- Any coverage explanations accepted by the user
+1. Update `.migration/progress.json`: set the current module's `status` to `"completed"` and
+   `step` to `8`.
+2. Append findings to the **Cross-Run Log** section at the bottom of this file. Include:
+   - Any non-obvious fixes applied
+   - Any deviations from the standard procedure
+   - Any new patterns encountered not already documented
+   - Final test count and coverage numbers
+   - Any coverage explanations accepted by the user
+3. Commit the Cross-Run Log update to preserve it for the next session:
+   ```
+   Update SPOCK_MIGRATION.md cross-run log for <module>
+   ```
 
 ---
 
 ## Post-Migration Cleanup (once, after all modules)
+
+**Resume guard**: Only begin this section when ALL modules in `progress.json` have
+`status: "completed"`. If `post_migration_cleanup` is already `"completed"`, skip this section.
+
+Set `post_migration_cleanup` to `"in-progress"` in `progress.json` before starting.
 
 ### Remove Spock/Groovy from build
 
@@ -493,6 +606,13 @@ Commit:
 ```
 Remove Spock/Groovy build infrastructure
 ```
+
+### Clean up migration state
+
+1. Update `.migration/progress.json`: set `post_migration_cleanup` to `"completed"`.
+2. Optionally remove the `.migration/` directory (it has served its purpose).
+   Ask the user before deleting — they may want to keep it for reference.
+3. Remove `.migration/` from `.gitignore` if the directory is deleted.
 
 ---
 
