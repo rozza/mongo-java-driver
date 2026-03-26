@@ -162,20 +162,53 @@ sourceSets {
 
 ### Step 2 — Migrate each `.groovy` spec to `.java`
 
-For each Spock `.groovy` file in the module:
-
-1. Read the Spock spec.
-2. **Save a copy** for later logic-equivalence review:
-   ```bash
-   mkdir -p /tmp/spock-originals-<module>
-   cp <path/to/Spec.groovy> /tmp/spock-originals-<module>/
-   ```
-3. Create a new `.java` file in the **same source set** (`src/test/unit` or `src/test/functional`).
-4. Apply the translations from the **Pattern Reference** section below.
-5. Preserve every test — use `@DisplayName` with the exact Spock test name string.
-6. Delete the `.groovy` file.
+Before starting, save all Spock originals for later logic-equivalence review:
+```bash
+mkdir -p /tmp/spock-originals-<module>
+cp <module>/src/test/**/*.groovy /tmp/spock-originals-<module>/
+```
 
 Migrate unit tests before functional tests within each module.
+
+Use sub-agents (via the `Agent` tool with `model=claude-sonnet-4-6`) to translate each Spock spec
+to Java. Sonnet 4.6 is used because this is a structured translation task with clear pattern rules —
+it doesn't require Opus-level reasoning, and using sub-agents allows multiple specs to be migrated
+in parallel. Haiku is too lightweight for reliable Groovy→Java translation involving mocks, data
+tables, and Spock DSL idioms.
+
+For each Spock `.groovy` file, spawn a sub-agent with this prompt:
+
+```
+You are migrating a Spock/Groovy test specification to JUnit 5 Java.
+
+## Source Spock spec
+<contents of the .groovy file>
+
+## Target location
+<same source set path, e.g., src/test/unit/com/mongodb/.../>
+
+## Translation rules
+<include the Pattern Reference and Groovy → Java Syntax sections from this document>
+
+## Known issues to watch for
+<include the Known Issues section from this document>
+
+## Instructions
+1. Create a complete Java test class that is equivalent to the Spock spec.
+2. Use `@DisplayName` with the **exact** Spock test name string for every test method.
+3. For `where:` data tables, use `@ParameterizedTest` + `@MethodSource` — preserve every
+   row from the data table.
+4. Translate all mock interactions to Mockito equivalents.
+5. Use Java 8 compatible APIs only (no `List.of()`, `Map.of()`, `String.repeat()`, etc.).
+6. Do NOT add extra tests, helper methods, or refactoring beyond what the Spock spec contains.
+
+## Output
+Return ONLY the complete Java file content, ready to write. No explanation needed.
+```
+
+After each sub-agent returns:
+1. Write the `.java` file to the correct location.
+2. Delete the `.groovy` file.
 
 ### Step 3 — Compile
 
@@ -399,19 +432,52 @@ If no matches, also remove `testing-junit-vintage.gradle.kts` and the `junit-vin
 
 ### Final verification
 
+Run a clean build:
 ```bash
-# 1. Clean build
 ./gradlew clean build --continue
-
-# 2. No Groovy/Spock/CodeNarc references in build files
-grep -ri "spock\|codenarc\|groovy" \
-    --include="*.kts" --include="*.toml" --include="*.xml" --include="*.gradle"
-# Must return zero results
-
-# 3. No .groovy files in test directories
-find . -path '*/src/test*' -name '*.groovy'
-# Must return zero results
 ```
+
+Then use a sub-agent (via the `Agent` tool with `model=claude-haiku-4-5-20251001`) to scan the
+entire repository for any remaining Spock/Groovy/CodeNarc artifacts. Haiku 4.5 is sufficient here
+because this is a simple pattern-matching sweep across files — no code reasoning is needed, just
+searching for known strings and file extensions.
+
+Spawn the sub-agent with this prompt:
+
+```
+Scan the repository for any remaining Spock, Groovy, or CodeNarc artifacts that should have
+been removed during the migration. Check ALL of the following:
+
+1. Groovy test files:
+   - Search for any `.groovy` files under `*/src/test*` directories.
+
+2. Spock references in build files:
+   - Search for "spock" (case-insensitive) in all `.kts`, `.toml`, `.xml`, and `.gradle` files.
+
+3. Groovy references in build files:
+   - Search for "groovy" (case-insensitive) in all `.kts`, `.toml`, `.xml`, and `.gradle` files.
+   - Exclude false positives in comments or documentation.
+
+4. CodeNarc references:
+   - Search for "codenarc" (case-insensitive) in all build and config files.
+   - Check if `config/codenarc/` directory still exists.
+
+5. Spock config files:
+   - Check if `config/spock/` directory still exists.
+
+6. Spock imports in Java files:
+   - Search for "import spock" in any `.java` file.
+
+7. Leftover Spock convention plugins:
+   - Check if `testing-spock.gradle.kts` or `testing-spock-exclude-slow.gradle.kts` still exist
+     in `buildSrc/src/main/kotlin/conventions/`.
+
+Output format:
+- PASS: No Spock/Groovy/CodeNarc artifacts remain.
+- FAIL: <list each finding with file path and line content>
+```
+
+**FAIL condition**: Any artifact found by the sub-agent. Fix before committing.
 
 Commit:
 ```
