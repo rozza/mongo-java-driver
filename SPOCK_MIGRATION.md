@@ -47,48 +47,59 @@ tasks.withType<JacocoReport> {
 
 Add `id("conventions.testing-coverage")` to the plugins block.
 
-### 3. Collect baseline metrics
+### 3. Collect baseline metrics and extract Spock test names
 
-For each module, run tests and record results:
+First, run all module tests to generate results and coverage reports:
 
 ```bash
-./gradlew :<module>:cleanTest :<module>:test --continue
+./gradlew cleanTest test --continue
 ```
 
-Extract metrics using this Python script:
+Then use sub-agents (via the `Agent` tool with `model=claude-haiku-4-5-20251001`) to collect
+baselines for all 5 modules **in parallel**. Haiku 4.5 is sufficient because each sub-agent is
+performing mechanical tasks — running shell commands, parsing XML files, and extracting
+numbers/strings. No code reasoning is needed.
 
-```python
-import xml.etree.ElementTree as ET
-import os
+Spawn one sub-agent per module with this prompt:
 
-def collect_metrics(module_path):
-    # Test count
-    test_dir = f"{module_path}/build/test-results/test/"
-    test_count = 0
-    test_names = []
-    for f in os.listdir(test_dir):
-        if f.endswith('.xml'):
-            tree = ET.parse(os.path.join(test_dir, f))
-            root = tree.getroot()
-            test_count += int(root.get('tests', 0))
-            for tc in tree.findall('.//testcase'):
-                test_names.append(f"{tc.get('classname')}::{tc.get('name')}")
+```
+Collect pre-migration baseline metrics for the module: <module>
 
-    # Line coverage
-    jacoco = f"{module_path}/build/reports/jacoco/test/jacocoTestReport.xml"
-    line_pct = 0
-    if os.path.exists(jacoco):
-        tree = ET.parse(jacoco)
-        for counter in tree.getroot().findall('counter'):
-            if counter.get('type') == 'LINE':
-                missed = int(counter.get('missed'))
-                covered = int(counter.get('covered'))
-                line_pct = covered / (covered + missed) * 100 if (covered + missed) > 0 else 0
+## Part 1 — Test count and coverage
 
-    return test_count, round(line_pct, 1), sorted(test_names)
+Parse the JUnit XML test results and JaCoCo coverage report:
+
+1. Test count: count all <testcase> elements across XML files in
+   `<module>/build/test-results/test/*.xml`. Sum the `tests` attribute from each root element.
+
+2. Test names: extract every `classname::name` pair from <testcase> elements.
+   Save the sorted list to `/tmp/spock-test-names-baseline-<module>.txt`.
+
+3. Line coverage: parse `<module>/build/reports/jacoco/test/jacocoTestReport.xml`.
+   Find the <counter type="LINE"> element, compute: covered / (covered + missed) * 100.
+
+## Part 2 — Spock test names and class names
+
+Extract from source (before any migration changes):
+
+1. Spock test names: find all `.groovy` files under `<module>/src/test` and extract test
+   method names from lines matching `def 'name'` or `def "name"`.
+   Save the sorted list to `/tmp/spock-test-names-<module>.txt`.
+
+2. Spock class names: find all `*Specification.groovy` files under `<module>/src/test` and
+   extract the basename (without `.groovy`).
+   Save the sorted list to `/tmp/spock-classes-<module>.txt`.
+
+## Output
+Return a summary:
+- Module: <module>
+- Test count: <N>
+- Line coverage: <N>%
+- Spock specs found: <N>
+- Spock test methods found: <N>
 ```
 
-Save baselines per module. Expected values from prior run:
+Expected baseline values from prior run (use to sanity-check results):
 
 | Module | Tests | Line% |
 |---|---:|---:|
@@ -98,22 +109,7 @@ Save baselines per module. Expected values from prior run:
 | bson | 2,817 | 86.4% |
 | driver-core | 4,885 | 69.5% |
 
-### 4. Extract pre-migration Spock test names
-
-Before modifying any code, extract all Spock test names for later comparison:
-
-```bash
-# For each module, extract Spock test names from source
-find <module>/src/test -name '*.groovy' -exec \
-    sed -n "s/.*def '\([^']*\)'.*/\1/p; s/.*def \"\([^\"]*\)\".*/\1/p" {} \; \
-    | sort > /tmp/spock-test-names-<module>.txt
-
-# Also extract Spock class names
-find <module>/src/test -name '*Specification.groovy' -exec basename {} .groovy \; \
-    | sort > /tmp/spock-classes-<module>.txt
-```
-
-### 5. Commit the JaCoCo setup
+### 4. Commit the JaCoCo setup
 
 ```
 Add JaCoCo coverage convention for Spock migration baseline
@@ -170,11 +166,17 @@ cp <module>/src/test/**/*.groovy /tmp/spock-originals-<module>/
 
 Migrate unit tests before functional tests within each module.
 
-Use sub-agents (via the `Agent` tool with `model=claude-sonnet-4-6`) to translate each Spock spec
-to Java. Sonnet 4.6 is used because this is a structured translation task with clear pattern rules —
-it doesn't require Opus-level reasoning, and using sub-agents allows multiple specs to be migrated
-in parallel. Haiku is too lightweight for reliable Groovy→Java translation involving mocks, data
-tables, and Spock DSL idioms.
+Use sub-agents (via the `Agent` tool with `model=claude-opus-4-6`) to translate each Spock spec
+to Java. Opus 4.6 is used because the complexity of specs varies widely — simple specs are
+straightforward, but complex ones involve nested mock closures with callback invocation (`>> {}`),
+chained responses (`>>>`), mid-assertion mock interaction counts, GString dynamic method dispatch,
+and Groovy operator overloading. Getting the translation wrong means debugging compilation failures,
+chasing subtle test logic differences, and potentially missing coverage. Opus produces more reliable
+first-pass translations, which reduces the fix-up cycle and avoids repeated logic-equivalence
+failures. The higher per-call cost is offset by fewer iterations through Steps 3–5. Sonnet is not
+reliable enough for the hardest specs (e.g., `CommandBatchCursorSpecification` with 514 mock
+interactions). Haiku is too lightweight for any Groovy→Java translation involving mocks or DSL
+idioms.
 
 For each Spock `.groovy` file, spawn a sub-agent with this prompt:
 
