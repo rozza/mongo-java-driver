@@ -3,6 +3,9 @@
 Instructions for Claude Code to migrate all Spock/Groovy test specifications to JUnit 5 Java,
 removing the Groovy/Spock/CodeNarc toolchain dependency.
 
+> **Convention**: HTML comments (`<!-- ... -->`) are human-readable notes explaining design
+> decisions. Claude should skip them — they contain no instructions.
+
 ## Execution Order
 
 Process modules in this order (fewest Spock specs first):
@@ -56,9 +59,11 @@ First, run all module tests to generate results and coverage reports:
 ```
 
 Then use sub-agents (via the `Agent` tool with `model=claude-haiku-4-5-20251001`) to collect
-baselines for all 5 modules **in parallel**. Haiku 4.5 is sufficient because each sub-agent is
-performing mechanical tasks — running shell commands, parsing XML files, and extracting
-numbers/strings. No code reasoning is needed.
+baselines for all 5 modules **in parallel**.
+
+<!-- Haiku 4.5 rationale: each sub-agent performs mechanical tasks — running shell commands,
+parsing XML files, extracting numbers/strings. No code reasoning is needed, so the cheapest
+and fastest model is appropriate. -->
 
 Spawn one sub-agent per module with this prompt:
 
@@ -167,16 +172,17 @@ cp <module>/src/test/**/*.groovy /tmp/spock-originals-<module>/
 Migrate unit tests before functional tests within each module.
 
 Use sub-agents (via the `Agent` tool with `model=claude-opus-4-6`) to translate each Spock spec
-to Java. Opus 4.6 is used because the complexity of specs varies widely — simple specs are
-straightforward, but complex ones involve nested mock closures with callback invocation (`>> {}`),
-chained responses (`>>>`), mid-assertion mock interaction counts, GString dynamic method dispatch,
-and Groovy operator overloading. Getting the translation wrong means debugging compilation failures,
-chasing subtle test logic differences, and potentially missing coverage. Opus produces more reliable
-first-pass translations, which reduces the fix-up cycle and avoids repeated logic-equivalence
-failures. The higher per-call cost is offset by fewer iterations through Steps 3–5. Sonnet is not
-reliable enough for the hardest specs (e.g., `CommandBatchCursorSpecification` with 514 mock
-interactions). Haiku is too lightweight for any Groovy→Java translation involving mocks or DSL
-idioms.
+to Java.
+
+<!-- Opus 4.6 rationale: spec complexity varies widely — simple specs are straightforward, but
+complex ones involve nested mock closures with callback invocation (>> {}), chained responses
+(>>>), mid-assertion mock interaction counts, GString dynamic method dispatch, and Groovy operator
+overloading. Getting the translation wrong means debugging compilation failures, chasing subtle
+test logic differences, and potentially missing coverage. Opus produces more reliable first-pass
+translations, which reduces the fix-up cycle and avoids repeated logic-equivalence failures. The
+higher per-call cost is offset by fewer iterations through Steps 3-5. Sonnet is not reliable
+enough for the hardest specs (e.g., CommandBatchCursorSpecification with 514 mock interactions).
+Haiku is too lightweight for any Groovy→Java translation involving mocks or DSL idioms. -->
 
 For each Spock `.groovy` file, spawn a sub-agent with this prompt:
 
@@ -291,10 +297,11 @@ Step 2**, save a copy to `/tmp/spock-originals-<module>/`. Then use these copies
 Procedure — run this for every migrated spec pair:
 
 1. Use the `Agent` tool (with `model=claude-sonnet-4-6`) to spawn a review sub-agent.
-   Sonnet 4.6 is used because this is structured code comparison with a clear rubric — it doesn't
+
+   <!-- Sonnet 4.6 rationale: this is structured code comparison with a clear rubric — it doesn't
    require Opus-level reasoning, and it runs significantly faster when spawning one sub-agent per
    spec (up to 202 for driver-core). Haiku is too lightweight to reliably catch subtle differences
-   in Groovy↔Java translation.
+   in Groovy↔Java translation. -->
 
    Prompt:
 
@@ -440,9 +447,10 @@ Run a clean build:
 ```
 
 Then use a sub-agent (via the `Agent` tool with `model=claude-haiku-4-5-20251001`) to scan the
-entire repository for any remaining Spock/Groovy/CodeNarc artifacts. Haiku 4.5 is sufficient here
-because this is a simple pattern-matching sweep across files — no code reasoning is needed, just
-searching for known strings and file extensions.
+entire repository for any remaining Spock/Groovy/CodeNarc artifacts.
+
+<!-- Haiku 4.5 rationale: this is a simple pattern-matching sweep across files — no code reasoning
+is needed, just searching for known strings and file extensions. -->
 
 Spawn the sub-agent with this prompt:
 
