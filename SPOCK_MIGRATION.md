@@ -1,32 +1,25 @@
-# Spock-to-JUnit 5 Migration Plan
+# Spock-to-JUnit 5 Migration
 
-## Goal
+Instructions for Claude Code to migrate all Spock/Groovy test specifications to JUnit 5 Java,
+removing the Groovy/Spock/CodeNarc toolchain dependency.
 
-Remove all Spock/Groovy test specifications from the MongoDB Java Driver and replace them with
-JUnit 5 Java tests. This eliminates the Groovy/Spock/CodeNarc toolchain dependency and
-standardises on a single test framework.
+## Execution Order
 
-## Scope
+Process modules in this order (fewest Spock specs first):
 
-| Module | Spock Files | Unit | Functional | Convention Plugin |
-|---|---:|---:|---:|---|
-| driver-reactive-streams | 9 | 1 | 8 | `conventions.testing-spock-exclude-slow` |
-| driver-legacy | 27 | 16 | 11 | `conventions.testing-spock-exclude-slow` |
-| driver-sync | 30 | 24 | 6 | `conventions.testing-spock-exclude-slow` |
-| bson | 59 | 59 | 0 | `conventions.testing-spock` |
-| driver-core | 202 | 148 | 54 | `conventions.testing-spock-exclude-slow` |
-| **Total** | **327** | **248** | **79** | |
-
-Modules are listed in migration order — fewest specs first.
+| # | Module | Spock Files | Unit | Functional | Notes |
+|---|---|---:|---:|---:|---|
+| 1 | `driver-reactive-streams` | 9 | 1 | 8 | Has custom `setSrcDirs` and JUnit 4 tests |
+| 2 | `driver-legacy` | 27 | 16 | 11 | Has `findOne()` dispatch issue |
+| 3 | `driver-sync` | 30 | 24 | 6 | Depends on driver-core test fixtures |
+| 4 | `bson` | 59 | 59 | 0 | All unit tests, heavy data tables |
+| 5 | `driver-core` | 202 | 148 | 54 | Largest — batch into unit then functional |
 
 ---
 
-## Phase 0 — Baseline: Add JaCoCo and Collect Pre-Migration Metrics
+## Pre-Migration Setup (once, before first module)
 
-Before migrating any code, establish coverage and test count baselines so every phase
-can be verified against them.
-
-### 0.1 Create `conventions/testing-coverage.gradle.kts`
+### 1. Create `buildSrc/src/main/kotlin/conventions/testing-coverage.gradle.kts`
 
 ```kotlin
 package conventions
@@ -36,13 +29,9 @@ plugins {
     id("jacoco")
 }
 
-jacoco {
-    toolVersion = "0.8.12"
-}
+jacoco { toolVersion = "0.8.12" }
 
-tasks.withType<Test> {
-    finalizedBy(tasks.named("jacocoTestReport"))
-}
+tasks.withType<Test> { finalizedBy(tasks.named("jacocoTestReport")) }
 
 tasks.withType<JacocoReport> {
     dependsOn(tasks.withType<Test>())
@@ -54,131 +43,281 @@ tasks.withType<JacocoReport> {
 }
 ```
 
-### 0.2 Apply the convention to `testing-base.gradle.kts`
+### 2. Add to `buildSrc/src/main/kotlin/conventions/testing-base.gradle.kts`
 
-Add `id("conventions.testing-coverage")` to the plugins block in
-`buildSrc/src/main/kotlin/conventions/testing-base.gradle.kts`.
+Add `id("conventions.testing-coverage")` to the plugins block.
 
-### 0.3 Collect baseline metrics
+### 3. Collect baseline metrics
 
-Run for each module:
+For each module, run tests and record results:
 
 ```bash
-./gradlew :<module>:test --continue
+./gradlew :<module>:cleanTest :<module>:test --continue
 ```
 
-Record from each module's `build/reports/jacoco/test/jacocoTestReport.xml`:
+Extract metrics using this Python script:
 
-| Metric | How to Extract |
-|---|---|
-| Test count | Sum of `tests` attribute from all `build/test-results/test/TEST-*.xml` files |
-| Line coverage % | `<counter type="LINE">` element: `covered / (covered + missed) * 100` |
+```python
+import xml.etree.ElementTree as ET
+import os
 
-Store these baselines for comparison. Expected pre-migration values (from prior run):
+def collect_metrics(module_path):
+    # Test count
+    test_dir = f"{module_path}/build/test-results/test/"
+    test_count = 0
+    test_names = []
+    for f in os.listdir(test_dir):
+        if f.endswith('.xml'):
+            tree = ET.parse(os.path.join(test_dir, f))
+            root = tree.getroot()
+            test_count += int(root.get('tests', 0))
+            for tc in tree.findall('.//testcase'):
+                test_names.append(f"{tc.get('classname')}::{tc.get('name')}")
+
+    # Line coverage
+    jacoco = f"{module_path}/build/reports/jacoco/test/jacocoTestReport.xml"
+    line_pct = 0
+    if os.path.exists(jacoco):
+        tree = ET.parse(jacoco)
+        for counter in tree.getroot().findall('counter'):
+            if counter.get('type') == 'LINE':
+                missed = int(counter.get('missed'))
+                covered = int(counter.get('covered'))
+                line_pct = covered / (covered + missed) * 100 if (covered + missed) > 0 else 0
+
+    return test_count, round(line_pct, 1), sorted(test_names)
+```
+
+Save baselines per module. Expected values from prior run:
 
 | Module | Tests | Line% |
 |---|---:|---:|
+| driver-reactive-streams | 654 | 72.9% |
+| driver-legacy | 687 | 86.7% |
+| driver-sync | 1,763 | 74.7% |
 | bson | 2,817 | 86.4% |
 | driver-core | 4,885 | 69.5% |
-| driver-sync | 1,763 | 74.7% |
-| driver-legacy | 687 | 86.7% |
-| driver-reactive-streams | 654 | 72.9% |
+
+### 4. Extract pre-migration Spock test names
+
+Before modifying any code, extract all Spock test names for later comparison:
+
+```bash
+# For each module, extract Spock test names from source
+find <module>/src/test -name '*.groovy' -exec \
+    sed -n "s/.*def '\([^']*\)'.*/\1/p; s/.*def \"\([^\"]*\)\".*/\1/p" {} \; \
+    | sort > /tmp/spock-test-names-<module>.txt
+
+# Also extract Spock class names
+find <module>/src/test -name '*Specification.groovy' -exec basename {} .groovy \; \
+    | sort > /tmp/spock-classes-<module>.txt
+```
+
+### 5. Commit the JaCoCo setup
+
+```
+Add JaCoCo coverage convention for Spock migration baseline
+```
 
 ---
 
-## Phase 1 — Migrate Spock Tests to JUnit 5
+## Per-Module Migration Procedure
 
-Migrate **one module at a time**, from smallest to largest. Within each module, migrate
-unit tests before functional tests. Commit per module (or per logical group within large
-modules like `driver-core`).
+Repeat this procedure for each module in order. Do NOT skip steps.
 
-### Migration Order
+### Step 1 — Switch build convention
 
-1. **`driver-reactive-streams`** (9 specs) — smallest module, quick validation of process
-2. **`driver-legacy`** (27 specs) — small, self-contained, good for refining patterns
-3. **`driver-sync`** (30 specs) — moderate size, depends on driver-core test fixtures
-4. **`bson`** (59 specs) — standalone, all unit tests, heavy data-table usage
-5. **`driver-core`** (202 specs) — largest module, migrate last with refined process
+In `<module>/build.gradle.kts`:
 
-### Per-Module Migration Process
-
-For each module:
-
-#### Step 1: Switch the build convention
-
-In the module's `build.gradle.kts`, replace:
+**Replace** whichever Spock convention is present:
 ```kotlin
-id("conventions.testing-spock")             // or testing-spock-exclude-slow
+// REMOVE one of:
+id("conventions.testing-spock")
+id("conventions.testing-spock-exclude-slow")
 ```
-with:
+
+**Add:**
 ```kotlin
 id("conventions.testing-junit")
 ```
 
-Add `id("conventions.testing-junit-vintage")` if the module has pre-existing JUnit 4 Java tests
-(e.g., `driver-reactive-streams` has `@RunWith(Parameterized.class)` tests).
+**If** the module has JUnit 4 Java tests (check for `@RunWith` or `import org.junit.Test` in
+`.java` files), also add:
+```kotlin
+id("conventions.testing-junit-vintage")
+```
 
-#### Step 2: Migrate each Spock specification
+**Special case — `driver-reactive-streams`**: This module uses `setSrcDirs` which replaces all
+dirs. Ensure the source set includes all directories:
+```kotlin
+sourceSets {
+    test {
+        java {
+            setSrcDirs(listOf("src/test/tck", "src/test/unit", "src/test/functional", "src/examples"))
+        }
+    }
+}
+```
 
-For each `.groovy` file:
+### Step 2 — Migrate each `.groovy` spec to `.java`
 
-1. Create the equivalent `.java` test class in the same source set (`src/test/unit` or
-   `src/test/functional`).
-2. Apply the pattern mapping reference below.
-3. Delete the `.groovy` file.
+For each Spock `.groovy` file in the module:
 
-#### Step 3: Compile and fix
+1. Read the Spock spec.
+2. Create a new `.java` file in the **same source set** (`src/test/unit` or `src/test/functional`).
+3. Apply the translations from the **Pattern Reference** section below.
+4. Preserve every test — use `@DisplayName` with the exact Spock test name string.
+5. Delete the `.groovy` file.
+
+Migrate unit tests before functional tests within each module.
+
+### Step 3 — Compile
 
 ```bash
 ./gradlew :<module>:compileTestJava
 ```
 
-Fix any compilation errors. Common issues are documented in the Known Issues section below.
+Fix all errors. Check the **Known Issues** section below — most compilation failures match a
+documented pattern.
 
-#### Step 4: Run tests and collect metrics
+### Step 4 — Run tests
 
 ```bash
 ./gradlew :<module>:cleanTest :<module>:test
 ```
 
-Compare test count and JaCoCo line coverage against the Phase 0 baseline. Acceptable thresholds:
+All tests must pass (functional tests that need MongoDB will skip — that is OK).
 
-- **Test count**: Should not decrease by more than 5% (Spock `where:` blocks count as 1 test;
-  JUnit 5 parameterized tests count each row individually, so counts often increase).
-- **Line coverage**: Should not decrease by more than 3%.
+### Step 5 — Verify (acceptance gate)
 
-#### Step 5: Commit
+Run ALL of the following checks. Every check must pass before committing.
 
-One commit per module with message format:
+**Check 1 — Every Spock class has a JUnit replacement:**
+```bash
+# List new Java test classes
+find <module>/src/test -name '*Test.java' -newer <module>/build.gradle.kts \
+    -exec basename {} .java \; | sort > /tmp/junit-classes-<module>.txt
+
+# Normalise Spock names: FooSpecification → FooTest
+sed 's/Specification$/Test/' /tmp/spock-classes-<module>.txt > /tmp/spock-normalised-<module>.txt
+
+# Find missing — output must be empty
+comm -23 /tmp/spock-normalised-<module>.txt /tmp/junit-classes-<module>.txt
+```
+**FAIL condition**: Any class listed in the output → a spec was deleted without replacement.
+
+**Check 2 — Every Spock test name is accounted for:**
+```bash
+# Extract JUnit 5 test names
+find <module>/src/test -name '*Test.java' -exec \
+    sed -n 's/.*@DisplayName("\(.*\)").*/\1/p' {} \; \
+    | sort > /tmp/junit5-test-names-<module>.txt
+
+# Find names in Spock that are missing from JUnit 5
+comm -23 /tmp/spock-test-names-<module>.txt /tmp/junit5-test-names-<module>.txt \
+    > /tmp/missing-tests-<module>.txt
+
+cat /tmp/missing-tests-<module>.txt
+```
+**PASS conditions** (any missing name must match one of these):
+- Name contains `#variable` (Spock interpolation) → verify the parameterized test exists with a simplified name.
+- Test was intentionally merged into another test → note which test covers it.
+- Test was split into multiple tests → verify all parts exist.
+
+**FAIL condition**: A test name is missing with no explanation.
+
+**Check 3 — No Groovy files remain:**
+```bash
+find <module>/src/test -name '*.groovy'
+```
+**FAIL condition**: Any output.
+
+**Check 4 — No Spock imports in Java files:**
+```bash
+grep -r "import spock" <module>/src/test --include="*.java"
+```
+**FAIL condition**: Any output.
+
+**Check 5 — Test count and coverage:**
+
+Collect post-migration metrics using the same Python script from the baseline step.
+
+| Metric | Acceptance Criterion |
+|---|---|
+| Test count | Must not decrease by more than 5% vs baseline |
+| Line coverage | Must not decrease by more than 3% vs baseline |
+
+### Step 6 — Commit
+
 ```
 Migrate <module> Spock specs to JUnit 5 (<N> files)
 ```
 
-### Source Set Notes per Module
+### Step 7 — Update the Cross-Run Log
 
-Most modules use `src/test/unit` and `src/test/functional` automatically via the JUnit convention.
-Special cases:
-
-- **`driver-reactive-streams`**: Must explicitly set all test source dirs in `build.gradle.kts`:
-  ```kotlin
-  sourceSets {
-      test {
-          java {
-              setSrcDirs(listOf("src/test/tck", "src/test/unit", "src/test/functional", "src/examples"))
-          }
-      }
-  }
-  ```
-  This is because the module uses `setSrcDirs` (replaces) rather than `srcDirs` (appends), and
-  the standard `testing-junit` convention only adds `src/test/unit` and `src/test/functional`.
+Append findings to the **Cross-Run Log** section at the bottom of this file. Include:
+- Any non-obvious fixes applied
+- Any deviations from the standard procedure
+- Any new patterns encountered not already documented
+- Final test count and coverage numbers
 
 ---
 
-## Pattern Mapping Reference
+## Post-Migration Cleanup (once, after all modules)
 
-### Core Mapping Table
+### Remove Spock/Groovy from build
 
-| Spock Concept | JUnit 5 Equivalent |
+**`gradle/libs.versions.toml`** — delete these entries:
+- Versions: `groovy`, `spock-bom`
+- Libraries: `spock-bom`, `spock-core`, `spock-junit4`, `groovy`
+- Bundles: `spock`
+
+**`buildSrc/src/main/kotlin/conventions/`** — delete:
+- `testing-spock.gradle.kts`
+- `testing-spock-exclude-slow.gradle.kts`
+
+**`config/`** — delete:
+- `config/codenarc/codenarc.xml`
+- `config/spock/ExcludeSlow.groovy`
+- `config/spock/OnlySlow.groovy`
+
+### Check if JUnit Vintage is still needed
+
+```bash
+grep -r "import org.junit.Test" --include="*.java" -l
+grep -r "@RunWith" --include="*.java" -l
+```
+
+If no matches, also remove `testing-junit-vintage.gradle.kts` and the `junit-vintage` bundle.
+
+### Final verification
+
+```bash
+# 1. Clean build
+./gradlew clean build --continue
+
+# 2. No Groovy/Spock/CodeNarc references in build files
+grep -ri "spock\|codenarc\|groovy" \
+    --include="*.kts" --include="*.toml" --include="*.xml" --include="*.gradle"
+# Must return zero results
+
+# 3. No .groovy files in test directories
+find . -path '*/src/test*' -name '*.groovy'
+# Must return zero results
+```
+
+Commit:
+```
+Remove Spock/Groovy build infrastructure
+```
+
+---
+
+## Pattern Reference
+
+### Spock → JUnit 5 Translation Table
+
+| Spock | JUnit 5 |
 |---|---|
 | `extends Specification` | Plain class, no base class |
 | `def setup()` | `@BeforeEach void setUp()` |
@@ -186,115 +325,89 @@ Special cases:
 | `def setupSpec()` | `@BeforeAll static void beforeAll()` |
 | `def cleanupSpec()` | `@AfterAll static void afterAll()` |
 | `def "test name"()` | `@Test @DisplayName("test name") void testName()` |
-| `given:` / `when:` / `then:` | Arrange / Act / Assert (inline) |
+| `given:` / `when:` / `then:` | Arrange / Act / Assert inline |
 | `expect:` | Single assertion block |
-| `where:` (data table) | `@ParameterizedTest` + `@MethodSource` or `@CsvSource` |
-| `thrown(ExceptionType)` | `assertThrows(ExceptionType.class, () -> ...)` |
-| `notThrown(ExceptionType)` | Just call the code — if it throws, the test fails |
+| `where:` data table | `@ParameterizedTest` + `@MethodSource` returning `Stream<Arguments>` |
+| `thrown(XException)` | `assertThrows(XException.class, () -> ...)` |
+| `notThrown(XException)` | Just call the code (no assertion needed) |
 | `Mock()` / `Stub()` | `Mockito.mock()` or `@Mock` with `@ExtendWith(MockitoExtension.class)` |
 | `_ >> value` | `when(mock.method()).thenReturn(value)` |
 | `>>> [a, b, c]` | `when(mock.method()).thenReturn(a, b, c)` |
 | `>> { closure }` | `doAnswer(invocation -> { ... }).when(mock).method(...)` |
 | `1 * mock.method()` | `verify(mock, times(1)).method()` |
 | `0 * mock.method()` | `verify(mock, never()).method()` |
-| `*_` (any args) | Appropriate number of `any()` matchers for the method signature |
+| `*_` (any args) | One `any()` matcher per parameter in the method signature |
 | `_ as Type` | `any(Type.class)` |
-| `@Slow` tag | `@Tag("Slow")` |
+| `@Slow` | `@Tag("Slow")` |
 | `@Unroll` | Implicit with `@ParameterizedTest` |
 | `@Shared` | `static` field or `@BeforeAll` |
 | `with(obj) { ... }` | Extract variable, assert each field with `assertEquals` |
-| Groovy `['key': value]` | `new BasicBSONObject("key", value)` or `Map.of("key", value)` |
-| Groovy `[1, 2, 3]` | `Arrays.asList(1, 2, 3)` or `List.of(1, 2, 3)` |
-| Groovy `[1, 2] as byte[]` | `new byte[]{1, 2}` |
-| Groovy `~['a': 1]` (operator overload) | `new BasicBSONObject("a", 1)` |
-| Groovy `"${var}"` (GString) | `String.format(...)` or concatenation |
-| Groovy property access (`obj.field`) | `obj.getField()` |
-| Groovy truth (bare expression) | `assertNotNull(...)` / `assertTrue(...)` / `assertFalse(...)` |
 
-### Existing JUnit 5 Tests as Style Reference
+### Groovy → Java Syntax
 
-Use these existing tests as style guides:
-
-| Style | Reference File |
-|---|---|
-| Unit test with Mockito | `driver-core/.../ChangeStreamBatchCursorTest.java` |
-| Functional test | `driver-sync/.../CrudProseTest.java` |
-| Parameterized test | `bson/.../BsonBinaryReaderTest.java` |
-
----
-
-## Challenging Patterns — Detailed Guidance
-
-The following Spock patterns require extra care during migration. Each includes a before/after
-example and notes on pitfalls.
-
-### Data Tables with Complex Types
-
-Spock `where:` blocks with complex objects become `@MethodSource` methods returning
-`Stream<Arguments>`. Every Groovy shorthand must be expanded:
-
-```groovy
-// BEFORE (Spock)
-where:
-representation | value                                              | document
-JAVA_LEGACY    | [UUID.fromString('08070605-0403-0201-100f-...')] | '{"array": [...]}'
-STANDARD       | [new Binary((byte) 3, [1, 2, 3] as byte[])]      | '{"array": [...]}'
+```
+Groovy                              Java
+──────────────────────────────────  ──────────────────────────────────────────
+['a', 'b', 'c']                    Arrays.asList("a", "b", "c")
+['key': value]                     new BasicBSONObject("key", value)
+[1, 2, 3] as byte[]               new byte[]{1, 2, 3}
+~['a': 1]                          new BasicBSONObject("a", 1)
+"text ${var} more"                 "text " + var + " more"
+obj.property                       obj.getProperty()
+def x = expr                       explicit type or var
+expr as Type                       (Type) expr
+{-> body }                         () -> body
+{ arg -> body }                    arg -> body
+{ it -> body }                     arg -> body  (name the param)
+x == y  (in then: block)           assertEquals(y, x)
+x != null                          assertNotNull(x)
+!x                                 assertFalse(x) or assertNull(x)
+x instanceof Type                  assertInstanceOf(Type.class, x)
+thrown(FooException)                assertThrows(FooException.class, () -> { ... })
+notThrown(FooException)            (just call the code)
+[a, b, c].collect { f(it) }       Stream.of(a, b, c).map(x -> f(x)).collect(toList())
 ```
 
+### Challenging Pattern Examples
+
+**Spock `where:` with complex types → `@MethodSource`:**
+```groovy
+// BEFORE
+where:
+representation | value                                         | document
+JAVA_LEGACY    | [UUID.fromString('08070605-0403-0201-...')] | '{"array": [...]}'
+STANDARD       | [new Binary((byte) 3, [1, 2, 3] as byte[])] | '{"array": [...]}'
+```
 ```java
-// AFTER (JUnit 5)
+// AFTER
 private static Stream<Arguments> args() {
     return Stream.of(
         Arguments.of(JAVA_LEGACY,
-            singletonList(UUID.fromString("08070605-0403-0201-100f-...")),
-            "{\"array\": [...]}"),
+            singletonList(UUID.fromString("08070605-0403-0201-...")), "{\"array\": [...]}"),
         Arguments.of(STANDARD,
-            singletonList(new Binary((byte) 3, new byte[]{1, 2, 3})),
-            "{\"array\": [...]}")
+            singletonList(new Binary((byte) 3, new byte[]{1, 2, 3})), "{\"array\": [...]}")
     );
 }
 ```
 
-### Mock/Stub with Closure Configuration
-
-Spock's inline closure configuration maps to Mockito `when/thenReturn`:
-
+**Spock `Stub` with closure → Mockito:**
 ```groovy
 // BEFORE
-def cluster = Stub(Cluster) {
-    getCurrentDescription() >> connectedDescription
-}
+def cluster = Stub(Cluster) { getCurrentDescription() >> connectedDescription }
 ```
-
 ```java
 // AFTER
 Cluster cluster = mock(Cluster.class);
 when(cluster.getCurrentDescription()).thenReturn(connectedDescription);
 ```
 
-### Chained Responses (`>>>`)
-
-```groovy
-// BEFORE
-batchCursor.hasNext() >>> [true, true, false]
-batchCursor.next() >>> [firstBatch, secondBatch]
-```
-
-```java
-// AFTER
-when(batchCursor.hasNext()).thenReturn(true, true, false);
-when(batchCursor.next()).thenReturn(firstBatch, secondBatch);
-```
-
-### Closure Responses with Argument Capture (`>> { }`)
-
+**Spock `>> { }` callback invocation → `doAnswer`:**
 ```groovy
 // BEFORE
 getWriteConnectionSource(_ as OperationContext, _ as SingleResultCallback) >> {
     it[1].onResult(connectionSource, null)
 }
 ```
-
 ```java
 // AFTER
 doAnswer(invocation -> {
@@ -304,440 +417,186 @@ doAnswer(invocation -> {
 }).when(binding).getWriteConnectionSource(any(OperationContext.class), any());
 ```
 
-Note: Spock's `*_` (match any number of args of any type) has no Mockito equivalent. Inspect the
-method signature and provide one `any()` per parameter.
-
-### Dynamic Method Invocation via GString
-
+**Spock GString dynamic method invocation (no Java equivalent):**
 ```groovy
 // BEFORE
 1 * callback."$method"(* _) >> { assert it == args }
 ```
+Migrate to output-based assertions: verify the decoded result instead of mock interactions.
 
-Java cannot invoke methods by name without reflection. Preferred migration: replace mock
-interaction verification with output-based assertions — verify the decoded result instead of
-individual callback calls.
-
-### Groovy Operator Overloading / Metaclass
-
+**Groovy operator overloading:**
 ```groovy
 // BEFORE
 Map.metaClass.bitwiseNegate = { new BasicBSONObject(delegate as Map) }
 document == ~['a': 1]
 ```
-
 ```java
 // AFTER
 assertEquals(new BasicBSONObject("a", 1), document);
 ```
 
-Every `~[...]` must be expanded to explicit constructor calls. No shortcut.
+### Style References
+
+Look at these existing tests for idiomatic patterns:
+
+| Style | File |
+|---|---|
+| Unit test with Mockito | `driver-core/.../ChangeStreamBatchCursorTest.java` |
+| Functional test | `driver-sync/.../CrudProseTest.java` |
+| Parameterized test | `bson/.../BsonBinaryReaderTest.java` |
 
 ---
 
-## Phase 2 — Remove Spock/Groovy Infrastructure
+## Known Issues
 
-After **all** modules are migrated:
+These were all encountered during a prior trial migration. When you hit a compilation or test
+failure, check this list first.
 
-### 2.1 Remove from `gradle/libs.versions.toml`
+### 1. Java static dispatch vs Groovy dynamic dispatch
 
-**Versions** to delete:
-```
-groovy = "3.0.9"
-spock-bom = "2.1-groovy-3.0"
-```
+**Symptom**: Test passes a `BasicDBObject` to a method parameter declared as `Object`, but the
+wrong overload is called (e.g., `findOne(Object id)` instead of `findOne(DBObject query)`).
 
-**Libraries** to delete:
-```
-spock-bom, spock-core, spock-junit4, groovy
-```
-
-**Bundles** to delete:
-```
-spock = ["spock-core", "spock-junit4"]
+**Fix**: Add `instanceof` check with cast:
+```java
+if (criteria instanceof DBObject) {
+    assertEquals(result, collection.findOne((DBObject) criteria));
+} else {
+    assertEquals(result, collection.findOne(criteria));
+}
 ```
 
-### 2.2 Delete Spock convention plugins
+### 2. Java 8 release target — no Java 9+ APIs
 
-Remove from `buildSrc/src/main/kotlin/conventions/`:
-- `testing-spock.gradle.kts`
-- `testing-spock-exclude-slow.gradle.kts`
+**Symptom**: `cannot find symbol: method repeat(int)` or similar for `List.of()`, `Map.of()`.
 
-### 2.3 Delete config files
+**Cause**: Project compiles with `options.release.set(8)`. Groovyc ignored this.
 
-Remove:
-- `config/codenarc/codenarc.xml`
-- `config/spock/ExcludeSlow.groovy`
-- `config/spock/OnlySlow.groovy`
-
-### 2.4 Migrate Slow test handling
-
-If slow-test tagging is still needed, use JUnit 5 `@Tag("Slow")` and move the
-`excludeTags("Slow")` / `includeTags("Slow")` and `testSlowOnly` task into
-`testing-base.gradle.kts` or a new `testing-junit-exclude-slow.gradle.kts`.
-
-### 2.5 JUnit Vintage — keep or remove
-
-The `junit-vintage-engine` is needed if any module still has JUnit 4 Java tests
-(not migrated Spock — those are now JUnit 5). Check:
-```bash
-grep -r "import org.junit.Test\b" --include="*.java" -l
-grep -r "@RunWith" --include="*.java" -l
-```
-If matches remain, keep `testing-junit-vintage`. Otherwise remove it.
-
----
-
-## Phase 3 — Verification
-
-### 3.1 Clean build
-
-```bash
-./gradlew clean build --continue
-```
-
-### 3.2 No Groovy/Spock references remain
-
-```bash
-grep -ri "spock\|codenarc\|groovy" \
-    --include="*.kts" --include="*.toml" --include="*.xml" --include="*.gradle" \
-    --include="*.properties"
-```
-
-This should return zero results.
-
-### 3.3 No `.groovy` files remain in test directories
-
-```bash
-find . -path '*/src/test*' -name '*.groovy'
-```
-
-### 3.4 Test name comparison (pre vs post migration)
-
-Verify that every Spock test has a JUnit 5 equivalent by comparing test names before and after
-migration. This catches accidentally dropped tests that wouldn't show up in aggregate counts.
-
-#### Method A: Source-level comparison (no MongoDB required)
-
-Extract test names from Spock source files (before) and JUnit 5 source files (after):
-
-```bash
-# BEFORE: Extract Spock test names from .groovy files (run on pre-migration branch)
-# Captures: def 'test name'() and def "test name"()
-find <module>/src/test -name '*.groovy' -exec \
-    sed -n "s/.*def '\([^']*\)'.*/\1/p; s/.*def \"\([^\"]*\)\".*/\1/p" {} \; \
-    | sort > /tmp/spock-test-names-<module>.txt
-
-# AFTER: Extract JUnit 5 test names from .java files (run on post-migration branch)
-# Captures @DisplayName("test name") values
-find <module>/src/test -name '*Test.java' -exec \
-    sed -n 's/.*@DisplayName("\(.*\)").*/\1/p' {} \; \
-    | sort > /tmp/junit5-test-names-<module>.txt
-
-# COMPARE: Find tests in Spock that are missing from JUnit 5
-comm -23 /tmp/spock-test-names-<module>.txt /tmp/junit5-test-names-<module>.txt \
-    > /tmp/missing-tests-<module>.txt
-```
-
-**Interpreting results**: Not every Spock name will have an exact match. Expected differences:
-
-| Difference | Reason | Action |
-|---|---|---|
-| Spock `#variable` interpolation in name | JUnit 5 uses a simplified name | OK — verify the parameterized test exists |
-| Spock test was split into multiple JUnit tests | Complex when/then blocks became separate methods | OK — verify combined coverage |
-| Spock test was merged with another | Redundant specs consolidated | OK — verify the merged test covers both |
-| Spock test has no JUnit equivalent at all | Test was accidentally dropped | **Fix** — add the missing test |
-
-#### Method B: Test result XML comparison (more accurate, requires test run)
-
-Compare test names from JUnit XML results before and after migration. This is more accurate
-because it captures the actual executed test names including parameterized variants.
-
-```bash
-# Extract test names from XML results (works for both before and after)
-python3 << 'PYEOF'
-import xml.etree.ElementTree as ET
-import os, sys
-
-module = sys.argv[1] if len(sys.argv) > 1 else "driver-legacy"
-test_dir = f"{module}/build/test-results/test/"
-names = set()
-for f in os.listdir(test_dir):
-    if f.endswith('.xml'):
-        tree = ET.parse(os.path.join(test_dir, f))
-        for tc in tree.findall('.//testcase'):
-            name = tc.get('name', '')
-            classname = tc.get('classname', '')
-            names.add(f"{classname}::{name}")
-
-for n in sorted(names):
-    print(n)
-PYEOF
-```
-
-Run this on both the pre-migration and post-migration test results, then diff:
-
-```bash
-# Collect before (on pre-migration branch/worktree, after running tests)
-python3 extract_test_names.py <module> > /tmp/before-tests-<module>.txt
-
-# Collect after (on post-migration branch, after running tests)
-python3 extract_test_names.py <module> > /tmp/after-tests-<module>.txt
-
-# Find Spock-originated tests missing from JUnit 5 results
-# Filter to only Specification classes (Spock) to avoid noise from unchanged Java tests
-grep "Specification::" /tmp/before-tests-<module>.txt \
-    | sed 's/Specification::/Test::/g' \
-    > /tmp/before-spock-<module>.txt
-
-# Compare
-diff /tmp/before-spock-<module>.txt /tmp/after-tests-<module>.txt
-```
-
-**Note**: Spock class names end in `Specification` while JUnit 5 classes end in `Test`. The
-`sed` command normalises this. Parameterized test names will differ in format — Spock names
-rows by index, JUnit 5 by `@DisplayName` or method source — so expect some noise in the diff.
-Focus on completely missing test classes, not name format differences.
-
-#### Method C: Class-level comparison (quick sanity check)
-
-As a fast sanity check, verify every Spock specification has a corresponding JUnit test class:
-
-```bash
-# List all Spock spec class names (before)
-git show <pre-migration-commit>:<module>/src/test \
-    | find-groovy-classes  # or:
-git diff --name-only --diff-filter=D <pre-migration>..<post-migration> -- '<module>/*.groovy' \
-    | xargs -I{} basename {} .groovy | sort > /tmp/spock-classes.txt
-
-# List all new JUnit test class names (after)
-git diff --name-only --diff-filter=A <pre-migration>..<post-migration> -- '<module>/*.java' \
-    | xargs -I{} basename {} .java | sort > /tmp/junit-classes.txt
-
-# Normalise naming: FooSpecification -> FooTest
-sed 's/Specification$/Test/' /tmp/spock-classes.txt > /tmp/spock-normalised.txt
-
-# Find missing
-comm -23 /tmp/spock-normalised.txt /tmp/junit-classes.txt
-```
-
-If any class appears in the output, a Spock spec was deleted without a JUnit replacement.
-
-### 3.5 Test count and coverage comparison
-
-Collect post-migration metrics using the same method as Phase 0. Compare against baseline:
-
-| Module | Before Tests | Before Line% | After Tests | After Line% | Delta Tests | Delta Line% |
-|---|---:|---:|---:|---:|---:|---:|
-| bson | 2,817 | 86.4% | — | — | — | — |
-| driver-core | 4,885 | 69.5% | — | — | — | — |
-| driver-sync | 1,763 | 74.7% | — | — | — | — |
-| driver-legacy | 687 | 86.7% | — | — | — | — |
-| driver-reactive-streams | 654 | 72.9% | — | — | — | — |
-
-**Acceptance criteria**:
-- All tests pass (`./gradlew test --continue` exits 0)
-- No module's line coverage drops by more than 3%
-- No `.groovy` files remain in any test directory
-- No Spock/Groovy/CodeNarc references in build files
-- All Spock spec classes have a corresponding JUnit test class (Method C above)
-- No Spock test names are unaccounted for (Method A or B above)
-
-### 3.6 Full test suite (if MongoDB available)
-
-If a MongoDB instance is available:
-```bash
-./gradlew test integrationTest --continue
-```
-
----
-
-## Known Issues and Fixes
-
-These issues were encountered during a prior trial migration. Expect them to recur.
-
-### 1. Java Static Dispatch vs Groovy Dynamic Dispatch
-
-**When**: Migrating tests that pass a subtype to an overloaded method via a parameter declared
-as `Object` or a supertype.
-
-**Problem**: Groovy selects the overload at runtime based on actual type. Java selects at compile
-time based on declared type. Example: `findOne(Object)` is called instead of `findOne(DBObject)`.
-
-**Fix**: Add explicit `instanceof` checks with casts, or change the parameter type to the
-specific subtype.
-
-### 2. Java 8 Release Target Compatibility
-
-**When**: Migrating tests in modules that compile with `options.release.set(8)`.
-
-**Problem**: Groovyc doesn't enforce release targets, so Groovy code freely uses Java 11+ APIs
-like `String.repeat()`, `List.of()`, `Map.of()`. Under javac with `--release 8` these fail.
-
-**Fix**: Use Java 8-compatible alternatives:
-- `String.repeat(n)` → `new String(new char[n]).replace('\0', 'a')` or `Arrays.fill` helper
+**Fix**:
+- `"a".repeat(n)` → `new String(new char[n]).replace('\0', 'a')` or `Arrays.fill` helper
 - `List.of(a, b)` → `Arrays.asList(a, b)`
-- `Map.of(k, v)` → `Collections.singletonMap(k, v)` or `new HashMap<>() {{ put(k, v); }}`
+- `Map.of(k, v)` → `Collections.singletonMap(k, v)`
 
-### 3. Mockito Strict Stubbing
+### 3. Mockito strict stubbing
 
-**When**: Tests use `@ExtendWith(MockitoExtension.class)` with shared stub setup methods.
+**Symptom**: `UnnecessaryStubbingException` from `MockitoExtension`.
 
-**Problem**: Spock's Mockito integration is lenient. JUnit 5's `MockitoExtension` uses strict
-mode by default, failing on unused stubs.
+**Cause**: Spock is lenient by default; JUnit 5 MockitoExtension is strict.
 
-**Fix**: Use `Mockito.lenient().when(...)` for stubs that aren't used in every test that calls
-the setup method.
+**Fix**: `Mockito.lenient().when(...)` or `Mockito.lenient().doAnswer(...)` for shared stubs.
 
-### 4. JaCoCo Synthetic Field Interference
+### 4. JaCoCo `$jacocoData` in reflection
 
-**When**: Tests use reflection to compare all private fields of an object.
+**Symptom**: Assertion failure with `{$jacocoData=Optional[[Z@...]}` in the diff.
 
-**Problem**: JaCoCo injects a synthetic `$jacocoData` field that shows up in reflection.
+**Cause**: JaCoCo injects a synthetic field picked up by reflection-based comparisons.
 
-**Fix**: Filter with `!field.isSynthetic()` in any reflection-based test assertions.
+**Fix**: Add `&& !field.isSynthetic()` to reflection field filters.
 
-### 5. javac Type Inference Stricter Than groovyc
+### 5. javac stricter than groovyc
 
-**When**: Pre-existing Java files in the test source set were previously compiled by groovyc
-(the Spock convention compiles all test code with groovyc, including `.java` files).
+**Symptom**: Type inference errors in pre-existing `.java` files (e.g., `Optional.flatMap()`).
 
-**Problem**: Code that compiled under groovyc may fail under javac due to stricter generic type
-inference, especially with `Optional.flatMap()` chains.
+**Cause**: The Spock convention compiled all test code with groovyc, including `.java` files.
+After switching to JUnit, javac compiles them for the first time.
 
-**Fix**: Rewrite to use explicit `isPresent()` + `get()` instead of `flatMap`.
+**Fix**: Rewrite generics-heavy code to use explicit `isPresent()` + `get()`.
 
-### 6. Missing Imports After Convention Switch
+### 6. Missing imports after convention switch
 
-**When**: Switching from Spock convention (groovyc) to JUnit convention (javac).
+**Symptom**: `cannot find symbol` for classes that were previously available.
 
-**Problem**: Pre-existing `.java` files that were compiled by groovyc may have missing imports
-that groovyc resolved implicitly.
+**Cause**: groovyc resolved imports that javac cannot.
 
-**Fix**: Add explicit imports. Run `compileTestJava` first and fix all compilation errors
-before running tests.
+**Fix**: Add explicit imports. Always run `compileTestJava` before `test`.
 
 ---
 
-## Cross-Run Knowledge Sharing
+## Cross-Run Log
 
-When using Claude Code to perform this migration across multiple sessions, use this section to
-accumulate learnings so each session doesn't start from scratch.
+This section is updated by Claude after each module migration. Read it before starting a new
+module. Append to it after completing each module.
 
-### How to Use This Section
-
-After completing each module, append findings to the relevant subsection below. Before starting
-a new module, read all subsections to apply prior learnings.
-
-### Module-Specific Notes
-
-Record any module-specific surprises, non-obvious fixes, or deviations from the standard process.
+### Format
 
 ```
-Module: driver-reactive-streams (9 specs)
-- The test source set uses setSrcDirs() which REPLACES all dirs. Must include all 4:
-  src/test/tck, src/test/unit, src/test/functional, src/examples
-- Has JUnit 4 functional tests (@RunWith) — needs testing-junit-vintage plugin
-- Pre-existing Java test files (TestHelper.java, TestEventPublisher.java) were compiled by
-  groovyc. After switching to javac, they had:
-  - Missing import: com.mongodb.MongoClientSettings
-  - Type inference failure in Optional.flatMap() chain
-  - Reflection-based assertions picked up JaCoCo $jacocoData field
-- ClientSideEncryptionBsonSizeLimitsTest and GridFSPublisherTest used String.repeat() (Java 11+)
-  which compiled under groovyc but fails under javac with --release 8
-- 8 functional specs extend FunctionalSpecification which requires a MongoDB server — tests
-  skip gracefully when no server is available
-
-Module: driver-legacy (27 specs)
-- DBCollectionFunctionalTest.findOne() overload resolution differs between Groovy (runtime
-  dispatch to findOne(DBObject)) and Java (compile-time dispatch to findOne(Object)). Required
-  instanceof checks with explicit casts.
-- 11 functional specs require a running MongoDB; unit tests (16 specs) are self-contained
-
-Module: driver-sync (30 specs)
-- (Notes to be added during migration)
-
-Module: bson (59 specs)
-- All 59 specs are unit tests — no functional tests, no MongoDB dependency
-- Heavy use of Groovy operator overloading: ~['key': val] for BasicBSONObject construction
-- Heavy use of data tables with byte arrays: [1, 2, 3] as byte[] → new byte[]{1, 2, 3}
-- BasicBSONDecoderSpecification uses dynamic method invocation via GString
-  (callback."$method"(*_)) — migrated to output-based assertions instead
-
-Module: driver-core (202 specs)
-- Largest module. Consider batching: unit tests first (148), then functional (54)
-- Heavy use of Spock Mock/Stub with closure configuration (dominant pattern in connection
-  and operation tests)
-- 514 mock interaction verifications across the module need careful translation
-- Some specs have complex nested Stub closures with chained responses (>>>)
-- CommandBatchCursorSpecification is one of the most complex specs — uses Mock with >>
-  closures that invoke callbacks and assert counts mid-invocation
+### <module> — completed <date>
+- Specs migrated: <N>
+- Before: <test count> tests, <line%> line coverage
+- After: <test count> tests, <line%> line coverage
+- Issues: <list any non-obvious problems and fixes>
+- New patterns: <any translations not in the Pattern Reference>
+- Deviations: <anything done differently from the standard procedure>
 ```
 
-### Groovy Syntax → Java Quick Reference
+### driver-reactive-streams — completed (trial run)
 
-Reusable translation patterns encountered across modules:
+- Specs migrated: 9
+- Before: 654 tests, 72.9% line coverage
+- After: 3,428 tests, 75.6% line coverage
+- Issues:
+  - `setSrcDirs()` replaces all dirs — must list all 4: tck, unit, functional, examples
+  - Needs `testing-junit-vintage` for JUnit 4 tests (`@RunWith(Parameterized.class)`)
+  - Pre-existing Java files failed under javac:
+    - `TestHelper.java`: `Optional.flatMap()` type inference → rewrite to `isPresent()`/`get()`
+    - `TestHelper.java`: JaCoCo `$jacocoData` field → add `!field.isSynthetic()` filter
+    - `MongoClientSessionTest.java`: missing `import com.mongodb.MongoClientSettings`
+  - `ClientSideEncryptionBsonSizeLimitsTest.java`, `GridFSPublisherTest.java`: used
+    `String.repeat()` (Java 11+) → replaced with `Arrays.fill` helper
+  - `GridFSPublisherTest.java`: `fileInfo.getId().getValue()` → `fileInfo.getObjectId()`
+  - `ClientSessionBindingTest.java`: Mockito strict stubbing → `Mockito.lenient()`
+- Deviations: None
 
-```
-Groovy                              Java
-─────────────────────────────────── ──────────────────────────────────────────
-['a', 'b', 'c']                    Arrays.asList("a", "b", "c")
-['key': value]                     new BasicBSONObject("key", value)
-[1, 2, 3] as byte[]                new byte[]{1, 2, 3}
-~['a': 1]                          new BasicBSONObject("a", 1)
-"text ${var} more"                 "text " + var + " more"
-obj.property                       obj.getProperty()
-def x = expr                       var x = expr  (or explicit type)
-(Type) expr                        (Type) expr  (same)
-expr as Type                       (Type) expr
-{-> body }                         () -> body
-{ arg -> body }                    arg -> body
-{ it -> body }                     arg -> body  (name the param)
-x == y  (in then: block)           assertEquals(y, x)
-x != null                          assertNotNull(x)
-!x                                 assertFalse(x)  or  assertNull(x)
-x instanceof Type                  assertInstanceOf(Type.class, x)
-thrown(FooException)                assertThrows(FooException.class, () -> { ... })
-notThrown(FooException)            (just call the code, no assertion needed)
-[a, b, c].collect { transform }    Stream.of(a, b, c).map(x -> transform).collect(toList())
-list.size() == 3                   assertEquals(3, list.size())
-map.containsKey('k')               assertTrue(map.containsKey("k"))
-```
+### driver-legacy — completed (trial run)
 
-### Build System Gotchas
+- Specs migrated: 27
+- Before: 687 tests, 86.7% line coverage
+- After: 652 tests, 86.7% line coverage
+- Issues:
+  - `DBCollectionFunctionalTest.findOne()`: Groovy dynamically dispatches to
+    `findOne(DBObject)` but Java statically dispatches to `findOne(Object id)`.
+    Fix: `instanceof` check with explicit cast.
+- New patterns: None
+- Deviations: None
 
-- The project compiles with `options.release.set(8)` — do NOT use Java 9+ APIs in test code
-- `setSrcDirs()` replaces all source dirs; `srcDirs()` appends — check each module
-- The Spock convention compiles ALL test code (Java + Groovy) with groovyc. After switching to
-  JUnit convention, javac compiles Java tests. Pre-existing `.java` test files may fail under
-  javac for the first time.
-- `testing-junit-vintage` is needed if any `.java` test uses `@RunWith` or `org.junit.Test`
-  (JUnit 4). It is NOT needed for migrated Spock specs (those become JUnit 5).
-- JaCoCo `jacocoTestReport` is finalized by the `test` task. Run `cleanTest` before `test` to
-  ensure fresh results.
+### driver-sync — completed (trial run)
 
-### Verification Checklist (copy for each module)
+- Specs migrated: 30
+- Before: 1,763 tests, 74.7% line coverage
+- After: 3,689 tests, 73.6% line coverage
+- Issues: None beyond documented patterns
+- New patterns: None
+- Deviations: None
 
-```
-[ ] ./gradlew :<module>:compileTestJava — no compilation errors
-[ ] ./gradlew :<module>:cleanTest :<module>:test — all tests pass
-[ ] Test count delta within acceptable range (see Phase 0 baseline)
-[ ] Line coverage delta within 3% of baseline
-[ ] Every Spock Specification class has a corresponding JUnit Test class (Phase 3, Method C)
-[ ] Spock test names compared — no unaccounted-for dropped tests (Phase 3, Method A)
-[ ] No .groovy files remain in <module>/src/test/
-[ ] No Spock imports in any .java file (grep for "import spock")
-[ ] Commit with descriptive message
-```
+### bson — completed (trial run)
+
+- Specs migrated: 59
+- Before: 2,817 tests, 86.4% line coverage
+- After: 3,721 tests, 87.4% line coverage
+- Issues:
+  - Heavy `~['key': val]` operator overloading → expand to `new BasicBSONObject("key", val)`
+  - Heavy byte array data tables: `[1, 2, 3] as byte[]` → `new byte[]{1, 2, 3}`
+  - `BasicBSONDecoderSpecification`: dynamic method invocation via GString
+    (`callback."$method"(*_)`) → migrated to output-based assertions
+- New patterns: None
+- Deviations: None
+
+### driver-core — completed (trial run)
+
+- Specs migrated: 202
+- Before: 4,885 tests, 69.5% line coverage
+- After: 4,461 tests, 66.6% line coverage
+- Issues:
+  - 514 mock interaction verifications required careful translation
+  - Complex nested `Stub` closures with `>>>` chained responses
+  - `CommandBatchCursorSpecification` is the most complex spec — `Mock` with `>>` closures
+    that invoke callbacks and assert counts mid-invocation
+- New patterns: None
+- Deviations: Migrated in two batches (unit tests first, then functional)
 
 ---
 
-## Appendix: Prior Migration Results
-
-These results were obtained from a trial migration of all 327 specs in a single pass.
-They serve as a reference for expected outcomes.
-
-### Final Metrics
+## Appendix: Prior Trial Migration Results
 
 | Module | Before Tests | Before Line% | After Tests | After Line% | Delta Tests | Delta Line% |
 |---|---:|---:|---:|---:|---:|---:|
@@ -748,27 +607,7 @@ They serve as a reference for expected outcomes.
 | driver-reactive-streams | 654 | 72.9% | 3,428 | 75.6% | +2,774 | +2.7% |
 | **Total** | **10,806** | | **15,951** | | **+5,145** | |
 
-### Diff Statistics
+Net reduction: 17,372 lines (52,120 added, 69,492 removed across 676 files).
 
-| Metric | Value |
-|---|---|
-| Groovy files deleted | 329 |
-| Java test files created | 325 |
-| Java test files modified | 10 |
-| Build files changed | 10 |
-| Total lines added | 52,120 |
-| Total lines removed | 69,492 |
-| **Net reduction** | **17,372 lines** |
-
-### Test Count Notes
-
-The +5,145 increase is predominantly a reporting artifact. Spock `where:` blocks count as 1 test;
-JUnit 5 `@ParameterizedTest` reports each parameter combination individually. The migration
-produced 244 `@ParameterizedTest` methods replacing 777 `where:` blocks.
-
-### Coverage Notes
-
-Coverage remained within 3% across all modules. The `driver-core` decrease (-2.9%) is expected:
-Groovy's dynamic dispatch implicitly covered some internal code paths that Java's static dispatch
-does not reach. The `driver-reactive-streams` increase (+2.7%) resulted from properly including
-all test source directories in the source set configuration.
+Test count increases are a reporting artifact: Spock `where:` blocks count as 1 test; JUnit 5
+`@ParameterizedTest` counts each parameter combination individually. Coverage stayed within 3%.
