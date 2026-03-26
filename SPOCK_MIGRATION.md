@@ -412,7 +412,118 @@ This should return zero results.
 find . -path '*/src/test*' -name '*.groovy'
 ```
 
-### 3.4 Test count and coverage comparison
+### 3.4 Test name comparison (pre vs post migration)
+
+Verify that every Spock test has a JUnit 5 equivalent by comparing test names before and after
+migration. This catches accidentally dropped tests that wouldn't show up in aggregate counts.
+
+#### Method A: Source-level comparison (no MongoDB required)
+
+Extract test names from Spock source files (before) and JUnit 5 source files (after):
+
+```bash
+# BEFORE: Extract Spock test names from .groovy files (run on pre-migration branch)
+# Captures: def 'test name'() and def "test name"()
+find <module>/src/test -name '*.groovy' -exec \
+    sed -n "s/.*def '\([^']*\)'.*/\1/p; s/.*def \"\([^\"]*\)\".*/\1/p" {} \; \
+    | sort > /tmp/spock-test-names-<module>.txt
+
+# AFTER: Extract JUnit 5 test names from .java files (run on post-migration branch)
+# Captures @DisplayName("test name") values
+find <module>/src/test -name '*Test.java' -exec \
+    sed -n 's/.*@DisplayName("\(.*\)").*/\1/p' {} \; \
+    | sort > /tmp/junit5-test-names-<module>.txt
+
+# COMPARE: Find tests in Spock that are missing from JUnit 5
+comm -23 /tmp/spock-test-names-<module>.txt /tmp/junit5-test-names-<module>.txt \
+    > /tmp/missing-tests-<module>.txt
+```
+
+**Interpreting results**: Not every Spock name will have an exact match. Expected differences:
+
+| Difference | Reason | Action |
+|---|---|---|
+| Spock `#variable` interpolation in name | JUnit 5 uses a simplified name | OK — verify the parameterized test exists |
+| Spock test was split into multiple JUnit tests | Complex when/then blocks became separate methods | OK — verify combined coverage |
+| Spock test was merged with another | Redundant specs consolidated | OK — verify the merged test covers both |
+| Spock test has no JUnit equivalent at all | Test was accidentally dropped | **Fix** — add the missing test |
+
+#### Method B: Test result XML comparison (more accurate, requires test run)
+
+Compare test names from JUnit XML results before and after migration. This is more accurate
+because it captures the actual executed test names including parameterized variants.
+
+```bash
+# Extract test names from XML results (works for both before and after)
+python3 << 'PYEOF'
+import xml.etree.ElementTree as ET
+import os, sys
+
+module = sys.argv[1] if len(sys.argv) > 1 else "driver-legacy"
+test_dir = f"{module}/build/test-results/test/"
+names = set()
+for f in os.listdir(test_dir):
+    if f.endswith('.xml'):
+        tree = ET.parse(os.path.join(test_dir, f))
+        for tc in tree.findall('.//testcase'):
+            name = tc.get('name', '')
+            classname = tc.get('classname', '')
+            names.add(f"{classname}::{name}")
+
+for n in sorted(names):
+    print(n)
+PYEOF
+```
+
+Run this on both the pre-migration and post-migration test results, then diff:
+
+```bash
+# Collect before (on pre-migration branch/worktree, after running tests)
+python3 extract_test_names.py <module> > /tmp/before-tests-<module>.txt
+
+# Collect after (on post-migration branch, after running tests)
+python3 extract_test_names.py <module> > /tmp/after-tests-<module>.txt
+
+# Find Spock-originated tests missing from JUnit 5 results
+# Filter to only Specification classes (Spock) to avoid noise from unchanged Java tests
+grep "Specification::" /tmp/before-tests-<module>.txt \
+    | sed 's/Specification::/Test::/g' \
+    > /tmp/before-spock-<module>.txt
+
+# Compare
+diff /tmp/before-spock-<module>.txt /tmp/after-tests-<module>.txt
+```
+
+**Note**: Spock class names end in `Specification` while JUnit 5 classes end in `Test`. The
+`sed` command normalises this. Parameterized test names will differ in format — Spock names
+rows by index, JUnit 5 by `@DisplayName` or method source — so expect some noise in the diff.
+Focus on completely missing test classes, not name format differences.
+
+#### Method C: Class-level comparison (quick sanity check)
+
+As a fast sanity check, verify every Spock specification has a corresponding JUnit test class:
+
+```bash
+# List all Spock spec class names (before)
+git show <pre-migration-commit>:<module>/src/test \
+    | find-groovy-classes  # or:
+git diff --name-only --diff-filter=D <pre-migration>..<post-migration> -- '<module>/*.groovy' \
+    | xargs -I{} basename {} .groovy | sort > /tmp/spock-classes.txt
+
+# List all new JUnit test class names (after)
+git diff --name-only --diff-filter=A <pre-migration>..<post-migration> -- '<module>/*.java' \
+    | xargs -I{} basename {} .java | sort > /tmp/junit-classes.txt
+
+# Normalise naming: FooSpecification -> FooTest
+sed 's/Specification$/Test/' /tmp/spock-classes.txt > /tmp/spock-normalised.txt
+
+# Find missing
+comm -23 /tmp/spock-normalised.txt /tmp/junit-classes.txt
+```
+
+If any class appears in the output, a Spock spec was deleted without a JUnit replacement.
+
+### 3.5 Test count and coverage comparison
 
 Collect post-migration metrics using the same method as Phase 0. Compare against baseline:
 
@@ -429,8 +540,10 @@ Collect post-migration metrics using the same method as Phase 0. Compare against
 - No module's line coverage drops by more than 3%
 - No `.groovy` files remain in any test directory
 - No Spock/Groovy/CodeNarc references in build files
+- All Spock spec classes have a corresponding JUnit test class (Method C above)
+- No Spock test names are unaccounted for (Method A or B above)
 
-### 3.5 Full test suite (if MongoDB available)
+### 3.6 Full test suite (if MongoDB available)
 
 If a MongoDB instance is available:
 ```bash
@@ -570,7 +683,7 @@ Groovy                              Java
 ─────────────────────────────────── ──────────────────────────────────────────
 ['a', 'b', 'c']                    Arrays.asList("a", "b", "c")
 ['key': value]                     new BasicBSONObject("key", value)
-[1, 2, 3] as byte[]               new byte[]{1, 2, 3}
+[1, 2, 3] as byte[]                new byte[]{1, 2, 3}
 ~['a': 1]                          new BasicBSONObject("a", 1)
 "text ${var} more"                 "text " + var + " more"
 obj.property                       obj.getProperty()
@@ -610,6 +723,8 @@ map.containsKey('k')               assertTrue(map.containsKey("k"))
 [ ] ./gradlew :<module>:cleanTest :<module>:test — all tests pass
 [ ] Test count delta within acceptable range (see Phase 0 baseline)
 [ ] Line coverage delta within 3% of baseline
+[ ] Every Spock Specification class has a corresponding JUnit Test class (Phase 3, Method C)
+[ ] Spock test names compared — no unaccounted-for dropped tests (Phase 3, Method A)
 [ ] No .groovy files remain in <module>/src/test/
 [ ] No Spock imports in any .java file (grep for "import spock")
 [ ] Commit with descriptive message
