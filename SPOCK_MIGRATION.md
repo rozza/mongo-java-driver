@@ -165,10 +165,15 @@ sourceSets {
 For each Spock `.groovy` file in the module:
 
 1. Read the Spock spec.
-2. Create a new `.java` file in the **same source set** (`src/test/unit` or `src/test/functional`).
-3. Apply the translations from the **Pattern Reference** section below.
-4. Preserve every test — use `@DisplayName` with the exact Spock test name string.
-5. Delete the `.groovy` file.
+2. **Save a copy** for later logic-equivalence review:
+   ```bash
+   mkdir -p /tmp/spock-originals-<module>
+   cp <path/to/Spec.groovy> /tmp/spock-originals-<module>/
+   ```
+3. Create a new `.java` file in the **same source set** (`src/test/unit` or `src/test/functional`).
+4. Apply the translations from the **Pattern Reference** section below.
+5. Preserve every test — use `@DisplayName` with the exact Spock test name string.
+6. Delete the `.groovy` file.
 
 Migrate unit tests before functional tests within each module.
 
@@ -239,7 +244,57 @@ grep -r "import spock" <module>/src/test --include="*.java"
 ```
 **FAIL condition**: Any output.
 
-**Check 5 — Test count:**
+**Check 5 — Logic equivalence (sub-agent review):**
+
+For each migrated Spock spec, spawn a sub-agent (using the `Agent` tool with `subagent_type=Review`)
+to verify that the JUnit replacement preserves the original test logic. The sub-agent receives the
+original `.groovy` source and the new `.java` source as context.
+
+To avoid losing the original Spock source after deletion, **before deleting each `.groovy` file in
+Step 2**, save a copy to `/tmp/spock-originals-<module>/`. Then use these copies during this check.
+
+Procedure — run this for every migrated spec pair:
+
+1. Use the `Agent` tool to spawn a review sub-agent with this prompt:
+
+   ```
+   You are reviewing a Spock-to-JUnit 5 test migration for logic equivalence.
+
+   ## Original Spock spec
+   <contents of /tmp/spock-originals-<module>/<SpecName>.groovy>
+
+   ## Migrated JUnit 5 test
+   <contents of <module>/src/test/.../<TestName>.java>
+
+   Compare the two files and answer:
+   1. Does every Spock test method (`def "..."`) have a corresponding JUnit test method?
+      List each Spock test name and its JUnit counterpart.
+   2. Is the assertion logic equivalent? Flag any test where:
+      - An assertion was dropped or weakened.
+      - A mock interaction verification (e.g., `1 * mock.method()`) was not translated to
+        a Mockito `verify()` call.
+      - A `where:` data table has fewer parameter combinations in the JUnit `@MethodSource`.
+      - Exception testing (`thrown()`) was changed or removed.
+      - Setup/teardown logic (`setup()`/`cleanup()`) was lost.
+   3. Are there any behavioural differences introduced by the migration?
+      (e.g., strict vs lenient mocking, execution order changes, missing cleanup)
+
+   Output format:
+   - PASS: All test logic is equivalent.
+   - FAIL: <list each discrepancy with the Spock test name and description of what differs>
+   ```
+
+2. If any sub-agent returns **FAIL**, fix the discrepancies before proceeding.
+3. Collect all sub-agent results. Report a summary to the user in the acceptance gate:
+   ```
+   Logic equivalence: <N>/<total> specs passed review
+   Failures: <list any that failed and how they were fixed>
+   ```
+
+**FAIL condition**: Any spec pair where a sub-agent reports FAIL and the discrepancy has not been
+resolved.
+
+**Check 6 — Test count:**
 
 Collect post-migration metrics using the same Python script from the baseline step.
 
@@ -249,7 +304,7 @@ Collect post-migration metrics using the same Python script from the baseline st
 
 **FAIL condition**: Post-migration test count < baseline test count.
 
-**Check 6 — Test coverage:**
+**Check 7 — Test coverage:**
 
 | Metric | Acceptance Criterion |
 |---|---|
@@ -282,6 +337,7 @@ Groovy files remaining: 0
 Test count: <before> → <after> (delta: <+/-N>)
 Line coverage: <before>% → <after>% (delta: <+/-N>%)
 Missing test names: <count, with explanation if any>
+Logic equivalence: <N>/<total> specs passed sub-agent review
 
 All acceptance checks passed. Proceed to commit? (Y/N)
 ```
