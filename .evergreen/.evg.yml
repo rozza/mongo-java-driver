@@ -231,7 +231,7 @@ functions:
         script: |
           ${PREPARE_SHELL}
           cd $DRIVERS_TOOLS/.evergreen/auth_aws
-          ./setup_secrets.sh drivers/aws_auth
+          ./setup-secrets.sh drivers/aws_auth
 
   "add-atlas-connect-variables-to-file":
     - command: shell.exec
@@ -634,23 +634,15 @@ functions:
           ${PREPARE_SHELL}
           JAVA_VERSION=${JAVA_VERSION} AWS_CREDENTIAL_PROVIDER=${AWS_CREDENTIAL_PROVIDER} .evergreen/run-mongodb-aws-test.sh session-creds
 
-  "run-aws-ECS-auth-test":
+  "run-aws-ecs-auth-test":
     - command: shell.exec
       type: "test"
       params:
-        working_dir: "src"
         shell: "bash"
+        working_dir: "src"
         script: |
           ${PREPARE_SHELL}
-          cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
-          . ./activate-authawsvenv.sh
-          cat <<EOF > setup.js
-          const mongo_binaries = "$MONGODB_BINARIES";
-          const project_dir = "$PROJECT_DIRECTORY";
-          EOF
-
-          mongo --nodb setup.js aws_e2e_ecs.js
-          cd -
+          JAVA_VERSION=${JAVA_VERSION} AWS_CREDENTIAL_PROVIDER=${AWS_CREDENTIAL_PROVIDER} .evergreen/prepare-mongodb-aws-ecs-test.sh
 
   "run-ocsp-test":
     - command: shell.exec
@@ -948,7 +940,6 @@ tasks:
             ${PREPARE_SHELL}
             export AZUREOIDC_DRIVERS_TAR_FILE=$ARCHIVE_FILE_PATH
             export AZUREOIDC_TEST_CMD="GRADLE_RO_DEP_CACHE='/home/azureuser/build/gradle-cache' OIDC_ENV=azure ./.evergreen/run-mongodb-oidc-test.sh"
-            tar --exclude-vcs -czf $AZUREOIDC_DRIVERS_TAR_FILE .
             bash $DRIVERS_TOOLS/.evergreen/auth_oidc/azure/run-driver-test.sh
 
   - name: "oidc-auth-test-gcp-task"
@@ -968,7 +959,6 @@ tasks:
             # Ensure that we source the environment file created for us, set up any other variables we need,
             # and then run our test suite on the vm.
             export GCPOIDC_TEST_CMD="GRADLE_RO_DEP_CACHE='./build/gradle-cache' OIDC_ENV=gcp ./.evergreen/run-mongodb-oidc-test.sh"
-            tar --exclude-vcs -czf $GCPOIDC_DRIVERS_TAR_FILE .
             bash $DRIVERS_TOOLS/.evergreen/auth_oidc/gcp/run-driver-test.sh
 
   - name: "oidc-auth-test-k8s-eks-task"
@@ -1083,6 +1073,28 @@ tasks:
       - func: "assume-aws-test-secrets-role"
       - func: "add-aws-auth-variables-to-file"
       - func: "run-aws-auth-test-with-web-identity-credentials"
+
+  - name: "run-aws-ecs-auth-awsSdk2-task"
+    exec_timeout_secs: 1800
+    tags: [ "aws-ecs-auth-tag" ]
+    commands:
+      - func: "run-aws-ecs-auth-test"
+        vars:
+          AWS_CREDENTIAL_PROVIDER: "awsSdkV2"
+
+  - name: "run-aws-ecs-auth-awsSdk1-task"
+    tags: [ "aws-ecs-auth-tag" ]
+    commands:
+      - func: "run-aws-ecs-auth-test"
+        vars:
+          AWS_CREDENTIAL_PROVIDER: "awsSdkV1"
+
+  - name: "run-aws-ecs-auth-builtIn-task"
+    tags: [ "aws-ecs-auth-tag" ]
+    commands:
+      - func: "run-aws-ecs-auth-test"
+        vars:
+          AWS_CREDENTIAL_PROVIDER: "builtIn"
 
   - name: "test-ocsp-rsa-valid-cert-server-staples-task"
     tags: [ "ocsp" ]
@@ -1696,11 +1708,10 @@ tasks:
             export AZUREKMS_RESOURCEGROUP=${testazurekms_resourcegroup}
             export AZUREKMS_VMNAME=${AZUREKMS_VMNAME}
             export AZUREKMS_PRIVATEKEYPATH=/tmp/testazurekms_privatekey
-            tar --exclude-vcs -czf $ARCHIVE_FILE_PATH .
             AZUREKMS_SRC=$ARCHIVE_FILE_PATH AZUREKMS_DST="~/" $DRIVERS_TOOLS/.evergreen/csfle/azurekms/copy-file.sh
             echo "Copying files ... end"
             echo "Untarring file ... begin"
-            AZUREKMS_CMD="tar xf $ARCHIVE_FILE_NAME" $DRIVERS_TOOLS/.evergreen/csfle/azurekms/run-command.sh
+            AZUREKMS_CMD="tar -xf $ARCHIVE_FILE_NAME" $DRIVERS_TOOLS/.evergreen/csfle/azurekms/run-command.sh
             echo "Untarring file ... end"
       - command: shell.exec
         type: "test"
@@ -2225,6 +2236,24 @@ task_groups:
     tasks:
       - "oidc-auth-test-k8s-gke-task"
 
+  - name: "test-aws-ecs-auth-task-group"
+    setup_group_can_fail_task: true
+    setup_group:
+      - func: "fetch-source"
+      - func: "prepare-resources"
+      - func: "fix-absolute-paths"
+      - func: "assume-aws-test-secrets-role"
+      - func: "add-aws-auth-variables-to-file"
+      - func: "gradle-cache"
+      - func: "create-archive-tar-file"
+      - func: "start-mongo-orchestration"
+        vars:
+          AUTH: "auth"
+          ORCHESTRATION_FILE: "auth-aws.json"
+          TOPOLOGY: "server"
+    tasks:
+      - ".aws-ecs-auth-tag"
+
 buildvariants:
 
   #
@@ -2326,6 +2355,13 @@ buildvariants:
     tasks:
       - name: "test-azure-kms-task-group"
         batchtime: 20160 # Use a batchtime of 14 days as suggested by the CSFLE test README
+
+  - name: "test-aws-ecs-auth-variant"
+    display_name: "MONGODB-AWS ECS Auth test"
+    run_on:
+      - ubuntu2004-test
+    tasks:
+      - name: "test-aws-ecs-auth-task-group"
 
     #
     # Matrix based variants

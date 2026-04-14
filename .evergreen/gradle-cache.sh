@@ -12,6 +12,8 @@ RELATIVE_DIR_PATH="$(dirname "${BASH_SOURCE[0]:-$0}")"
 echo "Enable caching"
 echo "org.gradle.caching=true" >> gradle.properties
 echo "kotlin.caching.enabled=true" >> gradle.properties
+echo "org.gradle.jvmargs=-Xmx1g -XX:MaxMetaspaceSize=1g -XX:+HeapDumpOnOutOfMemoryError -XX:+PrintGCDetails" >> gradle.properties
+echo "kotlin.daemon.jvmargs=-Xmx1g -XX:MaxMetaspaceSize=1g -XX:+HeapDumpOnOutOfMemoryError -XX:+PrintGCDetails" >> gradle.properties
 
 echo "Compiling JVM drivers"
 ./gradlew -version
