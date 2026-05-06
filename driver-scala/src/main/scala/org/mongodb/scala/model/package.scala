@@ -987,6 +987,8 @@ package object model {
 
   type GeoNearOptions = com.mongodb.client.model.GeoNearOptions
 
+  type RerankQuery = com.mongodb.client.model.RerankQuery
+
   /**
    * @see `QuantileMethod.approximate()`
    */
