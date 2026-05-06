@@ -25,6 +25,7 @@ import org.junit.jupiter.api.Test;
 import static com.mongodb.client.model.VectorSearchIndexFields.filterField;
 import static com.mongodb.client.model.VectorSearchIndexFields.vectorField;
 import static java.util.Arrays.asList;
+import static java.util.Collections.emptyList;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -129,5 +130,15 @@ final class SearchIndexDefinitionTest {
     void vectorSearchRejectsNullElement() {
         assertThrows(IllegalArgumentException.class, () -> SearchIndexDefinition.vectorSearch(
                 vectorField("embedding"), null));
+    }
+
+    @Test
+    void vectorSearchRejectsEmptyVarargs() {
+        assertThrows(IllegalArgumentException.class, SearchIndexDefinition::vectorSearch);
+    }
+
+    @Test
+    void vectorSearchRejectsEmptyList() {
+        assertThrows(IllegalArgumentException.class, () -> SearchIndexDefinition.vectorSearch(emptyList()));
     }
 }

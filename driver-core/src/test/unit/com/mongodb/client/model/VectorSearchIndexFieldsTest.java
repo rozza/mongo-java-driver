@@ -118,9 +118,21 @@ final class VectorSearchIndexFieldsTest {
     void autoEmbedFieldMinimal() {
         assertEquals(
                 new BsonDocument("type", new BsonString("autoEmbed"))
-                        .append("path", new BsonString("content")),
-                autoEmbedField("content").toBsonDocument()
+                        .append("path", new BsonString("content"))
+                        .append("modality", new BsonString("text"))
+                        .append("model", new BsonString("voyage-4")),
+                autoEmbedField("content").modality("text").model("voyage-4").toBsonDocument()
         );
+    }
+
+    @Test
+    void autoEmbedFieldRejectsMissingModality() {
+        assertThrows(IllegalArgumentException.class, () -> autoEmbedField("content").model("voyage-4").toBsonDocument());
+    }
+
+    @Test
+    void autoEmbedFieldRejectsMissingModel() {
+        assertThrows(IllegalArgumentException.class, () -> autoEmbedField("content").modality("text").toBsonDocument());
     }
 
     @Test

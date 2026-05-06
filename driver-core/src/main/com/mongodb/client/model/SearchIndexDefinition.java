@@ -21,6 +21,7 @@ import org.bson.conversions.Bson;
 
 import java.util.List;
 
+import static com.mongodb.assertions.Assertions.isTrueArgument;
 import static com.mongodb.assertions.Assertions.notNull;
 import static com.mongodb.assertions.Assertions.notNullElements;
 import static java.util.Arrays.asList;
@@ -54,6 +55,7 @@ public interface SearchIndexDefinition extends Bson {
      */
     static VectorSearchIndexDefinition vectorSearch(final Bson... fields) {
         List<Bson> fieldList = asList(notNull("fields", fields));
+        isTrueArgument("fields must not be empty", !fieldList.isEmpty());
         notNullElements("fields", fieldList);
         return new VectorSearchIndexDefinition(fieldList);
     }
@@ -74,6 +76,7 @@ public interface SearchIndexDefinition extends Bson {
      */
     static VectorSearchIndexDefinition vectorSearch(final List<? extends Bson> fields) {
         notNullElements("fields", fields);
+        isTrueArgument("fields must not be empty", !fields.isEmpty());
         return new VectorSearchIndexDefinition(fields);
     }
 }

@@ -382,15 +382,13 @@ public final class VectorSearchIndexFields {
 
         @Override
         public <TDocument> BsonDocument toBsonDocument(final Class<TDocument> documentClass, final CodecRegistry codecRegistry) {
+            isTrueArgument("modality is required for autoEmbed fields", modality != null);
+            isTrueArgument("model is required for autoEmbed fields", model != null);
             BsonDocument doc = new BsonDocument();
             doc.append("type", new BsonString("autoEmbed"));
             doc.append("path", new BsonString(path));
-            if (modality != null) {
-                doc.append("modality", new BsonString(modality));
-            }
-            if (model != null) {
-                doc.append("model", new BsonString(model));
-            }
+            doc.append("modality", new BsonString(modality));
+            doc.append("model", new BsonString(model));
             if (numDimensions != null) {
                 doc.append("numDimensions", new BsonInt32(numDimensions));
             }

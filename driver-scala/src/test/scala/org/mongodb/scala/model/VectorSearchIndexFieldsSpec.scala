@@ -67,7 +67,21 @@ class VectorSearchIndexFieldsSpec extends BaseSpec {
   }
 
   it should "create an autoEmbedField with minimal options" in {
-    toBson(autoEmbedField("content")) should equal(Document("""{"type": "autoEmbed", "path": "content"}"""))
+    toBson(autoEmbedField("content").modality("text").model("voyage-4")) should equal(
+      Document("""{"type": "autoEmbed", "path": "content", "modality": "text", "model": "voyage-4"}""")
+    )
+  }
+
+  it should "reject an autoEmbedField missing modality" in {
+    an[IllegalArgumentException] should be thrownBy {
+      toBson(autoEmbedField("content").model("voyage-4"))
+    }
+  }
+
+  it should "reject an autoEmbedField missing model" in {
+    an[IllegalArgumentException] should be thrownBy {
+      toBson(autoEmbedField("content").modality("text"))
+    }
   }
 
   it should "create an autoEmbedField with all options" in {
