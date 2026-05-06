@@ -104,7 +104,9 @@ class SearchOperatorSpec extends BaseSpec {
     toDocument(
       vectorSearch(fieldPath("embedding"), Seq(1.0, 2.0, 3.0), 10, 100)
     ) should equal(
-      Document("""{ "vectorSearch": { "path": "embedding", "queryVector": [1.0, 2.0, 3.0], "limit": 10, "numCandidates": 100 } }""")
+      Document(
+        """{ "vectorSearch": { "path": "embedding", "queryVector": [1.0, 2.0, 3.0], "limit": 10, "numCandidates": 100 } }"""
+      )
     )
   }
 
@@ -112,7 +114,9 @@ class SearchOperatorSpec extends BaseSpec {
     toDocument(
       vectorSearchExact(fieldPath("embedding"), Seq(1.0, 2.0, 3.0), 5)
     ) should equal(
-      Document("""{ "vectorSearch": { "path": "embedding", "queryVector": [1.0, 2.0, 3.0], "limit": 5, "exact": true } }""")
+      Document(
+        """{ "vectorSearch": { "path": "embedding", "queryVector": [1.0, 2.0, 3.0], "limit": 5, "exact": true } }"""
+      )
     )
   }
 
@@ -122,7 +126,9 @@ class SearchOperatorSpec extends BaseSpec {
         .filter(text(fieldPath("title"), "hello"))
         .score(SearchScore.boost(2f))
     ) should equal(
-      Document("""{ "vectorSearch": { "path": "embedding", "queryVector": [1.0, 2.0], "limit": 10, "numCandidates": 50, "filter": { "text": { "query": "hello", "path": "title" } }, "score": { "boost": { "value": 2.0 } } } }""")
+      Document(
+        """{ "vectorSearch": { "path": "embedding", "queryVector": [1.0, 2.0], "limit": 10, "numCandidates": 50, "filter": { "text": { "query": "hello", "path": "title" } }, "score": { "boost": { "value": 2.0 } } } }"""
+      )
     )
   }
 

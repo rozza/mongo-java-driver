@@ -512,7 +512,8 @@ object SearchOperator {
       path: FieldSearchPath,
       queryVector: Iterable[Double],
       limit: Int,
-      numCandidates: Int): VectorSearchOperator =
+      numCandidates: Int
+  ): VectorSearchOperator =
     JSearchOperator.vectorSearch(path, queryVector.map(Double.box).asJava, limit, numCandidates)
 
   /**
@@ -528,7 +529,8 @@ object SearchOperator {
   def vectorSearchExact(
       path: FieldSearchPath,
       queryVector: Iterable[Double],
-      limit: Int): VectorSearchOperator =
+      limit: Int
+  ): VectorSearchOperator =
     JSearchOperator.vectorSearchExact(path, queryVector.map(Double.box).asJava, limit)
 
   /**

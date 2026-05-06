@@ -241,7 +241,7 @@ package object search {
    * @since 5.8
    */
   @Sealed
-  @Beta(Array(Reason.CLIENT, Reason.SERVER))
+  @Beta(Array(Reason.CLIENT))
   type VectorSearchOperator = com.mongodb.client.model.search.VectorSearchOperator
 
   /**
