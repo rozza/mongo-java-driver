@@ -762,7 +762,15 @@ public class InternalStreamConnection implements InternalConnection {
                                    final ResponseBuffers responseBuffers,
                                    final int messageId,
                                    final TimeoutContext timeoutContext) {
-        T result = new ReplyMessage<>(responseBuffers, decoder, messageId).getDocument();
+        T result;
+        try {
+            result = new ReplyMessage<>(responseBuffers, decoder, messageId).getDocument();
+        } catch (MongoInternalException e) {
+            LOGGER.warn("Closing connection " + getId() + " to " + getServerAddress()
+                    + " due to stream desynchronization: " + e.getMessage());
+            close();
+            throw e;
+        }
         MongoException writeConcernBasedError = createSpecialWriteConcernException(responseBuffers,
                 description.getServerAddress(),
                 timeoutContext);
