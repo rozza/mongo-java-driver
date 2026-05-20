@@ -124,7 +124,7 @@ public abstract class AbstractClientEncryptionTextExplicitEncryptionTest {
 
         encryptedDatabase = encryptedClient.getDatabase(getDefaultDatabaseName()).withWriteConcern(WriteConcern.MAJORITY);
 
-        EncryptOptions prefixSuffixEncryptOptions = new EncryptOptions("TextPreview")
+        EncryptOptions prefixSuffixEncryptOptions = new EncryptOptions("Text")
                 .keyId(key1Id)
                 .contentionFactor(0L)
                 .textOptions(new TextOptions()
@@ -140,7 +140,7 @@ public abstract class AbstractClientEncryptionTextExplicitEncryptionTest {
                 .getCollection("prefix-suffix")
                 .insertOne(new Document("_id", 0).append("encryptedText", foobarbaz));
 
-        EncryptOptions substringEncryptOptions = new EncryptOptions("TextPreview")
+        EncryptOptions substringEncryptOptions = new EncryptOptions("Text")
                 .keyId(key1Id)
                 .contentionFactor(0L)
                 .textOptions(new TextOptions()
@@ -158,10 +158,10 @@ public abstract class AbstractClientEncryptionTextExplicitEncryptionTest {
     @Test
     @DisplayName("Case 1: can find a document by prefix")
     public void test1CanFindADocumentByPrefix() {
-        EncryptOptions encryptOptions = new EncryptOptions("TextPreview")
+        EncryptOptions encryptOptions = new EncryptOptions("Text")
             .keyId(key1Id)
             .contentionFactor(0L)
-            .queryType("prefixPreview")
+            .queryType("prefix")
             .textOptions(new TextOptions()
                     .caseSensitive(true)
                     .diacriticSensitive(true)
@@ -180,10 +180,10 @@ public abstract class AbstractClientEncryptionTextExplicitEncryptionTest {
     @Test
     @DisplayName("Case 2: can find a document by suffix")
     public void test2CanFindADocumentBySuffix() {
-        EncryptOptions encryptOptions = new EncryptOptions("TextPreview")
+        EncryptOptions encryptOptions = new EncryptOptions("Text")
                 .keyId(key1Id)
                 .contentionFactor(0L)
-                .queryType("suffixPreview")
+                .queryType("suffix")
                 .textOptions(new TextOptions()
                         .caseSensitive(true)
                         .diacriticSensitive(true)
@@ -202,10 +202,10 @@ public abstract class AbstractClientEncryptionTextExplicitEncryptionTest {
     @Test
     @DisplayName("Case 3: assert no document found by prefix")
     public void test3AssertNoDocumentFoundByPrefix() {
-        EncryptOptions encryptOptions = new EncryptOptions("TextPreview")
+        EncryptOptions encryptOptions = new EncryptOptions("Text")
                 .keyId(key1Id)
                 .contentionFactor(0L)
-                .queryType("prefixPreview")
+                .queryType("prefix")
                 .textOptions(new TextOptions()
                         .caseSensitive(true)
                         .diacriticSensitive(true)
@@ -224,10 +224,10 @@ public abstract class AbstractClientEncryptionTextExplicitEncryptionTest {
     @Test
     @DisplayName("Case 4: assert no document found by suffix")
     public void test4AssertNoDocumentFoundByPrefix() {
-        EncryptOptions encryptOptions = new EncryptOptions("TextPreview")
+        EncryptOptions encryptOptions = new EncryptOptions("Text")
                 .keyId(key1Id)
                 .contentionFactor(0L)
-                .queryType("suffixPreview")
+                .queryType("suffix")
                 .textOptions(new TextOptions()
                         .caseSensitive(true)
                         .diacriticSensitive(true)
@@ -246,10 +246,10 @@ public abstract class AbstractClientEncryptionTextExplicitEncryptionTest {
     @Test
     @DisplayName("Case 5: can find a document by substring")
     public void test5CanFindADocumentBySubstring() {
-        EncryptOptions encryptOptions = new EncryptOptions("TextPreview")
+        EncryptOptions encryptOptions = new EncryptOptions("Text")
                 .keyId(key1Id)
                 .contentionFactor(0L)
-                .queryType("substringPreview")
+                .queryType("substring")
                 .textOptions(new TextOptions()
                         .caseSensitive(true)
                         .diacriticSensitive(true)
@@ -268,10 +268,10 @@ public abstract class AbstractClientEncryptionTextExplicitEncryptionTest {
     @Test
     @DisplayName("Case 6: assert no document found by substring")
     public void test6AssertNoDocumentFoundBySubstring() {
-        EncryptOptions encryptOptions = new EncryptOptions("TextPreview")
+        EncryptOptions encryptOptions = new EncryptOptions("Text")
                 .keyId(key1Id)
                 .contentionFactor(0L)
-                .queryType("substringPreview")
+                .queryType("substring")
                 .textOptions(new TextOptions()
                         .caseSensitive(true)
                         .diacriticSensitive(true)
@@ -290,16 +290,16 @@ public abstract class AbstractClientEncryptionTextExplicitEncryptionTest {
     @Test
     @DisplayName("Case 7: assert `contentionFactor` is required")
     public void test7AssertContentionFactorIsRequired() {
-        EncryptOptions encryptOptions = new EncryptOptions("TextPreview")
+        EncryptOptions encryptOptions = new EncryptOptions("Text")
                 .keyId(key1Id)
-                .queryType("prefixPreview")
+                .queryType("prefix")
                 .textOptions(new TextOptions()
                         .caseSensitive(true)
                         .diacriticSensitive(true)
                         .prefixOptions(BsonDocument.parse("{strMaxQueryLength: 10, strMinQueryLength: 2}"))
                 );
         MongoException exception = assertThrows(MongoException.class, () -> clientEncryption.encrypt(new BsonString("foo"), encryptOptions));
-        assertTrue(exception.getMessage().contains("contention factor is required for textPreview algorithm"));
+        assertTrue(exception.getMessage().contains("contention factor is required for text algorithm"));
     }
 
 

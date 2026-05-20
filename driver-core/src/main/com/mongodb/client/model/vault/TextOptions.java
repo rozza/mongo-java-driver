@@ -16,21 +16,16 @@
 
 package com.mongodb.client.model.vault;
 
-import com.mongodb.annotations.Alpha;
-import com.mongodb.annotations.Reason;
 import com.mongodb.lang.Nullable;
 import org.bson.BsonDocument;
 
 /**
  * Text options for a Queryable Encryption field that supports text queries.
  *
- * <p>Note: TextOptions is in Alpha and subject to backwards breaking changes.
- *
  * @since 5.6
  * @mongodb.server.release 8.2
  * @mongodb.driver.manual /core/queryable-encryption/ queryable encryption
  */
-@Alpha(Reason.SERVER)
 public class TextOptions {
     private Boolean caseSensitive;
     private Boolean diacriticSensitive;

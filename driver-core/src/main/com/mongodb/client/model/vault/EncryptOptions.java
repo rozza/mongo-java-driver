@@ -16,8 +16,6 @@
 
 package com.mongodb.client.model.vault;
 
-import com.mongodb.annotations.Alpha;
-import com.mongodb.annotations.Reason;
 import com.mongodb.lang.Nullable;
 import org.bson.BsonBinary;
 
@@ -54,12 +52,8 @@ public class EncryptOptions {
      *     <li>Indexed</li>
      *     <li>Unindexed</li>
      *     <li>Range</li>
-     *     <li>TextPreview</li>
+     *     <li>Text</li>
      * </ul>
-     *
-     * <p>The "TextPreview" algorithm is in preview and should be used for experimental workloads only.
-     *   These features are unstable and their security is not guaranteed until released as Generally Available (GA).
-     *   The GA version of these features may not be backwards compatible with the preview version.</p>
      *
      * @return the encryption algorithm
      */
@@ -149,8 +143,8 @@ public class EncryptOptions {
     /**
      * The QueryType.
      *
-     * <p>Currently, we support only "equality", "range", "prefixPreview", "suffixPreview" or "substringPreview" queryType.</p>
-     * <p>It is an error to set queryType when the algorithm is not "Indexed", "Range" or "TextPreview".</p>
+     * <p>Currently, we support only "equality", "range", "prefix", "suffix" or "substring" queryType.</p>
+     * <p>It is an error to set queryType when the algorithm is not "Indexed", "Range" or "Text".</p>
      * @param queryType the query type
      * @return this
      * @since 4.7
@@ -164,7 +158,7 @@ public class EncryptOptions {
     /**
      * Gets the QueryType.
      *
-     * <p>Currently, we support only "equality" or "range" queryType.</p>
+     * <p>Currently, we support only "equality", "range", "prefix", "suffix" or "substring" queryType.</p>
      * @see #queryType(String)
      * @return the queryType or null
      * @since 4.7
@@ -205,14 +199,13 @@ public class EncryptOptions {
     /**
      * The TextOptions
      *
-     * <p>It is an error to set TextOptions when the algorithm is not "TextPreview".
+     * <p>It is an error to set TextOptions when the algorithm is not "Text".
      * @param textOptions the text options
      * @return this
      * @since 5.6
      * @mongodb.server.release 8.2
      * @mongodb.driver.manual /core/queryable-encryption/ queryable encryption
      */
-    @Alpha(Reason.SERVER)
     public EncryptOptions textOptions(@Nullable final TextOptions textOptions) {
         this.textOptions = textOptions;
         return this;
@@ -226,7 +219,6 @@ public class EncryptOptions {
      * @mongodb.server.release 8.2
      * @mongodb.driver.manual /core/queryable-encryption/ queryable encryption
      */
-    @Alpha(Reason.SERVER)
     @Nullable
     public TextOptions getTextOptions() {
         return textOptions;
