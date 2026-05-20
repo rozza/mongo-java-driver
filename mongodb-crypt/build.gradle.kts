@@ -44,7 +44,15 @@ configureJarManifest {
 }
 
 /*
- * Jna copy or download resources
+ * Download and verify libmongocrypt native libraries from GitHub releases.
+ *
+ * To update the version: change `downloadRevision` below. Tarball names and structure
+ * are documented at https://github.com/mongodb/libmongocrypt/releases
+ *
+ * To use local libraries instead of downloading: pass -DjnaLibsPath=/path/to/libs
+ *
+ * Downloads are cached in build/jnaLibs/downloads/ and skipped if already present.
+ * GPG signatures are verified against https://pgp.mongodb.com/libmongocrypt.pub
  */
 val jnaDownloadsDir = rootProject.file("build/jnaLibs/downloads/").path
 val jnaResourcesDir = rootProject.file("build/jnaLibs/resources/").path
@@ -53,67 +61,135 @@ val jnaLibPlatform: String =
 val jnaLibsPath: String = System.getProperty("jnaLibsPath", "${jnaResourcesDir}${jnaLibPlatform}")
 val jnaResources: String = System.getProperty("jna.library.path", jnaLibsPath)
 
-// Download jnaLibs that match the git tag or revision to jnaResourcesBuildDir
-val downloadRevision = "1.17.3"
-val binariesArchiveName = "libmongocrypt-java.tar.gz"
+val downloadRevision = "1.18.1"
+val githubBaseUrl = "https://github.com/mongodb/libmongocrypt/releases/download/$downloadRevision"
+val gpgPublicKeyUrl = "https://pgp.mongodb.com/libmongocrypt.pub"
 
-/**
- * The name of the archive includes downloadRevision to ensure that:
- * - the archive is downloaded if the revision changes.
- * - the archive is not downloaded if the revision is the same and archive had already been saved in build output.
- */
-val localBinariesArchiveName = "libmongocrypt-java-$downloadRevision.tar.gz"
+data class PlatformDownload(val tarballName: String, val jnaDir: String, val libPath: String)
 
-val downloadUrl: String =
-    "https://mciuploads.s3.amazonaws.com/libmongocrypt/java/$downloadRevision/$binariesArchiveName"
-
-val jnaMapping: Map<String, String> =
-    mapOf(
-        "rhel-62-64-bit" to "linux-x86-64",
-        "rhel72-zseries-test" to "linux-s390x",
-        "rhel-71-ppc64el" to "linux-ppc64le",
-        "ubuntu1604-arm64" to "linux-aarch64",
-        "windows-test" to "win32-x86-64",
-        "macos" to "darwin")
+val platforms: List<PlatformDownload> =
+    listOf(
+        PlatformDownload(
+            "libmongocrypt-linux-x86_64-glibc_2_7-nocrypto-$downloadRevision",
+            "linux-x86-64",
+            "lib64/libmongocrypt.so"),
+        PlatformDownload(
+            "libmongocrypt-linux-s390x-glibc_2_7-nocrypto-$downloadRevision", "linux-s390x", "lib64/libmongocrypt.so"),
+        PlatformDownload(
+            "libmongocrypt-linux-ppc64le-glibc_2_17-nocrypto-$downloadRevision",
+            "linux-ppc64le",
+            "lib64/libmongocrypt.so"),
+        PlatformDownload(
+            "libmongocrypt-linux-arm64-glibc_2_17-nocrypto-$downloadRevision",
+            "linux-aarch64",
+            "lib64/libmongocrypt.so"),
+        PlatformDownload("libmongocrypt-windows-x86_64-$downloadRevision", "win32-x86-64", "bin/mongocrypt.dll"),
+        PlatformDownload("libmongocrypt-macos-universal-$downloadRevision", "darwin", "lib/libmongocrypt.dylib"))
 
 sourceSets { main { java { resources { srcDirs(jnaResourcesDir) } } } }
 
-tasks.register<Download>("downloadJava") {
-    src(downloadUrl)
-    dest("${jnaDownloadsDir}/$localBinariesArchiveName")
-    overwrite(true)
-    /* To make sure we don't download archive with binaries if it hasn't been changed in S3 bucket since last download.*/
+val downloadTasks =
+    platforms.map { platform ->
+        tasks.register<Download>("download_${platform.jnaDir.replace("-", "_")}") {
+            src(listOf("$githubBaseUrl/${platform.tarballName}.tar.gz", "$githubBaseUrl/${platform.tarballName}.asc"))
+            dest(jnaDownloadsDir)
+            overwrite(false)
+            onlyIfModified(true)
+            onlyIf {
+                !file("$jnaDownloadsDir/${platform.tarballName}.tar.gz").exists() ||
+                    !file("$jnaDownloadsDir/${platform.tarballName}.asc").exists()
+            }
+        }
+    }
+
+tasks.register<Download>("downloadGpgKey") {
+    src(gpgPublicKeyUrl)
+    dest("$jnaDownloadsDir/libmongocrypt.pub")
+    overwrite(false)
     onlyIfModified(true)
+    onlyIf { !file("$jnaDownloadsDir/libmongocrypt.pub").exists() }
 }
 
-tasks.register<Copy>("unzipJava") {
-    /*
-       Clean up the directory first if the task is not UP-TO-DATE.
-       This can happen if the download revision has been changed and the archive is downloaded again.
-    */
+tasks.register("verifySignatures") {
+    dependsOn(downloadTasks)
+    dependsOn("downloadGpgKey")
+    doLast {
+        val keyFile = file("$jnaDownloadsDir/libmongocrypt.pub")
+        val gpgHome = file("$jnaDownloadsDir/gnupg")
+        delete(gpgHome)
+        gpgHome.mkdirs()
+
+        val gpgArgs =
+            listOf(
+                "gpg",
+                "--homedir",
+                gpgHome.absolutePath,
+                "--batch",
+                "--no-default-keyring",
+                "--keyring",
+                "${gpgHome.absolutePath}/keyring.gpg",
+                "--trust-model",
+                "always",
+                "--no-permission-warning",
+                "--quiet")
+
+        fun runGpg(args: List<String>) {
+            val process = ProcessBuilder(gpgArgs + args).redirectErrorStream(true).start()
+            val output = process.inputStream.bufferedReader().readText()
+            val exitCode = process.waitFor()
+            if (exitCode != 0) {
+                throw GradleException("GPG command failed (exit code $exitCode): ${gpgArgs + args}\n$output")
+            }
+        }
+
+        runGpg(listOf("--import", keyFile.absolutePath))
+
+        platforms.forEach { platform ->
+            val tarball = file("$jnaDownloadsDir/${platform.tarballName}.tar.gz")
+            val signature = file("$jnaDownloadsDir/${platform.tarballName}.asc")
+            runGpg(listOf("--verify", signature.absolutePath, tarball.absolutePath))
+        }
+    }
+}
+
+tasks.register("extractJnaLibs") {
+    dependsOn("verifySignatures")
     doFirst {
         println("Cleaning up $jnaResourcesDir")
         delete(jnaResourcesDir)
     }
-    from(tarTree(resources.gzip("${jnaDownloadsDir}/$localBinariesArchiveName")))
-    include(
-        jnaMapping.keys.flatMap {
-            listOf(
-                "${it}/nocrypto/**/libmongocrypt.so", "${it}/lib/**/libmongocrypt.dylib", "${it}/bin/**/mongocrypt.dll")
-        })
-    eachFile { path = "${jnaMapping[path.substringBefore("/")]}/${name}" }
-    into(jnaResourcesDir)
-    dependsOn("downloadJava")
-
-    doLast { println("jna.library.path contents: \n  ${fileTree(jnaResourcesDir).files.joinToString(",\n  ")}") }
+    doLast {
+        platforms.forEach { platform ->
+            val tarball = file("$jnaDownloadsDir/${platform.tarballName}.tar.gz")
+            val targetDir = file("$jnaResourcesDir/${platform.jnaDir}")
+            targetDir.mkdirs()
+            copy {
+                from(tarTree(resources.gzip(tarball.absolutePath))) {
+                    include("**/${platform.libPath.substringAfterLast("/")}")
+                    eachFile { path = name }
+                }
+                into(targetDir)
+            }
+            val extractedLib = file("${targetDir}/${platform.libPath.substringAfterLast("/")}")
+            if (!extractedLib.exists() || extractedLib.length() == 0L) {
+                throw GradleException("Failed to extract ${platform.libPath} from ${platform.tarballName}.tar.gz")
+            }
+        }
+        println("jna.library.path contents: \n  ${fileTree(jnaResourcesDir).files.joinToString(",\n  ")}")
+    }
 }
 
 // The `processResources` task (defined by the `java-library` plug-in) consumes files in the main
 // source set.
-// Add a dependency on `unzipJava`. `unzipJava` adds libmongocrypt libraries to the main source set.
-tasks.processResources { mustRunAfter(tasks.named("unzipJava")) }
+// Add a dependency on `extractJnaLibs`. `extractJnaLibs` adds libmongocrypt libraries to the main
+// source set.
+tasks.processResources { mustRunAfter(tasks.named("extractJnaLibs")) }
 
-tasks.register("downloadJnaLibs") { dependsOn("downloadJava", "unzipJava") }
+tasks.register("downloadJnaLibs") {
+    if (System.getProperty("jnaLibsPath") == null) {
+        dependsOn("extractJnaLibs")
+    }
+}
 
 tasks.test {
     systemProperty("jna.debug_load", "true")
@@ -125,7 +201,7 @@ tasks.test {
         println("jna.library.path contents:")
         println(fileTree(jnaResources) { this.setIncludes(listOf("*.*")) }.files.joinToString(",\n  ", "  "))
     }
-    dependsOn("downloadJnaLibs", "downloadJava", "unzipJava")
+    dependsOn("downloadJnaLibs")
 }
 
 tasks.withType<AbstractPublishToMaven> {
@@ -134,8 +210,7 @@ tasks.withType<AbstractPublishToMaven> {
         | System properties:
         | =================
         |
-        | jnaLibsPath    : Custom local JNA library path for inclusion into the build (rather than downloading from s3)
-        | gitRevision    : Optional Git Revision to download the built resources for from s3.
+        | jnaLibsPath    : Custom local JNA library path for inclusion into the build (rather than downloading from GitHub releases)
     """.trimMargin()
 }
 
