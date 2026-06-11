@@ -236,10 +236,13 @@ public class TlsChannelImpl implements ByteChannel {
           case NOT_HANDSHAKING:
           case FINISHED:
             UnwrapResult res = readAndUnwrap(Optional.of(dest));
-            if (res.wasClosed) {
-              return -1;
-            }
             bytesToReturn = res.bytesProduced;
+            if (res.wasClosed) {
+              // JAVA-5411 these changes or equivalents are available in tls-channel 1.0.0
+              // Return any bytes produced alongside close_notify; the next read
+              // sees shutdownReceived and returns -1.
+              return bytesToReturn > 0 ? bytesToReturn : -1;
+            }
             handshakeStatus = res.lastHandshakeStatus;
             break;
           case NEED_TASK:
@@ -638,6 +641,53 @@ public class TlsChannelImpl implements ByteChannel {
         if (res.bytesProduced > 0 || res.lastHandshakeStatus != orig || res.wasClosed) {
           if (res.wasClosed) {
             shutdownReceived = true;
+          } else if (res.bytesProduced > 0 && dest.isPresent() && inPlain.nullOrEmpty()) {
+            // TODO JAVA-5411 not in upstream tls-channel 1.0.0; proposed upstream in
+            // https://github.com/marianobarrios/tls-channel/pull/351 - review when the vendored copy is refreshed.
+            // Eagerly unwrap records already buffered in inEncrypted (same TCP segment, separate
+            // TLS records) so a close_notify following the data is reported together with it in a
+            // single read() call. KMS HTTP responses without Content-Length need data + EOF in the
+            // same exchange to be parsed (JAVA-5391). Uses single engine unwraps rather than
+            // unwrapLoop: OVERFLOW/UNDERFLOW consume nothing, so this can never spill into inPlain.
+            int followUpBytes = 0;
+            boolean followUpClosed = false;
+            try {
+              while (((Buffer) inEncrypted.buffer).position() > 0 && dest.get().hasRemaining()) {
+                SSLEngineResult result = callEngineUnwrap(dest.get());
+                // just as in unwrapLoop, data can be produced even in case of overflow
+                followUpBytes += result.bytesProduced();
+                if (result.getStatus() == Status.CLOSED) {
+                  shutdownReceived = true;
+                  followUpClosed = true;
+                  break;
+                }
+                if (result.getStatus() != Status.OK) {
+                  // UNDERFLOW: partial record buffered; OVERFLOW: dest is full. Neither consumes
+                  // bytes - leave the remaining records for the next read.
+                  break;
+                }
+                if (result.bytesConsumed() == 0) {
+                  // defensive guard against a non-conforming engine reporting OK without consuming
+                  // the record, which would otherwise loop forever
+                  break;
+                }
+                if (result.getHandshakeStatus() != orig) {
+                  // Renegotiation/key update: let the main loops drive the handshake. Returning
+                  // res.lastHandshakeStatus below despite the change is safe: read() returns on
+                  // produced bytes and the next call re-queries the engine.
+                  break;
+                }
+              }
+            } catch (SSLException e) {
+              // The channel was already marked invalid by callEngineUnwrap, so subsequent reads
+              // fail. Return the data decrypted so far instead of discarding it, mirroring the
+              // behavior without the eager unwrapping, where the failing record would only have
+              // been hit by the next read.
+              LOGGER.trace("Swallowing exception unwrapping follow-up records, returning data", e);
+            }
+            if (followUpClosed || followUpBytes > 0) {
+              return new UnwrapResult(res.bytesProduced + followUpBytes, res.lastHandshakeStatus, followUpClosed);
+            }
           }
           return res;
         }
