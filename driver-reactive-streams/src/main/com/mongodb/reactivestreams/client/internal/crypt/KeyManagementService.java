@@ -48,16 +48,19 @@ import javax.net.ssl.SSLContext;
 import java.io.Closeable;
 import java.nio.channels.CompletionHandler;
 import java.nio.channels.InterruptedByTimeoutException;
+import java.time.Duration;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 
+import static com.mongodb.internal.capi.MongoCryptHelper.KMS_TIMEOUT_ERROR_MESSAGE;
+import static com.mongodb.internal.capi.MongoCryptHelper.checkKmsRetryBackoff;
 import static java.util.Collections.singletonList;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static org.bson.assertions.Assertions.assertTrue;
 
 class KeyManagementService implements Closeable {
     private static final Logger LOGGER = Loggers.getLogger("client");
-    private static final String TIMEOUT_ERROR_MESSAGE = "KMS key decryption exceeded the timeout limit.";
     private final Map<String, SSLContext> kmsProviderSslContextMap;
     private final int timeoutMillis;
     private final TlsChannelStreamFactoryFactory tlsChannelStreamFactoryFactory;
@@ -74,6 +77,18 @@ class KeyManagementService implements Closeable {
     }
 
     Mono<Void> decryptKey(final MongoKeyDecryptor keyDecryptor, @Nullable final Timeout operationTimeout) {
+        return Mono.defer(() -> {
+            long sleepMicros = keyDecryptor.sleepMicroseconds();
+            if (sleepMicros > 0) {
+                checkKmsRetryBackoff(operationTimeout, sleepMicros);
+                return Mono.delay(Duration.of(sleepMicros, ChronoUnit.MICROS))
+                        .then(attemptDecryptKey(keyDecryptor, operationTimeout));
+            }
+            return attemptDecryptKey(keyDecryptor, operationTimeout);
+        }).onErrorMap(this::unWrapException);
+    }
+
+    private Mono<Void> attemptDecryptKey(final MongoKeyDecryptor keyDecryptor, @Nullable final Timeout operationTimeout) {
         SocketSettings socketSettings = SocketSettings.builder()
                 .connectTimeout(timeoutMillis, MILLISECONDS)
                 .readTimeout(timeoutMillis, MILLISECONDS)
@@ -86,21 +101,26 @@ class KeyManagementService implements Closeable {
         LOGGER.info("Connecting to KMS server at " + serverAddress);
 
         return Mono.<Void>create(sink -> {
-            Stream stream = streamFactory.create(serverAddress);
             OperationContext operationContext = createOperationContext(operationTimeout, socketSettings);
+            Stream stream = streamFactory.create(serverAddress);
             stream.openAsync(operationContext, new AsyncCompletionHandler<Void>() {
                 @Override
                 public void completed(@Nullable final Void ignored) {
-                    streamWrite(stream, keyDecryptor, operationContext, sink);
+                    try {
+                        streamWrite(stream, keyDecryptor, operationContext, sink);
+                    } catch (Throwable t) {
+                        stream.close();
+                        sink.error(t);
+                    }
                 }
 
                 @Override
                 public void failed(final Throwable t) {
                     stream.close();
-                    handleError(t, operationContext, sink);
+                    failOrHandleError(t, keyDecryptor, operationContext, sink);
                 }
             });
-        }).onErrorMap(this::unWrapException);
+        });
     }
 
     private void streamWrite(final Stream stream, final MongoKeyDecryptor keyDecryptor,
@@ -109,13 +129,18 @@ class KeyManagementService implements Closeable {
         stream.writeAsync(byteBufs, operationContext, new AsyncCompletionHandler<Void>() {
             @Override
             public void completed(@Nullable final Void aVoid) {
-                streamRead(stream, keyDecryptor, operationContext, sink);
+                try {
+                    streamRead(stream, keyDecryptor, operationContext, sink);
+                } catch (Throwable t) {
+                    stream.close();
+                    sink.error(t);
+                }
             }
 
             @Override
             public void failed(final Throwable t) {
                 stream.close();
-                handleError(t, operationContext, sink);
+                failOrHandleError(t, keyDecryptor, operationContext, sink);
             }
         });
     }
@@ -123,46 +148,71 @@ class KeyManagementService implements Closeable {
     private void streamRead(final Stream stream, final MongoKeyDecryptor keyDecryptor,
                             final OperationContext operationContext, final MonoSink<Void> sink) {
         int bytesNeeded = keyDecryptor.bytesNeeded();
-        if (bytesNeeded > 0) {
-            AsynchronousChannelStream asyncStream = (AsynchronousChannelStream) stream;
-            ByteBuf buffer = asyncStream.getBuffer(bytesNeeded);
-            long readTimeoutMS = operationContext.getTimeoutContext().getReadTimeoutMS();
-            asyncStream.getChannel().read(buffer.asNIO(), readTimeoutMS, MILLISECONDS, null,
-                                          new CompletionHandler<Integer, Void>() {
-
-                                              @Override
-                                              public void completed(final Integer integer, final Void aVoid) {
-                                                  if (integer == -1) {
-                                                      sink.error(new MongoException(
-                                                              "Unexpected end of stream from KMS provider " + keyDecryptor.getKmsProvider()));
-                                                      return;
-                                                  }
-                                                  buffer.flip();
-                                                  try {
-                                                      keyDecryptor.feed(buffer.asNIO());
-                                                      buffer.release();
-                                                      streamRead(stream, keyDecryptor, operationContext, sink);
-                                                  } catch (Throwable t) {
-                                                      sink.error(t);
-                                                  }
-                                              }
-
-                                              @Override
-                                              public void failed(final Throwable t, final Void aVoid) {
-                                                  buffer.release();
-                                                  stream.close();
-                                                  handleError(t, operationContext, sink);
-                                              }
-                                          });
-        } else {
+        if (bytesNeeded <= 0) {
             stream.close();
             sink.success();
+            return;
+        }
+        AsynchronousChannelStream asyncStream = (AsynchronousChannelStream) stream;
+        ByteBuf buffer = asyncStream.getBuffer(bytesNeeded);
+        CompletionHandler<Integer, Void> readHandler = new CompletionHandler<Integer, Void>() {
+
+            @Override
+            public void completed(final Integer integer, final Void aVoid) {
+                try {
+                    if (integer == -1) {
+                        buffer.release();
+                        stream.close();
+                        MongoException eof = new MongoException("Unexpected end of stream from KMS provider "
+                                + keyDecryptor.getKmsProvider());
+                        failOrHandleError(eof, keyDecryptor, operationContext, sink);
+                        return;
+                    }
+                    buffer.flip();
+                    boolean shouldRetry;
+                    try {
+                        shouldRetry = keyDecryptor.feedWithRetry(buffer.asNIO());
+                    } finally {
+                        buffer.release();
+                    }
+                    if (shouldRetry) {
+                        // libmongocrypt has marked the KMS context for retry; complete this
+                        // attempt and let the state machine re-present the context
+                        stream.close();
+                        sink.success();
+                    } else {
+                        streamRead(stream, keyDecryptor, operationContext, sink);
+                    }
+                } catch (Throwable t) {
+                    stream.close();
+                    sink.error(t);
+                }
+            }
+
+            @Override
+            public void failed(final Throwable t, final Void aVoid) {
+                buffer.release();
+                stream.close();
+                failOrHandleError(t, keyDecryptor, operationContext, sink);
+            }
+        };
+        try {
+            long readTimeoutMS = operationContext.getTimeoutContext().getReadTimeoutMS();
+            asyncStream.getChannel().read(buffer.asNIO(), readTimeoutMS, MILLISECONDS, null, readHandler);
+        } catch (RuntimeException | Error e) {
+            // the handler was not invoked, so the buffer must be released here
+            buffer.release();
+            throw e;
         }
     }
 
-    private static void handleError(final Throwable t, final OperationContext operationContext, final MonoSink<Void> sink) {
+    private static void failOrHandleError(final Throwable t, final MongoKeyDecryptor keyDecryptor,
+            final OperationContext operationContext, final MonoSink<Void> sink) {
         if (isTimeoutException(t) && operationContext.getTimeoutContext().hasTimeoutMS()) {
-            sink.error(TimeoutContext.createMongoTimeoutException(TIMEOUT_ERROR_MESSAGE, t));
+            sink.error(TimeoutContext.createMongoTimeoutException(KMS_TIMEOUT_ERROR_MESSAGE, t));
+        } else if (keyDecryptor.fail()) {
+            LOGGER.debug("Retrying KMS request after transient error", t);
+            sink.success();
         } else {
             sink.error(t);
         }
@@ -179,7 +229,7 @@ class KeyManagementService implements Closeable {
                     },
                     (ms) -> createTimeoutSettings(socketSettings, ms),
                     () -> {
-                        throw new MongoOperationTimeoutException(TIMEOUT_ERROR_MESSAGE);
+                        throw new MongoOperationTimeoutException(KMS_TIMEOUT_ERROR_MESSAGE);
                     });
         }
         return OperationContext.simpleOperationContext(new TimeoutContext(timeoutSettings));

@@ -24,12 +24,15 @@ import com.mongodb.client.model.vault.DataKeyOptions;
 import com.mongodb.client.model.vault.EncryptOptions;
 import com.mongodb.client.model.vault.RewrapManyDataKeyOptions;
 import com.mongodb.crypt.capi.MongoCryptException;
+import com.mongodb.internal.TimeoutContext;
 import com.mongodb.internal.capi.MongoCryptHelper;
 import com.mongodb.internal.crypt.capi.MongoCrypt;
 import com.mongodb.internal.crypt.capi.MongoCryptContext;
 import com.mongodb.internal.crypt.capi.MongoDataKeyOptions;
 import com.mongodb.internal.crypt.capi.MongoKeyDecryptor;
 import com.mongodb.internal.crypt.capi.MongoRewrapManyDataKeyOptions;
+import com.mongodb.internal.diagnostics.logging.Logger;
+import com.mongodb.internal.diagnostics.logging.Loggers;
 import com.mongodb.internal.time.Timeout;
 import com.mongodb.lang.Nullable;
 import org.bson.BsonBinary;
@@ -38,15 +41,19 @@ import org.bson.BsonValue;
 import org.bson.RawBsonDocument;
 
 import java.io.Closeable;
+import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
 import static com.mongodb.assertions.Assertions.assertNotNull;
 import static com.mongodb.assertions.Assertions.notNull;
+import static com.mongodb.internal.capi.MongoCryptHelper.KMS_TIMEOUT_ERROR_MESSAGE;
+import static com.mongodb.internal.capi.MongoCryptHelper.checkKmsRetryBackoff;
 import static com.mongodb.internal.client.vault.EncryptOptionsHelper.asMongoExplicitEncryptOptions;
 import static com.mongodb.internal.crypt.capi.MongoCryptContext.State;
 import static com.mongodb.internal.thread.InterruptionUtil.translateInterruptedException;
@@ -56,6 +63,7 @@ import static com.mongodb.internal.thread.InterruptionUtil.translateInterruptedE
  */
 public class Crypt implements Closeable {
 
+    private static final Logger LOGGER = Loggers.getLogger("client");
     private static final RawBsonDocument EMPTY_RAW_BSON_DOCUMENT = RawBsonDocument.parse("{}");
     private final MongoCrypt mongoCrypt;
     private final Map<String, Map<String, Object>> kmsProviders;
@@ -352,6 +360,7 @@ public class Crypt implements Closeable {
             MongoKeyDecryptor keyDecryptor = cryptContext.nextKeyDecryptor();
             while (keyDecryptor != null) {
                 decryptKey(keyDecryptor, operationTimeout);
+                // a retry-marked context stays queued and is re-presented by nextKeyDecryptor()
                 keyDecryptor = cryptContext.nextKeyDecryptor();
             }
             cryptContext.completeKeyDecryptors();
@@ -361,19 +370,62 @@ public class Crypt implements Closeable {
         }
     }
 
-    private void decryptKey(final MongoKeyDecryptor keyDecryptor, @Nullable final Timeout operationTimeout) throws IOException {
-        try (InputStream inputStream = keyManagementService.stream(keyDecryptor.getKmsProvider(), keyDecryptor.getHostName(),
-                keyDecryptor.getMessage(), operationTimeout)) {
-            int bytesNeeded = keyDecryptor.bytesNeeded();
+    private void decryptKey(final MongoKeyDecryptor keyDecryptor, @Nullable final Timeout operationTimeout)
+            throws IOException, InterruptedException {
+        long sleepMicros = keyDecryptor.sleepMicroseconds();
+        if (sleepMicros > 0) {
+            checkKmsRetryBackoff(operationTimeout, sleepMicros);
+            TimeUnit.MICROSECONDS.sleep(sleepMicros);
+        }
+        try {
+            attemptDecryptKey(keyDecryptor, operationTimeout);
+        } catch (IOException e) {
+            // A read timeout under CSOT means the deadline was reached (the socket timeout is
+            // clamped to the remaining operation time); a connect or handshake timeout with
+            // budget remaining is a retryable network error.
+            Timeout.onExistsAndExpired(operationTimeout, () -> {
+                throw TimeoutContext.createMongoTimeoutException(KMS_TIMEOUT_ERROR_MESSAGE, e);
+            });
+            if (!keyDecryptor.fail()) {
+                throw e;
+            }
+            LOGGER.debug("Retrying KMS request after transient error", e);
+        }
+    }
 
+    private void attemptDecryptKey(final MongoKeyDecryptor keyDecryptor, @Nullable final Timeout operationTimeout)
+            throws IOException {
+        Timeout.onExistsAndExpired(operationTimeout, () -> {
+            throw TimeoutContext.createMongoTimeoutException(KMS_TIMEOUT_ERROR_MESSAGE);
+        });
+        InputStream inputStream = keyManagementService.stream(keyDecryptor.getKmsProvider(), keyDecryptor.getHostName(),
+                keyDecryptor.getMessage(), operationTimeout);
+        Throwable primary = null;
+        try {
+            int bytesNeeded = keyDecryptor.bytesNeeded();
             while (bytesNeeded > 0) {
                 byte[] bytes = new byte[bytesNeeded];
                 int bytesRead = inputStream.read(bytes, 0, bytes.length);
                 if (bytesRead == -1) {
-                    throw new MongoException("Unexpected end of stream from KMS provider " + keyDecryptor.getKmsProvider());
+                    throw new EOFException("Unexpected end of stream from KMS provider " + keyDecryptor.getKmsProvider());
                 }
-                keyDecryptor.feed(ByteBuffer.wrap(bytes, 0, bytesRead));
+                if (keyDecryptor.feedWithRetry(ByteBuffer.wrap(bytes, 0, bytesRead))) {
+                    return;
+                }
                 bytesNeeded = keyDecryptor.bytesNeeded();
+            }
+        } catch (Throwable t) {
+            primary = t;
+            throw t;
+        } finally {
+            try {
+                inputStream.close();
+            } catch (IOException closeException) {
+                if (primary != null) {
+                    primary.addSuppressed(closeException);
+                } else {
+                    LOGGER.debug("Ignoring close() failure after completed KMS attempt", closeException);
+                }
             }
         }
     }

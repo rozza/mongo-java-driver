@@ -360,6 +360,7 @@ public class Crypt implements Closeable {
         if (keyDecryptor != null) {
             keyManagementService.decryptKey(keyDecryptor, operationTimeout)
                     .contextWrite(sink.contextView())
+                    // a retry-marked context stays queued and is re-presented by nextKeyDecryptor()
                     .doOnSuccess(r -> decryptKeys(cryptContext, databaseName, sink, operationTimeout))
                     .doOnError(e -> sink.error(wrapInClientException(e)))
                     .subscribe();
