@@ -326,10 +326,11 @@ public final class UnifiedTestModifications {
         def.skipJira("https://jira.mongodb.org/browse/JAVA-5689")
                 .file("gridfs", "gridfs-deleteByName")
                 .file("gridfs", "gridfs-renameByName");
-        def.transform("JAVA-5839: Bump blocking/timeout to avoid CI latency failures",
+        String java5839reason = "JAVA-5839: Bump blocking/timeout to avoid CI latency failures";
+        def.transform(java5839reason,
                 (entitiesArray, definition) -> {
-                    findAndSetInt(entitiesArray, "client.uriOptions.timeoutMS", 250);
-                    findAndSetInt(definition.getArray("operations"),
+                    findAndSetInt(java5839reason, entitiesArray, "client.uriOptions.timeoutMS", 250);
+                    findAndSetInt(java5839reason, definition.getArray("operations"),
                             "arguments.failPoint.data.blockTimeMS", 200);
                 })
                 .test("client-side-operations-timeout",
@@ -521,20 +522,26 @@ public final class UnifiedTestModifications {
     }
 
     /**
-     * Searches each document in {@code array} for a nested int field specified
+     * Searches each document in {@code array} for a nested numeric field specified
      * by a dot-separated {@code path}, and replaces it with {@code newValue}.
-     * Logs each replacement. Silently skips documents where the path does not
-     * exist or the intermediate keys are absent.
+     * Logs each replacement including the reason. Skips documents where the path does not
+     * exist or the intermediate keys are absent. Fails the test if no replacement is made,
+     * so that spec changes or path typos are surfaced immediately.
      *
-     * <p>Example: {@code findAndSetInt(entitiesArray, "client.uriOptions.timeoutMS", 250)}
+     * <p>This method searches only top-level array elements, not recursively into nested
+     * arrays (e.g. {@code loop} operations).</p>
+     *
+     * <p>Example: {@code findAndSetInt(reason, entitiesArray, "client.uriOptions.timeoutMS", 250)}
      * walks each element looking for {@code element.client.uriOptions.timeoutMS}.</p>
      *
+     * @param reason   why the replacement is being made (included in log output)
      * @param array    the array to search
-     * @param path     dot-separated path to an int field
+     * @param path     dot-separated path to a numeric field
      * @param newValue the replacement value
      */
-    static void findAndSetInt(final BsonArray array, final String path, final int newValue) {
+    static void findAndSetInt(final String reason, final BsonArray array, final String path, final int newValue) {
         String[] segments = path.split("\\.");
+        int replacements = 0;
         for (BsonValue element : array) {
             if (!element.isDocument()) {
                 continue;
@@ -550,11 +557,17 @@ public final class UnifiedTestModifications {
                 }
             }
             String leafKey = segments[segments.length - 1];
-            if (found && current.containsKey(leafKey) && current.get(leafKey).isInt32()) {
-                int oldValue = current.getInt32(leafKey).getValue();
-                LOGGER.info(format("  %s: %d -> %d", leafKey, oldValue, newValue));
+            if (found && current.containsKey(leafKey) && current.get(leafKey).isNumber()) {
+                int oldValue = current.get(leafKey).asNumber().intValue();
+                LOGGER.info(format("[%s] %s: %d -> %d", reason, leafKey, oldValue, newValue));
                 current.put(leafKey, new BsonInt32(newValue));
+                replacements++;
             }
+        }
+        if (replacements == 0) {
+            throw new AssertionFailedError(format(
+                    "[%s] findAndSetInt: no value found at path '%s'. Spec may have changed or path is incorrect.",
+                    reason, path));
         }
     }
 
@@ -765,7 +778,9 @@ public final class UnifiedTestModifications {
             }
             if (match) {
                 this.testDef.modifiers.addAll(this.modifiersToApply);
-                this.testDef.matchesThrowable = this.matchesThrowable;
+                if (this.matchesThrowable != null) {
+                    this.testDef.matchesThrowable = this.matchesThrowable;
+                }
                 if (this.transformer != null) {
                     LOGGER.info("Registered transformation for test ["
                             + testDef.testDescription + "]: " + reason);

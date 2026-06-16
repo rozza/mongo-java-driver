@@ -270,7 +270,8 @@ public abstract class UnifiedTest {
 
             if (testDef.hasTransformations()) {
                 this.entitiesArray = entitiesArray.clone();
-                testDef.applyTransformations(this.entitiesArray, definition);
+                this.definition = definition.clone();
+                testDef.applyTransformations(this.entitiesArray, this.definition);
             }
         }
         skips(fileDescription, testDescription);
