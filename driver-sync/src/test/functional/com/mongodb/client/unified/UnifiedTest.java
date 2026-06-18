@@ -362,31 +362,35 @@ public abstract class UnifiedTest {
             ATTEMPTED_TESTS_TO_HENCEFORTH_IGNORE.add(testName);
         }
         try {
-            BsonArray operations = definition.getArray("operations");
+            // Use the field rather than the parameter: setUp() may have replaced this.definition
+            // with a transformed clone (see applyTransformations). The injected parameter is the
+            // original, untransformed definition. When there are no transformations the two are identical.
+            BsonDocument effectiveDefinition = this.definition;
+            BsonArray operations = effectiveDefinition.getArray("operations");
             for (int i = 0; i < operations.size(); i++) {
                 BsonValue cur = operations.get(i);
                 assertOperation(rootContext, cur.asDocument(), i);
             }
 
-            if (definition.containsKey("outcome")) {
+            if (effectiveDefinition.containsKey("outcome")) {
                 assertOutcome(rootContext);
             }
 
-            if (definition.containsKey("expectEvents")) {
-                compareEvents(rootContext, definition);
+            if (effectiveDefinition.containsKey("expectEvents")) {
+                compareEvents(rootContext, effectiveDefinition);
             }
 
-            if (definition.containsKey("expectLogMessages")) {
+            if (effectiveDefinition.containsKey("expectLogMessages")) {
                 ArrayList<LogMatcher.Tweak> tweaks = new ArrayList<>();
                 if (getMongoClientSettings().getClusterSettings()
                         .getHosts().stream().anyMatch(serverAddress -> serverAddress instanceof UnixServerAddress)) {
                     tweaks.add(LogMatcher.Tweak.skip(LogMessage.Entry.Name.SERVER_PORT));
                 }
-                compareLogMessages(rootContext, definition, tweaks);
+                compareLogMessages(rootContext, effectiveDefinition, tweaks);
             }
 
-            if (definition.containsKey("expectTracingMessages")) {
-                compareTracingSpans(definition);
+            if (effectiveDefinition.containsKey("expectTracingMessages")) {
+                compareTracingSpans(effectiveDefinition);
             }
 
         } catch (TestAbortedException e) {
